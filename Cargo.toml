@@ -1,0 +1,10 @@
+[package]
+name = "wlroots"
+version = "0.0.0"
+authors = ["Timidger <APragmaticPlace@gmail.com>"]
+description = "Rust wrapping for Wayland compositor library wlroots"
+keywords = ["wayland", "compositor", "bindings"]
+categories = ["external-ffi-bindings", "gui"]
+license = "MIT"
+
+[dependencies]
