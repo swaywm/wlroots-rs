@@ -6,6 +6,7 @@ description = "Bindgen generated low-level wlc wrapper"
 keywords = ["wayland", "compositor", "bindings"]
 categories = ["external-ffi-bindings"]
 license = "MIT"
+exclude = [".travis.yml"]
 
 build = "build.rs"
 

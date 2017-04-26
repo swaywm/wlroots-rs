@@ -17,10 +17,12 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y libwayland-dev
 script:
+  # wlroots-rs
   - cargo build --verbose
-  #- cargo build --verbose --features=static  # TODO Add
+  - cargo build --verbose --features="static wlroots-sys"
   - cargo doc
+
   - cd wlroots-sys
   - cargo build --verbose
-  #- cargo build --verbose --features=static  # TODO Add
+  - cargo build --verbose --features="static"
   - cargo doc

@@ -6,5 +6,15 @@ description = "Rust wrapping for Wayland compositor library wlroots"
 keywords = ["wayland", "compositor", "bindings"]
 categories = ["external-ffi-bindings", "gui"]
 license = "MIT"
+exclude = [".travis.yml"]
+
+[badges]
+travis-ci = { repository = "way-cooler/wlroots-rs/" }
+
 
 [dependencies]
+wlroots-sys = { path = "wlroots-sys" }
+
+[features]
+default = []
+static = ["wlroots-sys/static"]
