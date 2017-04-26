@@ -7,4 +7,14 @@ keywords = ["wayland", "compositor", "bindings"]
 categories = ["external-ffi-bindings"]
 license = "MIT"
 
+build = "build.rs"
+
+[build-dependencies]
+bindgen = "^0.23.1"
+cmake = { version = "^0.1.22", optional = true }
+
 [dependencies]
+libc = "^0.2.21"
+
+[features]
+static = ["cmake"]
