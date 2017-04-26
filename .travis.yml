@@ -21,6 +21,7 @@ script:
   - cargo build --verbose
   - cargo build --verbose --features="static wlroots-sys"
   - cargo doc
+  - cargo fmt -- --write-mode=diff
 
   - cd wlroots-sys
   - cargo build --verbose
