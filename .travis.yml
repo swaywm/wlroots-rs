@@ -1,0 +1,19 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+matrix:
+  allow_failures:
+    - rust: nightly
+notifications:
+  email: false
+  slack: way-cooler:bf5hNqMVmTgFpHo3a3vgZ4Lu
+script:
+  - cargo build --verbose
+  #- cargo build --verbose --features=static  # TODO Add
+  - cargo doc
+  - cd wlroots-sys
+  - cargo build --verbose
+  #- cargo build --verbose --features=static  # TODO Add
+  - cargo doc
