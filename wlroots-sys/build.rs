@@ -8,9 +8,8 @@ static LIBRARIES: &'static [&'static str] =
 fn main() {
     let generated = bindgen::builder()
         .header("src/wlroots.h")
-        // hide exported wayland types
-        // TODO Needed?
-        .hide_type(r"^wl_.*$")
+        .whitelisted_type(r"^wlr_.*$")
+        .whitelisted_function(r"^wlr_.*$")
         .no_unstable_rust()
         .ctypes_prefix("libc")
         .clang_arg("-I")
