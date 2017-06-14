@@ -16,6 +16,8 @@ cmake = { version = "^0.1.22", optional = true }
 
 [dependencies]
 libc = "^0.2.21"
+wayland-sys = { version = "0.9.*", features = ["client", "dlopen"] }
+wayland-server = { version = "0.9.*" }
 
 [features]
 static = ["cmake"]
