@@ -3,7 +3,7 @@ extern crate bindgen;
 extern crate cmake;
 
 static LIBRARIES: &'static [&'static str] =
-    &["wlr-common", "wlr-wayland", "wlr-backend", "wlr-session"];
+    &["wlr-common", "wlr-wayland", "wlr-backend", "wlr-session", "wlr-types"];
 
 fn main() {
     let generated = bindgen::builder()
@@ -20,6 +20,7 @@ fn main() {
         println!("cargo:rustc-link-lib=dylib=wayland-server");
         println!("cargo:rustc-link-lib=dylib=EGL");
         println!("cargo:rustc-link-lib=dylib=GL");
+        println!("cargo:rustc-link-lib=dylib=gbm");
         println!("cargo:rustc-link-lib=dylib=drm");
         println!("cargo:rustc-link-lib=dylib=input");
         println!("cargo:rustc-link-lib=dylib=udev");
@@ -56,6 +57,7 @@ fn cmake() {
     println!("cargo:rustc-link-search=native={}/build/", dst.display());
     // TODO May not be needed to specify the directiories directly,
     // wait until the library output stabilizes and look into it later
+    println!("cargo:rustc-link-search=native={}/build/types", dst.display());
     println!("cargo:rustc-link-search=native={}/build/session", dst.display());
     println!("cargo:rustc-link-search=native={}/build/common", dst.display());
     println!("cargo:rustc-link-search=native={}/build/wayland", dst.display());
