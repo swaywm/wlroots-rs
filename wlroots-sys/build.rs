@@ -7,6 +7,7 @@ static LIBRARIES: &'static [&'static str] =
 
 fn main() {
     let generated = bindgen::builder()
+        .derive_debug(true)
         .header("src/wlroots.h")
         .whitelisted_type(r"^wlr_.*$")
         .whitelisted_function(r"^wlr_.*$")
