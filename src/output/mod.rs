@@ -18,8 +18,18 @@ lazy_static! {
         Mutex::new(Vec::with_capacity(128));
 }
 
+// TODO Make this init part of some struct that consumes it and makes
+// sure you can only call this once.
+
+// TODO Also make sure this is definitely safe, pretty sure it is but we
+// need to double check.
+
 /// Sets up the session so that it listens for and automatically manages adding
 /// and removing outputs.
+///
+/// # Unsafety
+/// This should only be called once, otherwise there could be multiple
+/// references to the same `wl_output`.
 pub unsafe fn init(session: &mut Session) {
     let backend = &mut (*session.backend.0);
 
