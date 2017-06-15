@@ -29,11 +29,6 @@ impl State {
 static mut DONE: bool = false;
 
 
-unsafe extern "C" fn timer_done(data: *mut c_void) -> c_int {
-    *(data as *mut bool) = true;
-    1
-}
-
 fn main() {
     if env::var("DISPLAY").is_ok() {
         panic!("Detected that X is running. Run this in its own virtual terminal.")
