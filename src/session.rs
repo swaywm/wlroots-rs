@@ -1,6 +1,7 @@
 //! The session that the compositor controls. Each compositor has one session.
 
-use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_event_loop};
+use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_event_loop,
+                          wl_event_loop_timer_func_t};
 use wlroots_sys::{self, wl_display, wlr_session, wlr_backend,
                   wlr_session_start, wlr_backend_autocreate, wlr_backend_init};
 use ::Backend;
@@ -62,6 +63,29 @@ impl Session {
                         wl_event_loop_dispatch,
                         self.event_loop,
                         0)
+        }
+    }
+
+
+    pub unsafe fn set_timeout<T>(&mut self,
+                                 data: *mut T,
+                                 func: wl_event_loop_timer_func_t,
+                                 delay: u32) {
+        let timer = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_event_loop_add_timer,
+                      self.event_loop,
+                      func,
+                      data as *mut _);
+        if timer.is_null() {
+            panic!("Timer was null");
+        }
+        let res = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_event_source_timer_update,
+                      timer,
+                      delay as i32);
+        // TODO Make sure handling this right, return an Err
+        if res != 0 {
+            panic!("wl_event_loop_add_timer returned an non-zero value!")
         }
     }
 }

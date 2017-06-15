@@ -26,6 +26,13 @@ impl State {
     }
 }
 
+static mut DONE: bool = false;
+
+
+unsafe extern "C" fn timer_done(data: *mut c_void) -> c_int {
+    *(data as *mut bool) = true;
+    1
+}
 
 fn main() {
     if env::var("DISPLAY").is_ok() {
@@ -36,17 +43,23 @@ fn main() {
     let mut session = wlroots::Session::new()
         .expect("Could not start session");
     unsafe {
+        // init output (this will eventuall be safe).
         wlroots::output::init(&mut session);
     }
+    // set loop to break after 3 seconds.
+    unsafe {
+        session.set_timeout(&mut DONE as *mut _, timer_done, 3000)
+    }
     session.backend.init().expect("Backend could not initalize");
-    //loop {
+    while unsafe { ! DONE } {
         match session.dispatch_event_loop() {
             0 => {}
             err_code => {
                 println!("Error: {:?}", err_code);
+                break;
             }
         }
-   // }
+    }
     // TODO Ensure that this all cleaned up properly in RAII
 
 }
