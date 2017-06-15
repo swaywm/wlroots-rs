@@ -3,7 +3,7 @@ pub extern crate wlroots_sys;
 #[macro_use] extern crate wayland_sys;
 #[macro_use] extern crate error_chain;
 
-mod output;
+pub mod output;
 mod session;
 mod backend;
 pub mod utils;

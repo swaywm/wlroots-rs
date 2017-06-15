@@ -14,7 +14,7 @@ travis-ci = { repository = "way-cooler/wlroots-rs/" }
 
 [dependencies]
 wlroots-sys = { path = "wlroots-sys" }
-wayland-sys = { version = "0.9.*", features = ["client", "dlopen", "server"] }
+wayland-sys = { version = "0.9.*", features = ["client", "dlopen", "server",] }
 lazy_static = "0.2"
 error-chain = "0.10.*"
 

@@ -35,15 +35,17 @@ fn main() {
     }
     let mut session = wlroots::Session::new()
         .expect("Could not start session");
-    loop {
+    unsafe {
+        wlroots::output::init(&mut session);
+    }
+    //loop {
         match session.dispatch_event_loop() {
             0 => {}
             err_code => {
                 println!("Error: {:?}", err_code);
-                break;
             }
         }
-    }
+   // }
     // TODO Ensure that this all cleaned up properly in RAII
 
 }
