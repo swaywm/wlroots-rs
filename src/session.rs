@@ -79,14 +79,6 @@ impl Session {
             data
         });
         let actual_data_ptr = Box::into_raw(actual_data);
-        unsafe extern "C" fn timer_done<T, F>(data: *mut c_void) -> c_int
-            where F: Fn(&mut T) {
-            let data = data as *mut TimeoutData<T, F>;
-            let callback = Box::from_raw((*data).callback_ptr);
-            let mut real_data = Box::from_raw((*data).data);
-            (*callback)(&mut *real_data);
-            1
-        }
         let timer = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                   wl_event_loop_add_timer,
                                   self.event_loop,
@@ -110,4 +102,13 @@ impl Session {
 pub struct TimeoutData<T, F> where F: Fn(&mut T) {
     callback_ptr: *mut F,
     data: *mut T
+}
+
+unsafe extern "C" fn timer_done<T, F>(data: *mut c_void) -> c_int
+    where F: Fn(&mut T) {
+    let data = data as *mut TimeoutData<T, F>;
+    let callback = Box::from_raw((*data).callback_ptr);
+    let mut real_data = Box::from_raw((*data).data);
+    (*callback)(&mut *real_data);
+    1
 }
