@@ -4,6 +4,7 @@ use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_event_loop,
                           wl_event_loop_timer_func_t};
 use wlroots_sys::{self, wl_display, wlr_session, wlr_backend,
                   wlr_session_start, wlr_backend_autocreate, wlr_backend_init};
+use std::os::raw::{c_void, c_int};
 use ::Backend;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -67,25 +68,46 @@ impl Session {
     }
 
 
-    pub unsafe fn set_timeout<T>(&mut self,
-                                 data: *mut T,
-                                 func: wl_event_loop_timer_func_t,
-                                 delay: u32) {
+    pub unsafe fn set_timeout<T, F>(&mut self,
+                                    data: *mut T,
+                                    callback: F,
+                                    delay: u32) where F: Fn(&mut T) {
+        let boxed_func = Box::new(callback);
+        let callback_ptr = Box::into_raw(boxed_func);
+        let actual_data = Box::new(TimeoutData {
+            callback_ptr,
+            data
+        });
+        let actual_data_ptr = Box::into_raw(actual_data);
+        unsafe extern "C" fn timer_done<T, F>(data: *mut c_void) -> c_int
+            where F: Fn(&mut T) {
+            let data = data as *mut TimeoutData<T, F>;
+            let callback = Box::from_raw((*data).callback_ptr);
+            let mut real_data = Box::from_raw((*data).data);
+            (*callback)(&mut *real_data);
+            1
+        }
         let timer = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                      wl_event_loop_add_timer,
-                      self.event_loop,
-                      func,
-                      data as *mut _);
+                                  wl_event_loop_add_timer,
+                                  self.event_loop,
+                                  timer_done::<T, F>,
+                                  actual_data_ptr as *mut _);
         if timer.is_null() {
             panic!("Timer was null");
         }
         let res = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                      wl_event_source_timer_update,
-                      timer,
-                      delay as i32);
+                                wl_event_source_timer_update,
+                                timer,
+                                delay as i32);
         // TODO Make sure handling this right, return an Err
         if res != 0 {
             panic!("wl_event_loop_add_timer returned an non-zero value!")
         }
     }
+}
+
+#[repr(C)]
+pub struct TimeoutData<T, F> where F: Fn(&mut T) {
+    callback_ptr: *mut F,
+    data: *mut T
 }

@@ -43,12 +43,14 @@ fn main() {
     let mut session = wlroots::Session::new()
         .expect("Could not start session");
     unsafe {
-        // init output (this will eventuall be safe).
+        // init output (this will eventually be safe).
         wlroots::output::init(&mut session);
     }
     // set loop to break after 3 seconds.
     unsafe {
-        session.set_timeout(&mut DONE as *mut _, timer_done, 3000)
+        session.set_timeout(&mut DONE as *mut bool,
+                            |is_done: &mut bool| *is_done = true,
+                            3000)
     }
     session.backend.init().expect("Backend could not initalize");
     while unsafe { ! DONE } {
