@@ -20,12 +20,17 @@ impl Backend {
             if backend.is_null() {
                 Err(SessionErr::BackendFailed)
             } else {
-                if ! wlr_backend_init(backend) {
-                    // TODO Make a more specific error
-                    Err(SessionErr::BackendFailed)
-                } else {
-                    Ok(Backend(backend))
-                }
+                Ok(Backend(backend))
+            }
+        }
+    }
+
+    pub fn init(&mut self) -> Result<(), ::SessionErr> {
+        unsafe {
+            if ! wlr_backend_init(self.0) {
+                Err(SessionErr::BackendFailed)
+            } else {
+                Ok(())
             }
         }
     }

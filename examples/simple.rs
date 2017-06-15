@@ -38,6 +38,7 @@ fn main() {
     unsafe {
         wlroots::output::init(&mut session);
     }
+    session.backend.init().expect("Backend could not initalize");
     //loop {
         match session.dispatch_event_loop() {
             0 => {}
