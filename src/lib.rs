@@ -1,10 +1,12 @@
 pub extern crate wlroots_sys;
 #[macro_use] extern crate lazy_static;
+#[macro_use] extern crate wayland_sys;
+#[macro_use] extern crate error_chain;
 
-pub mod output;
+pub mod macros;
+mod output;
+mod session;
+mod backend;
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {}
-}
+pub use session::{Session, SessionErr};
+pub use backend::Backend;

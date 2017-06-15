@@ -3,7 +3,7 @@ extern crate bindgen;
 extern crate cmake;
 
 static LIBRARIES: &'static [&'static str] =
-    &["wlr-common", "wlr-wayland", "wlr-backend", "wlr-session", "wlr-types"];
+    &["wlr-common", "wlr-backend", "wlr-session", "wlr-types"];
 
 fn main() {
     let generated = bindgen::builder()
