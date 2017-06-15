@@ -24,14 +24,14 @@ pub unsafe fn init(session: &mut Session) {
     let backend = &mut (*session.backend.0);
 
     // Set up output_add
-    let mut output_add_listener = wl_listener::new(output_add);
+    let mut output_add_listener = Box::new(wl_listener::new(output_add));
     wl_signal_add(&mut backend.events.output_add,
-                  &mut output_add_listener);
+                  &mut *output_add_listener);
 
     // Set up output_remove
-    let mut output_remove_listener = wl_listener::new(output_remove);
+    let mut output_remove_listener = Box::new(wl_listener::new(output_remove));
     wl_signal_add(&mut backend.events.output_remove,
-                  &mut output_remove_listener);
+                  &mut *output_remove_listener);
 
     // Leak the link in the list that points to the static function.
     ::std::mem::forget(output_add_listener);
