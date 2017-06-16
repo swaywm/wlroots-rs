@@ -5,6 +5,8 @@ use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_event_loop,
 use wlroots_sys::{self, wl_display, wlr_session, wlr_backend,
                   wlr_session_start, wlr_backend_autocreate, wlr_backend_init};
 use std::os::raw::{c_void, c_int};
+use std::marker::PhantomData;
+use std::any::Any;
 use ::Backend;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -17,7 +19,7 @@ pub enum SessionErr {
 
 /// A session that controls the wl_display, it's event loop, and the
 /// [wlr_session](../../wlroots_sys/struct.wlr_session.html)
-pub struct Session {
+pub struct Session<'session> {
     /// The backend that this session uses to display content.
     pub backend: Backend,
     /// The session for the compositor. Usually this is via logind.
@@ -26,9 +28,10 @@ pub struct Session {
     pub display: *mut wl_display,
     /// The pointer to the wayland event loop.
     pub event_loop: *mut wl_event_loop,
+    phantom_data: PhantomData<&'session Any>
 }
 
-impl Session {
+impl <'session> Session<'session> {
     /// Creates a new Wayland session.
     ///
     /// Automatically creates the `wl_display` and `wl_event_loop` objects
@@ -51,7 +54,13 @@ impl Session {
                 return Err(SessionErr::SessionFailed)
             }
             let backend = Backend::autocreate_backend(display, session)?;
-            Ok(Session {backend, session, display, event_loop})
+            Ok(Session {
+                backend,
+                session,
+                display,
+                event_loop,
+                phantom_data: PhantomData
+            })
         }
     }
 
@@ -68,10 +77,10 @@ impl Session {
     }
 
 
-    pub fn set_timeout<T: Send + Sync, F>(&mut self,
-                                    data: &mut T,
+    pub fn set_timeout<T: Send + Sync, F>(&'session mut self,
+                                    data: &'session mut T,
                                     callback: F,
-                                    delay: u32) where F: Fn(&mut T) {
+                                    delay: u32) where F: Fn(& mut T) {
         let boxed_func = Box::new(callback);
         let callback_ptr = Box::into_raw(boxed_func);
         let actual_data = Box::new(TimeoutData {
