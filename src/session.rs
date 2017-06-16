@@ -76,18 +76,31 @@ impl <'session> Session<'session> {
         }
     }
 
+    pub fn set_timeout_mut<'data: 'session, T: Send + Sync + Sized, F>(&mut self, data: &'data mut T, callback: F, delay: u32) where F: Fn(&mut T){
+        let actual_data_ptr = TimeoutDataMut::new_raw(data, callback);
+        unsafe {
+            let timer = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                        wl_event_loop_add_timer,
+                                        self.event_loop,
+                                        timer_done_mut::<T, F>,
+                                        actual_data_ptr as *mut _);
+            if timer.is_null() {
+                panic!("Timer was null");
+            }
+            let res = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_event_source_timer_update,
+            timer, delay as i32);
+            if res != 0 {
+                panic!("wl_event_loop_add_timer returned an non-zero value!")
+            }
+        }
+    }
 
-    pub fn set_timeout<T: Send + Sync, F>(&'session mut self,
-                                    data: &'session mut T,
-                                    callback: F,
-                                    delay: u32) where F: Fn(& mut T) {
-        let boxed_func = Box::new(callback);
-        let callback_ptr = Box::into_raw(boxed_func);
-        let actual_data = Box::new(TimeoutData {
-            callback_ptr,
-            data
-        });
-        let actual_data_ptr = Box::into_raw(actual_data);
+    pub fn set_timeout<'data: 'session, T: Send + Sync + Sized, F>(&mut self,
+                                                           data: &'data T,
+                                                           callback: F,
+                                                           delay: u32)
+        where F: Fn(&T) {
+        let actual_data_ptr = TimeoutData::new_raw(data as *const _, callback);
         unsafe {
             let timer = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                     wl_event_loop_add_timer,
@@ -101,7 +114,6 @@ impl <'session> Session<'session> {
                                     wl_event_source_timer_update,
                                     timer,
                                     delay as i32);
-            // TODO Make sure handling this right, return an Err
             if res != 0 {
                 panic!("wl_event_loop_add_timer returned an non-zero value!")
             }
@@ -110,16 +122,63 @@ impl <'session> Session<'session> {
 }
 
 #[repr(C)]
-pub struct TimeoutData<T, F> where F: Fn(&mut T) {
+pub struct TimeoutData<T: Send + Sync + Sized, F> where F: Fn(&T) {
+    callback_ptr: *mut F,
+    data: *const T
+}
+
+#[repr(C)]
+    pub struct TimeoutDataMut<T: Send + Sync + Sized, F> where F: Fn(&mut T) {
     callback_ptr: *mut F,
     data: *mut T
 }
 
-unsafe extern "C" fn timer_done<T, F>(data: *mut c_void) -> c_int
+impl <T: Send + Sync + Sized, F> TimeoutData<T, F> where F: Fn(&T) {
+    /// Create a new TimeoutDataMut allocated on the heap.
+    ///
+    /// The pointer returned is to be used in C callbacks,
+    /// and to be reclaimed later to avoid a leak
+    fn new_raw(data: *const T, callback: F) -> *mut Self {
+        let boxed_func = Box::new(callback);
+        let callback_ptr = Box::into_raw(boxed_func);
+        let actual_data = Box::new(TimeoutData {
+            callback_ptr,
+            data
+        });
+        Box::into_raw(actual_data)
+    }
+}
+
+impl <T: Send + Sync + Sized, F> TimeoutDataMut<T, F> where F: Fn(&mut T) {
+    /// Create a new TimeoutDataMut allocated on the heap.
+    ///
+    /// The pointer returned is to be used in C callbacks,
+    /// and to be reclaimed later to avoid a leak
+    fn new_raw(data: *mut T, callback: F) -> *mut Self {
+        let boxed_func = Box::new(callback);
+        let callback_ptr = Box::into_raw(boxed_func);
+        let actual_data = Box::new(TimeoutDataMut {
+            callback_ptr,
+            data
+        });
+        Box::into_raw(actual_data)
+    }
+}
+
+unsafe extern "C" fn timer_done_mut<T: Send + Sync + Sized, F>(data: *mut c_void) -> c_int
     where F: Fn(&mut T) {
-    let data = data as *mut TimeoutData<T, F>;
-    let callback = Box::from_raw((*data).callback_ptr);
-    let mut real_data = Box::from_raw((*data).data);
+    let data = data as *mut TimeoutDataMut<T, F>;
+    let callback = Box::from_raw((*data).callback_ptr as *mut F);
+    let mut real_data = Box::from_raw((*data).data as *mut T);
     (*callback)(&mut *real_data);
+    1
+}
+
+unsafe extern "C" fn timer_done<T: Send + Sync + Sized, F>(data: *mut c_void) -> c_int
+    where F: Fn(&T) {
+    let data = data as *mut TimeoutData<T, F>;
+    let callback = Box::from_raw((*data).callback_ptr as *mut F);
+    let real_data = Box::from_raw((*data).data as *mut T);
+    (*callback)(&*real_data);
     1
 }
