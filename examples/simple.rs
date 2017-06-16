@@ -26,9 +26,6 @@ impl State {
     }
 }
 
-static mut DONE: bool = false;
-
-
 fn main() {
     if env::var("DISPLAY").is_ok() {
         panic!("Detected that X is running. Run this in its own virtual terminal.")
@@ -42,13 +39,13 @@ fn main() {
         wlroots::output::init(&mut session);
     }
     // set loop to break after 3 seconds.
-    unsafe {
-        session.set_timeout(&mut DONE as *mut bool,
-                            |is_done: &mut bool| *is_done = true,
-                            3000)
-    }
+    let mut done = false;
+    // TODO This is unsafe, need to make this not pass and require a RefCell
+    session.set_timeout(&mut done,
+                        |is_done: &mut bool| *is_done = true,
+                        3000);
     session.backend.init().expect("Backend could not initalize");
-    while unsafe { ! DONE } {
+    while done {
         match session.dispatch_event_loop() {
             0 => {}
             err_code => {

@@ -68,8 +68,8 @@ impl Session {
     }
 
 
-    pub unsafe fn set_timeout<T, F>(&mut self,
-                                    data: *mut T,
+    pub fn set_timeout<T: Send + Sync, F>(&mut self,
+                                    data: &mut T,
                                     callback: F,
                                     delay: u32) where F: Fn(&mut T) {
         let boxed_func = Box::new(callback);
@@ -79,21 +79,23 @@ impl Session {
             data
         });
         let actual_data_ptr = Box::into_raw(actual_data);
-        let timer = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                  wl_event_loop_add_timer,
-                                  self.event_loop,
-                                  timer_done::<T, F>,
-                                  actual_data_ptr as *mut _);
-        if timer.is_null() {
-            panic!("Timer was null");
-        }
-        let res = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                wl_event_source_timer_update,
-                                timer,
-                                delay as i32);
-        // TODO Make sure handling this right, return an Err
-        if res != 0 {
-            panic!("wl_event_loop_add_timer returned an non-zero value!")
+        unsafe {
+            let timer = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                    wl_event_loop_add_timer,
+                                    self.event_loop,
+                                    timer_done::<T, F>,
+                                    actual_data_ptr as *mut _);
+            if timer.is_null() {
+                panic!("Timer was null");
+            }
+            let res = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                    wl_event_source_timer_update,
+                                    timer,
+                                    delay as i32);
+            // TODO Make sure handling this right, return an Err
+            if res != 0 {
+                panic!("wl_event_loop_add_timer returned an non-zero value!")
+            }
         }
     }
 }
