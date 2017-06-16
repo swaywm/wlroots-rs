@@ -40,14 +40,13 @@ fn main() {
         let done = AtomicBool::new(false);
         let mut session = wlroots::Session::new()
             .expect("Could not start session");
-        unsafe {
-            // init output (this will eventually be safe).
-            wlroots::output::init(&mut session);
-        }
+        // init output
+        wlroots::output::init(&mut session);
         // set loop to break after 20 seconds.
         session.set_timeout(&done,
-                            |done: &AtomicBool|
-                            done.store(true, Ordering::Relaxed),
+                            |done: &AtomicBool| {
+                                done.store(true, Ordering::Relaxed)
+                            },
                             20000);
         // Set the outputs to turn off at 5 seconds
         session.set_timeout(&state,

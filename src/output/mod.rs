@@ -26,26 +26,24 @@ lazy_static! {
 
 /// Sets up the session so that it listens for and automatically manages adding
 /// and removing outputs.
-///
-/// # Unsafety
-/// This should only be called once, otherwise there could be multiple
-/// references to the same `wl_output`.
-pub unsafe fn init(session: &mut Session) {
-    let backend = &mut (*session.backend.0);
+pub fn init(session: &mut Session) {
+    unsafe {
+        let backend = &mut (*session.backend.0);
 
-    // Set up output_add
-    let mut output_add_listener = Box::new(wl_listener::new(output_add));
-    wl_signal_add(&mut backend.events.output_add,
-                  &mut *output_add_listener);
+        // Set up output_add
+        let mut output_add_listener = Box::new(wl_listener::new(output_add));
+        wl_signal_add(&mut backend.events.output_add,
+                    &mut *output_add_listener);
 
-    // Set up output_remove
-    let mut output_remove_listener = Box::new(wl_listener::new(output_remove));
-    wl_signal_add(&mut backend.events.output_remove,
-                  &mut *output_remove_listener);
+        // Set up output_remove
+        let mut output_remove_listener = Box::new(wl_listener::new(output_remove));
+        wl_signal_add(&mut backend.events.output_remove,
+                    &mut *output_remove_listener);
 
-    // Leak the link in the list that points to the static function.
-    ::std::mem::forget(output_add_listener);
-    ::std::mem::forget(output_remove_listener);
+        // Leak the link in the list that points to the static function.
+        ::std::mem::forget(output_add_listener);
+        ::std::mem::forget(output_remove_listener);
+    }
 }
 
 unsafe extern "C" fn output_add(listener: *mut server::wl_listener,
