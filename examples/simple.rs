@@ -1,13 +1,11 @@
-extern crate wlroots_sys;
-#[macro_use] extern crate wayland_sys;
 extern crate wlroots;
 
 use std::ptr::null_mut;
 use std::env;
 use std::time::Instant;
 use std::os::raw::{c_void, c_int};
-use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 struct State {
     /// The color on the screen.
@@ -33,22 +31,35 @@ fn main() {
     } else if env::var("WAYLAND_DISPLAY").is_ok() {
         panic!("Detected that Wayland is running. Run this in its own virtual terminal")
     }
-    let mut done = AtomicBool::new(false);
     {
+        let state = Mutex::new(State::new());
+        // NOTE that because we pass `done` to a timeout callback,
+        // it must be declared before session to ensure they are dropped
+        // in the correct order.
+        // Try reordering `done` to after `session` and see the error.
+        let done = AtomicBool::new(false);
         let mut session = wlroots::Session::new()
             .expect("Could not start session");
         unsafe {
             // init output (this will eventually be safe).
             wlroots::output::init(&mut session);
         }
-        // set loop to break after 3 seconds.
-        // TODO This is unsafe, need to make this not pass and require a RefCell
+        // set loop to break after 20 seconds.
         session.set_timeout(&done,
                             |done: &AtomicBool|
                             done.store(true, Ordering::Relaxed),
-                            3000);
+                            20000);
+        // Set the outputs to turn off at 5 seconds
+        session.set_timeout(&state,
+                            disable_outputs,
+                            5000);
+        // Set the outputs to turn on at 5 seconds
+        session.set_timeout(&state,
+                            enable_outputs,
+                            10000);
+        // Finish initializing the backend
         session.backend.init().expect("Backend could not initalize");
-        while done.load(Ordering::Relaxed) {
+        while ! done.load(Ordering::Relaxed) {
             match session.dispatch_event_loop() {
                 0 => {}
                 err_code => {
@@ -60,4 +71,21 @@ fn main() {
         // TODO Ensure that this all cleaned up properly in RAII
     }
 
+}
+
+
+fn disable_outputs(_state: &Mutex<State>) {
+    let mut outputs = wlroots::output::OUTPUTS.try_lock()
+        .expect("Output lock was already acquired");
+    for mut output in &mut *outputs {
+        output.disable()
+    }
+}
+
+fn enable_outputs(_state: &Mutex<State>) {
+    let mut outputs = wlroots::output::OUTPUTS.try_lock()
+    .expect("Output lock was already acquired");
+    for mut output in &mut *outputs {
+        output.enable()
+    }
 }
