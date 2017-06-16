@@ -42,6 +42,7 @@ fn main() {
         // Finish initializing the backend
         session.backend.init().expect("Backend could not initalize");
         // Now that the outputs are registered add a callback per frame.
+        // We don't wrap this because it's largely unnecessarily
         unsafe {
             add_frame_callbacks();
         }
