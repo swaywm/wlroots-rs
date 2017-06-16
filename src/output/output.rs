@@ -1,4 +1,4 @@
-use wlroots_sys::wlr_output;
+use wlroots_sys::{wlr_output, wlr_output_enable};
 
 use std::fmt;
 
@@ -10,6 +10,18 @@ pub struct Output {
 impl Output {
     pub fn new(inner: *mut wlr_output) -> Self {
         Output { inner }
+    }
+
+    pub fn disable(&mut self) {
+        unsafe {
+            wlr_output_enable(self.inner, false)
+        }
+    }
+
+    pub fn enable(&mut self) {
+        unsafe {
+            wlr_output_enable(self.inner, true)
+        }
     }
 }
 
