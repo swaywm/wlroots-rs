@@ -1,7 +1,11 @@
 extern crate bindgen;
 #[cfg(feature = "static")]
-extern crate cmake;
+extern crate meson;
 
+use std::env;
+use std::path::PathBuf;
+
+// TODO these are wrong
 static LIBRARIES: &'static [&'static str] =
     &["wlr-common", "wlr-backend", "wlr-session", "wlr-types"];
 
@@ -13,8 +17,10 @@ fn main() {
         .whitelisted_function(r"^wlr_.*$")
         .no_unstable_rust()
         .ctypes_prefix("libc")
-        .clang_arg("-I")
-        .clang_arg("wlroots/include")
+        .clang_arg("-Iwlroots/include")
+        .clang_arg("-Iwlroots/include/wlr")
+        .clang_arg("-Iwlroots/include/xcursor")
+        .clang_arg("-I/usr/include/pixman-1")
         .generate().unwrap();
 
     if cfg!(feature = "static") {
@@ -27,6 +33,7 @@ fn main() {
         println!("cargo:rustc-link-lib=dylib=udev");
         println!("cargo:rustc-link-lib=dylib=systemd");
         println!("cargo:rustc-link-lib=dylib=dbus-1");
+        println!("cargo:rustc-link-lib=dylib=pixman");
     } else {
         for library in LIBRARIES {
             println!("cargo:rustc-link-lib=dylib={}", library);
@@ -36,35 +43,23 @@ fn main() {
     // generate the bindings
     generated.write_to_file("src/gen.rs").unwrap();
 
-    cmake();
+    meson();
 }
 
 #[cfg(not(feature = "static"))]
-fn cmake() {}
+fn meson() {}
 
 #[cfg(feature = "static")]
-fn cmake() {
-    use cmake::Config;
+fn meson() {
+    let build_path = PathBuf::from(env::var("OUT_DIR")
+        .expect("Could not get OUT_DIR env variable"));
+    build_path.join("build");
+    let build_path_str = build_path.to_str()
+        .expect("Could not turn build path into a string");
+    println!("cargo:rustc-link-search=native=wlroots");
+    println!("cargo:rustc-link-search=native={}/lib", build_path_str);
+    println!("cargo:rustc-link-search=native={}/lib64", build_path_str);
+    println!("cargo:rustc-link-search=native={}/build/", build_path_str);
 
-    let dst = Config::new("wlroots")
-                // TODO Eventually change to Release, once the warnings stop
-                .define("CMAKE_BUILD_TYPE", "Debug")
-                // TODO Remove "all" once "install" is valid
-                .build_target("all")
-                .build();
-
-    println!("cargo:rustc-link-search=native={}/lib", dst.display());
-    println!("cargo:rustc-link-search=native={}/lib64", dst.display());
-    println!("cargo:rustc-link-search=native={}/build/", dst.display());
-    // TODO May not be needed to specify the directiories directly,
-    // wait until the library output stabilizes and look into it later
-    println!("cargo:rustc-link-search=native={}/build/types", dst.display());
-    println!("cargo:rustc-link-search=native={}/build/session", dst.display());
-    println!("cargo:rustc-link-search=native={}/build/common", dst.display());
-    println!("cargo:rustc-link-search=native={}/build/wayland", dst.display());
-    println!("cargo:rustc-link-search=native={}/build/backend", dst.display());
-
-    for library in LIBRARIES {
-        println!("cargo:rustc-link-lib=static={}", library);
-    }
+    meson::build("wlroots", build_path_str);
 }
