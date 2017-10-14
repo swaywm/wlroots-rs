@@ -16,6 +16,7 @@ static LIBRARIES: &'static [&'static str] =
 fn main() {
     let generated = bindgen::builder()
         .derive_debug(true)
+        .derive_default(true)
         .generate_comments(true)
         .header("src/wlroots.h")
         .whitelisted_type(r"^wlr_.*$")
@@ -25,6 +26,12 @@ fn main() {
         .clang_arg("-Iwlroots/include/wlr")
         .clang_arg("-Iwlroots/include/xcursor")
         .clang_arg("-I/usr/include/pixman-1")
+        // Work around bug https://github.com/rust-lang-nursery/rust-bindgen/issues/687
+        .hide_type("FP_NAN")
+        .hide_type("FP_INFINITE")
+        .hide_type("FP_ZERO")
+        .hide_type("FP_SUBNORMAL")
+        .hide_type("FP_NORMAL")
         .generate().unwrap();
 
     if cfg!(feature = "static") {
