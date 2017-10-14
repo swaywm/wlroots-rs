@@ -5,7 +5,9 @@ extern crate wayland_server;
 use wlroots_sys::wlr_backend_destroy;
 
 #[allow(warnings)]
-mod shared;
+mod shared {
+    include!(concat!(env!("OUT_DIR"), "/shared.rs"));
+}
 use shared::*;
 
 // For graphical functions

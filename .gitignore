@@ -1,4 +1,3 @@
 target
 Cargo.lock
 gen.rs
-wlroots-sys/examples/shared.rs

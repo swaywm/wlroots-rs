@@ -85,7 +85,7 @@ fn main() {
         .hide_type("FP_SUBNORMAL")
         .hide_type("FP_NORMAL")
         .generate().unwrap();
-    example_generated.write_to_file("examples/shared.rs").unwrap();
+    example_generated.write_to_file(format!("{}/shared.rs", dest)).unwrap();
 
     // Build shared.c for examples
     // TODO Put behind feature flag
