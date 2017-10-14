@@ -4,6 +4,7 @@ extern crate meson;
 extern crate gl_generator;
 
 use std::env;
+#[allow(unused_imports)]
 use std::path::{Path, PathBuf};
 use std::fs::File;
 use gl_generator::{Registry, Api, Profile, Fallbacks, StaticGenerator};
@@ -27,6 +28,13 @@ fn main() {
         .generate().unwrap();
 
     if cfg!(feature = "static") {
+        println!("cargo:rustc-link-lib=dylib=X11");
+        println!("cargo:rustc-link-lib=dylib=X11-xcb");
+        println!("cargo:rustc-link-lib=dylib=xkbcommon");
+        println!("cargo:rustc-link-lib=dylib=xcb");
+        println!("cargo:rustc-link-lib=dylib=cap");
+        println!("cargo:rustc-link-lib=dylib=wayland-egl");
+        println!("cargo:rustc-link-lib=dylib=wayland-client");
         println!("cargo:rustc-link-lib=dylib=wayland-server");
         println!("cargo:rustc-link-lib=dylib=EGL");
         println!("cargo:rustc-link-lib=dylib=GL");
@@ -36,7 +44,8 @@ fn main() {
         println!("cargo:rustc-link-lib=dylib=udev");
         println!("cargo:rustc-link-lib=dylib=systemd");
         println!("cargo:rustc-link-lib=dylib=dbus-1");
-        println!("cargo:rustc-link-lib=dylib=pixman");
+        println!("cargo:rustc-link-lib=dylib=pixman-1");
+
     } else {
         for library in LIBRARIES {
             println!("cargo:rustc-link-lib=dylib={}", library);
@@ -71,6 +80,24 @@ fn meson() {
     println!("cargo:rustc-link-search=native={}/lib", build_path_str);
     println!("cargo:rustc-link-search=native={}/lib64", build_path_str);
     println!("cargo:rustc-link-search=native={}/build/", build_path_str);
+    if cfg!(feature = "static") {
+        println!("cargo:rustc-link-search=native={}/util/", build_path_str);
+        println!("cargo:rustc-link-search=native={}/types/", build_path_str);
+        println!("cargo:rustc-link-search=native={}/protocol/", build_path_str);
+        println!("cargo:rustc-link-search=native={}/xcursor/", build_path_str);
+        println!("cargo:rustc-link-search=native={}/xwayland/", build_path_str);
+        println!("cargo:rustc-link-search=native={}/backend/", build_path_str);
+        println!("cargo:rustc-link-search=native={}/render/", build_path_str);
+
+        println!("cargo:rustc-link-lib=static=wlr_util");
+        println!("cargo:rustc-link-lib=static=wlr_types");
+        println!("cargo:rustc-link-lib=static=wlr_xcursor");
+        println!("cargo:rustc-link-lib=static=wlr_xwayland");
+        println!("cargo:rustc-link-lib=static=wlr_backend");
+        println!("cargo:rustc-link-lib=static=wlr_render");
+        // wayland protocols
+        println!("cargo:rustc-link-lib=static=wl_protos");
+    }
 
     meson::build("wlroots", build_path_str);
 }
