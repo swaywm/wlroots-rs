@@ -1,9 +1,12 @@
 extern crate bindgen;
 #[cfg(feature = "static")]
 extern crate meson;
+extern crate gl_generator;
 
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::fs::File;
+use gl_generator::{Registry, Api, Profile, Fallbacks, StaticGenerator};
 
 // TODO these are wrong
 static LIBRARIES: &'static [&'static str] =
@@ -44,6 +47,14 @@ fn main() {
     generated.write_to_file("src/gen.rs").unwrap();
 
     meson();
+
+    // Example Khronos building stuff
+    // TODO Put behind feature flag?
+    let dest = env::var("OUT_DIR").unwrap();
+    let mut file = File::create(&Path::new(&dest).join("bindings.rs")).unwrap();
+    Registry::new(Api::Gl, (4, 5), Profile::Core, Fallbacks::All, [])
+        .write_bindings(StaticGenerator, &mut file)
+        .unwrap();
 }
 
 #[cfg(not(feature = "static"))]
