@@ -10,10 +10,6 @@ use std::path::{Path, PathBuf};
 use std::fs::File;
 use gl_generator::{Registry, Api, Profile, Fallbacks, StaticGenerator};
 
-// TODO these are wrong
-static LIBRARIES: &'static [&'static str] =
-    &["wlr-common", "wlr-backend", "wlr-session", "wlr-types"];
-
 fn main() {
     let generated = bindgen::builder()
         .derive_debug(true)
@@ -35,29 +31,27 @@ fn main() {
         .hide_type("FP_NORMAL")
         .generate().unwrap();
 
-    if cfg!(feature = "static") {
-        println!("cargo:rustc-link-lib=dylib=X11");
-        println!("cargo:rustc-link-lib=dylib=X11-xcb");
-        println!("cargo:rustc-link-lib=dylib=xkbcommon");
-        println!("cargo:rustc-link-lib=dylib=xcb");
-        println!("cargo:rustc-link-lib=dylib=cap");
-        println!("cargo:rustc-link-lib=dylib=wayland-egl");
-        println!("cargo:rustc-link-lib=dylib=wayland-client");
-        println!("cargo:rustc-link-lib=dylib=wayland-server");
-        println!("cargo:rustc-link-lib=dylib=EGL");
-        println!("cargo:rustc-link-lib=dylib=GL");
-        println!("cargo:rustc-link-lib=dylib=gbm");
-        println!("cargo:rustc-link-lib=dylib=drm");
-        println!("cargo:rustc-link-lib=dylib=input");
-        println!("cargo:rustc-link-lib=dylib=udev");
-        println!("cargo:rustc-link-lib=dylib=systemd");
-        println!("cargo:rustc-link-lib=dylib=dbus-1");
-        println!("cargo:rustc-link-lib=dylib=pixman-1");
+    println!("cargo:rustc-link-lib=dylib=X11");
+    println!("cargo:rustc-link-lib=dylib=X11-xcb");
+    println!("cargo:rustc-link-lib=dylib=xkbcommon");
+    println!("cargo:rustc-link-lib=dylib=xcb");
+    println!("cargo:rustc-link-lib=dylib=cap");
+    println!("cargo:rustc-link-lib=dylib=wayland-egl");
+    println!("cargo:rustc-link-lib=dylib=wayland-client");
+    println!("cargo:rustc-link-lib=dylib=wayland-server");
+    println!("cargo:rustc-link-lib=dylib=EGL");
+    println!("cargo:rustc-link-lib=dylib=GL");
+    println!("cargo:rustc-link-lib=dylib=gbm");
+    println!("cargo:rustc-link-lib=dylib=drm");
+    println!("cargo:rustc-link-lib=dylib=input");
+    println!("cargo:rustc-link-lib=dylib=udev");
+    println!("cargo:rustc-link-lib=dylib=systemd");
+    println!("cargo:rustc-link-lib=dylib=dbus-1");
+    println!("cargo:rustc-link-lib=dylib=pixman-1");
 
-    } else {
-        for library in LIBRARIES {
-            println!("cargo:rustc-link-lib=dylib={}", library);
-        }
+    if !cfg!(feature = "static") {
+        println!("cargo:rustc-link-lib=dylib=wlroots");
+        println!("cargo:rustc-link-search=native=/usr/local/lib");
     }
 
     // generate the bindings
