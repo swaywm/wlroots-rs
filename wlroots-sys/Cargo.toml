@@ -11,12 +11,13 @@ exclude = [".travis.yml"]
 build = "build.rs"
 
 [build-dependencies]
-bindgen = "^0.23.1"
+bindgen = "0.30.*"
 meson = { version = "1.0", optional = true }
 
 [dependencies]
-libc = "^0.2.21"
-wayland-sys = { git = "https://github.com/Timidger/wayland-client-rs", features = ["client", "dlopen"] }
+libc = "^0.2.*"
+wayland-sys = {version = "0.11.*" } #{ git = "https://github.com/Timidger/wayland-client-rs", features = ["client", "dlopen"] }
+wayland-server = { version = "0.11.*" }
 
 [features]
 static = ["meson"]

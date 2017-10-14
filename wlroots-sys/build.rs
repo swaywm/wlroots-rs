@@ -12,10 +12,10 @@ static LIBRARIES: &'static [&'static str] =
 fn main() {
     let generated = bindgen::builder()
         .derive_debug(true)
+        .generate_comments(true)
         .header("src/wlroots.h")
         .whitelisted_type(r"^wlr_.*$")
         .whitelisted_function(r"^wlr_.*$")
-        .no_unstable_rust()
         .ctypes_prefix("libc")
         .clang_arg("-Iwlroots/include")
         .clang_arg("-Iwlroots/include/wlr")
