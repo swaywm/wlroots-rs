@@ -45,3 +45,4 @@
 #include <wlr/egl.h>
 #include <xcursor.h>
 #include <xwayland.h>
+#include <xkbcommon/xkbcommon.h>
