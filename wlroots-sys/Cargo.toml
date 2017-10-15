@@ -25,3 +25,4 @@ wayland-server = { version = "0.11.*" }
 
 [features]
 static = ["meson"]
+example = ["static"]
