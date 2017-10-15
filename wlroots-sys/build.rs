@@ -17,6 +17,7 @@ fn main() {
         .generate_comments(true)
         .header("src/wlroots.h")
         .whitelisted_type(r"^wlr_.*$")
+        .whitelisted_type(r"^xkb.*$")
         .whitelisted_function(r"^wlr_.*$")
         .ctypes_prefix("libc")
         .clang_arg("-Iwlroots/include")
