@@ -7,14 +7,19 @@ use libc;
 use std::ops::{Deref, DerefMut};
 
 
+/// Handles output addition and removal.
 pub trait OutputManagerHandler {
     // TODO Wrapper for wlr_output
+    /// Called whenever an output is added.
     fn output_added(&mut self, *mut wlr_output);
     // TODO Wrapper for wlr_output
+    /// Called whenever an output is removed.
     fn output_removed(&mut self, *mut wlr_output);
 }
 
 #[repr(C)]
+/// Holds the user-defined output manager.
+/// Pass this to the `Compositor` during initialization.
 pub struct OutputManager(IOManager<Box<OutputManagerHandler>>);
 
 impl OutputManager {

@@ -6,6 +6,7 @@ use wlroots_sys::{wlr_input_device, wl_listener};
 use libc;
 use std::ops::{Deref, DerefMut};
 
+/// Handles input addition and removal.
 pub trait InputManagerHandler {
     // TODO Wrapper for wlr_input_device
     fn input_added(&mut self, *mut wlr_input_device);
@@ -14,6 +15,8 @@ pub trait InputManagerHandler {
 }
 
 #[repr(C)]
+/// Holds the user-defined input manager.
+/// Pass this to the `Compositor` during initialization.
 pub struct InputManager(IOManager<Box<InputManagerHandler>>);
 
 impl InputManager {
