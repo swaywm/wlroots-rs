@@ -7,6 +7,7 @@ use std::{ptr, mem};
 
 type NotifyFunc = unsafe extern "C" fn(*mut wl_listener, *mut libc::c_void);
 
+#[repr(C)]
 pub struct IOManager<T> {
     pub add_listener: wl_listener,
     pub remove_listener: wl_listener,
@@ -18,11 +19,11 @@ impl <T> IOManager<T> {
                add_func: NotifyFunc,
                remove_func: NotifyFunc) -> Self {
         unsafe {
-            // NOTE Rationale for uninitialized memory:
+            // NOTE Rationale for zeroed memory:
             // * The list is initialized by Wayland, which doesn't "drop"
             // * The listener is written to without dropping any of the data
-            let mut add_listener: wl_listener = mem::uninitialized();
-            let mut remove_listener: wl_listener = mem::uninitialized();
+            let mut add_listener: wl_listener = mem::zeroed();
+            let mut remove_listener: wl_listener = mem::zeroed();
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_init,
                           &mut add_listener.link as *mut _ as _);

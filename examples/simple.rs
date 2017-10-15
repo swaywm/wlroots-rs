@@ -7,7 +7,20 @@ use std::os::raw::{c_void, c_int};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
+use wlroots::compositor::Compositor;
+use wlroots::manager::{DefaultInputHandler, DefaultOutputHandler};
+use wlroots::wlroots_sys::{wlr_input_device, wlr_output};
 
+fn main() {
+    let dummy = 0;
+    let input_manager = DefaultInputHandler::new();
+    let output_manager = DefaultOutputHandler::new();
+    let mut compositor = Compositor::new(Box::new(input_manager),
+                                         Box::new(output_manager));
+    compositor.run();
+}
+
+/*
 fn main() {
     if env::var("DISPLAY").is_ok() {
         panic!("Detected that X is running. Run this in its own virtual terminal.")
@@ -165,3 +178,4 @@ unsafe extern "C" fn draw_frame(listener: *mut server::wl_listener,
     gl::Clear(gl::COLOR_BUFFER_BIT);
 
 }
+*/
