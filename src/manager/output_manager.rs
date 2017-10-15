@@ -97,12 +97,16 @@ impl OutputManagerHandler for DefaultOutputHandler {
             // TODO FIXME Punting, somehow we need to reference compositor...pass it in?
             // That _should_ be possible
             //self.compositor = ....
-            self.frame.notify = Some(Self::output_frame_notify);
+            ptr::write(&mut self.frame.notify, Some(Self::frame_notify));
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_init,
                           &mut self.frame.link as *mut _ as _);
             wl_signal_add(&mut frame_event as *mut _ as _,
                           &mut self.frame as *mut _ as _);
+            ptr::write(&mut self.resolution.notify, Some(Self::resolution_notify));
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_init,
+                          &mut self.resolution.link as *mut _ as _);
             wl_signal_add(&mut resolution_event as *mut _ as _,
                           &mut self.resolution as *mut _ as _);
             // TODO Add this output to some list of outputs
@@ -120,8 +124,12 @@ impl OutputManagerHandler for DefaultOutputHandler {
 
 impl DefaultOutputHandler {
     // TODO Should be able to define this safely, do the same thing as with output_added
-    unsafe extern "C" fn output_frame_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
-        unimplemented!()
+    unsafe extern "C" fn frame_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
+        // TODO implement
+    }
+    unsafe extern "C" fn resolution_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
+        // TODO implement
+        // TODO call callbmack
     }
 }
 

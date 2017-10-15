@@ -208,6 +208,6 @@ impl DefaultInputHandler {
 
     pub unsafe extern "C" fn key_notify(listener: *mut wl_listener,
                                          data: *mut libc::c_void) {
-        unimplemented!()
+        // TODO implement
     }
 }
