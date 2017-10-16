@@ -10,10 +10,6 @@ use wayland_sys::server::signal::{wl_signal_add};
 use std::ffi::CStr;
 use std::env;
 
-// TODO Does the state have to be global for the compositor?
-// E.g can I have the seats have their own state? That would be way better,
-// because then I can do message passing and less locking.
-// Going to punt for now, because it's easier to add then remove
 pub struct Compositor {
     input_manager: InputManager,
     output_manager: OutputManager,
@@ -69,8 +65,8 @@ impl Compositor {
             let socket_name = CStr::from_ptr(socket)
                 .to_string_lossy()
                 .into_owned();
-            // TODO Proper logging
-            println!("Running compositor on wayland display {}", socket_name);
+            wlr_log!(L_DEBUG, format!("Running compositor on wayland display {}",
+                                      socket_name));
             // TODO Why am I doing this again? It's because of nesting, there's
             // an issue somewhere highlighting why this is the way it is
             env::set_var("_WAYLAND_DISPLAY", socket_name);

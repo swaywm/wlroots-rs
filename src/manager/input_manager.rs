@@ -145,8 +145,7 @@ impl DefaultInputHandler {
         };
         let context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
         if context.is_null() {
-            // proper logging
-            eprintln!("Failed to create XKB context");
+            wlr_log!(L_ERROR, "Failed to create XKB context");
             // NOTE We don't panic here, because we have a C call stack above us
             ::std::process::exit(1)
         }
