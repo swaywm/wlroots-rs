@@ -9,3 +9,25 @@ macro_rules! container_of (
         ($ptr as *mut u8).offset(-(offset_of!($container, $field) as isize)) as *mut $container
     }
 );
+
+macro_rules! c_str {
+    ($s:expr) => {
+        concat!($s, "\0").as_ptr() as *const i8
+    }
+}
+
+macro_rules! wlr_log {
+    ($verb: expr, $fmt: expr) => {{
+        use $crate::wlroots_sys::_wlr_log;
+        use $crate::wlroots_sys::log_importance_t::*;
+        use $crate::libc::c_int;
+        use ::std::ffi::CString;
+        let fmt = CString::new(&*$fmt)
+            .expect("Could not convert log message to C string");
+        let raw = fmt.into_raw();
+        _wlr_log($verb, c_str!("[%s:%lu] %s"),
+                 c_str!(file!()), line!(), raw);
+        // Deallocate string
+        CString::from_raw(raw);
+    }}
+}

@@ -88,6 +88,7 @@ impl Compositor {
     // TODO Return ! ?
     pub fn run(&mut self) {
         unsafe {
+            wlr_log!(L_INFO, "Starting compositor");
             if !wlr_backend_start(self.backend) {
                 wlr_backend_destroy(self.backend);
                 // NOTE Rationale for panicking:
