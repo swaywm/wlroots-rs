@@ -1,6 +1,7 @@
 //! Manager that is called when a seat is created or destroyed.
 //! Pass a struct that implements this trait to the `Compositor` during initialization.
 
+use ::utils::safe_as_cstring;
 use super::io_manager::IOManager;
 use ::device::Device;
 use wlroots_sys::{wlr_input_device, wlr_input_device_type, wl_listener,
@@ -13,7 +14,6 @@ use wayland_sys::server::signal::wl_signal_add;
 use libc;
 use std::ops::{Deref, DerefMut};
 use std::{env, ptr, mem};
-use std::ffi::CString;
 
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
@@ -126,16 +126,16 @@ impl DefaultInputHandler {
 
         // Set the XKB settings
         // TODO Unwrapping here is a little bad
-        let rules = CString::new(env::var("XKB_DEFAULT_RULES")
-                                 .unwrap_or("".into())).unwrap();
-        let model = CString::new(env::var("XKB_DEFAULT_MODEL")
-                                 .unwrap_or("".into())).unwrap();
-        let layout = CString::new(env::var("XKB_DEFAULT_LAYOUT")
-                                  .unwrap_or("".into())).unwrap();
-        let variant = CString::new(env::var("XKB_DEFAULT_VARIANT")
-                                   .unwrap_or("".into())).unwrap();
-        let options = CString::new(env::var("XKB_DEFAULT_OPTIONS")
-                                   .unwrap_or("".into())).unwrap();
+        let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES")
+                                    .unwrap_or("".into()));
+        let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL")
+                                 .unwrap_or("".into()));
+        let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT")
+                                  .unwrap_or("".into()));
+        let variant = safe_as_cstring(env::var("XKB_DEFAULT_VARIANT")
+                                   .unwrap_or("".into()));
+        let options = safe_as_cstring(env::var("XKB_DEFAULT_OPTIONS")
+                                   .unwrap_or("".into()));
         let rules = xkb_rule_names {
             rules: rules.into_raw(),
             model: model.into_raw(),
