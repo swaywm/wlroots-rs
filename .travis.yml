@@ -21,11 +21,11 @@ before_script:
 script:
   # wlroots-rs
   - cargo build --verbose
-  - cargo build --verbose --features="static wlroots-sys"
-  - cargo doc
   - cargo fmt -- --write-mode=diff
+  - cargo test
+  - cargo doc
 
   - cd wlroots-sys
-  - cargo build --verbose
   - cargo build --verbose --features="static"
+  - cargo test
   - cargo doc
