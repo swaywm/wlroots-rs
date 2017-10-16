@@ -3,13 +3,13 @@
 
 extern crate gl_generator;
 
-use gl_generator::{Registry, Api, Profile, Fallbacks, StaticGenerator};
+use gl_generator::{Api, Fallbacks, Profile, Registry, StaticGenerator};
 
 use std::env;
-use std::path::Path;
 use std::fs::File;
+use std::path::Path;
 
-fn main () {
+fn main() {
     // Example Khronos building stuff.
     // TODO Put behind feature flag.
     let dest = env::var("OUT_DIR").unwrap();

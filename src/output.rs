@@ -1,5 +1,5 @@
-use wlroots_sys::{wlr_output, list_t, wlr_output__bindgen_ty_1};
 use std::ffi::CStr;
+use wlroots_sys::{list_t, wlr_output, wlr_output__bindgen_ty_1};
 
 /// A wrapper around a wlr_output.
 pub struct Output {
@@ -41,16 +41,12 @@ impl Output {
 
     /// Get the dimensions of the output as (width, height).
     pub fn dimensions(&self) -> (i32, i32) {
-        unsafe {
-            ((*self.output).width, (*self.output).height)
-        }
+        unsafe { ((*self.output).width, (*self.output).height) }
     }
 
     /// Get the physical dimensions of the output as (width, height).
     pub fn physical_dimensions(&self) -> (i32, i32) {
-        unsafe {
-            ((*self.output).phys_width, (*self.output).phys_height)
-        }
+        unsafe { ((*self.output).phys_width, (*self.output).phys_height) }
     }
 
     // TODO Wrap this somehow? Hmm

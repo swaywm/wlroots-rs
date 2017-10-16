@@ -1,14 +1,11 @@
 //! TODO fill this in
 
-use ::manager::{InputManager, OutputManager,
-                InputManagerHandler, OutputManagerHandler};
-use wlroots_sys::{wlr_backend, wlr_backend_start, wlr_backend_destroy,
-                  wlr_backend_autocreate};
-use wayland_sys::server::{WAYLAND_SERVER_HANDLE,
-                          wl_display, wl_event_loop};
-use wayland_sys::server::signal::{wl_signal_add};
-use std::ffi::CStr;
+use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
 use std::env;
+use std::ffi::CStr;
+use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_display, wl_event_loop};
+use wayland_sys::server::signal::wl_signal_add;
+use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
 
 pub struct Compositor {
     input_manager: InputManager,
@@ -25,13 +22,14 @@ impl Compositor {
     /// Also automatically opens the socket for clients to communicate to the
     /// compositor with.
     pub fn new(input_manager_handler: Box<InputManagerHandler>,
-               output_manager_handler: Box<OutputManagerHandler>) -> Self {
+               output_manager_handler: Box<OutputManagerHandler>)
+               -> Self {
         unsafe {
             let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                        wl_display_create,) as *mut wl_display;
-            let event_loop = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                           wl_display_get_event_loop,
-                                           display);
+                                        wl_display_create,) as
+                          *mut wl_display;
+            let event_loop =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
             let backend = wlr_backend_autocreate(display as *mut _);
             if backend.is_null() {
                 // NOTE Rationale for panicking:
@@ -52,9 +50,7 @@ impl Compositor {
             wl_signal_add(&mut (*backend).events.output_remove as *mut _ as _,
                           &mut output_manager.remove_listener as *mut _ as _);
 
-            let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                       wl_display_add_socket_auto,
-                                       display);
+            let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
             if socket.is_null() {
                 // NOTE Rationale for panicking:
                 // * Won't be in C land just yet, so it's safe to panic
@@ -62,11 +58,9 @@ impl Compositor {
                 //   if you auto create it's assumed you can't recover.
                 panic!("Unable to open wayland socket");
             }
-            let socket_name = CStr::from_ptr(socket)
-                .to_string_lossy()
-                .into_owned();
-            wlr_log!(L_DEBUG, format!("Running compositor on wayland display {}",
-                                      socket_name));
+            let socket_name = CStr::from_ptr(socket).to_string_lossy().into_owned();
+            wlr_log!(L_DEBUG,
+                     format!("Running compositor on wayland display {}", socket_name));
             // TODO Why am I doing this again? It's because of nesting, there's
             // an issue somewhere highlighting why this is the way it is
             env::set_var("_WAYLAND_DISPLAY", socket_name);
@@ -80,7 +74,8 @@ impl Compositor {
         }
     }
 
-    /// Enters the wayland event loop. Won't return until the compositor is shut off
+    /// Enters the wayland event loop. Won't return until the compositor is
+    /// shut off
     // TODO Return ! ?
     pub fn run(&mut self) {
         unsafe {
@@ -93,9 +88,7 @@ impl Compositor {
                 //   if you auto create it's assumed you can't recover.
                 panic!("Failed to start backend");
             }
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                        wl_display_run,
-                        self.display);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_run, self.display);
         }
         // TODO Clean up
     }

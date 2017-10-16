@@ -1,26 +1,29 @@
 //! Manager that is called when a seat is created or destroyed.
-//! Pass a struct that implements this trait to the `Compositor` during initialization.
+//! Pass a struct that implements this trait to the `Compositor` during
+//! initialization.
 
-use ::utils::safe_as_cstring;
 use super::io_manager::IOManager;
-use ::device::Device;
-use wlroots_sys::{wlr_input_device, wlr_input_device_type, wl_listener,
-                  wl_list, xkb_rule_names, xkb_context_new, xkb_context_unref,
-                  xkb_keymap_new_from_names, wlr_keyboard_set_keymap};
+use device::Device;
+use libc;
+use std::{env, mem, ptr};
+use std::ops::{Deref, DerefMut};
+use utils::safe_as_cstring;
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wayland_sys::server::signal::wl_signal_add;
+use wlroots_sys::{wl_list, wl_listener, wlr_input_device, wlr_input_device_type,
+                  wlr_keyboard_set_keymap, xkb_context_new, xkb_context_unref,
+                  xkb_keymap_new_from_names, xkb_rule_names};
 use wlroots_sys::xkb_context_flags::*;
 use wlroots_sys::xkb_keymap_compile_flags::*;
-use wayland_sys::server::{WAYLAND_SERVER_HANDLE};
-use wayland_sys::server::signal::wl_signal_add;
-use libc;
-use std::ops::{Deref, DerefMut};
-use std::{env, ptr, mem};
 
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
     /// Callback triggered when an input device is added.
-    fn input_added(&mut self, Device);
+    fn input_added(&mut self,
+                   Device);
     /// Callback triggered when an input device is removed.
-    fn input_removed(&mut self, Device);
+    fn input_removed(&mut self,
+                     Device);
 }
 
 #[repr(C)]
@@ -31,8 +34,8 @@ pub struct InputManager(Box<IOManager<Box<InputManagerHandler>>>);
 impl InputManager {
     pub fn new(input_manager: Box<InputManagerHandler>) -> Self {
         InputManager(Box::new(IOManager::new(input_manager,
-                                    InputManager::input_add_notify,
-                                    InputManager::input_remove_notify)))
+                                             InputManager::input_add_notify,
+                                             InputManager::input_remove_notify)))
     }
 
     unsafe extern "C" fn input_add_notify(listener: *mut wl_listener,
@@ -86,22 +89,20 @@ pub struct DefaultInputHandler {
 }
 
 impl InputManagerHandler for DefaultInputHandler {
-    fn input_added(&mut self, dev: Device) {
+    fn input_added(&mut self,
+                   dev: Device) {
         use self::wlr_input_device_type::*;
         unsafe {
             match dev.dev_type() {
-                WLR_INPUT_DEVICE_KEYBOARD => {
-                    self.add_keyboard(dev)
-                },
-                WLR_INPUT_DEVICE_POINTER => {
-                    self.add_pointer(dev)
-                }
-                _ => unimplemented!() // TODO FIXME We _really_ shouldn't panic here
+                WLR_INPUT_DEVICE_KEYBOARD => self.add_keyboard(dev),
+                WLR_INPUT_DEVICE_POINTER => self.add_pointer(dev),
+                _ => unimplemented!(), // TODO FIXME We _really_ shouldn't panic here
             }
         }
     }
 
-    fn input_removed(&mut self, dev: Device) {
+    fn input_removed(&mut self,
+                     dev: Device) {
         unimplemented!()
     }
 }
@@ -114,7 +115,8 @@ impl DefaultInputHandler {
         }
     }
 
-    pub unsafe fn add_keyboard(&mut self, dev: Device) {
+    pub unsafe fn add_keyboard(&mut self,
+                               dev: Device) {
         ptr::write(&mut self.dev, dev);
         ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                       wl_list_init,
@@ -126,16 +128,11 @@ impl DefaultInputHandler {
 
         // Set the XKB settings
         // TODO Unwrapping here is a little bad
-        let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES")
-                                    .unwrap_or("".into()));
-        let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL")
-                                 .unwrap_or("".into()));
-        let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT")
-                                  .unwrap_or("".into()));
-        let variant = safe_as_cstring(env::var("XKB_DEFAULT_VARIANT")
-                                   .unwrap_or("".into()));
-        let options = safe_as_cstring(env::var("XKB_DEFAULT_OPTIONS")
-                                   .unwrap_or("".into()));
+        let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES").unwrap_or("".into()));
+        let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL").unwrap_or("".into()));
+        let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT").unwrap_or("".into()));
+        let variant = safe_as_cstring(env::var("XKB_DEFAULT_VARIANT").unwrap_or("".into()));
+        let options = safe_as_cstring(env::var("XKB_DEFAULT_OPTIONS").unwrap_or("".into()));
         let rules = xkb_rule_names {
             rules: rules.into_raw(),
             model: model.into_raw(),
@@ -154,7 +151,8 @@ impl DefaultInputHandler {
         xkb_context_unref(context);
     }
 
-    pub unsafe fn add_pointer(&mut self, dev: Device) {
+    pub unsafe fn add_pointer(&mut self,
+                              dev: Device) {
         ptr::write(&mut self.dev, dev);
         ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                       wl_list_init,
@@ -191,7 +189,7 @@ impl DefaultInputHandler {
     }
 
     pub unsafe extern "C" fn motion_absolute_notify(listener: *mut wl_listener,
-                                           data: *mut libc::c_void) {
+                                                    data: *mut libc::c_void) {
         unimplemented!()
     }
 
@@ -201,12 +199,12 @@ impl DefaultInputHandler {
     }
 
     pub unsafe extern "C" fn axis_notify(listener: *mut wl_listener,
-                                           data: *mut libc::c_void) {
+                                         data: *mut libc::c_void) {
         unimplemented!()
     }
 
     pub unsafe extern "C" fn key_notify(listener: *mut wl_listener,
-                                         data: *mut libc::c_void) {
+                                        data: *mut libc::c_void) {
         // TODO implement
     }
 }

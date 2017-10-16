@@ -1,5 +1,4 @@
-use wlroots_sys::{wlr_input_device, wlr_input_device_type,
-                  wlr_input_device__bindgen_ty_1};
+use wlroots_sys::{wlr_input_device, wlr_input_device__bindgen_ty_1, wlr_input_device_type};
 
 /// Wrapper for wlr_input_device
 pub struct Device {
@@ -14,9 +13,7 @@ pub struct Device {
 impl Device {
     /// Get the type of the device
     pub fn dev_type(&self) -> wlr_input_device_type {
-        unsafe {
-            (*self.device).type_
-        }
+        unsafe { (*self.device).type_ }
     }
 
     // TODO Fix name

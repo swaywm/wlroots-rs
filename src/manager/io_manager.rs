@@ -1,9 +1,9 @@
 //! Abstract manager used by `InputManager` and `OutputManager`
 
-use wlroots_sys::wl_listener;
-use wayland_sys::server::{WAYLAND_SERVER_HANDLE};
 use libc;
-use std::{ptr, mem};
+use std::{mem, ptr};
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wlroots_sys::wl_listener;
 
 type NotifyFunc = unsafe extern "C" fn(*mut wl_listener, *mut libc::c_void);
 
@@ -14,10 +14,11 @@ pub struct IOManager<T> {
     pub manager: T
 }
 
-impl <T> IOManager<T> {
+impl<T> IOManager<T> {
     pub fn new(manager: T,
                add_func: NotifyFunc,
-               remove_func: NotifyFunc) -> Self {
+               remove_func: NotifyFunc)
+               -> Self {
         unsafe {
             // NOTE Rationale for zeroed memory:
             // * The list is initialized by Wayland, which doesn't "drop"
