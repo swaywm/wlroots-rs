@@ -18,6 +18,7 @@ fn main() {
         .header("src/wlroots.h")
         .whitelisted_type(r"^wlr_.*$")
         .whitelisted_type(r"^xkb_.*$")
+        .whitelisted_type(r"^XKB_.*$")
         .whitelisted_function(r"^_?wlr_.*$")
         .whitelisted_function(r"^xkb_.*$")
         .ctypes_prefix("libc")
@@ -61,15 +62,13 @@ fn main() {
 
     meson();
 
+    // Example Khronos building stuff
+    let dest = env::var("OUT_DIR").unwrap();
+    let mut file = File::create(&Path::new(&dest).join("bindings.rs")).unwrap();
+    Registry::new(Api::Gl, (4, 5), Profile::Core, Fallbacks::All, [])
+        .write_bindings(StaticGenerator, &mut file)
+        .unwrap();
     if cfg!(feature = "example") {
-
-        // Example Khronos building stuff
-        let dest = env::var("OUT_DIR").unwrap();
-        let mut file = File::create(&Path::new(&dest).join("bindings.rs")).unwrap();
-        Registry::new(Api::Gl, (4, 5), Profile::Core, Fallbacks::All, [])
-            .write_bindings(StaticGenerator, &mut file)
-            .unwrap();
-
         // Build share.d for examples
         let example_generated = bindgen::builder()
             .derive_debug(true)
