@@ -20,9 +20,11 @@ pub trait OutputManagerHandler {
 
 wayland_listener!(OutputManager, Box<OutputManagerHandler>, [
     add_listener => add_notify: |output_manager: &mut Box<OutputManagerHandler>, data: *mut libc::c_void,| unsafe {
+        // TODO Ensure safety
         output_manager.output_added(Output::from_ptr(data as *mut wlr_output))
     };
     remove_listener => remove_notify: |output_manager: &mut Box<OutputManagerHandler>, data: *mut libc::c_void,| unsafe {
+        // TODO Ensure safety
         output_manager.output_removed(Output::from_ptr(data as *mut wlr_output))
     };
 ]);

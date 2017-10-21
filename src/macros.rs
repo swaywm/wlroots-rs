@@ -105,16 +105,12 @@ macro_rules! wlr_log {
 /// Passing a pointer of unsized data to C is UB, don't do it.
 #[macro_export]
 macro_rules! wayland_listener {
-    // FIXME TODO Impl drop for the listener data
     ($struct_name: ident, $data: ty, $([$($listener: ident => $listener_func: ident : |$($func_arg:ident: $func_type:ty,)*| unsafe $body: block;)*])+) => {
         #[repr(C)]
         pub struct $struct_name {
             data: $data,
             $($($listener: $crate::wlroots_sys::wl_listener),*)*
         }
-
-        // TODO Allow a pattern that does everything here, but it makes a method
-        // that just takes in data and inits the functions to ones defined by the user of the macro.
 
         impl $struct_name {
             pub fn new(data: $data) -> Box<$struct_name> {
