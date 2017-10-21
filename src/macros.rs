@@ -63,7 +63,8 @@ macro_rules! wlr_log {
 /// every time the event that is later hooked up to it is fired.
 /// This method is inherently unsafe, because the user data hasn't been cast
 /// from the void pointer yet. It is the user's job to write this safely.
-/// To highlight this fact, the body of the function must be prefixed with `unsafe`.
+/// To highlight this fact, the body of the function must be prefixed with
+/// `unsafe`.
 ///
 /// # Example
 /// ```
@@ -86,9 +87,12 @@ macro_rules! wlr_log {
 ///         // whenever add_listener is activated from a Wayland event.
 ///         add_notify: |input_manager: &mut Box<InputManagerHandler>,
 ///                      data: *mut libc::c_void,| unsafe {
-///             // Call the method defined above, wrapping it in a safe interface.
-///             // It is your job to ensure that the code in here doesn't trigger UB!
-///             input_manager.input_added(Device::from_ptr(data as *mut wlr_input_device))
+/// // Call the method defined above, wrapping it in a safe
+/// interface.
+/// // It is your job to ensure that the code in here doesn't
+/// trigger UB!
+/// input_manager.input_added(Device::from_ptr(data as *mut
+/// wlr_input_device))
 ///         };
 ///     ]
 /// );

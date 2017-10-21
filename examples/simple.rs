@@ -1,16 +1,18 @@
-#[macro_use] extern crate wlroots;
+#[macro_use]
+extern crate wlroots;
 
-use std::ptr::null_mut;
 use std::env;
-use std::time::Instant;
-use std::os::raw::{c_void, c_int};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::os::raw::{c_int, c_void};
+use std::ptr::null_mut;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Instant;
 
-use wlroots::compositor::{Compositor};
-use wlroots::output::{Output};
+use wlroots::compositor::Compositor;
 use wlroots::manager::{DefaultInputHandler, OutputManagerHandler};
-use wlroots::wlroots_sys::{gl, wlr_input_device, wlr_output, wlr_output_make_current, wlr_output_swap_buffers};
+use wlroots::output::Output;
+use wlroots::wlroots_sys::{gl, wlr_input_device, wlr_output, wlr_output_make_current,
+                           wlr_output_swap_buffers};
 
 struct OutputHandler {
     color: [f32; 3],
@@ -22,7 +24,7 @@ impl OutputManagerHandler for OutputHandler {
     fn output_frame(&mut self, output: Output) {
         let now = Instant::now();
         let delta = now.duration_since(self.last_frame);
-        let seconds_delta= delta.as_secs();
+        let seconds_delta = delta.as_secs();
         let nano_delta = delta.subsec_nanos() as u64;
         let ms = (seconds_delta * 1000) + nano_delta / 1000000;
         let inc = (self.dec + 1) % 3;
@@ -54,7 +56,6 @@ fn main() {
         dec: 0,
         last_frame: Instant::now()
     };
-    let mut compositor = Compositor::new(Box::new(input_manager),
-                                         Box::new(output_manager));
+    let mut compositor = Compositor::new(Box::new(input_manager), Box::new(output_manager));
     compositor.run();
 }
