@@ -17,3 +17,6 @@ pub mod key_event;
 mod utils;
 
 pub type NotifyFunc = unsafe extern "C" fn(*mut wlroots_sys::wl_listener, *mut libc::c_void);
+
+
+pub use self::compositor::terminate;

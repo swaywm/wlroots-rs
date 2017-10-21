@@ -3,9 +3,13 @@
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
 use std::env;
 use std::ffi::CStr;
+use std::cell::UnsafeCell;
 use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_display, wl_event_loop};
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
+
+/// Global compositor pointer, used to refer to the compositor state unsafely.
+static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
 pub struct Compositor {
     input_manager: Box<InputManager>,
@@ -77,18 +81,26 @@ impl Compositor {
     /// Enters the wayland event loop. Won't return until the compositor is
     /// shut off
     // TODO Return ! ?
-    pub fn run(&mut self) {
+    pub fn run(self) {
         unsafe {
+            let compositor = UnsafeCell::new(self);
+            if COMPOSITOR_PTR != 0 as _ {
+                // NOTE Rationale for panicking:
+                // * Nicer than an abort
+                // * Not yet in C land
+                panic!("A compositor is already running!")
+            }
+            COMPOSITOR_PTR = compositor.get();
             wlr_log!(L_INFO, "Starting compositor");
-            if !wlr_backend_start(self.backend) {
-                wlr_backend_destroy(self.backend);
+            if !wlr_backend_start((*compositor.get()).backend) {
+                wlr_backend_destroy((*compositor.get()).backend);
                 // NOTE Rationale for panicking:
                 // * Won't be in C land just yet, so it's safe to panic
                 // * Can always be returned in a Result instead, but for now
                 //   if you auto create it's assumed you can't recover.
                 panic!("Failed to start backend");
             }
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_run, self.display);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_run, (*compositor.get()).display);
         }
         // TODO Clean up
     }
@@ -98,6 +110,18 @@ impl Compositor {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_display_terminate,
                           self.display);
+        }
+    }
+}
+
+
+/// Terminates the compositor.
+/// If one is not running, does nothing
+pub fn terminate() {
+    unsafe {
+        if COMPOSITOR_PTR != 0 as _ {
+            (*COMPOSITOR_PTR).terminate();
+            COMPOSITOR_PTR = 0 as _
         }
     }
 }

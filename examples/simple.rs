@@ -24,7 +24,6 @@ struct OutputHandler {
 }
 
 struct InputManager {
-    //compositor: Rc<Compositor>,
     dev: Option<Device>
 }
 
@@ -37,8 +36,7 @@ impl InputManagerHandler for InputManager {
         let keys = key_event.get_input_keys(self.dev.clone().unwrap());
         for key in keys {
             if key == KEY_Escape {
-                panic!()
-                //compositor.terminate()
+                wlroots::terminate()
             }
         }
     }
