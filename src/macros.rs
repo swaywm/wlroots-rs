@@ -47,18 +47,18 @@ macro_rules! wlr_log {
 /// every time some Wayland event fires.
 macro_rules! define_listener {
     // FIXME TODO Impl drop for the listener data
-    ($struct_name: ident, $data: ty, $([$($listener: ident ),+])+) => {
+    ($struct_name: ident, $data: ty, $([$($listener: ident, $listener_func: ident : |$($func_arg:ident: $func_type:ty,)*| unsafe $body: block;)*])+) => {
         #[repr(C)]
         pub struct $struct_name {
-            $($($listener: $crate::wlroots_sys::wl_listener),*)*,
-            data: $data
+            data: $data,
+            $($($listener: $crate::wlroots_sys::wl_listener),*)*
         }
 
         // TODO Allow a pattern that does everything here, but it makes a method
         // that just takes in data and inits the functions to ones defined by the user of the macro.
 
         impl $struct_name {
-            pub fn new_with_methods(data: $data, $($($listener: Option<$crate::NotifyFunc>),*)*) -> Box<$struct_name> {
+            pub fn new(data: $data) -> Box<$struct_name> {
                 use $crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
                 Box::new($struct_name {
                     data,
@@ -71,14 +71,22 @@ macro_rules! define_listener {
                         ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                       wl_list_init,
                                       &mut listener.link as *mut _ as _);
-                        ::std::ptr::write(&mut listener.notify, $listener);
+                        ::std::ptr::write(&mut listener.notify, Some($struct_name::$listener_func));
                         listener
-                    }),*)*,
+                    }),*)*
                 })
             }
 
-            $($(pub unsafe fn $listener(&mut self) -> *mut $crate::wlroots_sys::wl_listener {
+            $($(pub unsafe extern "C" fn $listener(&mut self) -> *mut $crate::wlroots_sys::wl_listener {
                 &mut self.$listener as *mut _
+            })*)*
+
+            $($(pub unsafe extern "C" fn $listener_func(listener: *mut $crate::wlroots_sys::wl_listener, data: *mut libc::c_void) {
+                let manager_wrapper: *mut $struct_name = container_of!(listener,
+                                                    $struct_name,
+                                                    $listener);
+                let manager: &mut $data = &mut (*manager_wrapper).data;
+                (|$($func_arg: $func_type,)*| { $body })(manager, data);
             })*)*
         }
     }

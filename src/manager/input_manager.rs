@@ -5,7 +5,6 @@
 use device::Device;
 use libc;
 use std::{env, mem, ptr};
-use std::ops::{Deref, DerefMut};
 use utils::safe_as_cstring;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
@@ -24,41 +23,13 @@ pub trait InputManagerHandler {
 }
 
 define_listener!(InputManager, Box<InputManagerHandler>, [
-    add_listener,
-    remove_listener
+    add_listener, input_add_notify: |input_manager: &mut Box<InputManagerHandler>, data: *mut libc::c_void,| unsafe {
+        input_manager.input_added(Device::from_ptr(data as *mut wlr_input_device))
+    };
+    remove_listener, input_remove_notify: |input_manager: &mut Box<InputManagerHandler>, data: *mut libc::c_void,| unsafe {
+        input_manager.input_removed(Device::from_ptr(data as *mut wlr_input_device))
+    };
 ]);
-
-// Holds the user-defined input manager.
-// Pass this to the `Compositor` during initialization.
-//pub struct InputManager(Box<InputManagerInner>);
-
-impl InputManager {
-    pub fn new(input_manager: Box<InputManagerHandler>) -> Box<Self> {
-        InputManager::new_with_methods(input_manager,
-                               Some(InputManager::input_add_notify),
-                               Some(InputManager::input_remove_notify))
-    }
-
-    unsafe extern "C" fn input_add_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
-        let device = data as *mut wlr_input_device;
-        let input_wrapper = container_of!(listener,
-                                          InputManager,
-                                          add_listener);
-        let input_manager = &mut (*input_wrapper).data;
-        // TODO FIXME
-        // Ensure this is safe
-        input_manager.input_added(Device::from_ptr(device))
-    }
-
-    unsafe extern "C" fn input_remove_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
-        let device = data as *mut wlr_input_device;
-        let input_wrapper = container_of!(listener, InputManager, remove_listener);
-        let input_manager = &mut (*input_wrapper).data;
-        // TODO FIXME
-        // Ensure this is safe
-        input_manager.input_removed(Device::from_ptr(device))
-    }
-}
 
 pub struct DefaultInputHandler {
     dev: Device,

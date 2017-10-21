@@ -1,7 +1,6 @@
 //! Abstract manager used by `InputManager` and `OutputManager`
 
-use ::NotifyFunc;
-use libc;
+use NotifyFunc;
 use std::{mem, ptr};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wl_listener;
