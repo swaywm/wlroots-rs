@@ -40,7 +40,6 @@ impl Compositor {
             }
             let mut input_manager = InputManager::new(input_manager_handler);
             let mut output_manager = OutputManager::new(output_manager_handler);
-            // TODO This is the segfault...
             wl_signal_add(&mut (*backend).events.input_add as *mut _ as _,
                           &mut input_manager.add_listener as *mut _ as _);
             wl_signal_add(&mut (*backend).events.input_remove as *mut _ as _,
@@ -59,7 +58,8 @@ impl Compositor {
                 panic!("Unable to open wayland socket");
             }
             let socket_name = CStr::from_ptr(socket).to_string_lossy().into_owned();
-            wlr_log!(L_DEBUG, "Running compositor on wayland display {}",
+            wlr_log!(L_DEBUG,
+                     "Running compositor on wayland display {}",
                      socket_name);
             // TODO Why am I doing this again? It's because of nesting, there's
             // an issue somewhere highlighting why this is the way it is
