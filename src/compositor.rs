@@ -59,8 +59,8 @@ impl Compositor {
                 panic!("Unable to open wayland socket");
             }
             let socket_name = CStr::from_ptr(socket).to_string_lossy().into_owned();
-            wlr_log!(L_DEBUG,
-                     format!("Running compositor on wayland display {}", socket_name));
+            wlr_log!(L_DEBUG, "Running compositor on wayland display {}",
+                     socket_name);
             // TODO Why am I doing this again? It's because of nesting, there's
             // an issue somewhere highlighting why this is the way it is
             env::set_var("_WAYLAND_DISPLAY", socket_name);

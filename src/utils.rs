@@ -12,8 +12,10 @@ pub fn safe_as_cstring<S>(string: S) -> CString
     match CString::new(string) {
         Ok(string) => string,
         Err(err) => {
-            wlr_log!(L_ERROR, format!("Error occured while trying to \
-                                       convert a Rust string to a C string {:?}", err));
+            wlr_log!(L_ERROR,
+                     "Error occured while trying to convert a \
+                      Rust string to a C string {:?}",
+                     err);
             exit(1)
         }
     }

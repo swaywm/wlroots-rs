@@ -18,12 +18,13 @@ macro_rules! c_str {
 
 #[macro_export]
 macro_rules! wlr_log {
-    ($verb: expr, $fmt: expr) => {{
+    ($verb: expr, $($msg:tt)*) => {{
+        //format!($($msg)*)
         use $crate::wlroots_sys::_wlr_log;
         use $crate::wlroots_sys::log_importance_t::*;
         use ::std::ffi::CString;
         unsafe {
-            let fmt = CString::new(&*$fmt)
+            let fmt = CString::new(format!($($msg)*))
                 .expect("Could not convert log message to C string");
             let raw = fmt.into_raw();
             _wlr_log($verb, c_str!("[%s:%lu] %s"),
