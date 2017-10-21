@@ -7,14 +7,24 @@ use std::os::raw::{c_void, c_int};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
-use wlroots::compositor::Compositor;
-use wlroots::manager::{DefaultInputHandler, DefaultOutputHandler};
+use wlroots::compositor::{Compositor};
+use wlroots::output::{Output};
+use wlroots::manager::{DefaultInputHandler, OutputManagerHandler};
 use wlroots::wlroots_sys::{wlr_input_device, wlr_output};
+
+struct OutputHandler;
+
+impl OutputManagerHandler for OutputHandler {
+    fn output_frame(&mut self, output: Output) {
+        wlr_log!(L_DEBUG, "OUTPUT FRAME");
+        // TODO
+    }
+}
 
 fn main() {
     let dummy = 0;
     let input_manager = DefaultInputHandler::new();
-    let output_manager = DefaultOutputHandler::new();
+    let output_manager = OutputHandler;
     let mut compositor = Compositor::new(Box::new(input_manager),
                                          Box::new(output_manager));
     compositor.run();
