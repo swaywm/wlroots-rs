@@ -8,7 +8,7 @@ use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
 
 pub struct Compositor {
-    input_manager: InputManager,
+    input_manager: Box<InputManager>,
     output_manager: OutputManager,
     backend: *mut wlr_backend,
     display: *mut wl_display,
@@ -41,9 +41,9 @@ impl Compositor {
             let mut input_manager = InputManager::new(input_manager_handler);
             let mut output_manager = OutputManager::new(output_manager_handler);
             wl_signal_add(&mut (*backend).events.input_add as *mut _ as _,
-                          &mut input_manager.add_listener as *mut _ as _);
+                          input_manager.add_listener() as *mut _ as _);
             wl_signal_add(&mut (*backend).events.input_remove as *mut _ as _,
-                          &mut input_manager.remove_listener as *mut _ as _);
+                          input_manager.remove_listener() as *mut _ as _);
             wl_signal_add(&mut (*backend).events.output_add as *mut _ as _,
                           &mut output_manager.add_listener as *mut _ as _);
             wl_signal_add(&mut (*backend).events.output_remove as *mut _ as _,

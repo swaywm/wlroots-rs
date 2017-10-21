@@ -1,11 +1,10 @@
 //! Abstract manager used by `InputManager` and `OutputManager`
 
+use ::NotifyFunc;
 use libc;
 use std::{mem, ptr};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wl_listener;
-
-type NotifyFunc = unsafe extern "C" fn(*mut wl_listener, *mut libc::c_void);
 
 #[repr(C)]
 pub struct IOManager<T> {

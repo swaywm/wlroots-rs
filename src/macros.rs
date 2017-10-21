@@ -28,7 +28,6 @@ macro_rules! c_str {
 /// Logs a message using wlroots' logging capability.
 macro_rules! wlr_log {
     ($verb: expr, $($msg:tt)*) => {{
-        //format!($($msg)*)
         use $crate::wlroots_sys::_wlr_log;
         use $crate::wlroots_sys::log_importance_t::*;
         use ::std::ffi::CString;
@@ -42,4 +41,45 @@ macro_rules! wlr_log {
             CString::from_raw(raw);
         }
     }}
+}
+
+/// Define a struct with some listeners that can call user-defined callbacks
+/// every time some Wayland event fires.
+macro_rules! define_listener {
+    // FIXME TODO Impl drop for the listener data
+    ($struct_name: ident, $data: ty, $([$($listener: ident ),+])+) => {
+        #[repr(C)]
+        pub struct $struct_name {
+            $($($listener: $crate::wlroots_sys::wl_listener),*)*,
+            data: $data
+        }
+
+        // TODO Allow a pattern that does everything here, but it makes a method
+        // that just takes in data and inits the functions to ones defined by the user of the macro.
+
+        impl $struct_name {
+            pub fn new_with_methods(data: $data, $($($listener: Option<$crate::NotifyFunc>),*)*) -> Box<$struct_name> {
+                use $crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
+                Box::new($struct_name {
+                    data,
+                    $($($listener: unsafe {
+                        // NOTE Rationale for zeroed memory:
+                        // * Need to pass a pointer to wl_list_init
+                        // * The list is initialized by Wayland, which doesn't "drop"
+                        // * The listener is written to without dropping any of the data
+                        let mut listener: $crate::wlroots_sys::wl_listener = ::std::mem::zeroed();
+                        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                      wl_list_init,
+                                      &mut listener.link as *mut _ as _);
+                        ::std::ptr::write(&mut listener.notify, $listener);
+                        listener
+                    }),*)*,
+                })
+            }
+
+            $($(pub unsafe fn $listener(&mut self) -> *mut $crate::wlroots_sys::wl_listener {
+                &mut self.$listener as *mut _
+            })*)*
+        }
+    }
 }

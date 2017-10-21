@@ -2,7 +2,6 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
-use super::io_manager::IOManager;
 use device::Device;
 use libc;
 use std::{env, mem, ptr};
@@ -24,24 +23,28 @@ pub trait InputManagerHandler {
     fn input_removed(&mut self, Device);
 }
 
-#[repr(C)]
-/// Holds the user-defined input manager.
-/// Pass this to the `Compositor` during initialization.
-pub struct InputManager(Box<IOManager<Box<InputManagerHandler>>>);
+define_listener!(InputManager, Box<InputManagerHandler>, [
+    add_listener,
+    remove_listener
+]);
+
+// Holds the user-defined input manager.
+// Pass this to the `Compositor` during initialization.
+//pub struct InputManager(Box<InputManagerInner>);
 
 impl InputManager {
-    pub fn new(input_manager: Box<InputManagerHandler>) -> Self {
-        InputManager(Box::new(IOManager::new(input_manager,
-                                             InputManager::input_add_notify,
-                                             InputManager::input_remove_notify)))
+    pub fn new(input_manager: Box<InputManagerHandler>) -> Box<Self> {
+        InputManager::new_with_methods(input_manager,
+                               Some(InputManager::input_add_notify),
+                               Some(InputManager::input_remove_notify))
     }
 
     unsafe extern "C" fn input_add_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         let device = data as *mut wlr_input_device;
         let input_wrapper = container_of!(listener,
-                                          IOManager<Box<InputManagerHandler>>,
+                                          InputManager,
                                           add_listener);
-        let input_manager = &mut (*input_wrapper).manager;
+        let input_manager = &mut (*input_wrapper).data;
         // TODO FIXME
         // Ensure this is safe
         input_manager.input_added(Device::from_ptr(device))
@@ -50,23 +53,10 @@ impl InputManager {
     unsafe extern "C" fn input_remove_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         let device = data as *mut wlr_input_device;
         let input_wrapper = container_of!(listener, InputManager, remove_listener);
-        let input_manager = &mut (*input_wrapper).manager;
+        let input_manager = &mut (*input_wrapper).data;
         // TODO FIXME
         // Ensure this is safe
         input_manager.input_removed(Device::from_ptr(device))
-    }
-}
-
-impl Deref for InputManager {
-    type Target = IOManager<Box<InputManagerHandler>>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for InputManager {
-    fn deref_mut(&mut self) -> &mut IOManager<Box<InputManagerHandler>> {
-        &mut self.0
     }
 }
 
