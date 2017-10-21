@@ -11,8 +11,11 @@ use std::time::Instant;
 use wlroots::compositor::Compositor;
 use wlroots::manager::{InputManagerHandler, OutputManagerHandler};
 use wlroots::output::Output;
+use wlroots::device::Device;
+use wlroots::key_event::KeyEvent;
 use wlroots::wlroots_sys::{gl, wlr_input_device, wlr_output, wlr_output_make_current,
-                           wlr_output_swap_buffers};
+                           wlr_output_swap_buffers, xkb_keysym_t};
+use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 struct OutputHandler {
     color: [f32; 3],
@@ -21,10 +24,25 @@ struct OutputHandler {
 }
 
 struct InputManager {
-    state: i32
+    //compositor: Rc<Compositor>,
+    dev: Option<Device>
 }
 
-impl InputManagerHandler for InputManager {}
+impl InputManagerHandler for InputManager {
+    fn keyboard_added(&mut self, dev: Device) {
+        self.dev = Some(dev)
+    }
+
+    fn key(&mut self, key_event: KeyEvent) {
+        let keys = key_event.get_input_keys(self.dev.clone().unwrap());
+        for key in keys {
+            if key == KEY_Escape {
+                panic!()
+                //compositor.terminate()
+            }
+        }
+    }
+}
 
 impl OutputManagerHandler for OutputHandler {
     fn output_frame(&mut self, output: Output) {
@@ -56,7 +74,7 @@ impl OutputManagerHandler for OutputHandler {
 
 fn main() {
     let dummy = 0;
-    let input_manager = InputManager { state: 0 };
+    let input_manager = InputManager { dev: None };
     let output_manager = OutputHandler {
         color: [0.0, 0.0, 0.0],
         dec: 0,

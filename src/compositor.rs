@@ -92,4 +92,12 @@ impl Compositor {
         }
         // TODO Clean up
     }
+
+    pub fn terminate(&mut self) {
+        unsafe {
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_display_terminate,
+                          self.display);
+        }
+    }
 }

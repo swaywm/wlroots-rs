@@ -1,6 +1,7 @@
 use wlroots_sys::{wlr_input_device, wlr_input_device__bindgen_ty_1, wlr_input_device_type};
 
 /// Wrapper for wlr_input_device
+#[derive(Clone, Debug)]
 pub struct Device {
     device: *mut wlr_input_device
 }
