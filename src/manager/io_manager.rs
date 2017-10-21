@@ -15,10 +15,7 @@ pub struct IOManager<T> {
 }
 
 impl<T> IOManager<T> {
-    pub fn new(manager: T,
-               add_func: NotifyFunc,
-               remove_func: NotifyFunc)
-               -> Self {
+    pub fn new(manager: T, add_func: NotifyFunc, remove_func: NotifyFunc) -> Self {
         unsafe {
             // NOTE Rationale for zeroed memory:
             // * The list is initialized by Wayland, which doesn't "drop"

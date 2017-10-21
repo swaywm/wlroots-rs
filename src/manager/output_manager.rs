@@ -15,11 +15,9 @@ use wlroots_sys::{wl_list, wl_listener, wlr_output, wlr_output_mode, wlr_output_
 /// Handles output addition and removal.
 pub trait OutputManagerHandler {
     /// Called whenever an output is added.
-    fn output_added(&mut self,
-                    Output);
+    fn output_added(&mut self, Output);
     /// Called whenever an output is removed.
-    fn output_removed(&mut self,
-                      Output);
+    fn output_removed(&mut self, Output);
 }
 
 #[repr(C)]
@@ -34,8 +32,7 @@ impl OutputManager {
                                               Self::output_remove_notify)))
     }
 
-    unsafe extern "C" fn output_add_notify(listener: *mut wl_listener,
-                                           data: *mut libc::c_void) {
+    unsafe extern "C" fn output_add_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         let device = data as *mut wlr_output;
         let output_wrapper = container_of!(listener,
                                            IOManager<Box<OutputManagerHandler>>,
@@ -82,8 +79,7 @@ pub struct DefaultOutputHandler {
 }
 
 impl OutputManagerHandler for DefaultOutputHandler {
-    fn output_added(&mut self,
-                    output: Output) {
+    fn output_added(&mut self, output: Output) {
         // TODO Logging using macro
         unsafe {
             if (*output.modes()).length > 0 {
@@ -118,8 +114,7 @@ impl OutputManagerHandler for DefaultOutputHandler {
             // not sure, I'd have to double check...probably not
         }
     }
-    fn output_removed(&mut self,
-                      output: Output) {
+    fn output_removed(&mut self, output: Output) {
         // TODO
     }
 }
@@ -127,12 +122,10 @@ impl OutputManagerHandler for DefaultOutputHandler {
 impl DefaultOutputHandler {
     // TODO Should be able to define this safely, do the same thing as with
     // output_added
-    unsafe extern "C" fn frame_notify(listener: *mut wl_listener,
-                                      data: *mut libc::c_void) {
+    unsafe extern "C" fn frame_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         // TODO implement
     }
-    unsafe extern "C" fn resolution_notify(listener: *mut wl_listener,
-                                           data: *mut libc::c_void) {
+    unsafe extern "C" fn resolution_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         // TODO implement
         // TODO call callbmack
     }

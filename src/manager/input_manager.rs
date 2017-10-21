@@ -19,11 +19,9 @@ use wlroots_sys::xkb_keymap_compile_flags::*;
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
     /// Callback triggered when an input device is added.
-    fn input_added(&mut self,
-                   Device);
+    fn input_added(&mut self, Device);
     /// Callback triggered when an input device is removed.
-    fn input_removed(&mut self,
-                     Device);
+    fn input_removed(&mut self, Device);
 }
 
 #[repr(C)]
@@ -38,8 +36,7 @@ impl InputManager {
                                              InputManager::input_remove_notify)))
     }
 
-    unsafe extern "C" fn input_add_notify(listener: *mut wl_listener,
-                                          data: *mut libc::c_void) {
+    unsafe extern "C" fn input_add_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         let device = data as *mut wlr_input_device;
         let input_wrapper = container_of!(listener,
                                           IOManager<Box<InputManagerHandler>>,
@@ -50,8 +47,7 @@ impl InputManager {
         input_manager.input_added(Device::from_ptr(device))
     }
 
-    unsafe extern "C" fn input_remove_notify(listener: *mut wl_listener,
-                                             data: *mut libc::c_void) {
+    unsafe extern "C" fn input_remove_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         let device = data as *mut wlr_input_device;
         let input_wrapper = container_of!(listener, InputManager, remove_listener);
         let input_manager = &mut (*input_wrapper).manager;
@@ -89,8 +85,7 @@ pub struct DefaultInputHandler {
 }
 
 impl InputManagerHandler for DefaultInputHandler {
-    fn input_added(&mut self,
-                   dev: Device) {
+    fn input_added(&mut self, dev: Device) {
         use self::wlr_input_device_type::*;
         unsafe {
             match dev.dev_type() {
@@ -101,8 +96,7 @@ impl InputManagerHandler for DefaultInputHandler {
         }
     }
 
-    fn input_removed(&mut self,
-                     dev: Device) {
+    fn input_removed(&mut self, dev: Device) {
         unimplemented!()
     }
 }
@@ -115,8 +109,7 @@ impl DefaultInputHandler {
         }
     }
 
-    pub unsafe fn add_keyboard(&mut self,
-                               dev: Device) {
+    pub unsafe fn add_keyboard(&mut self, dev: Device) {
         ptr::write(&mut self.dev, dev);
         ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                       wl_list_init,
@@ -151,8 +144,7 @@ impl DefaultInputHandler {
         xkb_context_unref(context);
     }
 
-    pub unsafe fn add_pointer(&mut self,
-                              dev: Device) {
+    pub unsafe fn add_pointer(&mut self, dev: Device) {
         ptr::write(&mut self.dev, dev);
         ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                       wl_list_init,
@@ -183,8 +175,7 @@ impl DefaultInputHandler {
 
     // TODO implement, wrap properly in InputManagerHandler
 
-    pub unsafe extern "C" fn motion_notify(listener: *mut wl_listener,
-                                           data: *mut libc::c_void) {
+    pub unsafe extern "C" fn motion_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         unimplemented!()
     }
 
@@ -193,18 +184,15 @@ impl DefaultInputHandler {
         unimplemented!()
     }
 
-    pub unsafe extern "C" fn button_notify(listener: *mut wl_listener,
-                                           data: *mut libc::c_void) {
+    pub unsafe extern "C" fn button_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         unimplemented!()
     }
 
-    pub unsafe extern "C" fn axis_notify(listener: *mut wl_listener,
-                                         data: *mut libc::c_void) {
+    pub unsafe extern "C" fn axis_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         unimplemented!()
     }
 
-    pub unsafe extern "C" fn key_notify(listener: *mut wl_listener,
-                                        data: *mut libc::c_void) {
+    pub unsafe extern "C" fn key_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
         // TODO implement
     }
 }

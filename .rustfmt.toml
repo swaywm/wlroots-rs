@@ -1,5 +1,5 @@
 fn_brace_style = "SameLineWhere"
-fn_args_density = "Vertical"
+fn_args_density = "Tall"
 fn_args_layout = "Visual"
 fn_call_style = "Visual"
 reorder_imports = true
