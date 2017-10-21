@@ -18,11 +18,11 @@ pub trait OutputManagerHandler {
     fn output_removed(&mut self, Output);
 }
 
-define_listener!(OutputManager, Box<OutputManagerHandler>, [
-    add_listener, add_notify: |output_manager: &mut Box<OutputManagerHandler>, data: *mut libc::c_void,| unsafe {
+wayland_listener!(OutputManager, Box<OutputManagerHandler>, [
+    add_listener => add_notify: |output_manager: &mut Box<OutputManagerHandler>, data: *mut libc::c_void,| unsafe {
         output_manager.output_added(Output::from_ptr(data as *mut wlr_output))
     };
-    remove_listener, remove_notify: |output_manager: &mut Box<OutputManagerHandler>, data: *mut libc::c_void,| unsafe {
+    remove_listener => remove_notify: |output_manager: &mut Box<OutputManagerHandler>, data: *mut libc::c_void,| unsafe {
         output_manager.output_removed(Output::from_ptr(data as *mut wlr_output))
     };
 ]);

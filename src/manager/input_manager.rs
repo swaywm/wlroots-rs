@@ -22,11 +22,11 @@ pub trait InputManagerHandler {
     fn input_removed(&mut self, Device);
 }
 
-define_listener!(InputManager, Box<InputManagerHandler>, [
-    add_listener, add_notify: |input_manager: &mut Box<InputManagerHandler>, data: *mut libc::c_void,| unsafe {
+wayland_listener!(InputManager, Box<InputManagerHandler>, [
+    add_listener => add_notify: |input_manager: &mut Box<InputManagerHandler>, data: *mut libc::c_void,| unsafe {
         input_manager.input_added(Device::from_ptr(data as *mut wlr_input_device))
     };
-    remove_listener, remove_notify: |input_manager: &mut Box<InputManagerHandler>, data: *mut libc::c_void,| unsafe {
+    remove_listener => remove_notify: |input_manager: &mut Box<InputManagerHandler>, data: *mut libc::c_void,| unsafe {
         input_manager.input_removed(Device::from_ptr(data as *mut wlr_input_device))
     };
 ]);

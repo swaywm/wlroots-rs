@@ -43,11 +43,70 @@ macro_rules! wlr_log {
     }}
 }
 
-/// Define a struct with some listeners that can call user-defined callbacks
-/// every time some Wayland event fires.
-macro_rules! define_listener {
+/// Defines a new struct that contains a variable number of listeners that
+/// will trigger unsafe user-defined callbacks.
+///
+/// The structure that is defined is repr(C), has one `data` field with the
+/// given user type, and a field for each `$listener`.
+///
+/// Each `$listener` has a getter method that lets you get the pointer to the
+/// listener. This method is unsafe, since it returns a raw pointer.
+/// To use it correctly, you need to ensure that the data it refers to never
+/// moves (e.g keep it in a box). The primary purpose of this method is to pass
+/// the listener pointer to other methods to register it for a Wayland event.
+/// **A listener can only be registered to one event at a time**.
+///
+/// Finally, it also takes in a body for each `$listener` that is called
+/// every time the event that is later hooked up to it is fired.
+/// This method is inherently unsafe, because the user data hasn't been cast
+/// from the void pointer yet. It is the user's job to write this safely.
+/// To highlight this fact, the body of the function must be prefixed with `unsafe`.
+///
+/// # Example
+/// ```
+/// // Handles input addition and removal.
+/// pub trait InputManagerHandler {
+///     // Callback triggered when an input device is added.
+///     fn input_added(&mut self, Device);
+/// }
+/// wayland_listener!(
+///     // The name of the structure that will be defined.
+///     InputManager,
+///     // The type that's stored in the `data` field.
+///     // Note that we use a Box here to achieve dynamic dispatch,
+///     // it's not required for this type to be in a box.
+///     Box<InputManagerHandler>,
+///     [
+///         // Adds a new listener called `add_listener`.
+///         add_listener =>
+///         // Adds an unsafe function called `add_notify` that is triggered
+///         // whenever add_listener is activated from a Wayland event.
+///         add_notify: |input_manager: &mut Box<InputManagerHandler>,
+///                      data: *mut libc::c_void,| unsafe {
+///             // Call the method defined above, wrapping it in a safe interface.
+///             // It is your job to ensure that the code in here doesn't trigger UB!
+///             input_manager.input_added(Device::from_ptr(data as *mut wlr_input_device))
+///         };
+///     ]
+/// );
+/// ```
+///
+/// # Unsafety
+/// Note that the purpose of this macro is to make it easy to generate unsafe
+/// boiler plate for using listeners with Rust data.
+///
+/// However, there are a few things this macro doesn't protect against.
+///
+/// First and foremost, the data cannot move. The listeners assume that the
+/// structure will never move, so in order to defend against this the generated
+/// `new` method returns a Box version. **Do not move out of the box**.
+///
+/// Second, this macro doesn't protect against the stored data being unsized.
+/// Passing a pointer of unsized data to C is UB, don't do it.
+#[macro_export]
+macro_rules! wayland_listener {
     // FIXME TODO Impl drop for the listener data
-    ($struct_name: ident, $data: ty, $([$($listener: ident, $listener_func: ident : |$($func_arg:ident: $func_type:ty,)*| unsafe $body: block;)*])+) => {
+    ($struct_name: ident, $data: ty, $([$($listener: ident => $listener_func: ident : |$($func_arg:ident: $func_type:ty,)*| unsafe $body: block;)*])+) => {
         #[repr(C)]
         pub struct $struct_name {
             data: $data,
