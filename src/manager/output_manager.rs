@@ -2,11 +2,9 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
-use super::io_manager::IOManager;
 use libc;
 use output::Output;
 use std::{mem, ptr};
-use std::ops::{Deref, DerefMut};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wl_list, wl_listener, wlr_output, wlr_output_mode, wlr_output_set_mode};
@@ -20,53 +18,14 @@ pub trait OutputManagerHandler {
     fn output_removed(&mut self, Output);
 }
 
-#[repr(C)]
-/// Holds the user-defined output manager.
-/// Pass this to the `Compositor` during initialization.
-pub struct OutputManager(Box<IOManager<Box<OutputManagerHandler>>>);
-
-impl OutputManager {
-    pub fn new(output_manager: Box<OutputManagerHandler>) -> Self {
-        OutputManager(Box::new(IOManager::new(output_manager,
-                                              Self::output_add_notify,
-                                              Self::output_remove_notify)))
-    }
-
-    unsafe extern "C" fn output_add_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
-        let device = data as *mut wlr_output;
-        let output_wrapper = container_of!(listener,
-                                           IOManager<Box<OutputManagerHandler>>,
-                                           add_listener);
-        let output_manager = &mut (*output_wrapper).manager;
-        // TODO FIXME
-        // Ensure this is safe
-        output_manager.output_added(Output::from_ptr(device))
-    }
-
-    unsafe extern "C" fn output_remove_notify(listener: *mut wl_listener,
-                                              data: *mut libc::c_void) {
-        let device = data as *mut wlr_output;
-        let output_wrapper = container_of!(listener, OutputManager, remove_listener);
-        let output_manager = &mut (*output_wrapper).manager;
-        // TODO FIXME
-        // Ensure this is safe
-        output_manager.output_removed(Output::from_ptr(device))
-    }
-}
-
-impl Deref for OutputManager {
-    type Target = IOManager<Box<OutputManagerHandler>>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for OutputManager {
-    fn deref_mut(&mut self) -> &mut IOManager<Box<OutputManagerHandler>> {
-        &mut self.0
-    }
-}
-
+define_listener!(OutputManager, Box<OutputManagerHandler>, [
+    add_listener, add_notify: |output_manager: &mut Box<OutputManagerHandler>, data: *mut libc::c_void,| unsafe {
+        output_manager.output_added(Output::from_ptr(data as *mut wlr_output))
+    };
+    remove_listener, remove_notify: |output_manager: &mut Box<OutputManagerHandler>, data: *mut libc::c_void,| unsafe {
+        output_manager.output_removed(Output::from_ptr(data as *mut wlr_output))
+    };
+]);
 
 /// The default output handler that most compostiors can use as a drop-in.
 pub struct DefaultOutputHandler {

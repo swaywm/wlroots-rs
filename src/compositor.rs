@@ -9,7 +9,7 @@ use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_
 
 pub struct Compositor {
     input_manager: Box<InputManager>,
-    output_manager: OutputManager,
+    output_manager: Box<OutputManager>,
     backend: *mut wlr_backend,
     display: *mut wl_display,
     event_loop: *mut wl_event_loop
@@ -45,9 +45,9 @@ impl Compositor {
             wl_signal_add(&mut (*backend).events.input_remove as *mut _ as _,
                           input_manager.remove_listener() as *mut _ as _);
             wl_signal_add(&mut (*backend).events.output_add as *mut _ as _,
-                          &mut output_manager.add_listener as *mut _ as _);
+                          output_manager.add_listener() as *mut _ as _);
             wl_signal_add(&mut (*backend).events.output_remove as *mut _ as _,
-                          &mut output_manager.remove_listener as *mut _ as _);
+                          output_manager.remove_listener() as *mut _ as _);
 
             let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
             if socket.is_null() {
