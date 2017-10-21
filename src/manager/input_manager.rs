@@ -8,17 +8,16 @@ use libc;
 use std::env;
 use utils::safe_as_cstring;
 use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::{wl_list, wl_listener, wlr_input_device, wlr_input_device_type,
+use wlroots_sys::{wlr_event_keyboard_key, wlr_input_device, wlr_input_device_type,
                   wlr_keyboard_set_keymap, xkb_context_new, xkb_context_unref,
-                  wlr_event_keyboard_key, xkb_state_key_get_syms,
-                  xkb_keymap_new_from_names, xkb_rule_names, xkb_keysym_t};
+                  xkb_keymap_new_from_names, xkb_rule_names};
 use wlroots_sys::xkb_context_flags::*;
 use wlroots_sys::xkb_keymap_compile_flags::*;
 
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
     /// Callback triggered when an input device is added.
-    fn input_added(&mut self, dev: Device) {
+    fn input_added(&mut self, Device) {
         // TODO?
     }
 
@@ -27,31 +26,31 @@ pub trait InputManagerHandler {
         // TODO
     }
 
-    fn keyboard_added(&mut self, dev: Device) {
+    fn keyboard_added(&mut self, Device) {
         // TODO
     }
 
-    fn pointer_added(&mut self, dev: Device) {
+    fn pointer_added(&mut self, Device) {
         // TODO
     }
 
-    fn key(&mut self, key_event: KeyEvent) {
+    fn key(&mut self, KeyEvent) {
         // TODO
     }
 
-    fn motion(&mut self, dev: Device) {
+    fn motion(&mut self, Device) {
         // TODO
     }
 
-    fn motion_absolute(&mut self, dev: Device) {
+    fn motion_absolute(&mut self, Device) {
         // TODO
     }
 
-    fn button(&mut self, dev: Device) {
+    fn button(&mut self, Device) {
         // TODO
     }
 
-    fn axis(&mut self, dev: Device) {
+    fn axis(&mut self, Device) {
         // TODO
     }
 }

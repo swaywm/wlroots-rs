@@ -1,20 +1,13 @@
-#[macro_use]
 extern crate wlroots;
 
-use std::env;
-use std::os::raw::{c_int, c_void};
-use std::ptr::null_mut;
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use wlroots::compositor::Compositor;
-use wlroots::manager::{InputManagerHandler, OutputManagerHandler};
-use wlroots::output::Output;
 use wlroots::device::Device;
 use wlroots::key_event::KeyEvent;
-use wlroots::wlroots_sys::{gl, wlr_input_device, wlr_output, wlr_output_make_current,
-                           wlr_output_swap_buffers, xkb_keysym_t};
+use wlroots::manager::{InputManagerHandler, OutputManagerHandler};
+use wlroots::output::Output;
+use wlroots::wlroots_sys::{gl, wlr_output_make_current, wlr_output_swap_buffers};
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 struct OutputHandler {
@@ -71,13 +64,12 @@ impl OutputManagerHandler for OutputHandler {
 }
 
 fn main() {
-    let dummy = 0;
     let input_manager = InputManager { dev: None };
     let output_manager = OutputHandler {
         color: [0.0, 0.0, 0.0],
         dec: 0,
         last_frame: Instant::now()
     };
-    let mut compositor = Compositor::new(Box::new(input_manager), Box::new(output_manager));
+    let compositor = Compositor::new(Box::new(input_manager), Box::new(output_manager));
     compositor.run();
 }

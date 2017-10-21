@@ -1,9 +1,9 @@
 //! TODO fill this in
 
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
+use std::cell::UnsafeCell;
 use std::env;
 use std::ffi::CStr;
-use std::cell::UnsafeCell;
 use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_display, wl_event_loop};
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
@@ -11,6 +11,7 @@ use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
+#[allow(dead_code)]
 pub struct Compositor {
     input_manager: Box<InputManager>,
     output_manager: Box<OutputManager>,
@@ -100,16 +101,16 @@ impl Compositor {
                 //   if you auto create it's assumed you can't recover.
                 panic!("Failed to start backend");
             }
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_run, (*compositor.get()).display);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_display_run,
+                          (*compositor.get()).display);
         }
         // TODO Clean up
     }
 
     pub fn terminate(&mut self) {
         unsafe {
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_display_terminate,
-                          self.display);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
         }
     }
 }

@@ -4,10 +4,8 @@
 
 use libc;
 use output::Output;
-use std::{mem, ptr};
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::{wl_list, wl_listener, wlr_output, wlr_output_mode, wlr_output_set_mode};
+use wlroots_sys::{wlr_output, wlr_output_mode, wlr_output_set_mode};
 
 
 /// Handles output addition and removal.
@@ -25,15 +23,15 @@ pub trait OutputManagerHandler {
     }
 
     /// Called whenever an output is removed.
-    fn output_removed(&mut self, output: Output) {
+    fn output_removed(&mut self, Output) {
         // TODO
     }
     /// Called every time the output frame is updated.
-    fn output_frame(&mut self, output: Output) {
+    fn output_frame(&mut self, Output) {
         // TODO
     }
     /// Called every time the output resolution is updated.
-    fn output_resolution(&mut self, output: Output) {
+    fn output_resolution(&mut self, Output) {
         // TODO
     }
 }
