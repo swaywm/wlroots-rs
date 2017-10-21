@@ -23,13 +23,13 @@ pub trait InputManagerHandler {
 }
 
 wayland_listener!(InputManager, Box<InputManagerHandler>, [
-    add_listener => add_notify: |input_manager: &mut Box<InputManagerHandler>, data: *mut libc::c_void,| unsafe {
+    add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         // TODO Ensure safety
-        input_manager.input_added(Device::from_ptr(data as *mut wlr_input_device))
+        this.data.input_added(Device::from_ptr(data as *mut wlr_input_device))
     };
-    remove_listener => remove_notify: |input_manager: &mut Box<InputManagerHandler>, data: *mut libc::c_void,| unsafe {
+    remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         // TODO Ensure safety
-        input_manager.input_removed(Device::from_ptr(data as *mut wlr_input_device))
+        this.data.input_removed(Device::from_ptr(data as *mut wlr_input_device))
     };
 ]);
 

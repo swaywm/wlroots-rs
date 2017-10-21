@@ -137,10 +137,9 @@ macro_rules! wayland_listener {
             })*)*
 
             $($(pub unsafe extern "C" fn $listener_func(listener: *mut $crate::wlroots_sys::wl_listener, data: *mut libc::c_void) {
-                let manager_wrapper: *mut $struct_name = container_of!(listener,
-                                                    $struct_name,
-                                                    $listener);
-                let manager: &mut $data = &mut (*manager_wrapper).data;
+                let manager: &mut $struct_name = &mut (*container_of!(listener,
+                                                                      $struct_name,
+                                                                      $listener));
                 (|$($func_arg: $func_type,)*| { $body })(manager, data);
             })*)*
         }

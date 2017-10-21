@@ -16,24 +16,41 @@ pub trait OutputManagerHandler {
     fn output_added(&mut self, Output);
     /// Called whenever an output is removed.
     fn output_removed(&mut self, Output);
+    /// Called every time the output frame is updated.
+    fn output_frame(&mut self, Output);
+    /// Called every time the output resolution is updated.
+    fn output_resolution(&mut self, Output);
 }
 
 wayland_listener!(OutputManager, Box<OutputManagerHandler>, [
-    add_listener => add_notify: |output_manager: &mut Box<OutputManagerHandler>, data: *mut libc::c_void,| unsafe {
+    add_listener => add_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
+        let data = data as *mut wlr_output;
+        // Add the output frame event to this manager
+        wl_signal_add(&mut (*data).events.frame as *mut _ as _,
+                      this.frame_listener() as _);
+        // Add the output resolution event to this manager
+        wl_signal_add(&mut (*data).events.resolution as *mut _ as _,
+                      this.resolution_listener() as _);
         // TODO Ensure safety
-        output_manager.output_added(Output::from_ptr(data as *mut wlr_output))
+        this.data.output_added(Output::from_ptr(data as *mut wlr_output))
     };
-    remove_listener => remove_notify: |output_manager: &mut Box<OutputManagerHandler>, data: *mut libc::c_void,| unsafe {
+    remove_listener => remove_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
         // TODO Ensure safety
-        output_manager.output_removed(Output::from_ptr(data as *mut wlr_output))
+        this.data.output_removed(Output::from_ptr(data as *mut wlr_output))
+    };
+    frame_listener => frame_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
+        // TODO Ensure safety
+        this.data.output_frame(Output::from_ptr(data as *mut wlr_output))
+    };
+    resolution_listener => resolution_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
+        // TODO Ensure safety
+        this.data.output_resolution(Output::from_ptr(data as *mut wlr_output))
     };
 ]);
 
 /// The default output handler that most compostiors can use as a drop-in.
 pub struct DefaultOutputHandler {
     output: Output,
-    frame: wl_listener,
-    resolution: wl_listener,
     last_frame: i32,
     link: wl_list,
     data: *mut libc::c_void
@@ -41,54 +58,27 @@ pub struct DefaultOutputHandler {
 
 impl OutputManagerHandler for DefaultOutputHandler {
     fn output_added(&mut self, output: Output) {
-        // TODO Logging using macro
+        wlr_log!(L_DEBUG, "output added {:?}", output);
+        // TODO Shouldn't require unsafety here
         unsafe {
             if (*output.modes()).length > 0 {
                 let first_mode_ptr = (*output.modes()).items.offset(0) as *mut wlr_output_mode;
                 wlr_output_set_mode(output.to_ptr(), first_mode_ptr);
             }
-            let mut frame_event = output.events().frame;
-            let mut resolution_event = output.events().resolution;
-            // NOTE We are moving output here, but the pointers
-            // to the events are fine because Output doesn't own wlr_output.
-            self.output = output;
-            // TODO FIXME Punting, somehow we need to reference compositor...pass it in?
-            // That _should_ be possible
-            // self.compositor = ....
-            ptr::write(&mut self.frame.notify, Some(Self::frame_notify));
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_init,
-                          &mut self.frame.link as *mut _ as _);
-            wl_signal_add(&mut frame_event as *mut _ as _,
-                          &mut self.frame as *mut _ as _);
-            ptr::write(&mut self.resolution.notify, Some(Self::resolution_notify));
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_init,
-                          &mut self.resolution.link as *mut _ as _);
-            wl_signal_add(&mut resolution_event as *mut _ as _,
-                          &mut self.resolution as *mut _ as _);
-            // TODO Add this output to some list of outputs
-            // probably in passed in compositor state?
-
-            // TODO Call a user defined callback?
-            // I think we can do that by overriding the impl on this?
-            // not sure, I'd have to double check...probably not
         }
     }
     fn output_removed(&mut self, output: Output) {
         // TODO
     }
-}
 
-impl DefaultOutputHandler {
-    // TODO Should be able to define this safely, do the same thing as with
-    // output_added
-    unsafe extern "C" fn frame_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
-        // TODO implement
+    fn output_frame(&mut self, output: Output) {
+        wlr_log!(L_DEBUG, "OUTPUT FRAME");
+        // TODO
     }
-    unsafe extern "C" fn resolution_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
-        // TODO implement
-        // TODO call callbmack
+
+    fn output_resolution(&mut self, output: Output) {
+        wlr_log!(L_DEBUG, "OUTPUT RESOLUTION");
+        // TODO
     }
 }
 
