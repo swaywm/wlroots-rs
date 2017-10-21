@@ -56,8 +56,8 @@ impl Output {
     }
 
     // FIXME Really need to change the name of this type
-    pub unsafe fn events(&self) -> *mut wlr_output__bindgen_ty_1 {
-        &mut (*self.output).events
+    pub unsafe fn events(&self) -> wlr_output__bindgen_ty_1 {
+        (*self.output).events
     }
 
     pub unsafe fn from_ptr(output: *mut wlr_output) -> Self {

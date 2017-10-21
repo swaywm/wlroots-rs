@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use wlroots::compositor::Compositor;
-use wlroots::manager::{DefaultInputHandler, OutputManagerHandler};
+use wlroots::manager::{InputManagerHandler, OutputManagerHandler};
 use wlroots::output::Output;
 use wlroots::wlroots_sys::{gl, wlr_input_device, wlr_output, wlr_output_make_current,
                            wlr_output_swap_buffers};
@@ -19,6 +19,12 @@ struct OutputHandler {
     dec: usize,
     last_frame: Instant
 }
+
+struct InputManager {
+    state: i32
+}
+
+impl InputManagerHandler for InputManager {}
 
 impl OutputManagerHandler for OutputHandler {
     fn output_frame(&mut self, output: Output) {
@@ -50,7 +56,7 @@ impl OutputManagerHandler for OutputHandler {
 
 fn main() {
     let dummy = 0;
-    let input_manager = DefaultInputHandler::new();
+    let input_manager = InputManager { state: 0 };
     let output_manager = OutputHandler {
         color: [0.0, 0.0, 0.0],
         dec: 0,

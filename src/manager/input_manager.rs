@@ -4,9 +4,8 @@
 
 use device::Device;
 use libc;
-use std::{env, mem, ptr};
+use std::env;
 use utils::safe_as_cstring;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wl_list, wl_listener, wlr_input_device, wlr_input_device_type,
                   wlr_keyboard_set_keymap, xkb_context_new, xkb_context_unref,
@@ -17,145 +16,128 @@ use wlroots_sys::xkb_keymap_compile_flags::*;
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
     /// Callback triggered when an input device is added.
-    fn input_added(&mut self, Device);
+    fn input_added(&mut self, dev: &mut Device) {
+        // TODO?
+    }
+
     /// Callback triggered when an input device is removed.
-    fn input_removed(&mut self, Device);
+    fn input_removed(&mut self, Device) {
+        // TODO
+    }
+
+    fn keyboard_added(&mut self, dev: &mut Device) {
+        unsafe {
+            // TODO verify safety
+            add_keyboard(dev);
+        }
+    }
+
+    fn pointer_added(&mut self, dev: &mut Device) {
+        // TODO
+    }
+
+    fn key(&mut self, dev: Device) {
+        // TODO
+    }
+
+    fn motion(&mut self, dev: Device) {
+        // TODO
+    }
+
+    fn motion_absolute(&mut self, dev: Device) {
+        // TODO
+    }
+
+    fn button(&mut self, dev: Device) {
+        // TODO
+    }
+
+    fn axis(&mut self, dev: Device) {
+        // TODO
+    }
 }
 
 wayland_listener!(InputManager, Box<InputManagerHandler>, [
     add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
+        use self::wlr_input_device_type::*;
         // TODO Ensure safety
-        this.data.input_added(Device::from_ptr(data as *mut wlr_input_device))
+        let mut dev = Device::from_ptr(data as *mut wlr_input_device);
+        unsafe {
+            match dev.dev_type() {
+                WLR_INPUT_DEVICE_KEYBOARD => {
+                    // Add the keyboard events to this manager
+                    wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
+                                  this.key_listener() as *mut _ as _);
+                    this.data.keyboard_added(&mut dev)
+                },
+                WLR_INPUT_DEVICE_POINTER => {
+                    // Add the pointer events to this manager
+                    wl_signal_add(&mut (*dev.dev_union().pointer).events.motion as *mut _ as _,
+                                  this.motion_listener() as *mut _ as _);
+                    wl_signal_add(&mut (*dev.dev_union().pointer).events.motion_absolute as *mut _ as _,
+                                  this.motion_absolute_listener() as *mut _ as _);
+                    wl_signal_add(&mut (*dev.dev_union().pointer).events.button as *mut _ as _,
+                                  this.button_listener() as *mut _ as _);
+                    wl_signal_add(&mut (*dev.dev_union().pointer).events.axis as *mut _ as _,
+                                  this.axis_listener() as *mut _ as _);
+                    // Call user-defined callback
+                    this.data.pointer_added(&mut dev)
+                },
+                _ => unimplemented!(), // TODO FIXME We _really_ shouldn't panic here
+            }
+        }
+        this.data.input_added(&mut dev)
     };
     remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         // TODO Ensure safety
         this.data.input_removed(Device::from_ptr(data as *mut wlr_input_device))
     };
+    key_listener => key_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
+        // Ensure safety
+        this.data.key(Device::from_ptr(data as *mut wlr_input_device))
+    };
+    motion_listener => motion_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
+        // Ensure safety
+        this.data.motion(Device::from_ptr(data as *mut wlr_input_device))
+    };
+    motion_absolute_listener => motion_absolute_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
+        // Ensure safety
+        this.data.motion_absolute(Device::from_ptr(data as *mut wlr_input_device))
+    };
+    button_listener => button_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
+        // Ensure safety
+        this.data.button(Device::from_ptr(data as *mut wlr_input_device))
+    };
+    axis_listener => axis_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
+        // Ensure safety
+        this.data.axis(Device::from_ptr(data as *mut wlr_input_device))
+    };
 ]);
 
-pub struct DefaultInputHandler {
-    dev: Device,
-    // TODO This should be in a nested struct, shouldn't it?
-    // TODO In fact there should be a couple of these, i.e in a Vec
-    // or whatever.
-    motion: wl_listener,
-    motion_absolute: wl_listener,
-    button: wl_listener,
-    axis: wl_listener,
-    key: wl_listener,
-    link: wl_list,
-    data: *mut libc::c_void
-}
+pub unsafe fn add_keyboard(dev: &mut Device) {
+    // TODO add to global list
 
-impl InputManagerHandler for DefaultInputHandler {
-    fn input_added(&mut self, dev: Device) {
-        use self::wlr_input_device_type::*;
-        unsafe {
-            match dev.dev_type() {
-                WLR_INPUT_DEVICE_KEYBOARD => self.add_keyboard(dev),
-                WLR_INPUT_DEVICE_POINTER => self.add_pointer(dev),
-                _ => unimplemented!(), // TODO FIXME We _really_ shouldn't panic here
-            }
-        }
+    // Set the XKB settings
+    // TODO Unwrapping here is a little bad
+    let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES").unwrap_or("".into()));
+    let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL").unwrap_or("".into()));
+    let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT").unwrap_or("".into()));
+    let variant = safe_as_cstring(env::var("XKB_DEFAULT_VARIANT").unwrap_or("".into()));
+    let options = safe_as_cstring(env::var("XKB_DEFAULT_OPTIONS").unwrap_or("".into()));
+    let rules = xkb_rule_names {
+        rules: rules.into_raw(),
+        model: model.into_raw(),
+        layout: layout.into_raw(),
+        variant: variant.into_raw(),
+        options: options.into_raw()
+    };
+    let context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+    if context.is_null() {
+        wlr_log!(L_ERROR, "Failed to create XKB context");
+        // NOTE We don't panic here, because we have a C call stack above us
+        ::std::process::exit(1)
     }
-
-    fn input_removed(&mut self, dev: Device) {
-        unimplemented!()
-    }
-}
-
-impl DefaultInputHandler {
-    pub fn new() -> Self {
-        unsafe {
-            // TODO FIXME Very stupid
-            mem::zeroed()
-        }
-    }
-
-    pub unsafe fn add_keyboard(&mut self, dev: Device) {
-        ptr::write(&mut self.dev, dev);
-        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                      wl_list_init,
-                      &mut self.key.link as *mut _ as _);
-        ptr::write(&mut self.key.notify, Some(Self::key_notify));
-        wl_signal_add(&mut (*self.dev.dev_union().keyboard).events.key as *mut _ as _,
-                      &mut self.key as *mut _ as _);
-        // TODO add to global list
-
-        // Set the XKB settings
-        // TODO Unwrapping here is a little bad
-        let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES").unwrap_or("".into()));
-        let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL").unwrap_or("".into()));
-        let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT").unwrap_or("".into()));
-        let variant = safe_as_cstring(env::var("XKB_DEFAULT_VARIANT").unwrap_or("".into()));
-        let options = safe_as_cstring(env::var("XKB_DEFAULT_OPTIONS").unwrap_or("".into()));
-        let rules = xkb_rule_names {
-            rules: rules.into_raw(),
-            model: model.into_raw(),
-            layout: layout.into_raw(),
-            variant: variant.into_raw(),
-            options: options.into_raw()
-        };
-        let context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-        if context.is_null() {
-            wlr_log!(L_ERROR, "Failed to create XKB context");
-            // NOTE We don't panic here, because we have a C call stack above us
-            ::std::process::exit(1)
-        }
-        let xkb_map = xkb_keymap_new_from_names(context, &rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
-        wlr_keyboard_set_keymap(self.dev.dev_union().keyboard, xkb_map);
-        xkb_context_unref(context);
-    }
-
-    pub unsafe fn add_pointer(&mut self, dev: Device) {
-        ptr::write(&mut self.dev, dev);
-        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                      wl_list_init,
-                      &mut self.motion.link as *mut _ as _);
-        ptr::write(&mut self.motion.notify, Some(Self::motion_notify));
-        wl_signal_add(&mut (*self.dev.dev_union().pointer).events.motion as *mut _ as _,
-                      &mut self.motion as *mut _ as _);
-        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                      wl_list_init,
-                      &mut self.motion_absolute.link as *mut _ as _);
-        wl_signal_add(&mut (*self.dev.dev_union().pointer).events.motion_absolute as *mut _ as _,
-                      &mut self.motion_absolute as *mut _ as _);
-        ptr::write(&mut self.motion.notify, Some(Self::motion_absolute_notify));
-        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                      wl_list_init,
-                      &mut self.button.link as *mut _ as _);
-        ptr::write(&mut self.button.notify, Some(Self::button_notify));
-        wl_signal_add(&mut (*self.dev.dev_union().pointer).events.button as *mut _ as _,
-                      &mut self.button as *mut _ as _);
-        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                      wl_list_init,
-                      &mut self.axis.link as *mut _ as _);
-        ptr::write(&mut self.axis.notify, Some(Self::axis_notify));
-        wl_signal_add(&mut (*self.dev.dev_union().pointer).events.axis as *mut _ as _,
-                      &mut self.axis as *mut _ as _);
-        // TODO add to global list
-    }
-
-    // TODO implement, wrap properly in InputManagerHandler
-
-    pub unsafe extern "C" fn motion_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
-        unimplemented!()
-    }
-
-    pub unsafe extern "C" fn motion_absolute_notify(listener: *mut wl_listener,
-                                                    data: *mut libc::c_void) {
-        unimplemented!()
-    }
-
-    pub unsafe extern "C" fn button_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
-        unimplemented!()
-    }
-
-    pub unsafe extern "C" fn axis_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
-        unimplemented!()
-    }
-
-    pub unsafe extern "C" fn key_notify(listener: *mut wl_listener, data: *mut libc::c_void) {
-        // TODO implement
-    }
+    let xkb_map = xkb_keymap_new_from_names(context, &rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
+    wlr_keyboard_set_keymap(dev.dev_union().keyboard, xkb_map);
+    xkb_context_unref(context);
 }
