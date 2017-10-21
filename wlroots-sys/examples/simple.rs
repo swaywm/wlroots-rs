@@ -2,19 +2,13 @@ extern crate wlroots_sys;
 extern crate wayland_sys;
 extern crate wayland_server;
 
-use wlroots_sys::wlr_backend_destroy;
+use wlroots_sys::{gl, wlr_backend_destroy};
 
 #[allow(warnings)]
 mod shared {
     include!(concat!(env!("OUT_DIR"), "/shared.rs"));
 }
 use shared::*;
-
-// For graphical functions
-// TODO Move into real library
-mod gl {
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
 
 // TODO Necessary? Probably
 #[repr(C)]

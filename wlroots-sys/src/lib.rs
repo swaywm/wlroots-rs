@@ -2,4 +2,9 @@
 
 extern crate libc;
 
+// For graphical functions
+pub mod gl {
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
+
 include!("gen.rs");
