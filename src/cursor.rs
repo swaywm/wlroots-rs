@@ -34,8 +34,9 @@ impl Cursor {
         }
     }
 
-    pub fn set_xcursor(&mut self, xcursor: XCursor) {
-        unsafe { wlr_cursor_set_xcursor(self.cursor, xcursor.into_raw()) }
+    // TODO What's stopping me from not droping the xcursor now?
+    pub unsafe fn set_xcursor(&mut self, xcursor: &mut XCursor) {
+        wlr_cursor_set_xcursor(self.cursor, xcursor.as_raw())
     }
 
     pub unsafe fn attach_output_layout(&mut self, layout: &mut OutputLayout) {
@@ -83,7 +84,7 @@ impl XCursorTheme {
 }
 
 impl XCursor {
-    pub fn into_raw(self) -> *mut wlr_xcursor {
+    pub fn as_raw(&mut self) -> *mut wlr_xcursor {
         self.xcursor
     }
 }
