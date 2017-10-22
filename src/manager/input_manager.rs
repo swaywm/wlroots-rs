@@ -34,10 +34,6 @@ pub trait InputManagerHandler {
         // TODO
     }
 
-    fn key(&mut self, &KeyEvent) {
-        // TODO
-    }
-
     fn motion(&mut self, &Device) {
         // TODO
     }
@@ -93,10 +89,6 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
     };
     remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         this.data.input_removed(&Device::from_ptr(data as *mut wlr_input_device))
-    };
-    key_listener => key_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
-        let key = KeyEvent::from_ptr(data as *mut wlr_event_keyboard_key);
-        this.data.key(&key)
     };
     motion_listener => motion_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         this.data.motion(&Device::from_ptr(data as *mut wlr_input_device))
