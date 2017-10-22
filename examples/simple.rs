@@ -7,7 +7,7 @@ use wlroots::device::Device;
 use wlroots::key_event::KeyEvent;
 use wlroots::manager::{InputManagerHandler, OutputManagerHandler};
 use wlroots::output::Output;
-use wlroots::wlroots_sys::{gl};
+use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 struct OutputHandler {

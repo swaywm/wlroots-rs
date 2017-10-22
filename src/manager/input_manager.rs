@@ -3,15 +3,15 @@
 //! initialization.
 
 use device::Device;
-use pointer;
 use key_event::KeyEvent;
 use libc;
+use pointer;
 use std::env;
 use utils::safe_as_cstring;
 use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::{wlr_event_keyboard_key, wlr_input_device, wlr_input_device_type,
-                  wlr_keyboard_set_keymap, xkb_context_new, xkb_context_unref,
-                  xkb_keymap_new_from_names, xkb_rule_names, wlr_event_pointer_button};
+use wlroots_sys::{wlr_event_keyboard_key, wlr_event_pointer_button, wlr_input_device,
+                  wlr_input_device_type, wlr_keyboard_set_keymap, xkb_context_new,
+                  xkb_context_unref, xkb_keymap_new_from_names, xkb_rule_names};
 use wlroots_sys::xkb_context_flags::*;
 use wlroots_sys::xkb_keymap_compile_flags::*;
 

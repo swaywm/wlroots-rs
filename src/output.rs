@@ -1,10 +1,18 @@
 use std::ffi::CStr;
-use wlroots_sys::{list_t, wlr_output, wlr_output__bindgen_ty_1, wlr_output_make_current, wlr_output_swap_buffers};
+use wlroots_sys::{list_t, wlr_output, wlr_output__bindgen_ty_1, wlr_output_layout,
+                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_make_current,
+                  wlr_output_swap_buffers};
 
 /// A wrapper around a wlr_output.
 #[derive(Debug)]
 pub struct Output {
     output: *mut wlr_output
+}
+
+// TODO Call it Layout, use as output::Layout?
+#[derive(Debug)]
+pub struct OutputLayout {
+    layout: *mut wlr_output_layout
 }
 
 // TODO We are assuming the output is live in these functions,
@@ -41,15 +49,11 @@ impl Output {
     }
 
     pub fn make_current(&self) {
-        unsafe {
-            wlr_output_make_current(self.output)
-        }
+        unsafe { wlr_output_make_current(self.output) }
     }
 
     pub fn swap_buffers(&self) {
-        unsafe {
-            wlr_output_swap_buffers(self.output)
-        }
+        unsafe { wlr_output_swap_buffers(self.output) }
     }
 
     /// Get the dimensions of the output as (width, height).
@@ -78,5 +82,21 @@ impl Output {
 
     pub unsafe fn to_ptr(&self) -> *mut wlr_output {
         self.output
+    }
+}
+
+impl OutputLayout {
+    pub fn new() -> Self {
+        unsafe { OutputLayout { layout: wlr_output_layout_create() } }
+    }
+
+    pub unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
+        self.layout
+    }
+}
+
+impl Drop for OutputLayout {
+    fn drop(&mut self) {
+        unsafe { wlr_output_layout_destroy(self.layout) }
     }
 }

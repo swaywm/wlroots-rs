@@ -1,6 +1,6 @@
 //! Pointers and their events
 
-use wlroots_sys::{wlr_event_pointer_button, wlr_button_state};
+use wlroots_sys::{wlr_button_state, wlr_event_pointer_button};
 
 pub struct ButtonEvent {
     event: *mut wlr_event_pointer_button
@@ -12,14 +12,10 @@ impl ButtonEvent {
     }
 
     pub fn state(&self) -> wlr_button_state {
-        unsafe {
-            (*self.event).state
-        }
+        unsafe { (*self.event).state }
     }
 
     pub fn button(&self) -> u32 {
-        unsafe {
-            (*self.event).button
-        }
+        unsafe { (*self.event).button }
     }
 }
