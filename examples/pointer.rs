@@ -46,6 +46,15 @@ impl OutputManagerHandler for OutputHandler {
         // https://en.wikipedia.org/wiki/Mouse_warping
         cursor.warp(None, x, y);
     }
+
+    fn output_frame(&mut self, output: Output) {
+        output.make_current();
+        unsafe {
+            gl::ClearColor(self.color.get()[0], self.color.get()[1], self.color.get()[2], 1.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+        }
+        output.swap_buffers();
+    }
 }
 
 impl InputManagerHandler for InputHandler {
