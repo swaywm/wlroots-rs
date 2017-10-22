@@ -32,12 +32,14 @@ impl OutputManagerHandler for OutputHandler {
             let xcursor = cursor.xcursor().expect("XCursor was not set!");
             let image = &xcursor.images()[0];
             // TODO use output config if present instead of auto
-            let mut layout = cursor.output_layout().as_ref()
+            let mut layout = cursor
+                .output_layout()
+                .as_ref()
                 .expect("Could not get output layout");
             layout.borrow_mut().add_auto(&mut output);
             if output.set_cursor(image).is_err() {
                 wlr_log!(L_DEBUG, "Failed to set hardware cursor");
-                return
+                return;
             }
         }
         let (x, y) = cursor.coords();
@@ -67,8 +69,8 @@ fn managers(mut cursor: Cursor) -> (OutputHandler, InputHandler) {
     let cursor = Rc::new(RefCell::new(cursor));
     let color = Rc::new(Cell::new([0.25, 0.25, 0.25, 1.0]));
     (OutputHandler {
-        color: color.clone(),
-        cursor: cursor.clone()
+         color: color.clone(),
+         cursor: cursor.clone()
      },
      InputHandler {
          color: color.clone(),

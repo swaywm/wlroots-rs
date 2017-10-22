@@ -1,14 +1,15 @@
 //! Wrapper for wlr_cursor
 
-use std::rc::Rc;
-use std::cell::RefCell;
 use device::Device;
 use output::OutputLayout;
-use std::{ptr, slice, mem};
+use std::{mem, ptr, slice};
+use std::cell::RefCell;
+use std::rc::Rc;
 use utils::safe_as_cstring;
 use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
-                  wlr_cursor_destroy, wlr_cursor_set_xcursor, wlr_xcursor, wlr_xcursor_theme,
-                  wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load, wlr_xcursor_image, wlr_cursor_warp};
+                  wlr_cursor_destroy, wlr_cursor_set_xcursor, wlr_cursor_warp, wlr_xcursor,
+                  wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
+                  wlr_xcursor_theme_load};
 
 #[derive(Debug)]
 pub struct Cursor {
@@ -34,15 +35,17 @@ impl Cursor {
             if cursor.is_null() {
                 None
             } else {
-                Some(Cursor { cursor, xcursor: None, layout: None })
+                Some(Cursor {
+                         cursor,
+                         xcursor: None,
+                         layout: None
+                     })
             }
         }
     }
 
     pub fn coords(&self) -> (f64, f64) {
-        unsafe {
-            ((*self.cursor).x, (*self.cursor).y)
-        }
+        unsafe { ((*self.cursor).x, (*self.cursor).y) }
     }
 
     pub fn warp(&mut self, dev: Option<Device>, x: f64, y: f64) -> bool {
@@ -55,7 +58,10 @@ impl Cursor {
     pub fn set_xcursor(&mut self, xcursor: Option<XCursor>) {
         self.xcursor = xcursor;
         unsafe {
-            let xcursor_ptr = self.xcursor.as_mut().map(|xcursor| xcursor.as_raw()).unwrap_or(ptr::null_mut());
+            let xcursor_ptr = self.xcursor
+                .as_mut()
+                .map(|xcursor| xcursor.as_raw())
+                .unwrap_or(ptr::null_mut());
             wlr_cursor_set_xcursor(self.cursor, xcursor_ptr)
         }
     }
@@ -126,20 +132,24 @@ impl XCursor {
             let image_ptr = (*self.xcursor).images as *const *const wlr_xcursor_image;
             let length = (*self.xcursor).image_count;
             let cursors_slice: &'cursor [*const wlr_xcursor_image] =
-                slice::from_raw_parts::<'cursor, *const wlr_xcursor_image>(image_ptr, length as usize);
+                slice::from_raw_parts::<'cursor, *const wlr_xcursor_image>(image_ptr,
+                                                                           length as usize);
             let mut result = Vec::with_capacity(cursors_slice.len());
             for cursor in cursors_slice {
-                result.push(
-                    XCursorImage {
-                        width: (**cursor).width,
-                        height: (**cursor).height,
-                        hotspot_x: (**cursor).hotspot_x,
-                        hotspot_y: (**cursor).hotspot_y,
-                        delay: (**cursor).delay,
-                        buffer: slice::from_raw_parts::<'cursor, u8>((**cursor).buffer as *const u8,
-                                                                     (**cursor).width as usize *
-                                                                     (**cursor).height as usize *
-                                                                     mem::size_of::<u32>())})
+                result.push(XCursorImage {
+                                width: (**cursor).width,
+                                height: (**cursor).height,
+                                hotspot_x: (**cursor).hotspot_x,
+                                hotspot_y: (**cursor).hotspot_y,
+                                delay: (**cursor).delay,
+                                buffer: slice::from_raw_parts::<'cursor, u8>((**cursor).buffer as
+                                                                             *const u8,
+                                                                             (**cursor).width as
+                                                                             usize *
+                                                                             (**cursor).height as
+                                                                             usize *
+                                                                             mem::size_of::<u32>())
+                            })
             }
             result
         }
