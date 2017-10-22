@@ -2,6 +2,7 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
+use super::{Keyboard, KeyboardHandler};
 use device::Device;
 use key_event::KeyEvent;
 use libc;
@@ -18,40 +19,38 @@ use wlroots_sys::xkb_keymap_compile_flags::*;
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
     /// Callback triggered when an input device is added.
-    fn input_added(&mut self, Device) {
+    fn input_added(&mut self, &Device) {
         // TODO?
     }
 
     /// Callback triggered when an input device is removed.
-    fn input_removed(&mut self, Device) {
+    fn input_removed(&mut self, &Device) {
         // TODO
     }
 
-    fn keyboard_added(&mut self, Device) {
+    fn keyboard_added(&mut self, &Device) -> Box<KeyboardHandler>;
+
+    fn pointer_added(&mut self, &Device) {
         // TODO
     }
 
-    fn pointer_added(&mut self, Device) {
+    fn key(&mut self, &KeyEvent) {
         // TODO
     }
 
-    fn key(&mut self, KeyEvent) {
+    fn motion(&mut self, &Device) {
         // TODO
     }
 
-    fn motion(&mut self, Device) {
+    fn motion_absolute(&mut self, &Device) {
         // TODO
     }
 
-    fn motion_absolute(&mut self, Device) {
+    fn button(&mut self, &pointer::ButtonEvent) {
         // TODO
     }
 
-    fn button(&mut self, pointer::ButtonEvent) {
-        // TODO
-    }
-
-    fn axis(&mut self, Device) {
+    fn axis(&mut self, &Device) {
         // TODO
     }
 }
@@ -64,11 +63,15 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
         unsafe {
             match dev.dev_type() {
                 WLR_INPUT_DEVICE_KEYBOARD => {
-                    // Add the keyboard events to this manager
-                    wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
-                                  this.key_listener() as *mut _ as _);
+                    // Boring setup that we won't make the user do
                     add_keyboard(&mut dev);
-                    this.data.keyboard_added(dev.clone())
+                    // Get the user keyboard struct, add the keyboard signal
+                    let mut keyboard = Keyboard::new((Device::from_ptr(data as _),
+                                                      this.data.keyboard_added(&dev)));
+                    wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
+                                  keyboard.key_listener() as *mut _ as _);
+                    // Forget until we need to drop it in the destroy callback
+                    ::std::mem::forget(keyboard);
                 },
                 WLR_INPUT_DEVICE_POINTER => {
                     // Add the pointer events to this manager
@@ -81,36 +84,31 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
                     wl_signal_add(&mut (*dev.dev_union().pointer).events.axis as *mut _ as _,
                                   this.axis_listener() as *mut _ as _);
                     // Call user-defined callback
-                    this.data.pointer_added(dev.clone())
+                    this.data.pointer_added(&dev)
                 },
                 _ => unimplemented!(), // TODO FIXME We _really_ shouldn't panic here
             }
         }
-        this.data.input_added(dev)
+        this.data.input_added(&dev)
     };
     remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
-        // TODO Ensure safety
-        this.data.input_removed(Device::from_ptr(data as *mut wlr_input_device))
+        this.data.input_removed(&Device::from_ptr(data as *mut wlr_input_device))
     };
     key_listener => key_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         let key = KeyEvent::from_ptr(data as *mut wlr_event_keyboard_key);
-        this.data.key(key)
+        this.data.key(&key)
     };
     motion_listener => motion_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
-        // Ensure safety
-        this.data.motion(Device::from_ptr(data as *mut wlr_input_device))
+        this.data.motion(&Device::from_ptr(data as *mut wlr_input_device))
     };
     motion_absolute_listener => motion_absolute_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
-        // Ensure safety
-        this.data.motion_absolute(Device::from_ptr(data as *mut wlr_input_device))
+        this.data.motion_absolute(&Device::from_ptr(data as *mut wlr_input_device))
     };
     button_listener => button_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
-        // Ensure safety
-        this.data.button(pointer::ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button))
+        this.data.button(&pointer::ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button))
     };
     axis_listener => axis_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
-        // Ensure safety
-        this.data.axis(Device::from_ptr(data as *mut wlr_input_device))
+        this.data.axis(&Device::from_ptr(data as *mut wlr_input_device))
     };
 ]);
 

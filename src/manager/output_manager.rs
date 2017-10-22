@@ -11,7 +11,7 @@ use wlroots_sys::{wlr_output, wlr_output_mode, wlr_output_set_mode};
 /// Handles output addition and removal.
 pub trait OutputManagerHandler {
     /// Called whenever an output is added.
-    fn output_added(&mut self, output: Output) {
+    fn output_added(&mut self, output: &Output) {
         wlr_log!(L_DEBUG, "output added {:?}", output);
         // TODO Shouldn't require unsafety here
         unsafe {
@@ -23,15 +23,15 @@ pub trait OutputManagerHandler {
     }
 
     /// Called whenever an output is removed.
-    fn output_removed(&mut self, Output) {
+    fn output_removed(&mut self, &Output) {
         // TODO
     }
     /// Called every time the output frame is updated.
-    fn output_frame(&mut self, Output) {
+    fn output_frame(&mut self, &Output) {
         // TODO
     }
     /// Called every time the output resolution is updated.
-    fn output_resolution(&mut self, Output) {
+    fn output_resolution(&mut self, &Output) {
         // TODO
     }
 }
@@ -46,18 +46,18 @@ wayland_listener!(OutputManager, Box<OutputManagerHandler>, [
         wl_signal_add(&mut (*data).events.resolution as *mut _ as _,
                       this.resolution_listener() as _);
         // TODO Ensure safety
-        this.data.output_added(Output::from_ptr(data as *mut wlr_output))
+        this.data.output_added(&Output::from_ptr(data as *mut wlr_output))
     };
     remove_listener => remove_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
         // TODO Ensure safety
-        this.data.output_removed(Output::from_ptr(data as *mut wlr_output))
+        this.data.output_removed(&Output::from_ptr(data as *mut wlr_output))
     };
     frame_listener => frame_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
         // TODO Ensure safety
-        this.data.output_frame(Output::from_ptr(data as *mut wlr_output))
+        this.data.output_frame(&Output::from_ptr(data as *mut wlr_output))
     };
     resolution_listener => resolution_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
         // TODO Ensure safety
-        this.data.output_resolution(Output::from_ptr(data as *mut wlr_output))
+        this.data.output_resolution(&Output::from_ptr(data as *mut wlr_output))
     };
 ]);

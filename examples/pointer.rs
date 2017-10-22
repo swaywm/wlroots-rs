@@ -9,7 +9,7 @@ use wlroots::manager::{InputManagerHandler, OutputManagerHandler};
 use wlroots::output::{Output, OutputLayout};
 use wlroots::pointer;
 use wlroots::wlroots_sys::gl;
-use wlroots::wlroots_sys::wlr_button_state::{WLR_BUTTON_RELEASED};
+use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 
 struct OutputHandler {
     color: Rc<Cell<[f32; 4]>>,
@@ -46,7 +46,10 @@ impl OutputManagerHandler for OutputHandler {
     fn output_frame(&mut self, output: Output) {
         output.make_current();
         unsafe {
-            gl::ClearColor(self.color.get()[0], self.color.get()[1], self.color.get()[2], 1.0);
+            gl::ClearColor(self.color.get()[0],
+                           self.color.get()[1],
+                           self.color.get()[2],
+                           1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
         }
         output.swap_buffers();
@@ -79,7 +82,7 @@ fn managers(mut cursor: Cursor) -> (OutputHandler, InputHandler) {
      },
      InputHandler {
          color: color.clone(),
-         default_color: color.get(),
+         default_color: color.get()
      })
 }
 

@@ -5,7 +5,7 @@ use std::time::Instant;
 use wlroots::compositor::Compositor;
 use wlroots::device::Device;
 use wlroots::key_event::KeyEvent;
-use wlroots::manager::{InputManagerHandler, OutputManagerHandler};
+use wlroots::manager::{InputManagerHandler, KeyboardHandler, OutputManagerHandler};
 use wlroots::output::Output;
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -16,17 +16,12 @@ struct OutputHandler {
     last_frame: Instant
 }
 
-struct InputManager {
-    dev: Option<Device>
-}
+struct InputManager;
+struct Keyboard;
 
-impl InputManagerHandler for InputManager {
-    fn keyboard_added(&mut self, dev: Device) {
-        self.dev = Some(dev)
-    }
-
-    fn key(&mut self, key_event: KeyEvent) {
-        let keys = key_event.get_input_keys(self.dev.clone().unwrap());
+impl KeyboardHandler for Keyboard {
+    fn on_key(&mut self, dev: &Device, key_event: KeyEvent) {
+        let keys = key_event.get_input_keys(dev);
         for key in keys {
             if key == KEY_Escape {
                 wlroots::terminate()
@@ -35,8 +30,14 @@ impl InputManagerHandler for InputManager {
     }
 }
 
+impl InputManagerHandler for InputManager {
+    fn keyboard_added(&mut self, _: &Device) -> Box<KeyboardHandler> {
+        Box::new(Keyboard)
+    }
+}
+
 impl OutputManagerHandler for OutputHandler {
-    fn output_frame(&mut self, output: Output) {
+    fn output_frame(&mut self, output: &Output) {
         let now = Instant::now();
         let delta = now.duration_since(self.last_frame);
         let seconds_delta = delta.as_secs();
@@ -63,7 +64,7 @@ impl OutputManagerHandler for OutputHandler {
 }
 
 fn main() {
-    let input_manager = InputManager { dev: None };
+    let input_manager = InputManager;
     let output_manager = OutputHandler {
         color: [0.0, 0.0, 0.0],
         dec: 0,
