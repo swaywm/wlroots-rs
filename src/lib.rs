@@ -11,8 +11,10 @@ pub extern crate xkbcommon;
 mod macros;
 pub mod manager;
 pub mod compositor;
+pub mod cursor;
 pub mod output;
 pub mod device;
+pub mod pointer;
 pub mod key_event;
 mod utils;
 

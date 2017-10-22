@@ -3,6 +3,7 @@
 //! initialization.
 
 use device::Device;
+use pointer;
 use key_event::KeyEvent;
 use libc;
 use std::env;
@@ -10,7 +11,7 @@ use utils::safe_as_cstring;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_event_keyboard_key, wlr_input_device, wlr_input_device_type,
                   wlr_keyboard_set_keymap, xkb_context_new, xkb_context_unref,
-                  xkb_keymap_new_from_names, xkb_rule_names};
+                  xkb_keymap_new_from_names, xkb_rule_names, wlr_event_pointer_button};
 use wlroots_sys::xkb_context_flags::*;
 use wlroots_sys::xkb_keymap_compile_flags::*;
 
@@ -46,7 +47,7 @@ pub trait InputManagerHandler {
         // TODO
     }
 
-    fn button(&mut self, Device) {
+    fn button(&mut self, pointer::ButtonEvent) {
         // TODO
     }
 
@@ -105,7 +106,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
     };
     button_listener => button_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         // Ensure safety
-        this.data.button(Device::from_ptr(data as *mut wlr_input_device))
+        this.data.button(pointer::ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button))
     };
     axis_listener => axis_notify:  |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         // Ensure safety
