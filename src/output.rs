@@ -1,5 +1,5 @@
 use std::ffi::CStr;
-use wlroots_sys::{list_t, wlr_output, wlr_output__bindgen_ty_1};
+use wlroots_sys::{list_t, wlr_output, wlr_output__bindgen_ty_1, wlr_output_make_current, wlr_output_swap_buffers};
 
 /// A wrapper around a wlr_output.
 #[derive(Debug)]
@@ -37,6 +37,18 @@ impl Output {
             CStr::from_ptr((*self.output).model.as_ptr())
                 .to_string_lossy()
                 .into_owned()
+        }
+    }
+
+    pub fn make_current(&self) {
+        unsafe {
+            wlr_output_make_current(self.output)
+        }
+    }
+
+    pub fn swap_buffers(&self) {
+        unsafe {
+            wlr_output_swap_buffers(self.output)
         }
     }
 

@@ -7,7 +7,7 @@ use wlroots::device::Device;
 use wlroots::key_event::KeyEvent;
 use wlroots::manager::{InputManagerHandler, OutputManagerHandler};
 use wlroots::output::Output;
-use wlroots::wlroots_sys::{gl, wlr_output_make_current, wlr_output_swap_buffers};
+use wlroots::wlroots_sys::{gl};
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 struct OutputHandler {
@@ -53,13 +53,12 @@ impl OutputManagerHandler for OutputHandler {
         }
         self.last_frame = now;
         // NOTE gl functions will probably always be unsafe.
-        // NOTE wlr_output_* functions will be wrapped eventually.
+        output.make_current();
         unsafe {
-            wlr_output_make_current(output.to_ptr());
             gl::ClearColor(self.color[0], self.color[1], self.color[2], 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
-            wlr_output_swap_buffers(output.to_ptr());
         }
+        output.swap_buffers()
     }
 }
 
