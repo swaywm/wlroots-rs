@@ -29,23 +29,20 @@ struct InputHandler {
 }
 
 impl OutputManagerHandler for OutputHandler {
-    fn output_added(&mut self, output: Output) {
+    fn output_added(&mut self, mut output: Output) {
         let xcursor = self.xcursor.borrow();
-        let cursor = self.cursor.borrow_mut();
+        let mut cursor = self.cursor.borrow_mut();
         let image = &xcursor.images()[0];
-        /*
         // TODO use output config if present instead of auto
-        self.layout.add_auto();
+        self.layout.add_auto(&mut output);
         // example_config_configure_cursor
-        if !output.set_cursor(image.buffer, image.width, image.width, image.height, image.hotspot_x, image.hotspot_y) {
+        if output.set_cursor(image).is_err() {
             wlr_log!(L_DEBUG, "Failed to set hardware cursor");
             return
         }
-        // TODO This looks like it was set by the previous thing?
-        // If this works, that's bad because we have a refcell...
-        // (e.g: DATA RACE)
-        cursor.warp(None, cursor.x, cursor.y);
-        */
+        let (x, y) = cursor.coords();
+        // https://en.wikipedia.org/wiki/Mouse_warping
+        cursor.warp(None, x, y);
     }
 }
 

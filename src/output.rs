@@ -1,7 +1,8 @@
+use cursor::XCursorImage;
 use std::ffi::CStr;
 use wlroots_sys::{list_t, wlr_output, wlr_output__bindgen_ty_1, wlr_output_layout,
                   wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_make_current,
-                  wlr_output_swap_buffers};
+                  wlr_output_swap_buffers, wlr_output_layout_add_auto, wlr_output_set_cursor};
 
 /// A wrapper around a wlr_output.
 #[derive(Debug)]
@@ -21,6 +22,15 @@ pub struct OutputLayout {
 // probably only in certain methods.
 
 impl Output {
+    pub fn set_cursor<'cursor>(&mut self, image: &'cursor XCursorImage<'cursor>) -> Result<(), ()>{
+        unsafe {
+            match wlr_output_set_cursor(self.output, image.buffer.as_ptr(), image.width as i32, image.width, image.height, image.hotspot_x as i32, image.hotspot_y as i32) {
+                true => Ok(()),
+                false => Err(())
+            }
+        }
+    }
+
     /// Gets the name of the output in UTF-8.
     pub fn name(&self) -> String {
         unsafe {
@@ -88,6 +98,12 @@ impl Output {
 impl OutputLayout {
     pub fn new() -> Self {
         unsafe { OutputLayout { layout: wlr_output_layout_create() } }
+    }
+
+    pub fn add_auto(&mut self, output: &mut Output) {
+        unsafe {
+            wlr_output_layout_add_auto(self.layout, output.to_ptr())
+        }
     }
 
     pub unsafe fn as_ptr(&self) -> *mut wlr_output_layout {

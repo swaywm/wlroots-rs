@@ -1,11 +1,12 @@
 //! Wrapper for wlr_cursor
 
+use device::Device;
 use output::OutputLayout;
 use std::{ptr, slice, mem};
 use utils::safe_as_cstring;
 use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
                   wlr_cursor_destroy, wlr_cursor_set_xcursor, wlr_xcursor, wlr_xcursor_theme,
-                  wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load, wlr_xcursor_image};
+                  wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load, wlr_xcursor_image, wlr_cursor_warp};
 
 #[derive(Debug)]
 pub struct Cursor {
@@ -31,6 +32,19 @@ impl Cursor {
             } else {
                 Some(Cursor { cursor })
             }
+        }
+    }
+
+    pub fn coords(&self) -> (f64, f64) {
+        unsafe {
+            ((*self.cursor).x, (*self.cursor).y)
+        }
+    }
+
+    pub fn warp(&mut self, dev: Option<Device>, x: f64, y: f64) -> bool {
+        unsafe {
+            let dev_ptr = dev.map(|dev| dev.to_ptr()).unwrap_or(ptr::null_mut());
+            wlr_cursor_warp(self.cursor, dev_ptr, x, y)
         }
     }
 
