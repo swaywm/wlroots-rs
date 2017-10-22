@@ -1,5 +1,7 @@
 //! Wrapper for wlr_cursor
 
+use std::rc::Rc;
+use std::cell::RefCell;
 use device::Device;
 use output::OutputLayout;
 use std::{ptr, slice, mem};
@@ -11,7 +13,8 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create
 #[derive(Debug)]
 pub struct Cursor {
     cursor: *mut wlr_cursor,
-    xcursor: Option<XCursor>
+    xcursor: Option<XCursor>,
+    layout: Option<Rc<RefCell<OutputLayout>>>
 }
 
 #[derive(Debug)]
@@ -31,7 +34,7 @@ impl Cursor {
             if cursor.is_null() {
                 None
             } else {
-                Some(Cursor { cursor, xcursor: None })
+                Some(Cursor { cursor, xcursor: None, layout: None })
             }
         }
     }
@@ -61,11 +64,19 @@ impl Cursor {
         self.xcursor.as_ref()
     }
 
-    pub unsafe fn attach_output_layout(&mut self, layout: &mut OutputLayout) {
-        // FIXME TODO How do we ensure that layout lives long enough for the
-        // cursor to use the pointer? We control the destrucion of layout,
-        // which dies when its scope ends. Perhaps we need lifetime annotations here.
-        wlr_cursor_attach_output_layout(self.cursor, layout.as_ptr())
+    /// Attaches an output layout to the cursor.
+    /// The layout specifies the boundaries of the cursor, i.e where it can go.
+    pub fn attach_output_layout(&mut self, layout: Rc<RefCell<OutputLayout>>) {
+        unsafe {
+            // NOTE Rationale for why the pointer isn't leaked from the refcell:
+            // * A pointer is not stored to the layout, the internal state is just updated.
+            wlr_cursor_attach_output_layout(self.cursor, layout.borrow_mut().as_ptr());
+            self.layout = Some(layout);
+        }
+    }
+
+    pub fn output_layout(&self) -> &Option<Rc<RefCell<OutputLayout>>> {
+        &self.layout
     }
 }
 
