@@ -1,3 +1,4 @@
+#[macro_use]
 extern crate wlroots;
 
 use std::cell::{Cell, RefCell};
@@ -29,11 +30,22 @@ struct InputHandler {
 
 impl OutputManagerHandler for OutputHandler {
     fn output_added(&mut self, output: Output) {
-        // TODO set cursor on screen
-        // To do that, we need to have cursor and xcursor shared between
-        // the InputHandler and the OutputHandler...
-        // hmm, This screams Rc + Refcell, but I don't want to do that unless
-        // I have to.
+        let xcursor = self.xcursor.borrow();
+        let cursor = self.cursor.borrow_mut();
+        let image = &xcursor.images()[0];
+        /*
+        // TODO use output config if present instead of auto
+        self.layout.add_auto();
+        // example_config_configure_cursor
+        if !output.set_cursor(image.buffer, image.width, image.width, image.height, image.hotspot_x, image.hotspot_y) {
+            wlr_log!(L_DEBUG, "Failed to set hardware cursor");
+            return
+        }
+        // TODO This looks like it was set by the previous thing?
+        // If this works, that's bad because we have a refcell...
+        // (e.g: DATA RACE)
+        cursor.warp(None, cursor.x, cursor.y);
+        */
     }
 }
 

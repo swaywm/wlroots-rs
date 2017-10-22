@@ -1,11 +1,11 @@
 //! Wrapper for wlr_cursor
 
 use output::OutputLayout;
-use std::ptr;
+use std::{ptr, slice, mem};
 use utils::safe_as_cstring;
 use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
                   wlr_cursor_destroy, wlr_cursor_set_xcursor, wlr_xcursor, wlr_xcursor_theme,
-                  wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load};
+                  wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load, wlr_xcursor_image};
 
 #[derive(Debug)]
 pub struct Cursor {
@@ -87,4 +87,38 @@ impl XCursor {
     pub fn as_raw(&mut self) -> *mut wlr_xcursor {
         self.xcursor
     }
+
+    pub fn images<'cursor>(&'cursor self) -> Vec<XCursorImage<'cursor>> {
+        unsafe {
+            let image_ptr = (*self.xcursor).images as *const *const wlr_xcursor_image;
+            let length = (*self.xcursor).image_count;
+            let cursors_slice: &'cursor [*const wlr_xcursor_image] =
+                slice::from_raw_parts::<'cursor, *const wlr_xcursor_image>(image_ptr, length as usize);
+            let mut result = Vec::with_capacity(cursors_slice.len());
+            for cursor in cursors_slice {
+                result.push(
+                    XCursorImage {
+                        width: (**cursor).width,
+                        height: (**cursor).height,
+                        hotspot_x: (**cursor).hotspot_x,
+                        hotspot_y: (**cursor).hotspot_y,
+                        delay: (**cursor).delay,
+                        buffer: slice::from_raw_parts::<'cursor, u8>((**cursor).buffer as *const u8,
+                                                                     (**cursor).width as usize *
+                                                                     (**cursor).height as usize *
+                                                                     mem::size_of::<u32>())})
+            }
+            result
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct XCursorImage<'cursor> {
+    pub width: u32,
+    pub height: u32,
+    pub hotspot_x: u32,
+    pub hotspot_y: u32,
+    pub delay: u32,
+    pub buffer: &'cursor [u8]
 }
