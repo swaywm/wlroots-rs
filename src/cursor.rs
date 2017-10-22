@@ -10,7 +10,8 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create
 
 #[derive(Debug)]
 pub struct Cursor {
-    cursor: *mut wlr_cursor
+    cursor: *mut wlr_cursor,
+    xcursor: Option<XCursor>
 }
 
 #[derive(Debug)]
@@ -30,7 +31,7 @@ impl Cursor {
             if cursor.is_null() {
                 None
             } else {
-                Some(Cursor { cursor })
+                Some(Cursor { cursor, xcursor: None })
             }
         }
     }
@@ -48,9 +49,16 @@ impl Cursor {
         }
     }
 
-    // TODO What's stopping me from not droping the xcursor now?
-    pub unsafe fn set_xcursor(&mut self, xcursor: &mut XCursor) {
-        wlr_cursor_set_xcursor(self.cursor, xcursor.as_raw())
+    pub fn set_xcursor(&mut self, xcursor: Option<XCursor>) {
+        self.xcursor = xcursor;
+        unsafe {
+            let xcursor_ptr = self.xcursor.as_mut().map(|xcursor| xcursor.as_raw()).unwrap_or(ptr::null_mut());
+            wlr_cursor_set_xcursor(self.cursor, xcursor_ptr)
+        }
+    }
+
+    pub fn xcursor(&self) -> Option<&XCursor> {
+        self.xcursor.as_ref()
     }
 
     pub unsafe fn attach_output_layout(&mut self, layout: &mut OutputLayout) {
@@ -98,7 +106,7 @@ impl XCursorTheme {
 }
 
 impl XCursor {
-    pub fn as_raw(&mut self) -> *mut wlr_xcursor {
+    pub unsafe fn as_raw(&mut self) -> *mut wlr_xcursor {
         self.xcursor
     }
 
