@@ -5,6 +5,7 @@
 use libc;
 use output::Output;
 use wayland_sys::server::signal::wl_signal_add;
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wlr_output, wlr_output_mode, wlr_output_set_mode};
 
 
@@ -15,8 +16,12 @@ pub trait OutputManagerHandler {
         wlr_log!(L_DEBUG, "output added {:?}", output);
         // TODO Shouldn't require unsafety here
         unsafe {
-            if (*output.modes()).length > 0 {
-                let first_mode_ptr = (*output.modes()).items.offset(0) as *mut wlr_output_mode;
+            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                       wl_list_length,
+                                       output.modes() as _);
+            if length > 0 {
+                let first_mode_ptr: *mut wlr_output_mode = 0 as *mut _;
+                container_of!(&mut (*(*output.modes()).prev) as *mut _, wlr_output_mode, link);
                 wlr_output_set_mode(output.to_ptr(), first_mode_ptr);
             }
         }

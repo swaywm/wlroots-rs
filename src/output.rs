@@ -1,6 +1,6 @@
 use cursor::XCursorImage;
 use std::ffi::CStr;
-use wlroots_sys::{list_t, wlr_output, wlr_output__bindgen_ty_1, wlr_output_layout,
+use wlroots_sys::{wl_list, wlr_output, wlr_output__bindgen_ty_1, wlr_output_layout,
                   wlr_output_layout_add_auto, wlr_output_layout_create, wlr_output_layout_destroy,
                   wlr_output_make_current, wlr_output_set_cursor, wlr_output_swap_buffers};
 
@@ -83,8 +83,8 @@ impl Output {
     }
 
     // TODO Wrap this somehow? Hmm
-    pub unsafe fn modes(&self) -> *mut list_t {
-        (*self.output).modes
+    pub unsafe fn modes(&self) -> *mut wl_list {
+        &mut (*self.output).modes
     }
 
     // FIXME Really need to change the name of this type
