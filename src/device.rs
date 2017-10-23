@@ -1,4 +1,4 @@
-use wlroots_sys::{wlr_input_device, wlr_input_device_type, wlr_input_device_events};
+use wlroots_sys::{wlr_input_device, wlr_input_device_events, wlr_input_device_type};
 
 /// Wrapper for wlr_input_device
 #[derive(Debug)]
