@@ -148,12 +148,12 @@ impl XCursor {
                                 hotspot_x: (**cursor).hotspot_x,
                                 hotspot_y: (**cursor).hotspot_y,
                                 delay: (**cursor).delay,
-                                buffer: slice::from_raw_parts::<'cursor, u8>((**cursor).buffer as
+                                buffer:
+                                    slice::from_raw_parts::<'cursor, u8>((**cursor).buffer as
                                                                              *const u8,
-                                                                             (**cursor).width as
-                                                                             usize *
+                                                                         (**cursor).width as usize *
                                                                              (**cursor).height as
-                                                                             usize *
+                                                                                 usize *
                                                                              mem::size_of::<u32>())
                             })
             }

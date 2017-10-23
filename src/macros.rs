@@ -112,7 +112,9 @@ macro_rules! wlr_log {
 /// Passing a pointer of unsized data to C is UB, don't do it.
 #[macro_export]
 macro_rules! wayland_listener {
-    ($struct_name: ident, $data: ty, $([$($listener: ident => $listener_func: ident : |$($func_arg:ident: $func_type:ty,)*| unsafe $body: block;)*])+) => {
+    ($struct_name: ident, $data: ty, $([
+        $($listener: ident => $listener_func: ident :
+          |$($func_arg:ident: $func_type:ty,)*| unsafe $body: block;)*])+) => {
         #[repr(C)]
         pub struct $struct_name {
             data: $data,
@@ -139,11 +141,14 @@ macro_rules! wayland_listener {
                 })
             }
 
-            $($(pub unsafe extern "C" fn $listener(&mut self) -> *mut $crate::wlroots_sys::wl_listener {
+            $($(pub unsafe extern "C" fn $listener(&mut self)
+                                                   -> *mut $crate::wlroots_sys::wl_listener {
                 &mut self.$listener as *mut _
             })*)*
 
-            $($(pub unsafe extern "C" fn $listener_func(listener: *mut $crate::wlroots_sys::wl_listener, data: *mut libc::c_void) {
+            $($(pub unsafe extern "C" fn $listener_func(listener:
+                                                        *mut $crate::wlroots_sys::wl_listener,
+                                                        data: *mut libc::c_void) {
                 let manager: &mut $struct_name = &mut (*container_of!(listener,
                                                                       $struct_name,
                                                                       $listener));

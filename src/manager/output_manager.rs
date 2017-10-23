@@ -29,7 +29,8 @@ pub trait OutputManagerHandler {
 wayland_listener!(OutputManager, Box<OutputManagerHandler>, [
     add_listener => add_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
         let data = data as *mut wlr_output;
-        if let Some(output) = this.data.output_added(&mut output::Output::from_ptr(data as *mut wlr_output)) {
+        let mut output = output::Output::from_ptr(data as *mut wlr_output);
+        if let Some(output) = this.data.output_added(&mut output) {
             let mut output = Output::new(output);
             // Add the output frame event to this manager
             wl_signal_add(&mut (*data).events.frame as *mut _ as _,

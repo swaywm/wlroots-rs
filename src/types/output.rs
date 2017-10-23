@@ -24,12 +24,12 @@ impl Output {
     pub fn set_cursor<'cursor>(&mut self, image: &'cursor XCursorImage<'cursor>) -> Result<(), ()> {
         unsafe {
             match wlr_output_set_cursor(self.output,
-                                        image.buffer.as_ptr(),
-                                        image.width as i32,
-                                        image.width,
-                                        image.height,
-                                        image.hotspot_x as i32,
-                                        image.hotspot_y as i32) {
+                                          image.buffer.as_ptr(),
+                                          image.width as i32,
+                                          image.width,
+                                          image.height,
+                                          image.hotspot_x as i32,
+                                          image.hotspot_y as i32) {
                 true => Ok(()),
                 false => Err(()),
             }
@@ -39,15 +39,14 @@ impl Output {
     /// Sets the best modesetting for an output.
     pub fn choose_best_mode(&mut self) {
         unsafe {
-            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                       wl_list_length,
-                                       self.modes() as _);
+            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_list_length, self.modes() as _);
             if length > 0 {
                 // TODO Better logging
                 wlr_log!(L_DEBUG, "output added {:?}", self);
                 let first_mode_ptr: *mut wlr_output_mode;
-                first_mode_ptr =
-                    container_of!(&mut (*(*self.modes()).prev) as *mut _, wlr_output_mode, link);
+                first_mode_ptr = container_of!(&mut (*(*self.modes()).prev) as *mut _,
+                                               wlr_output_mode,
+                                               link);
                 wlr_output_set_mode(self.to_ptr(), first_mode_ptr);
             }
         }
