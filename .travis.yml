@@ -24,21 +24,14 @@ arch:
     - libcap
   script:
     - export RUST_BACKTRACE=full
-    - ls -R
     - git submodule update --init --recursive
-    - cd wlroots-sys
-    - cd wlroots
+
     # Build wlroots
-    - meson build
-    - ninja -C build
+    - cd wlroots-sys; cd wlroots; meson build; ninja -C build
 
     # Build wlroots-sys
-    - cd ../
-    - cargo build --verbose --features static
-    - cargo test --features static
-    - cargo doc
+    - cd wlroots-sys; cargo build --verbose --features static; cargo test --features static
 
-    - cd ../
     # Build wlroots-rs
     - cargo build --verbose
     - cargo fmt -- --write-mode=diff
