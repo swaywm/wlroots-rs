@@ -4,4 +4,6 @@
 [![Build Status](https://travis-ci.org/way-cooler/wlroots-rs.svg?branch=master)](https://travis-ci.org/way-cooler/wlroots-rs/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/way-cooler/wlroots-rs/)
 
-Safe Rust bindings for wlroots (https://github.com/SirCmpwn/wlroots)
+Safe Rust bindings for [wlroots](https://github.com/SirCmpwn/wlroots).
+
+# [Documentation](https://docs.rs/wlroots/)
