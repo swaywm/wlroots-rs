@@ -23,6 +23,7 @@ arch:
     - libxkbcommon
     - libcap
     - rust
+    - clang
   script:
     - export RUST_BACKTRACE=full
     - git submodule update --init --recursive
