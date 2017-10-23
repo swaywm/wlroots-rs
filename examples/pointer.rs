@@ -18,8 +18,7 @@ struct OutputHandler {
 }
 
 struct InputHandler {
-    color: Rc<Cell<[f32; 4]>>,
-    default_color: [f32; 4]
+    color: Rc<Cell<[f32; 4]>>
 }
 
 struct Pointer {
@@ -78,7 +77,7 @@ impl InputManagerHandler for InputHandler {
     fn pointer_added(&mut self, _: &mut Device) -> Option<Box<PointerHandler>> {
         Some(Box::new(Pointer {
                           color: self.color.clone(),
-                          default_color: self.default_color.clone()
+                          default_color: self.color.get()
                       }))
     }
 }
@@ -95,10 +94,7 @@ fn managers(mut cursor: Cursor) -> (OutputHandler, InputHandler) {
          color: color.clone(),
          cursor: cursor
      },
-     InputHandler {
-         color: color.clone(),
-         default_color: color.get()
-     })
+     InputHandler { color: color.clone() })
 }
 
 fn main() {

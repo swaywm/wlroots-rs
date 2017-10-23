@@ -30,13 +30,13 @@ wayland_listener!(Pointer, (Device, Box<PointerHandler>), [
         let event = pointer::ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button);
         this.data.1.on_button(&mut this.data.0, &event)
     };
-    motion_listener => motion_notify:  |this: &mut Pointer, data: *mut libc::c_void,| unsafe {
+    motion_listener => motion_notify:  |this: &mut Pointer, _data: *mut libc::c_void,| unsafe {
         this.data.1.on_motion(&mut this.data.0)
     };
-    motion_absolute_listener => motion_absolute_notify:  |this: &mut Pointer, data: *mut libc::c_void,| unsafe {
+    motion_absolute_listener => motion_absolute_notify:  |this: &mut Pointer, _data: *mut libc::c_void,| unsafe {
         this.data.1.on_motion_absolute(&mut this.data.0)
     };
-    axis_listener => axis_notify:  |this: &mut Pointer, data: *mut libc::c_void,| unsafe {
+    axis_listener => axis_notify:  |this: &mut Pointer, _data: *mut libc::c_void,| unsafe {
         this.data.1.on_axis(&mut this.data.0)
     };
 ]);

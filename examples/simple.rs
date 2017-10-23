@@ -20,7 +20,7 @@ struct InputManager;
 struct Keyboard;
 
 impl KeyboardHandler for Keyboard {
-    fn on_key(&mut self, dev: &Device, key_event: KeyEvent) {
+    fn on_key(&mut self, dev: &mut Device, key_event: &KeyEvent) {
         let keys = key_event.get_input_keys(dev);
         for key in keys {
             if key == KEY_Escape {
@@ -31,13 +31,13 @@ impl KeyboardHandler for Keyboard {
 }
 
 impl InputManagerHandler for InputManager {
-    fn keyboard_added(&mut self, _: &Device) -> Box<KeyboardHandler> {
+    fn keyboard_added(&mut self, _: &mut Device) -> Option<Box<KeyboardHandler>> {
         Some(Box::new(Keyboard))
     }
 }
 
 impl OutputManagerHandler for OutputHandler {
-    fn output_frame(&mut self, output: &Output) {
+    fn output_frame(&mut self, output: &mut Output) {
         let now = Instant::now();
         let delta = now.duration_since(self.last_frame);
         let seconds_delta = delta.as_secs();
