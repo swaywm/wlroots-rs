@@ -16,9 +16,16 @@ impl KeyEvent {
     }
 
     // TODO should probably go somewhere else..like a keyboard struct or something
-    pub fn get_input_keys(&self, dev: &Device) -> Vec<xkb_keysym_t> {
+    // Unsafe until we can do that, because it uses a union internally and we don't
+    // check it to be sure we got the right thing.
+    //
+    // Make a sexy Keyboard struct that holds the device, pass that to the on_key
+    // callback
+    // instead
+    pub unsafe fn get_input_keys(&self, dev: &Device) -> Vec<xkb_keysym_t> {
         let mut syms = 0 as *const xkb_keysym_t;
         unsafe {
+            // TODO check union (or better yet, wrap it!)
             let key_length = xkb_state_key_get_syms((*dev.dev_union().keyboard).xkb_state,
                                                     self.keycode(),
                                                     &mut syms);

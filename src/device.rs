@@ -6,11 +6,6 @@ pub struct Device {
     device: *mut wlr_input_device
 }
 
-// TODO We are assuming the device is live in these functions,
-// but we need some way to ensure that.
-// E.g we need to control access to the "Device",
-// probably only in certain methods.
-
 impl Device {
     /// Get the type of the device
     pub fn dev_type(&self) -> wlr_input_device_type {

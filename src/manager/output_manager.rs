@@ -20,13 +20,9 @@ pub trait OutputManagerHandler {
         // TODO
     }
     /// Called every time the output frame is updated.
-    fn output_frame(&mut self, &mut output::Output) {
-        // TODO
-    }
+    fn output_frame(&mut self, &mut output::Output) {}
     /// Called every time the output resolution is updated.
-    fn output_resolution(&mut self, &mut output::Output) {
-        // TODO
-    }
+    fn output_resolution(&mut self, &mut output::Output) {}
 }
 
 wayland_listener!(OutputManager, Box<OutputManagerHandler>, [

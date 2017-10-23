@@ -23,7 +23,7 @@ struct Keyboard;
 
 impl KeyboardHandler for Keyboard {
     fn on_key(&mut self, dev: &mut Device, key_event: &KeyEvent) {
-        let keys = key_event.get_input_keys(dev);
+        let keys = unsafe { key_event.get_input_keys(dev) };
         for key in keys {
             if key == KEY_Escape {
                 wlroots::terminate()

@@ -8,22 +8,14 @@ use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_po
 
 pub trait PointerHandler {
     /// Callback that is triggered when the pointer moves.
-    fn on_motion(&mut self, &mut Device, &pointer::MotionEvent) {
-        // TODO
-    }
+    fn on_motion(&mut self, &mut Device, &pointer::MotionEvent) {}
 
-    fn on_motion_absolute(&mut self, &mut Device, &pointer::AbsoluteMotionEvent) {
-        // TODO
-    }
+    fn on_motion_absolute(&mut self, &mut Device, &pointer::AbsoluteMotionEvent) {}
 
     /// Callback that is triggered when the buttons on the pointer are pressed.
-    fn on_button(&mut self, &mut Device, &pointer::ButtonEvent) {
-        // TODO
-    }
+    fn on_button(&mut self, &mut Device, &pointer::ButtonEvent) {}
 
-    fn on_axis(&mut self, &mut Device, &pointer::AxisEvent) {
-        // TODO
-    }
+    fn on_axis(&mut self, &mut Device, &pointer::AxisEvent) {}
 }
 
 wayland_listener!(Pointer, (Device, Box<PointerHandler>), [

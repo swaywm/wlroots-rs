@@ -16,9 +16,7 @@ use wlroots_sys::xkb_keymap_compile_flags::*;
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
     /// Callback triggered when an input device is added.
-    fn input_added(&mut self, &mut Device) {
-        // TODO?
-    }
+    fn input_added(&mut self, &mut Device) {}
 
     /// Callback triggered when an input device is removed.
     fn input_removed(&mut self, &mut Device) {
@@ -37,7 +35,6 @@ pub trait InputManagerHandler {
 wayland_listener!(InputManager, Box<InputManagerHandler>, [
     add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         use self::wlr_input_device_type::*;
-        // TODO Ensure safety
         let mut dev = Device::from_ptr(data as *mut wlr_input_device);
         unsafe {
             match dev.dev_type() {
@@ -82,10 +79,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
 ]);
 
 pub unsafe fn add_keyboard(dev: &mut Device) {
-    // TODO add to global list
-
     // Set the XKB settings
-    // TODO Unwrapping here is a little bad
     let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES").unwrap_or("".into()));
     let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL").unwrap_or("".into()));
     let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT").unwrap_or("".into()));

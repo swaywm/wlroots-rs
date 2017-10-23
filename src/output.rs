@@ -12,7 +12,6 @@ pub struct Output {
     output: *mut wlr_output
 }
 
-// TODO Call it Layout, use as output::Layout?
 #[derive(Debug)]
 pub struct OutputLayout {
     layout: *mut wlr_output_layout

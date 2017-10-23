@@ -1,4 +1,5 @@
-//! TODO fill this in
+//! Main entry point to the library.
+//! See examples for documentation on how to use this struct.
 
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
 use std::cell::UnsafeCell;
@@ -66,8 +67,6 @@ impl Compositor {
             wlr_log!(L_DEBUG,
                      "Running compositor on wayland display {}",
                      socket_name);
-            // TODO Why am I doing this again? It's because of nesting, there's
-            // an issue somewhere highlighting why this is the way it is
             env::set_var("_WAYLAND_DISPLAY", socket_name);
             Compositor {
                 input_manager,
@@ -81,7 +80,6 @@ impl Compositor {
 
     /// Enters the wayland event loop. Won't return until the compositor is
     /// shut off
-    // TODO Return ! ?
     pub fn run(self) {
         unsafe {
             let compositor = UnsafeCell::new(self);
