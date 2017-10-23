@@ -16,8 +16,8 @@
 //! impl wlroots::manager::InputManagerHandler for InputManager {}
 //!
 //! fn main() {
-//! wlroots::compositor::Compositor::new(Box::new(InputManager),
-//! Box::new(OutputManager)).run()
+//!     wlroots::compositor::Compositor::new(Box::new(InputManager),
+//!     Box::new(OutputManager)).run()
 //! }
 //! ```
 
@@ -42,5 +42,10 @@ pub type NotifyFunc = unsafe extern "C" fn(*mut wlroots_sys::wl_listener, *mut l
 
 
 pub use self::compositor::{Compositor, terminate};
+pub use self::events::key_events::*;
+pub use self::events::pointer_events::*;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
                         PointerHandler};
+pub use self::types::cursor::*;
+pub use self::types::device::*;
+pub use self::types::output::*;

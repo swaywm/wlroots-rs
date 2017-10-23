@@ -1,11 +1,9 @@
 extern crate wlroots;
 
 use std::time::Instant;
-use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler};
 
-use wlroots::Compositor;
-use wlroots::events::key_events::KeyEvent;
-use wlroots::types::device::Device;
+use wlroots::{Compositor, Device, KeyEvent};
+use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler};
 use wlroots::types::output;
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
