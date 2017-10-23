@@ -1,9 +1,10 @@
 use cursor::XCursorImage;
 use std::ffi::CStr;
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wlr_output, wlr_output__bindgen_ty_1, wlr_output_layout,
                   wlr_output_layout_add_auto, wlr_output_layout_create, wlr_output_layout_destroy,
-                  wlr_output_make_current, wlr_output_set_cursor, wlr_output_swap_buffers, wlr_output_mode, wlr_output_set_mode};
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+                  wlr_output_make_current, wlr_output_mode, wlr_output_set_cursor,
+                  wlr_output_set_mode, wlr_output_swap_buffers};
 
 /// A wrapper around a wlr_output.
 #[derive(Debug)]
@@ -43,7 +44,8 @@ impl Output {
                 // TODO Better logging
                 wlr_log!(L_DEBUG, "output added {:?}", self);
                 let first_mode_ptr: *mut wlr_output_mode;
-                first_mode_ptr = container_of!(&mut (*(*self.modes()).prev) as *mut _, wlr_output_mode, link);
+                first_mode_ptr =
+                    container_of!(&mut (*(*self.modes()).prev) as *mut _, wlr_output_mode, link);
                 wlr_output_set_mode(self.to_ptr(), first_mode_ptr);
             }
         }

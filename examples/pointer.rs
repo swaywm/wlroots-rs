@@ -7,7 +7,8 @@ use wlroots::compositor::Compositor;
 use wlroots::cursor::{Cursor, XCursorTheme};
 use wlroots::device::Device;
 use wlroots::key_event::KeyEvent;
-use wlroots::manager::{InputManagerHandler, KeyboardHandler, OutputManagerHandler, PointerHandler, OutputHandler};
+use wlroots::manager::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
+                       PointerHandler};
 use wlroots::output::{self, OutputLayout};
 use wlroots::pointer;
 use wlroots::wlroots_sys::gl;
@@ -16,20 +17,22 @@ use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 struct OutputManager {
     color: Rc<Cell<[f32; 4]>>,
-    cursor: Cursor
+    cursor: Rc<RefCell<Cursor>>
 }
 
 struct Output {
-    color: Rc<Cell<[f32; 4]>>,
+    color: Rc<Cell<[f32; 4]>>
 }
 
 struct InputManager {
-    color: Rc<Cell<[f32; 4]>>
+    color: Rc<Cell<[f32; 4]>>,
+    cursor: Rc<RefCell<Cursor>>
 }
 
 struct Pointer {
     color: Rc<Cell<[f32; 4]>>,
-    default_color: [f32; 4]
+    default_color: [f32; 4],
+    cursor: Rc<RefCell<Cursor>>
 }
 
 struct Keyboard;
@@ -37,7 +40,7 @@ struct Keyboard;
 impl OutputManagerHandler for OutputManager {
     fn output_added(&mut self, output: &mut output::Output) -> Option<Box<OutputHandler>> {
         output.choose_best_mode();
-        let cursor = &mut self.cursor;
+        let mut cursor = self.cursor.borrow_mut();
         {
             let xcursor = cursor.xcursor().expect("XCursor was not set!");
             let image = &xcursor.images()[0];
@@ -49,15 +52,13 @@ impl OutputManagerHandler for OutputManager {
             layout.borrow_mut().add_auto(output);
             if output.set_cursor(image).is_err() {
                 wlr_log!(L_DEBUG, "Failed to set hardware cursor");
-                return None
+                return None;
             }
         }
         let (x, y) = cursor.coords();
         // https://en.wikipedia.org/wiki/Mouse_warping
         cursor.warp(None, x, y);
-        Some(Box::new(Output {
-            color: self.color.clone()
-        }))
+        Some(Box::new(Output { color: self.color.clone() }))
     }
 }
 
@@ -73,6 +74,13 @@ impl KeyboardHandler for Keyboard {
 }
 
 impl PointerHandler for Pointer {
+    fn on_motion(&mut self, _: &mut Device, event: &pointer::MotionEvent) {
+        let (delta_x, delta_y) = event.delta();
+        self.cursor
+            .borrow_mut()
+            .move_to(&event.device(), delta_x, delta_y);
+    }
+
     fn on_button(&mut self, _: &mut Device, event: &pointer::ButtonEvent) {
         if event.state() == WLR_BUTTON_RELEASED {
             self.color.set(self.default_color.clone())
@@ -85,7 +93,7 @@ impl PointerHandler for Pointer {
 
     fn on_axis(&mut self, _: &mut Device, event: &pointer::AxisEvent) {
         for color_byte in &mut self.default_color[..3] {
-            *color_byte += if event.delta() > 0.0 { -0.05 }  else { 0.05 };
+            *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
             if *color_byte > 1.0 {
                 *color_byte = 1.0
             }
@@ -115,7 +123,8 @@ impl InputManagerHandler for InputManager {
     fn pointer_added(&mut self, _: &mut Device) -> Option<Box<PointerHandler>> {
         Some(Box::new(Pointer {
                           color: self.color.clone(),
-                          default_color: self.color.get()
+                          default_color: self.color.get(),
+                          cursor: self.cursor.clone()
                       }))
     }
 
@@ -130,13 +139,16 @@ fn managers(mut cursor: Cursor) -> (OutputManager, InputManager) {
     // e.g what's stopping me from simply dropping layout now that I gave it to
     // cursor?
     cursor.attach_output_layout(layout);
-    let cursor = cursor;
+    let cursor = Rc::new(RefCell::new(cursor));
     let color = Rc::new(Cell::new([0.25, 0.25, 0.25, 1.0]));
     (OutputManager {
          color: color.clone(),
-         cursor: cursor
+         cursor: cursor.clone()
      },
-     InputManager { color: color.clone() })
+     InputManager {
+         color: color.clone(),
+         cursor: cursor.clone()
+     })
 }
 
 fn main() {

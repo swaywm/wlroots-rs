@@ -7,8 +7,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use utils::safe_as_cstring;
 use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
-                  wlr_cursor_destroy, wlr_cursor_set_xcursor, wlr_cursor_warp, wlr_xcursor,
-                  wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
+                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_set_xcursor, wlr_cursor_warp,
+                  wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
                   wlr_xcursor_theme_load};
 
 #[derive(Debug)]
@@ -79,6 +79,10 @@ impl Cursor {
             wlr_cursor_attach_output_layout(self.cursor, layout.borrow_mut().as_ptr());
             self.layout = Some(layout);
         }
+    }
+
+    pub fn move_to(&mut self, dev: &Device, delta_x: f64, delta_y: f64) {
+        unsafe { wlr_cursor_move(self.cursor, dev.to_ptr(), delta_x, delta_y) }
     }
 
     pub fn output_layout(&self) -> &Option<Rc<RefCell<OutputLayout>>> {

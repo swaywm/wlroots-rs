@@ -5,7 +5,7 @@ use std::time::Instant;
 use wlroots::compositor::Compositor;
 use wlroots::device::Device;
 use wlroots::key_event::KeyEvent;
-use wlroots::manager::{InputManagerHandler, KeyboardHandler, OutputManagerHandler, OutputHandler};
+use wlroots::manager::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler};
 use wlroots::output;
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -42,10 +42,10 @@ impl OutputManagerHandler for OutputManager {
     fn output_added(&mut self, output: &mut output::Output) -> Option<Box<OutputHandler>> {
         output.choose_best_mode();
         Some(Box::new(Output {
-            color: [0.0, 0.0, 0.0],
-            dec: 0,
-            last_frame: Instant::now()
-        }))
+                          color: [0.0, 0.0, 0.0],
+                          dec: 0,
+                          last_frame: Instant::now()
+                      }))
     }
 }
 
@@ -78,7 +78,7 @@ impl OutputHandler for Output {
 
 fn main() {
     let input_manager = InputManager;
-    let output_manager = OutputManager;;
+    let output_manager = OutputManager;
     let compositor = Compositor::new(Box::new(input_manager), Box::new(output_manager));
     compositor.run();
 }

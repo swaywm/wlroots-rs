@@ -3,10 +3,10 @@
 //! initialization.
 
 use libc;
-use output;
 use manager::{Output, OutputHandler};
+use output;
 use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::{wlr_output};
+use wlroots_sys::wlr_output;
 
 /// Handles output addition and removal.
 pub trait OutputManagerHandler {
