@@ -38,7 +38,6 @@
 #include <wlr/types/wlr_xdg_shell_v6.h>
 
 /// Util includes
-#include <wlr/util/list.h>
 #include <wlr/util/log.h>
 
 /// Misc includes
