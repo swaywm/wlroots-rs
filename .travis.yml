@@ -39,7 +39,6 @@ arch:
     - cargo build --verbose
     - cargo fmt -- --write-mode=diff
     - cargo build --examples
-    - cargo test
     - cargo doc
 
 before_script:
