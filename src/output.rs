@@ -1,7 +1,7 @@
 use cursor::XCursorImage;
 use std::ffi::CStr;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wl_list, wlr_output, wlr_output__bindgen_ty_1, wlr_output_layout,
+use wlroots_sys::{wl_list, wlr_output, wlr_output_events, wlr_output_layout,
                   wlr_output_layout_add_auto, wlr_output_layout_create, wlr_output_layout_destroy,
                   wlr_output_make_current, wlr_output_mode, wlr_output_set_cursor,
                   wlr_output_set_mode, wlr_output_swap_buffers};
@@ -101,8 +101,7 @@ impl Output {
         &mut (*self.output).modes
     }
 
-    // FIXME Really need to change the name of this type
-    pub unsafe fn events(&self) -> wlr_output__bindgen_ty_1 {
+    pub unsafe fn events(&self) -> wlr_output_events {
         (*self.output).events
     }
 

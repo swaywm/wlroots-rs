@@ -1,4 +1,4 @@
-use wlroots_sys::{wlr_input_device, wlr_input_device__bindgen_ty_1, wlr_input_device_type};
+use wlroots_sys::{wlr_input_device, wlr_input_device_type, wlr_input_device_events};
 
 /// Wrapper for wlr_input_device
 #[derive(Debug)]
@@ -17,9 +17,8 @@ impl Device {
         unsafe { (*self.device).type_ }
     }
 
-    // TODO Fix name
     // TODO Wrapper around the union
-    pub unsafe fn dev_union(&self) -> wlr_input_device__bindgen_ty_1 {
+    pub unsafe fn dev_union(&self) -> wlr_input_device_events {
         (*self.device).__bindgen_anon_1
     }
 
