@@ -5,7 +5,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use wlroots::compositor::Compositor;
 use wlroots::cursor::{Cursor, XCursorTheme};
-use wlroots::manager::{InputManagerHandler, OutputManagerHandler};
+use wlroots::device::Device;
+use wlroots::manager::{InputManagerHandler, OutputManagerHandler, PointerHandler};
 use wlroots::output::{Output, OutputLayout};
 use wlroots::pointer;
 use wlroots::wlroots_sys::gl;
@@ -21,8 +22,25 @@ struct InputHandler {
     default_color: [f32; 4]
 }
 
+struct Pointer {
+    color: Rc<Cell<[f32; 4]>>,
+    default_color: [f32; 4]
+}
+
+impl PointerHandler for Pointer {
+    fn on_button(&mut self, _: &mut Device, event: &pointer::ButtonEvent) {
+        if event.state() == WLR_BUTTON_RELEASED {
+            self.color.set(self.default_color.clone())
+        } else {
+            let mut red: [f32; 4] = [0.25, 0.25, 0.25, 1.0];
+            red[event.button() as usize % 3] = 1.0;
+            self.color.set(red);
+        }
+    }
+}
+
 impl OutputManagerHandler for OutputHandler {
-    fn output_added(&mut self, mut output: Output) {
+    fn output_added(&mut self, output: &mut Output) {
         let cursor = &mut self.cursor;
         {
             let xcursor = cursor.xcursor().expect("XCursor was not set!");
@@ -32,7 +50,7 @@ impl OutputManagerHandler for OutputHandler {
                 .output_layout()
                 .as_ref()
                 .expect("Could not get output layout");
-            layout.borrow_mut().add_auto(&mut output);
+            layout.borrow_mut().add_auto(output);
             if output.set_cursor(image).is_err() {
                 wlr_log!(L_DEBUG, "Failed to set hardware cursor");
                 return;
@@ -43,7 +61,7 @@ impl OutputManagerHandler for OutputHandler {
         cursor.warp(None, x, y);
     }
 
-    fn output_frame(&mut self, output: Output) {
+    fn output_frame(&mut self, output: &mut Output) {
         output.make_current();
         unsafe {
             gl::ClearColor(self.color.get()[0],
@@ -57,14 +75,11 @@ impl OutputManagerHandler for OutputHandler {
 }
 
 impl InputManagerHandler for InputHandler {
-    fn button(&mut self, event: pointer::ButtonEvent) {
-        if event.state() == WLR_BUTTON_RELEASED {
-            self.color.set(self.default_color.clone())
-        } else {
-            let mut red: [f32; 4] = [0.25, 0.25, 0.25, 1.0];
-            red[event.button() as usize % 3] = 1.0;
-            self.color.set(red);
-        }
+    fn pointer_added(&mut self, _: &mut Device) -> Option<Box<PointerHandler>> {
+        Some(Box::new(Pointer {
+                          color: self.color.clone(),
+                          default_color: self.default_color.clone()
+                      }))
     }
 }
 

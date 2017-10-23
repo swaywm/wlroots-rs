@@ -32,7 +32,7 @@ impl KeyboardHandler for Keyboard {
 
 impl InputManagerHandler for InputManager {
     fn keyboard_added(&mut self, _: &Device) -> Box<KeyboardHandler> {
-        Box::new(Keyboard)
+        Some(Box::new(Keyboard))
     }
 }
 

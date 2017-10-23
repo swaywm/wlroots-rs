@@ -6,7 +6,7 @@ use libc;
 use wlroots_sys::wlr_event_keyboard_key;
 
 pub trait KeyboardHandler {
-    /// Callback that is triggered when a key is pressed
+    /// Callback that is triggered when a key is pressed.
     fn on_key(&mut self, &Device, KeyEvent) {}
 }
 
