@@ -32,7 +32,7 @@ arch:
     - cd wlroots-sys; cd wlroots; meson build; ninja -C build
 
     # Build wlroots-sys
-    - cd wlroots-sys; cargo build --verbose --features static; cargo test --features static
+    - cd wlroots-sys; cargo build --verbose --features static
 
     # Build wlroots-rs
     - cargo build --verbose
