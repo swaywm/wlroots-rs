@@ -1,6 +1,8 @@
 language: rust
 sudo: "required"
-dist: trusty
+compilers:
+  - gcc
+  - clang
 cache: cargo
 rust:
   - stable
@@ -9,35 +11,43 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
-notifications:
-  email: false
-  slack: way-cooler:bf5hNqMVmTgFpHo3a3vgZ4Lu
-before_install:
-  - sudo add-apt-repository -y ppa:wayland.admin/daily-builds
-  - sudo apt-get update -qq
-  - sudo apt-get install -y libwayland-dev libwayland-protocols-dev libegl1-mesa-dev libgles2-mesa-dev udev asciidoc libudev-dev libinput-dev libxkbcommon-dev libcap-dev libgbm-dev systemd libdbus-1-dev ninja-build
-before_script:
-  -  which rustfmt || cargo install rustfmt
-script:
-  - export RUST_BACKTRACE=full
-  - git submodule update --init --recursive
-  - cd wlroots-sys
-  - cd wlroots
-  # Build wlroots
-  - meson build
-  - ninja -C build
-  
-  # Build wlroots-sys
-  - cd ../
-  - cargo build --verbose --features static
-  - cargo test --features static
-  - cargo doc
+arch:
+  packages:
+    - meson
+    - ninja
+    - wayland
+    - wayland-protocols
+    - mesa
+    - libinput
+    - pixman
+    - libxkbcommon
+    - libcap
+  script:
+    - export RUST_BACKTRACE=full
+    - ls -R
+    - git submodule update --init --recursive
+    - cd wlroots-sys
+    - cd wlroots
+    # Build wlroots
+    - meson build
+    - ninja -C build
 
-  - cd ../
-  # Build wlroots-rs
-  - cargo build --verbose
-  - cargo fmt -- --write-mode=diff
-  - cargo build --examples
-  - cargo test
-  - cargo doc
+    # Build wlroots-sys
+    - cd ../
+    - cargo build --verbose --features static
+    - cargo test --features static
+    - cargo doc
+
+    - cd ../
+    # Build wlroots-rs
+    - cargo build --verbose
+    - cargo fmt -- --write-mode=diff
+    - cargo build --examples
+    - cargo test
+    - cargo doc
+
+before_script:
+  - which rustfmt || cargo install rustfmt
+script:
+  - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
 
