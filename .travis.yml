@@ -26,6 +26,7 @@ arch:
     - clang
   script:
     - export RUST_BACKTRACE=full
+    - cargo install rustfmt
     - git submodule update --init --recursive
 
     # Build wlroots
