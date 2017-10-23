@@ -64,11 +64,11 @@ impl Output {
         }
     }
 
-    pub fn make_current(&self) {
+    pub fn make_current(&mut self) {
         unsafe { wlr_output_make_current(self.output) }
     }
 
-    pub fn swap_buffers(&self) {
+    pub fn swap_buffers(&mut self) {
         unsafe { wlr_output_swap_buffers(self.output) }
     }
 
