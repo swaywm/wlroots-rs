@@ -2,7 +2,8 @@ use cursor::XCursorImage;
 use std::ffi::CStr;
 use wlroots_sys::{wl_list, wlr_output, wlr_output__bindgen_ty_1, wlr_output_layout,
                   wlr_output_layout_add_auto, wlr_output_layout_create, wlr_output_layout_destroy,
-                  wlr_output_make_current, wlr_output_set_cursor, wlr_output_swap_buffers};
+                  wlr_output_make_current, wlr_output_set_cursor, wlr_output_swap_buffers, wlr_output_mode, wlr_output_set_mode};
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
 /// A wrapper around a wlr_output.
 #[derive(Debug)]
@@ -16,11 +17,6 @@ pub struct OutputLayout {
     layout: *mut wlr_output_layout
 }
 
-// TODO We are assuming the output is live in these functions,
-// but we need some way to ensure that.
-// E.g we need to control access to the "Output",
-// probably only in certain methods.
-
 impl Output {
     pub fn set_cursor<'cursor>(&mut self, image: &'cursor XCursorImage<'cursor>) -> Result<(), ()> {
         unsafe {
@@ -33,6 +29,22 @@ impl Output {
                                         image.hotspot_y as i32) {
                 true => Ok(()),
                 false => Err(()),
+            }
+        }
+    }
+
+    /// Sets the best modesetting for an output.
+    pub fn choose_best_mode(&mut self) {
+        unsafe {
+            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                       wl_list_length,
+                                       self.modes() as _);
+            if length > 0 {
+                // TODO Better logging
+                wlr_log!(L_DEBUG, "output added {:?}", self);
+                let first_mode_ptr: *mut wlr_output_mode;
+                first_mode_ptr = container_of!(&mut (*(*self.modes()).prev) as *mut _, wlr_output_mode, link);
+                wlr_output_set_mode(self.to_ptr(), first_mode_ptr);
             }
         }
     }

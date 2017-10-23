@@ -3,40 +3,28 @@
 //! initialization.
 
 use libc;
-use output::Output;
+use output;
+use manager::{Output, OutputHandler};
 use wayland_sys::server::signal::wl_signal_add;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wlr_output, wlr_output_mode, wlr_output_set_mode};
-
+use wlroots_sys::{wlr_output};
 
 /// Handles output addition and removal.
 pub trait OutputManagerHandler {
     /// Called whenever an output is added.
-    fn output_added(&mut self, output: &mut Output) {
-        wlr_log!(L_DEBUG, "output added {:?}", output);
-        // TODO Shouldn't require unsafety here
-        unsafe {
-            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                       wl_list_length,
-                                       output.modes() as _);
-            if length > 0 {
-                let first_mode_ptr: *mut wlr_output_mode = 0 as *mut _;
-                container_of!(&mut (*(*output.modes()).prev) as *mut _, wlr_output_mode, link);
-                wlr_output_set_mode(output.to_ptr(), first_mode_ptr);
-            }
-        }
+    fn output_added(&mut self, _: &mut output::Output) -> Option<Box<OutputHandler>> {
+        None
     }
 
     /// Called whenever an output is removed.
-    fn output_removed(&mut self, &mut Output) {
+    fn output_removed(&mut self, &mut output::Output) {
         // TODO
     }
     /// Called every time the output frame is updated.
-    fn output_frame(&mut self, &mut Output) {
+    fn output_frame(&mut self, &mut output::Output) {
         // TODO
     }
     /// Called every time the output resolution is updated.
-    fn output_resolution(&mut self, &mut Output) {
+    fn output_resolution(&mut self, &mut output::Output) {
         // TODO
     }
 }
@@ -44,25 +32,18 @@ pub trait OutputManagerHandler {
 wayland_listener!(OutputManager, Box<OutputManagerHandler>, [
     add_listener => add_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
         let data = data as *mut wlr_output;
-        // Add the output frame event to this manager
-        wl_signal_add(&mut (*data).events.frame as *mut _ as _,
-                      this.frame_listener() as _);
-        // Add the output resolution event to this manager
-        wl_signal_add(&mut (*data).events.resolution as *mut _ as _,
-                      this.resolution_listener() as _);
-        // TODO Ensure safety
-        this.data.output_added(&mut Output::from_ptr(data as *mut wlr_output))
+        if let Some(output) = this.data.output_added(&mut output::Output::from_ptr(data as *mut wlr_output)) {
+            let mut output = Output::new(output);
+            // Add the output frame event to this manager
+            wl_signal_add(&mut (*data).events.frame as *mut _ as _,
+                        output.frame_listener() as _);
+            // Add the output resolution event to this manager
+            wl_signal_add(&mut (*data).events.resolution as *mut _ as _,
+                        output.resolution_listener() as _);
+            ::std::mem::forget(output);
+        }
     };
     remove_listener => remove_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
-        // TODO Ensure safety
-        this.data.output_removed(&mut Output::from_ptr(data as *mut wlr_output))
-    };
-    frame_listener => frame_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
-        // TODO Ensure safety
-        this.data.output_frame(&mut Output::from_ptr(data as *mut wlr_output))
-    };
-    resolution_listener => resolution_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
-        // TODO Ensure safety
-        this.data.output_resolution(&mut Output::from_ptr(data as *mut wlr_output))
+        this.data.output_removed(&mut output::Output::from_ptr(data as *mut wlr_output))
     };
 ]);

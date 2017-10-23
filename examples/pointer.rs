@@ -7,19 +7,23 @@ use wlroots::compositor::Compositor;
 use wlroots::cursor::{Cursor, XCursorTheme};
 use wlroots::device::Device;
 use wlroots::key_event::KeyEvent;
-use wlroots::manager::{InputManagerHandler, KeyboardHandler, OutputManagerHandler, PointerHandler};
-use wlroots::output::{Output, OutputLayout};
+use wlroots::manager::{InputManagerHandler, KeyboardHandler, OutputManagerHandler, PointerHandler, OutputHandler};
+use wlroots::output::{self, OutputLayout};
 use wlroots::pointer;
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
-struct OutputHandler {
+struct OutputManager {
     color: Rc<Cell<[f32; 4]>>,
     cursor: Cursor
 }
 
-struct InputHandler {
+struct Output {
+    color: Rc<Cell<[f32; 4]>>,
+}
+
+struct InputManager {
     color: Rc<Cell<[f32; 4]>>
 }
 
@@ -29,6 +33,33 @@ struct Pointer {
 }
 
 struct Keyboard;
+
+impl OutputManagerHandler for OutputManager {
+    fn output_added(&mut self, output: &mut output::Output) -> Option<Box<OutputHandler>> {
+        output.choose_best_mode();
+        let cursor = &mut self.cursor;
+        {
+            let xcursor = cursor.xcursor().expect("XCursor was not set!");
+            let image = &xcursor.images()[0];
+            // TODO use output config if present instead of auto
+            let layout = cursor
+                .output_layout()
+                .as_ref()
+                .expect("Could not get output layout");
+            layout.borrow_mut().add_auto(output);
+            if output.set_cursor(image).is_err() {
+                wlr_log!(L_DEBUG, "Failed to set hardware cursor");
+                return None
+            }
+        }
+        let (x, y) = cursor.coords();
+        // https://en.wikipedia.org/wiki/Mouse_warping
+        cursor.warp(None, x, y);
+        Some(Box::new(Output {
+            color: self.color.clone()
+        }))
+    }
+}
 
 impl KeyboardHandler for Keyboard {
     fn on_key(&mut self, dev: &mut Device, key_event: &KeyEvent) {
@@ -66,29 +97,8 @@ impl PointerHandler for Pointer {
     }
 }
 
-impl OutputManagerHandler for OutputHandler {
-    fn output_added(&mut self, output: &mut Output) {
-        let cursor = &mut self.cursor;
-        {
-            let xcursor = cursor.xcursor().expect("XCursor was not set!");
-            let image = &xcursor.images()[0];
-            // TODO use output config if present instead of auto
-            let layout = cursor
-                .output_layout()
-                .as_ref()
-                .expect("Could not get output layout");
-            layout.borrow_mut().add_auto(output);
-            if output.set_cursor(image).is_err() {
-                wlr_log!(L_DEBUG, "Failed to set hardware cursor");
-                return;
-            }
-        }
-        let (x, y) = cursor.coords();
-        // https://en.wikipedia.org/wiki/Mouse_warping
-        cursor.warp(None, x, y);
-    }
-
-    fn output_frame(&mut self, output: &mut Output) {
+impl OutputHandler for Output {
+    fn output_frame(&mut self, output: &mut output::Output) {
         output.make_current();
         unsafe {
             gl::ClearColor(self.color.get()[0],
@@ -101,7 +111,7 @@ impl OutputManagerHandler for OutputHandler {
     }
 }
 
-impl InputManagerHandler for InputHandler {
+impl InputManagerHandler for InputManager {
     fn pointer_added(&mut self, _: &mut Device) -> Option<Box<PointerHandler>> {
         Some(Box::new(Pointer {
                           color: self.color.clone(),
@@ -114,7 +124,7 @@ impl InputManagerHandler for InputHandler {
     }
 }
 
-fn managers(mut cursor: Cursor) -> (OutputHandler, InputHandler) {
+fn managers(mut cursor: Cursor) -> (OutputManager, InputManager) {
     let layout = Rc::new(RefCell::new(OutputLayout::new()));
     // TODO Ensure this can be safe...
     // e.g what's stopping me from simply dropping layout now that I gave it to
@@ -122,11 +132,11 @@ fn managers(mut cursor: Cursor) -> (OutputHandler, InputHandler) {
     cursor.attach_output_layout(layout);
     let cursor = cursor;
     let color = Rc::new(Cell::new([0.25, 0.25, 0.25, 1.0]));
-    (OutputHandler {
+    (OutputManager {
          color: color.clone(),
          cursor: cursor
      },
-     InputHandler { color: color.clone() })
+     InputManager { color: color.clone() })
 }
 
 fn main() {
