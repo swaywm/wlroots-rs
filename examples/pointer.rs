@@ -6,11 +6,13 @@ use std::rc::Rc;
 use wlroots::compositor::Compositor;
 use wlroots::cursor::{Cursor, XCursorTheme};
 use wlroots::device::Device;
-use wlroots::manager::{InputManagerHandler, OutputManagerHandler, PointerHandler};
+use wlroots::key_event::KeyEvent;
+use wlroots::manager::{InputManagerHandler, KeyboardHandler, OutputManagerHandler, PointerHandler};
 use wlroots::output::{Output, OutputLayout};
 use wlroots::pointer;
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
+use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 struct OutputHandler {
     color: Rc<Cell<[f32; 4]>>,
@@ -24,6 +26,19 @@ struct InputHandler {
 struct Pointer {
     color: Rc<Cell<[f32; 4]>>,
     default_color: [f32; 4]
+}
+
+struct Keyboard;
+
+impl KeyboardHandler for Keyboard {
+    fn on_key(&mut self, dev: &mut Device, key_event: &KeyEvent) {
+        let keys = key_event.get_input_keys(dev);
+        for key in keys {
+            if key == KEY_Escape {
+                wlroots::terminate()
+            }
+        }
+    }
 }
 
 impl PointerHandler for Pointer {
@@ -79,6 +94,10 @@ impl InputManagerHandler for InputHandler {
                           color: self.color.clone(),
                           default_color: self.color.get()
                       }))
+    }
+
+    fn keyboard_added(&mut self, _: &mut Device) -> Option<Box<KeyboardHandler>> {
+        Some(Box::new(Keyboard))
     }
 }
 
