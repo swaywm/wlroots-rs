@@ -3,9 +3,9 @@ extern crate wlroots;
 struct InputManager;
 struct OutputManager;
 
-impl wlroots::manager::OutputManagerHandler for OutputManager {}
-impl wlroots::manager::InputManagerHandler for InputManager {}
+impl wlroots::OutputManagerHandler for OutputManager {}
+impl wlroots::InputManagerHandler for InputManager {}
 
 fn main() {
-    wlroots::compositor::Compositor::new(Box::new(InputManager), Box::new(OutputManager)).run()
+    wlroots::Compositor::new(Box::new(InputManager), Box::new(OutputManager)).run()
 }

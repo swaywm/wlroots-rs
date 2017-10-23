@@ -1,4 +1,5 @@
-use device::Device;
+use types::device::Device;
+
 use wlroots_sys::{wlr_event_keyboard_key, xkb_keysym_t, xkb_state_key_get_syms};
 
 #[derive(Debug)]

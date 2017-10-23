@@ -1,8 +1,9 @@
 //! Handler for keyboards
 
-use device::Device;
-use key_event::KeyEvent;
+use events::key_events::KeyEvent;
 use libc;
+
+use types::device::Device;
 use wlroots_sys::wlr_event_keyboard_key;
 
 pub trait KeyboardHandler {

@@ -1,5 +1,8 @@
-use cursor::XCursorImage;
+
+
 use std::ffi::CStr;
+use types::cursor::XCursorImage;
+
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wlr_output, wlr_output_events, wlr_output_layout,
                   wlr_output_layout_add_auto, wlr_output_layout_create, wlr_output_layout_destroy,

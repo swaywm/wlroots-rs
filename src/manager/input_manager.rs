@@ -3,9 +3,9 @@
 //! initialization.
 
 use super::{Keyboard, KeyboardHandler, Pointer, PointerHandler};
-use device::Device;
 use libc;
 use std::env;
+use types::device::Device;
 use utils::safe_as_cstring;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_input_device, wlr_input_device_type, wlr_keyboard_set_keymap,

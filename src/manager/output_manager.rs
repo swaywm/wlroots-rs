@@ -2,9 +2,10 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
+
 use libc;
 use manager::{Output, OutputHandler};
-use output;
+use types::output;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_output;
 

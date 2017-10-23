@@ -1,7 +1,7 @@
 //! Handler for outputs
 
 use libc;
-use output;
+use types::output;
 use wlroots_sys::wlr_output;
 
 pub trait OutputHandler {

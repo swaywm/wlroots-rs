@@ -3,14 +3,14 @@ extern crate wlroots;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use wlroots::compositor::Compositor;
-use wlroots::cursor::{Cursor, XCursorTheme};
-use wlroots::device::Device;
-use wlroots::key_event::KeyEvent;
-use wlroots::manager::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
-                       PointerHandler};
-use wlroots::output::{self, OutputLayout};
-use wlroots::pointer;
+use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
+              PointerHandler};
+use wlroots::Compositor;
+use wlroots::events::key_events::KeyEvent;
+use wlroots::events::pointer_events;
+use wlroots::types::cursor::{Cursor, XCursorTheme};
+use wlroots::types::device::Device;
+use wlroots::types::output::{self, OutputLayout};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -74,14 +74,14 @@ impl KeyboardHandler for Keyboard {
 }
 
 impl PointerHandler for Pointer {
-    fn on_motion(&mut self, _: &mut Device, event: &pointer::MotionEvent) {
+    fn on_motion(&mut self, _: &mut Device, event: &pointer_events::MotionEvent) {
         let (delta_x, delta_y) = event.delta();
         self.cursor
             .borrow_mut()
             .move_to(&event.device(), delta_x, delta_y);
     }
 
-    fn on_button(&mut self, _: &mut Device, event: &pointer::ButtonEvent) {
+    fn on_button(&mut self, _: &mut Device, event: &pointer_events::ButtonEvent) {
         if event.state() == WLR_BUTTON_RELEASED {
             self.color.set(self.default_color.clone())
         } else {
@@ -91,7 +91,7 @@ impl PointerHandler for Pointer {
         }
     }
 
-    fn on_axis(&mut self, _: &mut Device, event: &pointer::AxisEvent) {
+    fn on_axis(&mut self, _: &mut Device, event: &pointer_events::AxisEvent) {
         for color_byte in &mut self.default_color[..3] {
             *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
             if *color_byte > 1.0 {
