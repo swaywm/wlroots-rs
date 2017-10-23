@@ -51,6 +51,19 @@ impl PointerHandler for Pointer {
             self.color.set(red);
         }
     }
+
+    fn on_axis(&mut self, _: &mut Device, event: &pointer::AxisEvent) {
+        for color_byte in &mut self.default_color[..3] {
+            *color_byte += if event.delta() > 0.0 { -0.05 }  else { 0.05 };
+            if *color_byte > 1.0 {
+                *color_byte = 1.0
+            }
+            if *color_byte < 0.0 {
+                *color_byte = 0.0
+            }
+        }
+        self.color.set(self.default_color)
+    }
 }
 
 impl OutputManagerHandler for OutputHandler {

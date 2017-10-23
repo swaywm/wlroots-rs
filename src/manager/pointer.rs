@@ -3,7 +3,7 @@
 use device::Device;
 use libc;
 use pointer;
-use wlroots_sys::wlr_event_pointer_button;
+use wlroots_sys::{wlr_event_pointer_button, wlr_event_pointer_axis};
 
 pub trait PointerHandler {
     /// Callback that is triggered when the pointer moves.
@@ -20,7 +20,7 @@ pub trait PointerHandler {
         // TODO
     }
 
-    fn on_axis(&mut self, &mut Device) {
+    fn on_axis(&mut self, &mut Device, &pointer::AxisEvent) {
         // TODO
     }
 }
@@ -36,7 +36,8 @@ wayland_listener!(Pointer, (Device, Box<PointerHandler>), [
     motion_absolute_listener => motion_absolute_notify:  |this: &mut Pointer, _data: *mut libc::c_void,| unsafe {
         this.data.1.on_motion_absolute(&mut this.data.0)
     };
-    axis_listener => axis_notify:  |this: &mut Pointer, _data: *mut libc::c_void,| unsafe {
-        this.data.1.on_axis(&mut this.data.0)
+    axis_listener => axis_notify:  |this: &mut Pointer, data: *mut libc::c_void,| unsafe {
+        let event = pointer::AxisEvent::from_ptr(data as *mut wlr_event_pointer_axis);
+        this.data.1.on_axis(&mut this.data.0, &event)
     };
 ]);

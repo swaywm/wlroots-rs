@@ -1,13 +1,17 @@
 //! Pointers and their events
 
-use wlroots_sys::{wlr_button_state, wlr_event_pointer_button};
+use wlroots_sys::{wlr_button_state, wlr_event_pointer_button, wlr_event_pointer_axis};
+
+pub struct AxisEvent {
+    event: *mut wlr_event_pointer_axis
+}
 
 pub struct ButtonEvent {
     event: *mut wlr_event_pointer_button
 }
 
 impl ButtonEvent {
-    pub unsafe fn from_ptr(event: *mut wlr_event_pointer_button) -> ButtonEvent {
+    pub unsafe fn from_ptr(event: *mut wlr_event_pointer_button) -> Self {
         ButtonEvent { event }
     }
 
@@ -17,5 +21,17 @@ impl ButtonEvent {
 
     pub fn button(&self) -> u32 {
         unsafe { (*self.event).button }
+    }
+}
+
+impl AxisEvent {
+    pub unsafe fn from_ptr(event: *mut wlr_event_pointer_axis) -> Self {
+        AxisEvent { event }
+    }
+
+    pub fn delta(&self) -> f64 {
+        unsafe {
+            (*self.event).delta
+        }
     }
 }
