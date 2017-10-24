@@ -3,7 +3,7 @@ extern crate wlroots;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use wlroots::{AxisEvent, ButtonEvent, Compositor, Cursor, Device, KeyEvent, MotionEvent,
+use wlroots::{AxisEvent, ButtonEvent, Compositor, Cursor, InputDevice, KeyEvent, MotionEvent,
               OutputLayout, XCursorTheme};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
               PointerHandler};
@@ -14,25 +14,25 @@ use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 struct OutputManager {
     color: Rc<Cell<[f32; 4]>>,
-    cursor: Rc<RefCell<Cursor>>
+    cursor: Rc<RefCell<Cursor>>,
 }
 
 struct Output {
-    color: Rc<Cell<[f32; 4]>>
+    color: Rc<Cell<[f32; 4]>>,
 }
 
 struct InputManager {
     color: Rc<Cell<[f32; 4]>>,
-    cursor: Rc<RefCell<Cursor>>
+    cursor: Rc<RefCell<Cursor>>,
 }
 
 struct Pointer {
     color: Rc<Cell<[f32; 4]>>,
     default_color: [f32; 4],
-    cursor: Rc<RefCell<Cursor>>
+    cursor: Rc<RefCell<Cursor>>,
 }
 
-struct Keyboard;
+struct ExKeyboardHandler;
 
 impl OutputManagerHandler for OutputManager {
     fn output_added(&mut self, output: &mut output::Output) -> Option<Box<OutputHandler>> {
@@ -42,8 +42,7 @@ impl OutputManagerHandler for OutputManager {
             let xcursor = cursor.xcursor().expect("XCursor was not set!");
             let image = &xcursor.images()[0];
             // TODO use output config if present instead of auto
-            let layout = cursor
-                .output_layout()
+            let layout = cursor.output_layout()
                 .as_ref()
                 .expect("Could not get output layout");
             layout.borrow_mut().add_auto(output);
@@ -59,10 +58,9 @@ impl OutputManagerHandler for OutputManager {
     }
 }
 
-impl KeyboardHandler for Keyboard {
-    fn on_key(&mut self, dev: &mut Device, key_event: &KeyEvent) {
-        let keys = unsafe { key_event.get_input_keys(dev) };
-        for key in keys {
+impl KeyboardHandler for ExKeyboardHandler {
+    fn on_key(&mut self, key_event: KeyEvent) {
+        for key in key_event.input_keys() {
             if key == KEY_Escape {
                 wlroots::terminate()
             }
@@ -71,14 +69,14 @@ impl KeyboardHandler for Keyboard {
 }
 
 impl PointerHandler for Pointer {
-    fn on_motion(&mut self, _: &mut Device, event: &MotionEvent) {
+    fn on_motion(&mut self, _: &mut InputDevice, event: &MotionEvent) {
         let (delta_x, delta_y) = event.delta();
         self.cursor
             .borrow_mut()
             .move_to(&event.device(), delta_x, delta_y);
     }
 
-    fn on_button(&mut self, _: &mut Device, event: &ButtonEvent) {
+    fn on_button(&mut self, _: &mut InputDevice, event: &ButtonEvent) {
         if event.state() == WLR_BUTTON_RELEASED {
             self.color.set(self.default_color.clone())
         } else {
@@ -88,7 +86,7 @@ impl PointerHandler for Pointer {
         }
     }
 
-    fn on_axis(&mut self, _: &mut Device, event: &AxisEvent) {
+    fn on_axis(&mut self, _: &mut InputDevice, event: &AxisEvent) {
         for color_byte in &mut self.default_color[..3] {
             *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
             if *color_byte > 1.0 {
@@ -117,16 +115,16 @@ impl OutputHandler for Output {
 }
 
 impl InputManagerHandler for InputManager {
-    fn pointer_added(&mut self, _: &mut Device) -> Option<Box<PointerHandler>> {
+    fn pointer_added(&mut self, _: &mut InputDevice) -> Option<Box<PointerHandler>> {
         Some(Box::new(Pointer {
-                          color: self.color.clone(),
-                          default_color: self.color.get(),
-                          cursor: self.cursor.clone()
-                      }))
+            color: self.color.clone(),
+            default_color: self.color.get(),
+            cursor: self.cursor.clone(),
+        }))
     }
 
-    fn keyboard_added(&mut self, _: &mut Device) -> Option<Box<KeyboardHandler>> {
-        Some(Box::new(Keyboard))
+    fn keyboard_added(&mut self, _: &mut InputDevice) -> Option<Box<KeyboardHandler>> {
+        Some(Box::new(ExKeyboardHandler))
     }
 }
 
@@ -140,19 +138,18 @@ fn managers(mut cursor: Cursor) -> (OutputManager, InputManager) {
     let color = Rc::new(Cell::new([0.25, 0.25, 0.25, 1.0]));
     (OutputManager {
          color: color.clone(),
-         cursor: cursor.clone()
+         cursor: cursor.clone(),
      },
      InputManager {
          color: color.clone(),
-         cursor: cursor.clone()
+         cursor: cursor.clone(),
      })
 }
 
 fn main() {
     let mut cursor = Cursor::new().expect("Could not create cursor");
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
-    let xcursor = xcursor_theme
-        .get_cursor("left_ptr".into())
+    let xcursor = xcursor_theme.get_cursor("left_ptr".into())
         .expect("Could not load cursor from theme");
     cursor.set_xcursor(Some(xcursor));
 

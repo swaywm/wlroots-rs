@@ -1,5 +1,3 @@
-
-
 use std::fmt;
 use wlroots_sys::{wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
                   wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap,
@@ -11,10 +9,15 @@ pub struct Keyboard {
 }
 
 impl Keyboard {
-    pub fn new(kb_pointer: *mut wlr_keyboard) -> Self {
+    pub(crate) fn new(kb_pointer: *mut wlr_keyboard) -> Self {
         Keyboard { keyboard: kb_pointer }
     }
 
+    pub(crate) unsafe fn to_ptr(&self) -> *mut wlr_keyboard {
+        self.keyboard
+    }
+
+    // TODO: Implement keymap wrapper?
     pub fn set_keymap(&mut self, keymap: *mut xkb_keymap) {
         unsafe {
             wlr_keyboard_set_keymap(self.keyboard, keymap);

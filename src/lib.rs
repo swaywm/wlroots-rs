@@ -48,4 +48,5 @@ pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputHandler, Out
                         PointerHandler};
 pub use self::types::cursor::*;
 pub use self::types::input_device::*;
+pub use self::types::keyboard::*;
 pub use self::types::output::*;
