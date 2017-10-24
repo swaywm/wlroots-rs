@@ -72,7 +72,7 @@ pub struct KeyboardModifier {
 macro_rules! keyboard_modifier_accessor {
     ($func_name: ident, $c_enum: expr) => [
         pub fn $func_name(&self) -> bool {
-            (self.modifiers | $c_enum as u32) != 0
+            (self.modifiers & $c_enum as u32) != 0
         }
     ]
 }
@@ -109,6 +109,6 @@ impl fmt::Display for KeyboardModifier {
             .map(|(st, _)| st)
             .collect();
 
-        write!(formatter, "Modifiers: {:?}", mods)
+        write!(formatter, "{:?}", mods)
     }
 }
