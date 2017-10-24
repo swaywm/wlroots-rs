@@ -47,5 +47,5 @@ pub use self::events::pointer_events::*;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
                         PointerHandler};
 pub use self::types::cursor::*;
-pub use self::types::device::*;
+pub use self::types::input_device::*;
 pub use self::types::output::*;

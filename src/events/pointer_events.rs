@@ -1,29 +1,29 @@
 //! Pointers and their events
 
-use types::device::Device;
+use types::input_device::InputDevice;
 
 use wlroots_sys::{wlr_button_state, wlr_event_pointer_axis, wlr_event_pointer_button,
                   wlr_event_pointer_motion, wlr_event_pointer_motion_absolute};
 
 pub struct AxisEvent {
-    event: *mut wlr_event_pointer_axis
+    event: *mut wlr_event_pointer_axis,
 }
 
 pub struct ButtonEvent {
-    event: *mut wlr_event_pointer_button
+    event: *mut wlr_event_pointer_button,
 }
 
 pub struct MotionEvent {
-    event: *mut wlr_event_pointer_motion
+    event: *mut wlr_event_pointer_motion,
 }
 
 pub struct AbsoluteMotionEvent {
-    event: *mut wlr_event_pointer_motion_absolute
+    event: *mut wlr_event_pointer_motion_absolute,
 }
 
 impl ButtonEvent {
     pub unsafe fn from_ptr(event: *mut wlr_event_pointer_button) -> Self {
-        ButtonEvent { event }
+        ButtonEvent { event: event }
     }
 
     pub fn state(&self) -> wlr_button_state {
@@ -37,7 +37,7 @@ impl ButtonEvent {
 
 impl AxisEvent {
     pub unsafe fn from_ptr(event: *mut wlr_event_pointer_axis) -> Self {
-        AxisEvent { event }
+        AxisEvent { event: event }
     }
 
     pub fn delta(&self) -> f64 {
@@ -47,11 +47,11 @@ impl AxisEvent {
 
 impl MotionEvent {
     pub unsafe fn from_ptr(event: *mut wlr_event_pointer_motion) -> Self {
-        MotionEvent { event }
+        MotionEvent { event: event }
     }
 
-    pub fn device(&self) -> Device {
-        unsafe { Device::from_ptr((*self.event).device) }
+    pub fn device(&self) -> InputDevice {
+        unsafe { InputDevice::from_ptr((*self.event).device) }
     }
 
     pub fn delta(&self) -> (f64, f64) {
@@ -61,10 +61,10 @@ impl MotionEvent {
 
 impl AbsoluteMotionEvent {
     pub unsafe fn from_ptr(event: *mut wlr_event_pointer_motion_absolute) -> Self {
-        AbsoluteMotionEvent { event }
+        AbsoluteMotionEvent { event: event }
     }
 
-    pub fn device(&self) -> Device {
-        unsafe { Device::from_ptr((*self.event).device) }
+    pub fn device(&self) -> InputDevice {
+        unsafe { InputDevice::from_ptr((*self.event).device) }
     }
 }

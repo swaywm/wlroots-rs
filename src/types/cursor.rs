@@ -4,7 +4,7 @@
 use std::{mem, ptr, slice};
 use std::cell::RefCell;
 use std::rc::Rc;
-use types::device::Device;
+use types::input_device::InputDevice;
 use types::output::OutputLayout;
 use utils::safe_as_cstring;
 
@@ -17,17 +17,17 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create
 pub struct Cursor {
     cursor: *mut wlr_cursor,
     xcursor: Option<XCursor>,
-    layout: Option<Rc<RefCell<OutputLayout>>>
+    layout: Option<Rc<RefCell<OutputLayout>>>,
 }
 
 #[derive(Debug)]
 pub struct XCursorTheme {
-    theme: *mut wlr_xcursor_theme
+    theme: *mut wlr_xcursor_theme,
 }
 
 #[derive(Debug)]
 pub struct XCursor {
-    xcursor: *mut wlr_xcursor
+    xcursor: *mut wlr_xcursor,
 }
 
 impl Cursor {
@@ -38,10 +38,10 @@ impl Cursor {
                 None
             } else {
                 Some(Cursor {
-                         cursor,
-                         xcursor: None,
-                         layout: None
-                     })
+                    cursor: cursor,
+                    xcursor: None,
+                    layout: None,
+                })
             }
         }
     }
@@ -50,7 +50,7 @@ impl Cursor {
         unsafe { ((*self.cursor).x, (*self.cursor).y) }
     }
 
-    pub fn warp(&mut self, dev: Option<Device>, x: f64, y: f64) -> bool {
+    pub fn warp(&mut self, dev: Option<InputDevice>, x: f64, y: f64) -> bool {
         unsafe {
             let dev_ptr = dev.map(|dev| dev.to_ptr()).unwrap_or(ptr::null_mut());
             wlr_cursor_warp(self.cursor, dev_ptr, x, y)
@@ -83,7 +83,7 @@ impl Cursor {
         }
     }
 
-    pub fn move_to(&mut self, dev: &Device, delta_x: f64, delta_y: f64) {
+    pub fn move_to(&mut self, dev: &InputDevice, delta_x: f64, delta_y: f64) {
         unsafe { wlr_cursor_move(self.cursor, dev.to_ptr(), delta_x, delta_y) }
     }
 
@@ -108,7 +108,7 @@ impl XCursorTheme {
             if theme.is_null() {
                 None
             } else {
-                Some(XCursorTheme { theme })
+                Some(XCursorTheme { theme: theme })
             }
         }
     }
@@ -119,7 +119,7 @@ impl XCursorTheme {
         if xcursor.is_null() {
             None
         } else {
-            Some(XCursor { xcursor })
+            Some(XCursor { xcursor: xcursor })
         }
     }
 
@@ -169,5 +169,5 @@ pub struct XCursorImage<'cursor> {
     pub hotspot_x: u32,
     pub hotspot_y: u32,
     pub delay: u32,
-    pub buffer: &'cursor [u8]
+    pub buffer: &'cursor [u8],
 }

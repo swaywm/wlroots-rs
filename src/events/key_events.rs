@@ -1,15 +1,15 @@
-use types::device::Device;
+use types::input_device::InputDevice;
 
 use wlroots_sys::{wlr_event_keyboard_key, xkb_keysym_t, xkb_state_key_get_syms};
 
 #[derive(Debug)]
 pub struct KeyEvent {
-    key: *mut wlr_event_keyboard_key
+    key: *mut wlr_event_keyboard_key,
 }
 
 impl KeyEvent {
     pub unsafe fn from_ptr(key: *mut wlr_event_keyboard_key) -> Self {
-        KeyEvent { key }
+        KeyEvent { key: key }
     }
 
     pub fn keycode(&self) -> u32 {
@@ -23,7 +23,7 @@ impl KeyEvent {
     // Make a sexy Keyboard struct that holds the device, pass that to the on_key
     // callback
     // instead
-    pub unsafe fn get_input_keys(&self, dev: &Device) -> Vec<xkb_keysym_t> {
+    pub unsafe fn get_input_keys(&self, dev: &InputDevice) -> Vec<xkb_keysym_t> {
         let mut syms = 0 as *const xkb_keysym_t;
         unsafe {
             // TODO check union (or better yet, wrap it!)

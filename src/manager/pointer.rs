@@ -3,22 +3,22 @@
 use events::pointer_events;
 
 use libc;
-use types::device::Device;
+use types::input_device::InputDevice;
 use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion};
 
 pub trait PointerHandler {
     /// Callback that is triggered when the pointer moves.
-    fn on_motion(&mut self, &mut Device, &pointer_events::MotionEvent) {}
+    fn on_motion(&mut self, &mut InputDevice, &pointer_events::MotionEvent) {}
 
-    fn on_motion_absolute(&mut self, &mut Device, &pointer_events::AbsoluteMotionEvent) {}
+    fn on_motion_absolute(&mut self, &mut InputDevice, &pointer_events::AbsoluteMotionEvent) {}
 
     /// Callback that is triggered when the buttons on the pointer are pressed.
-    fn on_button(&mut self, &mut Device, &pointer_events::ButtonEvent) {}
+    fn on_button(&mut self, &mut InputDevice, &pointer_events::ButtonEvent) {}
 
-    fn on_axis(&mut self, &mut Device, &pointer_events::AxisEvent) {}
+    fn on_axis(&mut self, &mut InputDevice, &pointer_events::AxisEvent) {}
 }
 
-wayland_listener!(Pointer, (Device, Box<PointerHandler>), [
+wayland_listener!(Pointer, (InputDevice, Box<PointerHandler>), [
     button_listener => key_notify: |this: &mut Pointer, data: *mut libc::c_void,| unsafe {
         let event = pointer_events::ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button);
         this.data.1.on_button(&mut this.data.0, &event)
