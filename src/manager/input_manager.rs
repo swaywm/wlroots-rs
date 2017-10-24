@@ -4,7 +4,7 @@
 
 use libc;
 use std::env;
-use super::{Keyboard, KeyboardHandler, Pointer, PointerHandler};
+use super::{KeyboardHandler, KeyboardWrapper, Pointer, PointerHandler};
 use types::input_device::InputDevice;
 use utils::safe_as_cstring;
 use wayland_sys::server::signal::wl_signal_add;
@@ -42,9 +42,8 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
                     // Boring setup that we won't make the user do
                     add_keyboard(&mut dev);
                     // Get the optional user keyboard struct, add the on_key signal
-                    if let Some(keyboard) = this.data.keyboard_added(&mut dev) {
-                        let dev_ = InputDevice::from_ptr(data as *mut wlr_input_device);
-                        let mut keyboard = Keyboard::new((dev_, keyboard));
+                    if let Some(keyboard_handler) = this.data.keyboard_added(&mut dev) {
+                        let mut keyboard = KeyboardWrapper::new((dev, keyboard_handler));
                         wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
                                     keyboard.key_listener() as *mut _ as _);
                         // Forget until we need to drop it in the destroy callback

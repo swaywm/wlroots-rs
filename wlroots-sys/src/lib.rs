@@ -14,4 +14,4 @@ mod generated {
 }
 pub use self::generated::*;
 pub type wlr_output_events = self::generated::wlr_output__bindgen_ty_1;
-pub type wlr_input_device_events = self::generated::wlr_input_device__bindgen_ty_1;
+pub type wlr_input_device_pointer = self::generated::wlr_input_device__bindgen_ty_1;

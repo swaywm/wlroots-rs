@@ -1,7 +1,7 @@
-use wlroots_sys::{wlr_input_device, wlr_input_device_events, wlr_input_device_type};
+use wlroots_sys::{wlr_input_device, wlr_input_device_pointer, wlr_input_device_type};
 
 /// Wrapper for wlr_input_device
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct InputDevice {
     device: *mut wlr_input_device,
 }
@@ -13,7 +13,7 @@ impl InputDevice {
     }
 
     // TODO Wrapper around the union
-    pub unsafe fn dev_union(&self) -> wlr_input_device_events {
+    pub unsafe fn dev_union(&self) -> wlr_input_device_pointer {
         (*self.device).__bindgen_anon_1
     }
 
