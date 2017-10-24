@@ -14,22 +14,22 @@ use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 struct OutputManager {
     color: Rc<Cell<[f32; 4]>>,
-    cursor: Rc<RefCell<Cursor>>,
+    cursor: Rc<RefCell<Cursor>>
 }
 
 struct Output {
-    color: Rc<Cell<[f32; 4]>>,
+    color: Rc<Cell<[f32; 4]>>
 }
 
 struct InputManager {
     color: Rc<Cell<[f32; 4]>>,
-    cursor: Rc<RefCell<Cursor>>,
+    cursor: Rc<RefCell<Cursor>>
 }
 
 struct Pointer {
     color: Rc<Cell<[f32; 4]>>,
     default_color: [f32; 4],
-    cursor: Rc<RefCell<Cursor>>,
+    cursor: Rc<RefCell<Cursor>>
 }
 
 struct ExKeyboardHandler;
@@ -42,7 +42,8 @@ impl OutputManagerHandler for OutputManager {
             let xcursor = cursor.xcursor().expect("XCursor was not set!");
             let image = &xcursor.images()[0];
             // TODO use output config if present instead of auto
-            let layout = cursor.output_layout()
+            let layout = cursor
+                .output_layout()
                 .as_ref()
                 .expect("Could not get output layout");
             layout.borrow_mut().add_auto(output);
@@ -119,7 +120,7 @@ impl InputManagerHandler for InputManager {
         Some(Box::new(Pointer {
             color: self.color.clone(),
             default_color: self.color.get(),
-            cursor: self.cursor.clone(),
+            cursor: self.cursor.clone()
         }))
     }
 
@@ -138,18 +139,19 @@ fn managers(mut cursor: Cursor) -> (OutputManager, InputManager) {
     let color = Rc::new(Cell::new([0.25, 0.25, 0.25, 1.0]));
     (OutputManager {
          color: color.clone(),
-         cursor: cursor.clone(),
+         cursor: cursor.clone()
      },
      InputManager {
          color: color.clone(),
-         cursor: cursor.clone(),
+         cursor: cursor.clone()
      })
 }
 
 fn main() {
     let mut cursor = Cursor::new().expect("Could not create cursor");
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
-    let xcursor = xcursor_theme.get_cursor("left_ptr".into())
+    let xcursor = xcursor_theme
+        .get_cursor("left_ptr".into())
         .expect("Could not load cursor from theme");
     cursor.set_xcursor(Some(xcursor));
 

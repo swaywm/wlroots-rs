@@ -17,17 +17,17 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create
 pub struct Cursor {
     cursor: *mut wlr_cursor,
     xcursor: Option<XCursor>,
-    layout: Option<Rc<RefCell<OutputLayout>>>,
+    layout: Option<Rc<RefCell<OutputLayout>>>
 }
 
 #[derive(Debug)]
 pub struct XCursorTheme {
-    theme: *mut wlr_xcursor_theme,
+    theme: *mut wlr_xcursor_theme
 }
 
 #[derive(Debug)]
 pub struct XCursor {
-    xcursor: *mut wlr_xcursor,
+    xcursor: *mut wlr_xcursor
 }
 
 impl Cursor {
@@ -40,7 +40,7 @@ impl Cursor {
                 Some(Cursor {
                     cursor: cursor,
                     xcursor: None,
-                    layout: None,
+                    layout: None
                 })
             }
         }
@@ -108,7 +108,7 @@ impl XCursorTheme {
             if theme.is_null() {
                 None
             } else {
-                Some(XCursorTheme { theme: theme })
+                Some(XCursorTheme { theme })
             }
         }
     }
@@ -119,7 +119,7 @@ impl XCursorTheme {
         if xcursor.is_null() {
             None
         } else {
-            Some(XCursor { xcursor: xcursor })
+            Some(XCursor { xcursor })
         }
     }
 
@@ -169,5 +169,5 @@ pub struct XCursorImage<'cursor> {
     pub hotspot_x: u32,
     pub hotspot_y: u32,
     pub delay: u32,
-    pub buffer: &'cursor [u8],
+    pub buffer: &'cursor [u8]
 }

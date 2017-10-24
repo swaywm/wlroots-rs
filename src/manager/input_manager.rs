@@ -53,8 +53,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
                 WLR_INPUT_DEVICE_POINTER => {
                     // Get the optional user pointer struct, add the signals
                     if let Some(pointer) = this.data.pointer_added(&mut dev) {
-                        let dev_ = InputDevice::from_ptr(data as *mut wlr_input_device);
-                        let mut pointer = Pointer::new((dev_, pointer));
+                        let mut pointer = Pointer::new((dev, pointer));
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.motion as *mut _ as _,
                                     pointer.motion_listener() as *mut _ as _);
                         wl_signal_add(&mut (*dev.dev_union().pointer)
@@ -90,7 +89,7 @@ pub unsafe fn add_keyboard(dev: &mut InputDevice) {
         model: model.into_raw(),
         layout: layout.into_raw(),
         variant: variant.into_raw(),
-        options: options.into_raw(),
+        options: options.into_raw()
     };
     let context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     if context.is_null() {

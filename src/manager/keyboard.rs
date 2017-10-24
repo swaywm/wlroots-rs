@@ -1,9 +1,8 @@
 //! Handler for keyboards
 
-use events::key_events::KeyEvent;
 use libc;
+use events::key_events::KeyEvent;
 use types::input_device::InputDevice;
-
 use types::keyboard::Keyboard;
 use wlroots_sys::wlr_event_keyboard_key;
 
