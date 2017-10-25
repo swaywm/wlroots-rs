@@ -5,7 +5,7 @@ mod pointer;
 mod output;
 
 pub use self::input_manager::{InputManager, InputManagerHandler};
-pub use self::keyboard::{Keyboard, KeyboardHandler};
+pub use self::keyboard::{KeyboardHandler, KeyboardWrapper};
 pub use self::output::{Output, OutputHandler};
 pub use self::output_manager::{OutputManager, OutputManagerHandler};
 pub use self::pointer::{Pointer, PointerHandler};

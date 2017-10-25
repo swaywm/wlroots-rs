@@ -28,7 +28,8 @@ extern crate lazy_static;
 #[macro_use]
 extern crate wayland_sys;
 pub extern crate xkbcommon;
-
+#[macro_use]
+extern crate bitflags;
 
 #[macro_use]
 mod macros;
@@ -47,5 +48,6 @@ pub use self::events::pointer_events::*;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
                         PointerHandler};
 pub use self::types::cursor::*;
-pub use self::types::device::*;
+pub use self::types::input_device::*;
+pub use self::types::keyboard::*;
 pub use self::types::output::*;

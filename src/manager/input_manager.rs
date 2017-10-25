@@ -2,10 +2,10 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
-use super::{Keyboard, KeyboardHandler, Pointer, PointerHandler};
 use libc;
 use std::env;
-use types::device::Device;
+use super::{KeyboardHandler, KeyboardWrapper, Pointer, PointerHandler};
+use types::input_device::InputDevice;
 use utils::safe_as_cstring;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_input_device, wlr_input_device_type, wlr_keyboard_set_keymap,
@@ -16,18 +16,18 @@ use wlroots_sys::xkb_keymap_compile_flags::*;
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
     /// Callback triggered when an input device is added.
-    fn input_added(&mut self, &mut Device) {}
+    fn input_added(&mut self, &mut InputDevice) {}
 
     /// Callback triggered when an input device is removed.
-    fn input_removed(&mut self, &mut Device) {
+    fn input_removed(&mut self, &mut InputDevice) {
         // TODO
     }
 
-    fn keyboard_added(&mut self, &mut Device) -> Option<Box<KeyboardHandler>> {
+    fn keyboard_added(&mut self, &mut InputDevice) -> Option<Box<KeyboardHandler>> {
         None
     }
 
-    fn pointer_added(&mut self, &mut Device) -> Option<Box<PointerHandler>> {
+    fn pointer_added(&mut self, &mut InputDevice) -> Option<Box<PointerHandler>> {
         None
     }
 }
@@ -35,16 +35,16 @@ pub trait InputManagerHandler {
 wayland_listener!(InputManager, Box<InputManagerHandler>, [
     add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         use self::wlr_input_device_type::*;
-        let mut dev = Device::from_ptr(data as *mut wlr_input_device);
+        let mut dev = InputDevice::from_ptr(data as *mut wlr_input_device);
         unsafe {
             match dev.dev_type() {
                 WLR_INPUT_DEVICE_KEYBOARD => {
                     // Boring setup that we won't make the user do
                     add_keyboard(&mut dev);
                     // Get the optional user keyboard struct, add the on_key signal
-                    if let Some(keyboard) = this.data.keyboard_added(&mut dev) {
-                        let dev_ = Device::from_ptr(data as *mut wlr_input_device);
-                        let mut keyboard = Keyboard::new((dev_, keyboard));
+                    if let Some(keyboard_handler) = this.data.keyboard_added(&mut dev) {
+                        let dev_ = InputDevice::from_ptr(data as *mut wlr_input_device);
+                        let mut keyboard = KeyboardWrapper::new((dev_, keyboard_handler));
                         wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
                                     keyboard.key_listener() as *mut _ as _);
                         // Forget until we need to drop it in the destroy callback
@@ -54,7 +54,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
                 WLR_INPUT_DEVICE_POINTER => {
                     // Get the optional user pointer struct, add the signals
                     if let Some(pointer) = this.data.pointer_added(&mut dev) {
-                        let dev_ = Device::from_ptr(data as *mut wlr_input_device);
+                        let dev_ = InputDevice::from_ptr(data as *mut wlr_input_device);
                         let mut pointer = Pointer::new((dev_, pointer));
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.motion as *mut _ as _,
                                     pointer.motion_listener() as *mut _ as _);
@@ -75,11 +75,11 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
         this.data.input_added(&mut dev)
     };
     remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
-        this.data.input_removed(&mut Device::from_ptr(data as *mut wlr_input_device))
+        this.data.input_removed(&mut InputDevice::from_ptr(data as *mut wlr_input_device))
     };
 ]);
 
-pub unsafe fn add_keyboard(dev: &mut Device) {
+pub unsafe fn add_keyboard(dev: &mut InputDevice) {
     // Set the XKB settings
     let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES").unwrap_or("".into()));
     let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL").unwrap_or("".into()));

@@ -4,7 +4,7 @@
 use std::{mem, ptr, slice};
 use std::cell::RefCell;
 use std::rc::Rc;
-use types::device::Device;
+use types::input_device::InputDevice;
 use types::output::OutputLayout;
 use utils::safe_as_cstring;
 
@@ -38,10 +38,10 @@ impl Cursor {
                 None
             } else {
                 Some(Cursor {
-                         cursor,
-                         xcursor: None,
-                         layout: None
-                     })
+                    cursor: cursor,
+                    xcursor: None,
+                    layout: None
+                })
             }
         }
     }
@@ -50,7 +50,7 @@ impl Cursor {
         unsafe { ((*self.cursor).x, (*self.cursor).y) }
     }
 
-    pub fn warp(&mut self, dev: Option<Device>, x: f64, y: f64) -> bool {
+    pub fn warp(&mut self, dev: Option<InputDevice>, x: f64, y: f64) -> bool {
         unsafe {
             let dev_ptr = dev.map(|dev| dev.to_ptr()).unwrap_or(ptr::null_mut());
             wlr_cursor_warp(self.cursor, dev_ptr, x, y)
@@ -83,7 +83,7 @@ impl Cursor {
         }
     }
 
-    pub fn move_to(&mut self, dev: &Device, delta_x: f64, delta_y: f64) {
+    pub fn move_to(&mut self, dev: &InputDevice, delta_x: f64, delta_y: f64) {
         unsafe { wlr_cursor_move(self.cursor, dev.to_ptr(), delta_x, delta_y) }
     }
 

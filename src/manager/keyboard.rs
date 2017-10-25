@@ -1,19 +1,21 @@
 //! Handler for keyboards
 
-use events::key_events::KeyEvent;
 use libc;
-
-use types::device::Device;
+use events::key_events::KeyEvent;
+use types::input_device::InputDevice;
+use types::keyboard::KeyboardHandle;
 use wlroots_sys::wlr_event_keyboard_key;
 
 pub trait KeyboardHandler {
     /// Callback that is triggered when a key is pressed.
-    fn on_key(&mut self, &mut Device, &KeyEvent) {}
+    fn on_key(&mut self, &mut KeyEvent) {}
 }
 
-wayland_listener!(Keyboard, (Device, Box<KeyboardHandler>), [
-    key_listener => key_notify: |this: &mut Keyboard, data: *mut libc::c_void,| unsafe {
-        let key = KeyEvent::from_ptr(data as *mut wlr_event_keyboard_key);
-        this.data.1.on_key(&mut this.data.0, &key)
+wayland_listener!(KeyboardWrapper, (InputDevice, Box<KeyboardHandler>), [
+    key_listener => key_notify: |this: &mut KeyboardWrapper, data: *mut libc::c_void,| unsafe {
+        let (ref input_device, ref mut keyboard_handler) = this.data;
+        let mut key = KeyEvent::new(data as *mut wlr_event_keyboard_key, KeyboardHandle::new(input_device.dev_union().keyboard));
+
+        keyboard_handler.on_key(&mut key)
     };
 ]);

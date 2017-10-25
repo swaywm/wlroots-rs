@@ -1,6 +1,6 @@
 //! Pointers and their events
 
-use types::device::Device;
+use types::input_device::InputDevice;
 
 use wlroots_sys::{wlr_button_state, wlr_event_pointer_axis, wlr_event_pointer_button,
                   wlr_event_pointer_motion, wlr_event_pointer_motion_absolute};
@@ -50,8 +50,8 @@ impl MotionEvent {
         MotionEvent { event }
     }
 
-    pub fn device(&self) -> Device {
-        unsafe { Device::from_ptr((*self.event).device) }
+    pub fn device(&self) -> InputDevice {
+        unsafe { InputDevice::from_ptr((*self.event).device) }
     }
 
     pub fn delta(&self) -> (f64, f64) {
@@ -64,7 +64,7 @@ impl AbsoluteMotionEvent {
         AbsoluteMotionEvent { event }
     }
 
-    pub fn device(&self) -> Device {
-        unsafe { Device::from_ptr((*self.event).device) }
+    pub fn device(&self) -> InputDevice {
+        unsafe { InputDevice::from_ptr((*self.event).device) }
     }
 }

@@ -1,8 +1,9 @@
+#[macro_use]
 extern crate wlroots;
 
 use std::time::Instant;
 
-use wlroots::{Compositor, Device, KeyEvent};
+use wlroots::{Compositor, InputDevice, KeyEvent};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler};
 use wlroots::types::output;
 use wlroots::wlroots_sys::gl;
@@ -17,11 +18,14 @@ struct Output {
 struct OutputManager;
 
 struct InputManager;
-struct Keyboard;
+struct ExKeyboardHandler;
 
-impl KeyboardHandler for Keyboard {
-    fn on_key(&mut self, dev: &mut Device, key_event: &KeyEvent) {
-        let keys = unsafe { key_event.get_input_keys(dev) };
+impl KeyboardHandler for ExKeyboardHandler {
+    fn on_key(&mut self, key_event: &mut KeyEvent) {
+        let keys = key_event.input_keys();
+
+        wlr_log!(L_DEBUG, "Got key event. Keys: {:?}. Modifiers: {}", keys, key_event.keyboard().get_modifiers());
+
         for key in keys {
             if key == KEY_Escape {
                 wlroots::terminate()
@@ -31,8 +35,8 @@ impl KeyboardHandler for Keyboard {
 }
 
 impl InputManagerHandler for InputManager {
-    fn keyboard_added(&mut self, _: &mut Device) -> Option<Box<KeyboardHandler>> {
-        Some(Box::new(Keyboard))
+    fn keyboard_added(&mut self, _: &mut InputDevice) -> Option<Box<KeyboardHandler>> {
+        Some(Box::new(ExKeyboardHandler))
     }
 }
 
