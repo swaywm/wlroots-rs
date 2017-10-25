@@ -116,7 +116,7 @@ macro_rules! wayland_listener {
         $($listener: ident => $listener_func: ident :
           |$($func_arg:ident: $func_type:ty,)*| unsafe $body: block;)*])+) => {
         #[repr(C)]
-        pub(crate) struct $struct_name {
+        pub struct $struct_name {
             data: $data,
             $($($listener: $crate::wlroots_sys::wl_listener),*)*
         }

@@ -60,7 +60,7 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self, key_event: KeyEvent) {
+    fn on_key(&mut self, key_event: &mut KeyEvent) {
         for key in key_event.input_keys() {
             if key == KEY_Escape {
                 wlroots::terminate()

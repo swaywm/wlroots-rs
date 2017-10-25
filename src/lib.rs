@@ -28,7 +28,8 @@ extern crate lazy_static;
 #[macro_use]
 extern crate wayland_sys;
 pub extern crate xkbcommon;
-
+#[macro_use]
+extern crate bitflags;
 
 #[macro_use]
 mod macros;

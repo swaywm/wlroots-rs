@@ -1,3 +1,4 @@
+#[macro_use]
 extern crate wlroots;
 
 use std::time::Instant;
@@ -20,10 +21,10 @@ struct InputManager;
 struct ExKeyboardHandler;
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self, mut key_event: KeyEvent) {
+    fn on_key(&mut self, key_event: &mut KeyEvent) {
         let keys = key_event.input_keys();
 
-        println!("Got key event. Keys: {:?}. Modifiers: {}", keys, key_event.keyboard().get_modifiers());
+        wlr_log!(L_DEBUG, "Got key event. Keys: {:?}. Modifiers: {}", keys, key_event.keyboard().get_modifiers());
 
         for key in keys {
             if key == KEY_Escape {

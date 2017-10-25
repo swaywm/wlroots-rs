@@ -1,4 +1,4 @@
-use types::keyboard::Keyboard;
+use types::keyboard::KeyboardHandle;
 
 use wlroots_sys::{wlr_event_keyboard_key, xkb_keysym_t, xkb_state_key_get_syms};
 
@@ -7,11 +7,11 @@ pub type Key = xkb_keysym_t;
 #[derive(Debug)]
 pub struct KeyEvent {
     key: *mut wlr_event_keyboard_key,
-    keyboard: Keyboard,
+    keyboard: KeyboardHandle,
 }
 
 impl KeyEvent {
-    pub(crate) unsafe fn new(key: *mut wlr_event_keyboard_key, keyboard: Keyboard) -> Self {
+    pub(crate) unsafe fn new(key: *mut wlr_event_keyboard_key, keyboard: KeyboardHandle) -> Self {
         KeyEvent {
             key: key,
             keyboard: keyboard,
@@ -34,7 +34,7 @@ impl KeyEvent {
         }
     }
 
-    pub fn keyboard(&mut self) -> &mut Keyboard {
+    pub fn keyboard(&mut self) -> &mut KeyboardHandle {
         &mut self.keyboard
     }
 }
