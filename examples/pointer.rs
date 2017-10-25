@@ -118,10 +118,10 @@ impl OutputHandler for Output {
 impl InputManagerHandler for InputManager {
     fn pointer_added(&mut self, _: &mut InputDevice) -> Option<Box<PointerHandler>> {
         Some(Box::new(Pointer {
-            color: self.color.clone(),
-            default_color: self.color.get(),
-            cursor: self.cursor.clone()
-        }))
+                          color: self.color.clone(),
+                          default_color: self.color.get(),
+                          cursor: self.cursor.clone()
+                      }))
     }
 
     fn keyboard_added(&mut self, _: &mut InputDevice) -> Option<Box<KeyboardHandler>> {

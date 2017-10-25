@@ -2,9 +2,9 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
+use super::{KeyboardHandler, KeyboardWrapper, Pointer, PointerHandler};
 use libc;
 use std::env;
-use super::{KeyboardHandler, KeyboardWrapper, Pointer, PointerHandler};
 use types::input_device::InputDevice;
 use utils::safe_as_cstring;
 use wayland_sys::server::signal::wl_signal_add;

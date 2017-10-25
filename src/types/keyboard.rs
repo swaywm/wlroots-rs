@@ -5,7 +5,7 @@ use wlroots_sys::{wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
 
 #[derive(Debug)]
 pub struct KeyboardHandle {
-    keyboard: *mut wlr_keyboard,
+    keyboard: *mut wlr_keyboard
 }
 
 impl KeyboardHandle {
@@ -58,17 +58,19 @@ bitflags! {
 
 impl fmt::Display for KeyboardModifier {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let mod_vec =
-            vec![("Shift", KeyboardModifier::WLR_MODIFIER_SHIFT),
-                 ("Caps lock", KeyboardModifier::WLR_MODIFIER_CAPS),
-                 ("Ctrl", KeyboardModifier::WLR_MODIFIER_CTRL),
-                 ("Alt", KeyboardModifier::WLR_MODIFIER_ALT),
-                 ("Mod2", KeyboardModifier::WLR_MODIFIER_MOD2),
-                 ("Mod3", KeyboardModifier::WLR_MODIFIER_MOD3),
-                 ("Logo", KeyboardModifier::WLR_MODIFIER_LOGO),
-                 ("Mod5", KeyboardModifier::WLR_MODIFIER_MOD5)];
+        let mod_vec = vec![
+            ("Shift", KeyboardModifier::WLR_MODIFIER_SHIFT),
+            ("Caps lock", KeyboardModifier::WLR_MODIFIER_CAPS),
+            ("Ctrl", KeyboardModifier::WLR_MODIFIER_CTRL),
+            ("Alt", KeyboardModifier::WLR_MODIFIER_ALT),
+            ("Mod2", KeyboardModifier::WLR_MODIFIER_MOD2),
+            ("Mod3", KeyboardModifier::WLR_MODIFIER_MOD3),
+            ("Logo", KeyboardModifier::WLR_MODIFIER_LOGO),
+            ("Mod5", KeyboardModifier::WLR_MODIFIER_MOD5),
+        ];
 
-        let mods: Vec<&str> = mod_vec.into_iter()
+        let mods: Vec<&str> = mod_vec
+            .into_iter()
             .filter(|&(_, flag)| self.contains(flag))
             .map(|(st, _)| st)
             .collect();

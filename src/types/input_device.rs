@@ -3,7 +3,7 @@ use wlroots_sys::{wlr_input_device, wlr_input_device_pointer, wlr_input_device_t
 /// Wrapper for wlr_input_device
 #[derive(Debug)]
 pub struct InputDevice {
-    device: *mut wlr_input_device,
+    device: *mut wlr_input_device
 }
 
 impl InputDevice {

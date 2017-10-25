@@ -38,10 +38,10 @@ impl Cursor {
                 None
             } else {
                 Some(Cursor {
-                    cursor: cursor,
-                    xcursor: None,
-                    layout: None
-                })
+                         cursor: cursor,
+                         xcursor: None,
+                         layout: None
+                     })
             }
         }
     }
