@@ -46,7 +46,7 @@ impl OutputManagerHandler for OutputManager {
                 .output_layout()
                 .as_ref()
                 .expect("Could not get output layout");
-            layout.borrow_mut().add_auto(output);
+            output.add_layout_auto(layout.clone());
             if output.set_cursor(image).is_err() {
                 wlr_log!(L_DEBUG, "Failed to set hardware cursor");
                 return None;
@@ -56,15 +56,6 @@ impl OutputManagerHandler for OutputManager {
         // https://en.wikipedia.org/wiki/Mouse_warping
         cursor.warp(None, x, y);
         Some(Box::new(Output { color: self.color.clone() }))
-    }
-
-    fn output_removed(&mut self, output: &mut output::Output) {
-        // TODO If this isn't here there's a segfault...
-        // so the library (wlroots-rs) should handle it
-        self.cursor.borrow_mut().output_layout().as_ref()
-            .map(|layout| {
-                layout.borrow_mut().remove(output)
-            });
     }
 }
 

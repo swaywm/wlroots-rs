@@ -1,6 +1,5 @@
 
 
-use std::ffi::CStr;
 use types::cursor::XCursorImage;
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -8,6 +7,10 @@ use wlroots_sys::{wl_list, wlr_output, wlr_output_events, wlr_output_layout,
                   wlr_output_layout_add_auto, wlr_output_layout_create, wlr_output_layout_destroy,
                   wlr_output_make_current, wlr_output_mode, wlr_output_set_cursor,
                   wlr_output_set_mode, wlr_output_swap_buffers, wlr_output_layout_remove};
+
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::ffi::CStr;
 
 /// A wrapper around a wlr_output.
 #[derive(Debug)]
@@ -21,6 +24,33 @@ pub struct OutputLayout {
 }
 
 impl Output {
+    pub unsafe fn set_user_data(&mut self, layout: Rc<RefCell<OutputLayout>>) {
+        (*self.output).data = Rc::into_raw(layout) as *mut _
+    }
+
+    pub unsafe fn user_data(&mut self) -> *mut RefCell<OutputLayout> {
+        (*self.output).data as *mut _
+    }
+
+    // TODO Prove all of this is sound, including user_data
+    pub unsafe fn layout(&mut self) -> Option<Rc<RefCell<OutputLayout>>> {
+        let data = self.user_data();
+        if data.is_null() {
+            None
+        } else {
+            let result: Rc<RefCell<OutputLayout>> = Rc::from_raw(data as *mut _);
+            // NOTE Clone so we don't lose the user data
+            Some(result.clone())
+        }
+    }
+
+    pub fn add_layout_auto(&mut self, layout: Rc<RefCell<OutputLayout>>) {
+        unsafe {
+            wlr_output_layout_add_auto(layout.borrow_mut().to_ptr(), self.output);
+            self.set_user_data(layout)
+        }
+    }
+
     pub fn set_cursor<'cursor>(&mut self, image: &'cursor XCursorImage<'cursor>) -> Result<(), ()> {
         unsafe {
             match wlr_output_set_cursor(self.output,
@@ -107,7 +137,9 @@ impl Output {
     }
 
     pub unsafe fn from_ptr(output: *mut wlr_output) -> Self {
-        Output { output }
+        Output {
+            output
+        }
     }
 
     pub unsafe fn to_ptr(&self) -> *mut wlr_output {
@@ -120,15 +152,16 @@ impl OutputLayout {
         unsafe { OutputLayout { layout: wlr_output_layout_create() } }
     }
 
-    pub fn add_auto(&mut self, output: &mut Output) {
-        unsafe { wlr_output_layout_add_auto(self.layout, output.to_ptr()) }
-    }
-
-    pub unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
+    pub unsafe fn to_ptr(&self) -> *mut wlr_output_layout {
         self.layout
     }
 
+    pub unsafe fn from_ptr(layout: *mut wlr_output_layout) -> Self {
+        OutputLayout { layout }
+    }
+
     pub fn remove(&mut self, output: &mut Output) {
+        // TODO Double check we can pass any output in here and not cause unsafety
         unsafe { wlr_output_layout_remove(self.layout, output.to_ptr()) }
     }
 }
