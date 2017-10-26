@@ -57,6 +57,15 @@ impl OutputManagerHandler for OutputManager {
         cursor.warp(None, x, y);
         Some(Box::new(Output { color: self.color.clone() }))
     }
+
+    fn output_removed(&mut self, output: &mut output::Output) {
+        // TODO If this isn't here there's a segfault...
+        // so the library (wlroots-rs) should handle it
+        self.cursor.borrow_mut().output_layout().as_ref()
+            .map(|layout| {
+                layout.borrow_mut().remove(output)
+            });
+    }
 }
 
 impl KeyboardHandler for ExKeyboardHandler {
