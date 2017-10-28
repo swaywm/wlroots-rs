@@ -36,13 +36,14 @@ impl Output {
         (*self.output).data as *mut _
     }
 
-    // TODO Prove all of this is sound, including user_data
-    pub unsafe fn layout(&mut self) -> Option<Rc<RefCell<OutputLayout>>> {
-        let data = self.user_data();
-        if data.is_null() {
-            None
-        } else {
-            (*data).layout.clone()
+    pub fn layout(&mut self) -> Option<Rc<RefCell<OutputLayout>>> {
+        unsafe {
+            let data = self.user_data();
+            if data.is_null() {
+                None
+            } else {
+                (*data).layout.clone()
+            }
         }
     }
 
@@ -186,8 +187,7 @@ impl OutputLayout {
     /// pass it an invalid Output (e.g one that has already been freed).
     /// For now, this function is unsafe
     pub unsafe fn remove(&mut self, output: &mut Output) {
-        // TODO Double check we can pass any output in here and not cause unsafety
-        unsafe { wlr_output_layout_remove(self.layout, output.to_ptr()) }
+        wlr_output_layout_remove(self.layout, output.to_ptr())
     }
 }
 
