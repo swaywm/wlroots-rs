@@ -155,6 +155,15 @@ impl Output {
     }
 }
 
+impl Drop for Output {
+    fn drop(&mut self) {
+        // TODO Implement
+        // Also need to make sure it's not dropped except in the remove callback,
+        // since right now there's actually a lot of Output destruction which we don't want
+        // e.g need to make the from_ptr return ManuallyDrop<Output> now
+    }
+}
+
 impl OutputLayout {
     pub fn new() -> Self {
         unsafe {
