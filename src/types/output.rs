@@ -181,7 +181,11 @@ impl OutputLayout {
         OutputLayout { layout }
     }
 
-    pub fn remove(&mut self, output: &mut Output) {
+    /// # Unsafety
+    /// The underlying function hasn't been proven to be stable if you
+    /// pass it an invalid Output (e.g one that has already been freed).
+    /// For now, this function is unsafe
+    pub unsafe fn remove(&mut self, output: &mut Output) {
         // TODO Double check we can pass any output in here and not cause unsafety
         unsafe { wlr_output_layout_remove(self.layout, output.to_ptr()) }
     }
