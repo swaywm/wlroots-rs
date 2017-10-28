@@ -10,7 +10,9 @@ pub struct KeyboardHandle {
 
 impl KeyboardHandle {
     pub(crate) unsafe fn new(kb_pointer: *mut wlr_keyboard) -> Self {
-        KeyboardHandle { keyboard: kb_pointer }
+        KeyboardHandle {
+            keyboard: kb_pointer
+        }
     }
 
     pub(crate) unsafe fn to_ptr(&self) -> *mut wlr_keyboard {

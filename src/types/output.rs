@@ -5,12 +5,12 @@ use types::cursor::XCursorImage;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wlr_output, wlr_output_events, wlr_output_layout,
                   wlr_output_layout_add_auto, wlr_output_layout_create, wlr_output_layout_destroy,
-                  wlr_output_make_current, wlr_output_mode, wlr_output_set_cursor,
-                  wlr_output_set_mode, wlr_output_swap_buffers, wlr_output_layout_remove};
+                  wlr_output_layout_remove, wlr_output_make_current, wlr_output_mode,
+                  wlr_output_set_cursor, wlr_output_set_mode, wlr_output_swap_buffers};
 
-use std::rc::Rc;
 use std::cell::RefCell;
 use std::ffi::CStr;
+use std::rc::Rc;
 
 /// A wrapper around a wlr_output.
 #[derive(Debug)]
@@ -54,14 +54,15 @@ impl Output {
     pub fn set_cursor<'cursor>(&mut self, image: &'cursor XCursorImage<'cursor>) -> Result<(), ()> {
         unsafe {
             match wlr_output_set_cursor(self.output,
-                                          image.buffer.as_ptr(),
-                                          image.width as i32,
-                                          image.width,
-                                          image.height,
-                                          image.hotspot_x as i32,
-                                          image.hotspot_y as i32) {
+                                        image.buffer.as_ptr(),
+                                        image.width as i32,
+                                        image.width,
+                                        image.height,
+                                        image.hotspot_x as i32,
+                                        image.hotspot_y as i32)
+            {
                 true => Ok(()),
-                false => Err(()),
+                false => Err(())
             }
         }
     }
@@ -137,9 +138,7 @@ impl Output {
     }
 
     pub unsafe fn from_ptr(output: *mut wlr_output) -> Self {
-        Output {
-            output
-        }
+        Output { output }
     }
 
     pub unsafe fn to_ptr(&self) -> *mut wlr_output {
@@ -149,7 +148,11 @@ impl Output {
 
 impl OutputLayout {
     pub fn new() -> Self {
-        unsafe { OutputLayout { layout: wlr_output_layout_create() } }
+        unsafe {
+            OutputLayout {
+                layout: wlr_output_layout_create()
+            }
+        }
     }
 
     pub unsafe fn to_ptr(&self) -> *mut wlr_output_layout {

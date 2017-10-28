@@ -5,7 +5,7 @@ use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHan
 use std::cell::UnsafeCell;
 use std::env;
 use std::ffi::CStr;
-use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_display, wl_event_loop};
+use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
 
@@ -31,9 +31,8 @@ impl Compositor {
                output_manager_handler: Box<OutputManagerHandler>)
                -> Self {
         unsafe {
-            let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                        wl_display_create,) as
-                *mut wl_display;
+            let display =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
             let backend = wlr_backend_autocreate(display as *mut _);

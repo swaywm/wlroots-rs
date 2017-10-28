@@ -8,7 +8,7 @@ use std::process::exit;
 /// aborted.
 pub fn safe_as_cstring<S>(string: S) -> CString
 where
-    S: Into<Vec<u8>>,
+    S: Into<Vec<u8>>
 {
     match CString::new(string) {
         Ok(string) => string,

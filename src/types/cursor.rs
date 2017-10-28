@@ -142,20 +142,21 @@ impl XCursor {
                                                                            length as usize);
             let mut result = Vec::with_capacity(cursors_slice.len());
             for cursor in cursors_slice {
-                result.push(XCursorImage {
-                                width: (**cursor).width,
-                                height: (**cursor).height,
-                                hotspot_x: (**cursor).hotspot_x,
-                                hotspot_y: (**cursor).hotspot_y,
-                                delay: (**cursor).delay,
-                                buffer:
-                                    slice::from_raw_parts::<'cursor, u8>((**cursor).buffer as
-                                                                             *const u8,
-                                                                         (**cursor).width as usize *
-                                                                             (**cursor).height as
-                                                                                 usize *
-                                                                             mem::size_of::<u32>())
-                            })
+                result
+                    .push(XCursorImage {
+                              width: (**cursor).width,
+                              height: (**cursor).height,
+                              hotspot_x: (**cursor).hotspot_x,
+                              hotspot_y: (**cursor).hotspot_y,
+                              delay: (**cursor).delay,
+                              buffer:
+                                  slice::from_raw_parts::<'cursor, u8>((**cursor).buffer
+                                                                           as *const u8,
+                                                                       (**cursor).width as usize
+                                                                           * (**cursor).height
+                                                                               as usize
+                                                                           * mem::size_of::<u32>())
+                          })
             }
             result
         }

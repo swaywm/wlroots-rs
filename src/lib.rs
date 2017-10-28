@@ -22,14 +22,14 @@
 //! ```
 
 #![allow(unused_unsafe)]
-extern crate libc;
-pub extern crate wlroots_sys;
-extern crate lazy_static;
-#[macro_use]
-extern crate wayland_sys;
-pub extern crate xkbcommon;
 #[macro_use]
 extern crate bitflags;
+extern crate lazy_static;
+extern crate libc;
+#[macro_use]
+extern crate wayland_sys;
+pub extern crate wlroots_sys;
+pub extern crate xkbcommon;
 
 #[macro_use]
 mod macros;
@@ -42,7 +42,7 @@ mod utils;
 pub type NotifyFunc = unsafe extern "C" fn(*mut wlroots_sys::wl_listener, *mut libc::c_void);
 
 
-pub use self::compositor::{Compositor, terminate};
+pub use self::compositor::{terminate, Compositor};
 pub use self::events::key_events::*;
 pub use self::events::pointer_events::*;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
