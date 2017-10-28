@@ -12,6 +12,10 @@ use std::cell::RefCell;
 use std::ffi::CStr;
 use std::rc::Rc;
 
+pub struct OutputState {
+    pub layout: Option<Rc<RefCell<OutputLayout>>>
+}
+
 /// A wrapper around a wlr_output.
 #[derive(Debug)]
 pub struct Output {
@@ -24,11 +28,11 @@ pub struct OutputLayout {
 }
 
 impl Output {
-    pub unsafe fn set_user_data(&mut self, layout: Rc<RefCell<OutputLayout>>) {
-        (*self.output).data = Rc::into_raw(layout) as *mut _
+    pub unsafe fn set_user_data(&mut self, data: Rc<OutputState>) {
+        (*self.output).data = Rc::into_raw(data) as *mut _
     }
 
-    pub unsafe fn user_data(&mut self) -> *mut RefCell<OutputLayout> {
+    pub unsafe fn user_data(&mut self) -> *mut OutputState {
         (*self.output).data as *mut _
     }
 
@@ -38,16 +42,21 @@ impl Output {
         if data.is_null() {
             None
         } else {
-            let result: Rc<RefCell<OutputLayout>> = Rc::from_raw(data as *mut _);
-            // NOTE Clone so we don't lose the user data
-            Some(result.clone())
+            (*data).layout.clone()
         }
     }
 
     pub fn add_layout_auto(&mut self, layout: Rc<RefCell<OutputLayout>>) {
         unsafe {
             wlr_output_layout_add_auto(layout.borrow_mut().to_ptr(), self.output);
-            self.set_user_data(layout)
+            let user_data = self.user_data();
+            if user_data.is_null() {
+                self.set_user_data(Rc::new(OutputState {
+                    layout: Some(layout)
+                }));
+            } else {
+                (*user_data).layout = Some(layout);
+            }
         }
     }
 
