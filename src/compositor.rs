@@ -115,8 +115,8 @@ impl Compositor {
         // TODO Clean up
     }
 
-    pub fn server_decoration_manager(&mut self) -> &Option<ServerDecorationManager> {
-        &self.server_decoration_manager
+    pub fn server_decoration_manager(&mut self) -> Option<&mut ServerDecorationManager> {
+        self.server_decoration_manager.as_mut()
     }
 
     pub fn terminate(&mut self) {

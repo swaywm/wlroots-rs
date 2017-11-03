@@ -19,8 +19,9 @@ impl ServerDecorationManager {
         }
     }
 
-    pub fn set_default_mode(&mut self, mode: u32) {
-        unsafe { wlr_server_decoration_manager_set_default_mode(self.manager, mode) }
+    pub fn set_default_mode(&mut self, mode: ServerDecorationMode) {
+        wlr_log!(L_INFO, "New server decoration mode: {:?}", mode);
+        unsafe { wlr_server_decoration_manager_set_default_mode(self.manager, mode as u32) }
     }
 }
 
@@ -30,14 +31,9 @@ impl Drop for ServerDecorationManager {
     }
 }
 
+#[derive(Debug)]
 pub enum ServerDecorationMode {
     None = 0,
     Client = 1,
     Server = 2
-}
-
-impl Into<u32> for ServerDecorationMode {
-    fn into(self) -> u32 {
-        self as u32
-    }
 }
