@@ -28,6 +28,7 @@
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_region.h>
+#include <wlr/types/wlr_server_decoration.h>
 #include <wlr/types/wlr_screenshooter.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_surface.h>
