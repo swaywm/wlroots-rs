@@ -78,7 +78,7 @@ impl Cursor {
         unsafe {
             // NOTE Rationale for why the pointer isn't leaked from the refcell:
             // * A pointer is not stored to the layout, the internal state is just updated.
-            wlr_cursor_attach_output_layout(self.cursor, layout.borrow_mut().as_ptr());
+            wlr_cursor_attach_output_layout(self.cursor, layout.borrow_mut().to_ptr());
             self.layout = Some(layout);
         }
     }

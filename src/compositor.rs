@@ -31,8 +31,7 @@ impl Compositor {
                output_manager_handler: Box<OutputManagerHandler>)
                -> Self {
         unsafe {
-            let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                        wl_display_create,) as
+            let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as
                 *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);

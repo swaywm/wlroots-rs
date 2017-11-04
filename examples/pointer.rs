@@ -46,7 +46,7 @@ impl OutputManagerHandler for OutputManager {
                 .output_layout()
                 .as_ref()
                 .expect("Could not get output layout");
-            layout.borrow_mut().add_auto(output);
+            output.add_layout_auto(layout.clone());
             if output.set_cursor(image).is_err() {
                 wlr_log!(L_DEBUG, "Failed to set hardware cursor");
                 return None;
