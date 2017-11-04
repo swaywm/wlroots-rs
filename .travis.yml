@@ -26,6 +26,7 @@ arch:
     - rustup install stable
     # For rustfmt
     - rustup install nightly
+    - rustup default stable
     - rustup run nightly cargo install rustfmt
     - export RUST_BACKTRACE=full
     - git submodule update --init --recursive
