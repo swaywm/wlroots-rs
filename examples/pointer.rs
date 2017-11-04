@@ -49,15 +49,13 @@ impl OutputManagerHandler for OutputManager {
             output.add_layout_auto(layout.clone());
             if output.set_cursor(image).is_err() {
                 wlr_log!(L_DEBUG, "Failed to set hardware cursor");
-                return None
+                return None;
             }
         }
         let (x, y) = cursor.coords();
         // https://en.wikipedia.org/wiki/Mouse_warping
         cursor.warp(None, x, y);
-        Some(Box::new(Output {
-                          color: self.color.clone()
-                      }))
+        Some(Box::new(Output { color: self.color.clone() }))
     }
 }
 
@@ -143,7 +141,7 @@ fn managers(mut cursor: Cursor) -> (OutputManager, InputManager) {
          color: color.clone(),
          cursor: cursor.clone()
      },
-    InputManager {
+     InputManager {
          color: color.clone(),
          cursor: cursor.clone()
      })

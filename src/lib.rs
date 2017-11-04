@@ -42,7 +42,7 @@ mod utils;
 pub type NotifyFunc = unsafe extern "C" fn(*mut wlroots_sys::wl_listener, *mut libc::c_void);
 
 
-pub use self::compositor::{terminate, Compositor};
+pub use self::compositor::{Compositor, terminate};
 pub use self::events::key_events::*;
 pub use self::events::pointer_events::*;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,

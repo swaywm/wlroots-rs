@@ -52,9 +52,7 @@ impl Output {
             wlr_output_layout_add_auto(layout.borrow_mut().to_ptr(), self.output);
             let user_data = self.user_data();
             if user_data.is_null() {
-                self.set_user_data(Rc::new(OutputState {
-                    layout: Some(layout)
-                }));
+                self.set_user_data(Rc::new(OutputState { layout: Some(layout) }));
             } else {
                 (*user_data).layout = Some(layout);
             }
@@ -64,15 +62,14 @@ impl Output {
     pub fn set_cursor<'cursor>(&mut self, image: &'cursor XCursorImage<'cursor>) -> Result<(), ()> {
         unsafe {
             match wlr_output_set_cursor(self.output,
-                                        image.buffer.as_ptr(),
-                                        image.width as i32,
-                                        image.width,
-                                        image.height,
-                                        image.hotspot_x as i32,
-                                        image.hotspot_y as i32)
-            {
+                                          image.buffer.as_ptr(),
+                                          image.width as i32,
+                                          image.width,
+                                          image.height,
+                                          image.hotspot_x as i32,
+                                          image.hotspot_y as i32) {
                 true => Ok(()),
-                false => Err(())
+                false => Err(()),
             }
         }
     }
@@ -160,18 +157,15 @@ impl Drop for Output {
     fn drop(&mut self) {
         // TODO Implement
         // Also need to make sure it's not dropped except in the remove callback,
-        // since right now there's actually a lot of Output destruction which we don't want
+        // since right now there's actually a lot of Output destruction which we don't
+        // want
         // e.g need to make the from_ptr return ManuallyDrop<Output> now
     }
 }
 
 impl OutputLayout {
     pub fn new() -> Self {
-        unsafe {
-            OutputLayout {
-                layout: wlr_output_layout_create()
-            }
-        }
+        unsafe { OutputLayout { layout: wlr_output_layout_create() } }
     }
 
     pub unsafe fn to_ptr(&self) -> *mut wlr_output_layout {
