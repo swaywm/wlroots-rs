@@ -19,8 +19,7 @@
 #include <wlr/types/wlr_box.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_cursor.h>
-#include <wlr/types/wlr_data_device_manager.h>
-#include <wlr/types/wlr_data_source.h>
+#include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_gamma_control.h>
 #include <wlr/types/wlr_input_device.h>
 #include <wlr/types/wlr_keyboard.h>
