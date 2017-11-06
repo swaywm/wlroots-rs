@@ -1,13 +1,20 @@
 
 
-use std::ffi::CStr;
 use types::cursor::XCursorImage;
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wlr_output, wlr_output_events, wlr_output_layout,
                   wlr_output_layout_add_auto, wlr_output_layout_create, wlr_output_layout_destroy,
-                  wlr_output_make_current, wlr_output_mode, wlr_output_set_cursor,
-                  wlr_output_set_mode, wlr_output_swap_buffers};
+                  wlr_output_layout_remove, wlr_output_make_current, wlr_output_mode,
+                  wlr_output_set_cursor, wlr_output_set_mode, wlr_output_swap_buffers};
+
+use std::cell::RefCell;
+use std::ffi::CStr;
+use std::rc::Rc;
+
+pub struct OutputState {
+    pub layout: Option<Rc<RefCell<OutputLayout>>>
+}
 
 /// A wrapper around a wlr_output.
 #[derive(Debug)]
@@ -21,6 +28,37 @@ pub struct OutputLayout {
 }
 
 impl Output {
+    pub unsafe fn set_user_data(&mut self, data: Rc<OutputState>) {
+        (*self.output).data = Rc::into_raw(data) as *mut _
+    }
+
+    pub unsafe fn user_data(&mut self) -> *mut OutputState {
+        (*self.output).data as *mut _
+    }
+
+    pub fn layout(&mut self) -> Option<Rc<RefCell<OutputLayout>>> {
+        unsafe {
+            let data = self.user_data();
+            if data.is_null() {
+                None
+            } else {
+                (*data).layout.clone()
+            }
+        }
+    }
+
+    pub fn add_layout_auto(&mut self, layout: Rc<RefCell<OutputLayout>>) {
+        unsafe {
+            wlr_output_layout_add_auto(layout.borrow_mut().to_ptr(), self.output);
+            let user_data = self.user_data();
+            if user_data.is_null() {
+                self.set_user_data(Rc::new(OutputState { layout: Some(layout) }));
+            } else {
+                (*user_data).layout = Some(layout);
+            }
+        }
+    }
+
     pub fn set_cursor<'cursor>(&mut self, image: &'cursor XCursorImage<'cursor>) -> Result<(), ()> {
         unsafe {
             match wlr_output_set_cursor(self.output,
@@ -115,17 +153,35 @@ impl Output {
     }
 }
 
+impl Drop for Output {
+    fn drop(&mut self) {
+        // TODO Implement
+        // Also need to make sure it's not dropped except in the remove callback,
+        // since right now there's actually a lot of Output destruction which we don't
+        // want
+        // e.g need to make the from_ptr return ManuallyDrop<Output> now
+    }
+}
+
 impl OutputLayout {
     pub fn new() -> Self {
         unsafe { OutputLayout { layout: wlr_output_layout_create() } }
     }
 
-    pub fn add_auto(&mut self, output: &mut Output) {
-        unsafe { wlr_output_layout_add_auto(self.layout, output.to_ptr()) }
+    pub unsafe fn to_ptr(&self) -> *mut wlr_output_layout {
+        self.layout
     }
 
-    pub unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
-        self.layout
+    pub unsafe fn from_ptr(layout: *mut wlr_output_layout) -> Self {
+        OutputLayout { layout }
+    }
+
+    /// # Unsafety
+    /// The underlying function hasn't been proven to be stable if you
+    /// pass it an invalid Output (e.g one that has already been freed).
+    /// For now, this function is unsafe
+    pub unsafe fn remove(&mut self, output: &mut Output) {
+        wlr_output_layout_remove(self.layout, output.to_ptr())
     }
 }
 

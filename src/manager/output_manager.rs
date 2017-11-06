@@ -42,6 +42,10 @@ wayland_listener!(OutputManager, Box<OutputManagerHandler>, [
         }
     };
     remove_listener => remove_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
+        let mut output = output::Output::from_ptr(data as *mut wlr_output);
+        if let Some(layout) = output.layout() {
+            layout.borrow_mut().remove(&mut output::Output::from_ptr(data as *mut wlr_output));
+        }
         this.data.output_removed(&mut output::Output::from_ptr(data as *mut wlr_output))
     };
 ]);
