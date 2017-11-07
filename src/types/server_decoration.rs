@@ -1,7 +1,7 @@
 use wayland_sys::server::wl_display as wl_server_display;
-use wlroots_sys::{wlr_server_decoration_manager, wlr_server_decoration_manager_create,
-                  wlr_server_decoration_manager_set_default_mode,
-                  wlr_server_decoration_manager_destroy, wl_display};
+use wlroots_sys::{wl_display, wlr_server_decoration_manager, wlr_server_decoration_manager_create,
+                  wlr_server_decoration_manager_destroy,
+                  wlr_server_decoration_manager_set_default_mode};
 
 #[derive(Debug)]
 pub struct ServerDecorationManager {
