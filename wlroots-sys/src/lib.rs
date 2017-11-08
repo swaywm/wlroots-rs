@@ -21,18 +21,15 @@ mod generated {
         pub mod server_decoration {
             #![allow(unused_imports)]
             pub mod server {
-                pub mod interfaces {
+                mod interfaces {
                     pub(crate) use wayland_server::protocol_interfaces::wl_surface_interface;
                     include!(concat!(env!("OUT_DIR"), "/server_decoration_interfaces.rs"));
                 }
 
-                pub mod api {
-                    pub(crate) use super::interfaces;
-                    pub(crate) use wayland_server::{Client, EventLoopHandle, EventResult,
-                                                    Implementable, Liveness, Resource};
-                    pub(crate) use wayland_server::protocol::wl_surface;
-                    include!(concat!(env!("OUT_DIR"), "/server_decoration_server_api.rs"));
-                }
+                use wayland_server::{Client, EventLoopHandle, EventResult,
+                                     Implementable, Liveness, Resource};
+                use wayland_server::protocol::wl_surface;
+                include!(concat!(env!("OUT_DIR"), "/server_decoration_server_api.rs"));
             }
         }
     }
