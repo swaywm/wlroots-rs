@@ -12,11 +12,19 @@ pub trait OutputHandler {
     fn output_resolution(&mut self, &mut output::Output) {}
 }
 
-wayland_listener!(Output, Box<OutputHandler>, [
+wayland_listener!(Output, (*mut wlr_output, Box<OutputHandler>), [
     frame_listener => frame_notify: |this: &mut Output, data: *mut libc::c_void,| unsafe {
-        this.data.output_frame(&mut output::Output::from_ptr(data as *mut wlr_output))
+        let manager = &mut this.data.1;
+        manager.output_frame(&mut output::Output::from_ptr(data as *mut wlr_output))
     };
     resolution_listener => resolution_notify: |this: &mut Output, data: *mut libc::c_void,| unsafe {
-        this.data.output_resolution(&mut output::Output::from_ptr(data as *mut wlr_output))
+        let manager = &mut this.data.1;
+        manager.output_resolution(&mut output::Output::from_ptr(data as *mut wlr_output))
     };
 ]);
+
+impl Output {
+    pub unsafe fn output_ptr(&self) -> *mut wlr_output {
+        self.data.0
+    }
+}
