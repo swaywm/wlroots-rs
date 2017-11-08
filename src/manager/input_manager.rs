@@ -102,13 +102,11 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
             let removed_input = inputs.remove(index);
             match removed_input {
                 Input::Keyboard(mut keyboard) => {
-                    wlr_log!(L_DEBUG, "Removed keyboard {:#?}", data);
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                   wl_list_remove,
                                   &mut (*keyboard.key_listener()).link as *mut _ as _);
                 },
                 Input::Pointer(mut pointer) => {
-                    wlr_log!(L_DEBUG, "Removed pointer {:#?}", data);
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                   wl_list_remove,
                                   &mut (*pointer.button_listener()).link as *mut _ as _);
