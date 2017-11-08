@@ -4,7 +4,7 @@
 
 
 use libc;
-use manager::{Output, OutputHandler};
+use manager::{OutputHandler, UserOutput};
 use types::output;
 use wlroots_sys::wlr_output;
 
@@ -28,20 +28,20 @@ pub trait OutputManagerHandler {
     fn output_resolution(&mut self, &mut output::Output) {}
 }
 
-wayland_listener!(OutputManager, (Vec<Box<Output>>, Box<OutputManagerHandler>), [
+wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler>), [
     add_listener => add_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
         let (ref mut outputs, ref mut manager) = this.data;
         let data = data as *mut wlr_output;
         let mut output = output::Output::from_ptr(data as *mut wlr_output);
         if let Some(output) = manager.output_added(&mut output) {
-            let mut output = Output::new((data, output));
+            let mut output = UserOutput::new((data, output));
             // Add the output frame event to this manager
             wl_signal_add(&mut (*data).events.frame as *mut _ as _,
                         output.frame_listener() as _);
             // Add the output resolution event to this manager
             wl_signal_add(&mut (*data).events.resolution as *mut _ as _,
                         output.resolution_listener() as _);
-            // Store the user Output, free later in remove listener
+            // Store the user UserOutput, free later in remove listener
             outputs.push(output);
         }
     };
