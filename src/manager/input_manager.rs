@@ -96,7 +96,9 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
         let (ref mut inputs, ref mut manager) = this.data;
         manager.input_removed(&mut InputDevice::from_ptr(data as *mut wlr_input_device));
         // Remove user output data
-        if let Some(index) = inputs.iter().position(|input| input.input_device().to_ptr() == data as _) {
+        let find_index = inputs.iter()
+            .position(|input| input.input_device().to_ptr() == data as _);
+        if let Some(index) = find_index {
             let removed_input = inputs.remove(index);
             match removed_input {
                 Input::Keyboard(mut keyboard) => {
