@@ -37,3 +37,9 @@ wayland_listener!(Pointer, (InputDevice, Box<PointerHandler>), [
         this.data.1.on_axis(&mut this.data.0, &event)
     };
 ]);
+
+impl Pointer {
+    pub fn input_device(&self) -> &InputDevice {
+        &self.data.0
+    }
+}

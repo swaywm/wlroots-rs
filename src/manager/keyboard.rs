@@ -20,3 +20,9 @@ wayland_listener!(Keyboard, (InputDevice, Box<KeyboardHandler>), [
         keyboard_handler.on_key(&mut key)
     };
 ]);
+
+impl Keyboard {
+    pub fn input_device(&self) -> &InputDevice {
+        &self.data.0
+    }
+}
