@@ -155,11 +155,10 @@ impl Output {
 
 impl Drop for Output {
     fn drop(&mut self) {
-        // TODO Implement
-        // Also need to make sure it's not dropped except in the remove callback,
-        // since right now there's actually a lot of Output destruction which we don't
-        // want
-        // e.g need to make the from_ptr return ManuallyDrop<Output> now
+        // NOTE
+        // We do _not_ need to call wlr_output_destroy for the output
+        // That is handled by the backend automatically
+        // This is left here so no one does this in the future.
     }
 }
 

@@ -46,7 +46,7 @@ impl Compositor {
                 panic!("Could not auto-create backend");
             }
             let mut input_manager = InputManager::new(input_manager_handler);
-            let mut output_manager = OutputManager::new(output_manager_handler);
+            let mut output_manager = OutputManager::new((vec![], output_manager_handler));
             wl_signal_add(&mut (*backend).events.input_add as *mut _ as _,
                           input_manager.add_listener() as *mut _ as _);
             wl_signal_add(&mut (*backend).events.input_remove as *mut _ as _,

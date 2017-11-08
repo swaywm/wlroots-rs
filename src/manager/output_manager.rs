@@ -6,8 +6,10 @@
 use libc;
 use manager::{Output, OutputHandler};
 use types::output;
-use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_output;
+
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wayland_sys::server::signal::wl_signal_add;
 
 /// Handles output addition and removal.
 pub trait OutputManagerHandler {
@@ -26,26 +28,41 @@ pub trait OutputManagerHandler {
     fn output_resolution(&mut self, &mut output::Output) {}
 }
 
-wayland_listener!(OutputManager, Box<OutputManagerHandler>, [
+wayland_listener!(OutputManager, (Vec<Box<Output>>, Box<OutputManagerHandler>), [
     add_listener => add_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
+        let (ref mut outputs, ref mut manager) = this.data;
         let data = data as *mut wlr_output;
         let mut output = output::Output::from_ptr(data as *mut wlr_output);
-        if let Some(output) = this.data.output_added(&mut output) {
-            let mut output = Output::new(output);
+        if let Some(output) = manager.output_added(&mut output) {
+            let mut output = Output::new((data, output));
             // Add the output frame event to this manager
             wl_signal_add(&mut (*data).events.frame as *mut _ as _,
                         output.frame_listener() as _);
             // Add the output resolution event to this manager
             wl_signal_add(&mut (*data).events.resolution as *mut _ as _,
                         output.resolution_listener() as _);
-            ::std::mem::forget(output);
+            // Store the user Output, free later in remove listener
+            outputs.push(output);
         }
     };
     remove_listener => remove_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
-        let mut output = output::Output::from_ptr(data as *mut wlr_output);
+        let (ref mut outputs, ref mut manager) = this.data;
+        let data = data as *mut wlr_output;
+        let mut output = output::Output::from_ptr(data);
+        manager.output_removed(&mut output);
         if let Some(layout) = output.layout() {
-            layout.borrow_mut().remove(&mut output::Output::from_ptr(data as *mut wlr_output));
+            layout.borrow_mut().remove(&mut output);
         }
-        this.data.output_removed(&mut output::Output::from_ptr(data as *mut wlr_output))
+        // Remove user output data
+        if let Some(index) = outputs.iter().position(|output| output.output_ptr() == data) {
+            let mut removed_output = outputs.remove(index);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*removed_output.frame_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*removed_output.resolution_listener()).link as *mut _ as _);
+
+        }
     };
 ]);
