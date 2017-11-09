@@ -17,11 +17,12 @@ meson = { version = "1.0", optional = true }
 gcc = "0.3"
 # This is for the simple example
 gl_generator = "0.5.0"
-wayland-scanner = { git = "https://github.com/smithay/wayland-rs", rev = "a54e033" } # "0.12.*"
+# TODO Update once scanner fixes have been released
+wayland-scanner = { git = "https://github.com/smithay/wayland-rs", rev = "a54e033" }
 
 [dependencies]
 libc = "^0.2.*"
-wayland-sys = {version = "0.12.*" } #{ git = "https://github.com/Timidger/wayland-client-rs", features = ["client", "dlopen"] }
+wayland-sys = {version = "0.12.*" }
 wayland-server = { version = "0.12.*" }
 
 [features]
