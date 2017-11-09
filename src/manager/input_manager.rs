@@ -2,7 +2,7 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
-use super::{Keyboard, KeyboardHandler, Pointer, PointerHandler};
+use super::{KeyboardHandler, KeyboardWrapper, Pointer, PointerHandler};
 use libc;
 use std::env;
 use types::input_device::InputDevice;
@@ -16,7 +16,7 @@ use wlroots_sys::xkb_keymap_compile_flags::*;
 
 /// Different type of inputs that can be acquired.
 pub enum Input {
-    Keyboard(Box<Keyboard>),
+    Keyboard(Box<KeyboardWrapper>),
     Pointer(Box<Pointer>)
 }
 
@@ -62,7 +62,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     // Get the optional user keyboard struct, add the on_key signal
                     if let Some(keyboard_handler) = manager.keyboard_added(&mut dev) {
                         let dev_ = InputDevice::from_ptr(data as *mut wlr_input_device);
-                        let mut keyboard = Keyboard::new((dev_, keyboard_handler));
+                        let mut keyboard = KeyboardWrapper::new((dev_, keyboard_handler));
                         wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
                                     keyboard.key_listener() as *mut _ as _);
                         // Forget until we need to drop it in the destroy callback
