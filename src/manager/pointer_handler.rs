@@ -18,22 +18,29 @@ pub trait PointerHandler {
     fn on_axis(&mut self, &mut InputDevice, &pointer_events::AxisEvent) {}
 }
 
-wayland_listener!(Pointer, (InputDevice, Box<PointerHandler>), [
-    button_listener => key_notify: |this: &mut Pointer, data: *mut libc::c_void,| unsafe {
+wayland_listener!(PointerWrapper, (InputDevice, Box<PointerHandler>), [
+    button_listener => key_notify: |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
         let event = pointer_events::ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button);
         this.data.1.on_button(&mut this.data.0, &event)
     };
-    motion_listener => motion_notify:  |this: &mut Pointer, data: *mut libc::c_void,| unsafe {
+    motion_listener => motion_notify:  |this: &mut PointerWrapper, data: *mut libc::c_void,|
+    unsafe {
         let event = pointer_events::MotionEvent::from_ptr(data as *mut wlr_event_pointer_motion);
         this.data.1.on_motion(&mut this.data.0, &event)
     };
     motion_absolute_listener => motion_absolute_notify:
-    |this: &mut Pointer, data: *mut libc::c_void,| unsafe {
+    |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
         let event = pointer_events::AbsoluteMotionEvent::from_ptr(data as *mut _);
         this.data.1.on_motion_absolute(&mut this.data.0, &event)
     };
-    axis_listener => axis_notify:  |this: &mut Pointer, data: *mut libc::c_void,| unsafe {
+    axis_listener => axis_notify:  |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
         let event = pointer_events::AxisEvent::from_ptr(data as *mut wlr_event_pointer_axis);
         this.data.1.on_axis(&mut this.data.0, &event)
     };
 ]);
+
+impl PointerWrapper {
+    pub fn input_device(&self) -> &InputDevice {
+        &self.data.0
+    }
+}
