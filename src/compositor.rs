@@ -5,6 +5,7 @@ use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHan
 use std::cell::UnsafeCell;
 use std::env;
 use std::ffi::CStr;
+use types::server_decoration::ServerDecorationManager;
 use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_display, wl_event_loop};
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
@@ -18,7 +19,8 @@ pub struct Compositor {
     output_manager: Box<OutputManager>,
     backend: *mut wlr_backend,
     display: *mut wl_display,
-    event_loop: *mut wl_event_loop
+    event_loop: *mut wl_event_loop,
+    server_decoration_manager: Option<ServerDecorationManager>
 }
 
 impl Compositor {
@@ -54,6 +56,12 @@ impl Compositor {
             wl_signal_add(&mut (*backend).events.output_remove as *mut _ as _,
                           output_manager.remove_listener() as *mut _ as _);
 
+            let server_decoration_manager = ServerDecorationManager::new(display);
+
+            if server_decoration_manager.is_none() {
+                wlr_log!(L_ERROR, "Failed to create server decoration manager");
+            }
+
             let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
             if socket.is_null() {
                 // NOTE Rationale for panicking:
@@ -72,7 +80,8 @@ impl Compositor {
                 output_manager,
                 backend,
                 display,
-                event_loop
+                event_loop,
+                server_decoration_manager
             }
         }
     }
@@ -103,6 +112,10 @@ impl Compositor {
                           (*compositor.get()).display);
         }
         // TODO Clean up
+    }
+
+    pub fn server_decoration_manager(&mut self) -> Option<&mut ServerDecorationManager> {
+        self.server_decoration_manager.as_mut()
     }
 
     pub fn terminate(&mut self) {

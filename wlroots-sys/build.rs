@@ -3,12 +3,13 @@ extern crate bindgen;
 #[cfg(feature = "static")]
 extern crate meson;
 extern crate gl_generator;
+extern crate wayland_scanner;
 
+use gl_generator::{Api, Fallbacks, Profile, Registry, StaticGenerator};
 use std::env;
+use std::fs::File;
 #[allow(unused_imports)]
 use std::path::{Path, PathBuf};
-use std::fs::File;
-use gl_generator::{Registry, Api, Profile, Fallbacks, StaticGenerator};
 
 fn main() {
     let generated = bindgen::builder()
@@ -60,6 +61,7 @@ fn main() {
     // generate the bindings
     generated.write_to_file("src/gen.rs").unwrap();
 
+    generate_protocols();
     meson();
 
     // Example Khronos building stuff
@@ -86,7 +88,9 @@ fn main() {
             .hide_type("FP_SUBNORMAL")
             .hide_type("FP_NORMAL")
             .generate().unwrap();
-        example_generated.write_to_file(format!("{}/shared.rs", dest)).unwrap();
+        example_generated
+            .write_to_file(format!("{}/shared.rs", dest))
+            .unwrap();
 
         // Build shared.c for examples
         let mut config = gcc::Build::new();
@@ -108,9 +112,10 @@ fn meson() {}
 #[cfg(feature = "static")]
 fn meson() {
     let build_path = PathBuf::from(env::var("OUT_DIR")
-        .expect("Could not get OUT_DIR env variable"));
+                                       .expect("Could not get OUT_DIR env variable"));
     build_path.join("build");
-    let build_path_str = build_path.to_str()
+    let build_path_str = build_path
+        .to_str()
         .expect("Could not turn build path into a string");
     println!("cargo:rustc-link-search=native=wlroots");
     println!("cargo:rustc-link-search=native={}/lib", build_path_str);
@@ -119,9 +124,11 @@ fn meson() {
     if cfg!(feature = "static") {
         println!("cargo:rustc-link-search=native={}/util/", build_path_str);
         println!("cargo:rustc-link-search=native={}/types/", build_path_str);
-        println!("cargo:rustc-link-search=native={}/protocol/", build_path_str);
+        println!("cargo:rustc-link-search=native={}/protocol/",
+                 build_path_str);
         println!("cargo:rustc-link-search=native={}/xcursor/", build_path_str);
-        println!("cargo:rustc-link-search=native={}/xwayland/", build_path_str);
+        println!("cargo:rustc-link-search=native={}/xwayland/",
+                 build_path_str);
         println!("cargo:rustc-link-search=native={}/backend/", build_path_str);
         println!("cargo:rustc-link-search=native={}/render/", build_path_str);
 
@@ -136,4 +143,26 @@ fn meson() {
     }
 
     meson::build("wlroots", build_path_str);
+}
+
+fn generate_protocols() {
+    let output_dir_str = env::var("OUT_DIR").unwrap();
+
+    let output_dir = Path::new(&output_dir_str);
+
+    let protocols = &[
+        ("./wlroots/protocol/server-decoration.xml", "server_decoration"),
+    ];
+
+    for protocol in protocols {
+        wayland_scanner::generate_code(protocol.0,
+                                       output_dir.join(format!("{}_server_api.rs", protocol.1)),
+                                       wayland_scanner::Side::Server);
+        wayland_scanner::generate_code(protocol.0,
+                                       output_dir.join(format!("{}_client_api.rs", protocol.1)),
+                                       wayland_scanner::Side::Client);
+        wayland_scanner::generate_interfaces(protocol.0,
+                                             output_dir
+                                                 .join(format!("{}_interfaces.rs", protocol.1)));
+    }
 }

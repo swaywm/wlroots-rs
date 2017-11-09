@@ -6,6 +6,7 @@ use std::time::Instant;
 use wlroots::{Compositor, InputDevice, KeyEvent};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler};
 use wlroots::types::output;
+use wlroots::types::server_decoration::ServerDecorationMode;
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
@@ -84,6 +85,10 @@ impl OutputHandler for Output {
 fn main() {
     let input_manager = InputManager;
     let output_manager = OutputManager;
-    let compositor = Compositor::new(Box::new(input_manager), Box::new(output_manager));
+    let mut compositor = Compositor::new(Box::new(input_manager), Box::new(output_manager));
+
+    if let Some(ref mut decoration_manager) = compositor.server_decoration_manager() {
+        decoration_manager.set_default_mode(ServerDecorationMode::Client);
+    }
     compositor.run();
 }
