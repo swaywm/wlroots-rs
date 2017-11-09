@@ -23,7 +23,8 @@ wayland_listener!(PointerWrapper, (InputDevice, Box<PointerHandler>), [
         let event = pointer_events::ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button);
         this.data.1.on_button(&mut this.data.0, &event)
     };
-    motion_listener => motion_notify:  |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
+    motion_listener => motion_notify:  |this: &mut PointerWrapper, data: *mut libc::c_void,|
+    unsafe {
         let event = pointer_events::MotionEvent::from_ptr(data as *mut wlr_event_pointer_motion);
         this.data.1.on_motion(&mut this.data.0, &event)
     };

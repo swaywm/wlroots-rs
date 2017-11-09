@@ -2,7 +2,7 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
-use super::{KeyboardHandler, KeyboardWrapper, PointerWrapper, PointerHandler};
+use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper};
 use libc;
 use std::env;
 use types::input_device::InputDevice;
