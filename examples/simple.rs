@@ -45,7 +45,7 @@ impl InputManagerHandler for InputManager {
 }
 
 impl OutputManagerHandler for OutputManager {
-    fn output_added(&mut self, output: &mut output::Output) -> Option<Box<OutputHandler>> {
+    fn output_added(&mut self, output: &mut output::OutputHandle) -> Option<Box<OutputHandler>> {
         output.choose_best_mode();
         Some(Box::new(Output {
                           color: [0.0, 0.0, 0.0],
@@ -56,7 +56,7 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl OutputHandler for Output {
-    fn output_frame(&mut self, output: &mut output::Output) {
+    fn output_frame(&mut self, output: &mut output::OutputHandle) {
         let now = Instant::now();
         let delta = now.duration_since(self.last_frame);
         let seconds_delta = delta.as_secs();
