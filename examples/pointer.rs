@@ -35,7 +35,7 @@ struct Pointer {
 struct ExKeyboardHandler;
 
 impl OutputManagerHandler for OutputManager {
-    fn output_added(&mut self, output: &mut output::Output) -> Option<Box<OutputHandler>> {
+    fn output_added(&mut self, output: &mut output::OutputHandle) -> Option<Box<OutputHandler>> {
         output.choose_best_mode();
         let mut cursor = self.cursor.borrow_mut();
         {
@@ -102,7 +102,7 @@ impl PointerHandler for Pointer {
 }
 
 impl OutputHandler for Output {
-    fn output_frame(&mut self, output: &mut output::Output) {
+    fn output_frame(&mut self, output: &mut output::OutputHandle) {
         output.make_current();
         unsafe {
             gl::ClearColor(self.color.get()[0],

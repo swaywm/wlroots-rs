@@ -18,7 +18,7 @@ pub struct OutputState {
 
 /// A wrapper around a wlr_output.
 #[derive(Debug)]
-pub struct Output {
+pub struct OutputHandle {
     output: *mut wlr_output
 }
 
@@ -27,7 +27,7 @@ pub struct OutputLayout {
     layout: *mut wlr_output_layout
 }
 
-impl Output {
+impl OutputHandle {
     pub unsafe fn set_user_data(&mut self, data: Rc<OutputState>) {
         (*self.output).data = Rc::into_raw(data) as *mut _
     }
@@ -145,7 +145,7 @@ impl Output {
     }
 
     pub unsafe fn from_ptr(output: *mut wlr_output) -> Self {
-        Output { output }
+        OutputHandle { output }
     }
 
     pub unsafe fn to_ptr(&self) -> *mut wlr_output {
@@ -153,7 +153,7 @@ impl Output {
     }
 }
 
-impl Drop for Output {
+impl Drop for OutputHandle {
     fn drop(&mut self) {
         // NOTE
         // We do _not_ need to call wlr_output_destroy for the output
@@ -177,9 +177,9 @@ impl OutputLayout {
 
     /// # Unsafety
     /// The underlying function hasn't been proven to be stable if you
-    /// pass it an invalid Output (e.g one that has already been freed).
+    /// pass it an invalid OutputHandle (e.g one that has already been freed).
     /// For now, this function is unsafe
-    pub unsafe fn remove(&mut self, output: &mut Output) {
+    pub unsafe fn remove(&mut self, output: &mut OutputHandle) {
         wlr_output_layout_remove(self.layout, output.to_ptr())
     }
 }
