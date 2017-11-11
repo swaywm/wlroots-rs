@@ -5,8 +5,8 @@ use std::time::Instant;
 
 use wlroots::{Compositor, InputDevice, KeyEvent};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler};
+use wlroots::extensions::server_decoration::ServerDecorationMode;
 use wlroots::types::{KeyboardHandle, OutputHandle};
-use wlroots::types::server_decoration::ServerDecorationMode;
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
