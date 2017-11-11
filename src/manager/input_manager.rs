@@ -77,7 +77,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.motion as *mut _ as _,
                                     pointer.motion_listener() as *mut _ as _);
                         wl_signal_add(&mut (*dev.dev_union().pointer)
-.events.motion_absolute as *mut _ as _,
+                                      .events.motion_absolute as *mut _ as _,
                                     pointer.motion_absolute_listener() as *mut _ as _);
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.button as *mut _ as _,
                                     pointer.button_listener() as *mut _ as _);
