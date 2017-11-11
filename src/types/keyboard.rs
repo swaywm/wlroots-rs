@@ -1,16 +1,24 @@
 use std::fmt;
-use wlroots_sys::{wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
+use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
                   wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap,
                   xkb_keymap};
 
 #[derive(Debug)]
 pub struct KeyboardHandle {
+    device: *mut wlr_input_device,
     keyboard: *mut wlr_keyboard
 }
 
 impl KeyboardHandle {
-    pub(crate) unsafe fn new(kb_pointer: *mut wlr_keyboard) -> Self {
-        KeyboardHandle { keyboard: kb_pointer }
+    pub(crate) unsafe fn from_input_device(device: *mut wlr_input_device) -> Option<Self> {
+        use wlroots_sys::wlr_input_device_type::*;
+        match (*device).type_ {
+            WLR_INPUT_DEVICE_KEYBOARD => {
+                let keyboard = (*device).__bindgen_anon_1.keyboard;
+                Some(KeyboardHandle { device, keyboard })
+            }
+            _ => None,
+        }
     }
 
     pub(crate) unsafe fn to_ptr(&self) -> *mut wlr_keyboard {
@@ -32,6 +40,10 @@ impl KeyboardHandle {
 
     pub fn get_modifiers(&self) -> KeyboardModifier {
         unsafe { KeyboardModifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard)) }
+    }
+
+    pub unsafe fn input_device(&self) -> *mut wlr_input_device {
+        self.device
     }
 }
 

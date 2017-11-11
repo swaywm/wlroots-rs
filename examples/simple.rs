@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use wlroots::{Compositor, InputDevice, KeyEvent};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler};
+use wlroots::types::keyboard::KeyboardHandle;
 use wlroots::types::output;
 use wlroots::types::server_decoration::ServerDecorationMode;
 use wlroots::wlroots_sys::gl;
@@ -22,13 +23,13 @@ struct InputManager;
 struct ExKeyboardHandler;
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self, key_event: &mut KeyEvent) {
+    fn on_key(&mut self, keyboard: &mut KeyboardHandle, key_event: &mut KeyEvent) {
         let keys = key_event.input_keys();
 
         wlr_log!(L_DEBUG,
                  "Got key event. Keys: {:?}. Modifiers: {}",
                  keys,
-                 key_event.keyboard().get_modifiers());
+                 keyboard.get_modifiers());
 
         for key in keys {
             if key == KEY_Escape {

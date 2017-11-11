@@ -7,6 +7,7 @@ use libc;
 use std::env;
 use std::process::abort;
 use types::input_device::InputDevice;
+use types::keyboard::KeyboardHandle;
 use types::pointer::PointerHandle;
 use utils::safe_as_cstring;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -26,7 +27,7 @@ impl Input {
     pub unsafe fn input_device(&self) -> *mut wlr_input_device {
         use self::Input::*;
         match *self {
-            Keyboard(ref keyboard) => unimplemented!(),//TODO keyboard.input_device(),
+            Keyboard(ref keyboard) => keyboard.input_device(),
             Pointer(ref pointer) => pointer.input_device(),
         }
     }
@@ -64,7 +65,13 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     add_keyboard(&mut dev);
                     // Get the optional user keyboard struct, add the on_key signal
                     if let Some(keyboard_handler) = manager.keyboard_added(&mut dev) {
-                        let dev_ = InputDevice::from_ptr(data);
+                        let dev_ = match KeyboardHandle::from_input_device(data) {
+                            Some(dev) => dev,
+                            None => {
+                                wlr_log!(L_ERROR, "Device {:#?} was not a keyboard!", dev);
+                                abort()
+                            }
+                        };
                         let mut keyboard = KeyboardWrapper::new((dev_, keyboard_handler));
                         wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
                                     keyboard.key_listener() as *mut _ as _);

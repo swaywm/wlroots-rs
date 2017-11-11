@@ -7,6 +7,7 @@ use wlroots::{AxisEvent, ButtonEvent, Compositor, Cursor, InputDevice, KeyEvent,
               OutputLayout, XCursorTheme};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
               PointerHandler};
+use wlroots::types::keyboard::KeyboardHandle;
 use wlroots::types::output;
 use wlroots::types::pointer::PointerHandle;
 use wlroots::wlroots_sys::gl;
@@ -61,7 +62,7 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self, key_event: &mut KeyEvent) {
+    fn on_key(&mut self, _: &mut KeyboardHandle, key_event: &mut KeyEvent) {
         for key in key_event.input_keys() {
             if key == KEY_Escape {
                 wlroots::terminate()
