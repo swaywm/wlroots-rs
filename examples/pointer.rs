@@ -7,7 +7,8 @@ use wlroots::{AxisEvent, ButtonEvent, Compositor, Cursor, InputDevice, KeyEvent,
               OutputLayout, XCursorTheme};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
               PointerHandler};
-use wlroots::types::{output, pointer};
+use wlroots::types::output;
+use wlroots::types::pointer::PointerHandle;
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -70,14 +71,14 @@ impl KeyboardHandler for ExKeyboardHandler {
 }
 
 impl PointerHandler for Pointer {
-    fn on_motion(&mut self, _: &mut pointer::Pointer, event: &MotionEvent) {
+    fn on_motion(&mut self, _: &mut PointerHandle, event: &MotionEvent) {
         let (delta_x, delta_y) = event.delta();
         self.cursor
             .borrow_mut()
             .move_to(&event.device(), delta_x, delta_y);
     }
 
-    fn on_button(&mut self, _: &mut pointer::Pointer, event: &ButtonEvent) {
+    fn on_button(&mut self, _: &mut PointerHandle, event: &ButtonEvent) {
         if event.state() == WLR_BUTTON_RELEASED {
             self.color.set(self.default_color.clone())
         } else {
@@ -87,7 +88,7 @@ impl PointerHandler for Pointer {
         }
     }
 
-    fn on_axis(&mut self, _: &mut pointer::Pointer, event: &AxisEvent) {
+    fn on_axis(&mut self, _: &mut PointerHandle, event: &AxisEvent) {
         for color_byte in &mut self.default_color[..3] {
             *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
             if *color_byte > 1.0 {
