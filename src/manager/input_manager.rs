@@ -21,6 +21,10 @@ pub enum Input {
 }
 
 impl Input {
+    // TODO FIXME This isn't really safe...
+    // Make these instead store the types/ ones
+    // e.g Keyboard(types::Keyboard)
+    // For one thing all we need is the dev pointers...
     pub fn input_device(&self) -> &InputDevice {
         use self::Input::*;
         match *self {
@@ -77,7 +81,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.motion as *mut _ as _,
                                     pointer.motion_listener() as *mut _ as _);
                         wl_signal_add(&mut (*dev.dev_union().pointer)
-.events.motion_absolute as *mut _ as _,
+                                      .events.motion_absolute as *mut _ as _,
                                     pointer.motion_absolute_listener() as *mut _ as _);
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.button as *mut _ as _,
                                     pointer.button_listener() as *mut _ as _);

@@ -20,7 +20,7 @@ pub struct Compositor {
     backend: *mut wlr_backend,
     display: *mut wl_display,
     event_loop: *mut wl_event_loop,
-    server_decoration_manager: Option<ServerDecorationManager>
+    pub server_decoration_manager: Option<ServerDecorationManager>
 }
 
 impl Compositor {
@@ -56,12 +56,6 @@ impl Compositor {
             wl_signal_add(&mut (*backend).events.output_remove as *mut _ as _,
                           output_manager.remove_listener() as *mut _ as _);
 
-            let server_decoration_manager = ServerDecorationManager::new(display);
-
-            if server_decoration_manager.is_none() {
-                wlr_log!(L_ERROR, "Failed to create server decoration manager");
-            }
-
             let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
             if socket.is_null() {
                 // NOTE Rationale for panicking:
@@ -81,7 +75,7 @@ impl Compositor {
                 backend,
                 display,
                 event_loop,
-                server_decoration_manager
+                server_decoration_manager: None
             }
         }
     }
@@ -114,17 +108,30 @@ impl Compositor {
         // TODO Clean up
     }
 
+    /// Adds the server decoration manager protocol.
+    pub fn add_server_decoration_manager(&mut self) {
+        if self.server_decoration_manager.is_some() {
+            wlr_log!(L_ERROR, "Server decoration manager already loaded!");
+            return;
+        }
+        unsafe {
+            self.server_decoration_manager = ServerDecorationManager::new(self.display);
+            if self.server_decoration_manager.is_none() {
+                wlr_log!(L_ERROR, "Server decoration manager could not be loaded");
+            }
+        }
+    }
+
     pub fn server_decoration_manager(&mut self) -> Option<&mut ServerDecorationManager> {
         self.server_decoration_manager.as_mut()
     }
 
-    pub fn terminate(&mut self) {
+    fn terminate(&mut self) {
         unsafe {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
         }
     }
 }
-
 
 /// Terminates the compositor.
 /// If one is not running, does nothing
