@@ -12,7 +12,7 @@ impl PointerHandle {
     /// Tries to convert an input device to a pointer
     ///
     /// Returns none if it is of a different input varient.
-    pub unsafe fn from_input_device(device: *mut wlr_input_device) -> Option<Self> {
+    pub(crate) unsafe fn from_input_device(device: *mut wlr_input_device) -> Option<Self> {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_POINTER => {
