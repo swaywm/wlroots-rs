@@ -29,6 +29,13 @@ macro_rules! c_str {
 
 #[macro_export]
 /// Logs a message using wlroots' logging capability.
+///
+/// Possible values for `verb`:
+///
+/// * L_SILENT
+/// * L_INFO
+/// * L_DEBUG
+/// * L_ERROR
 macro_rules! wlr_log {
     ($verb: expr, $($msg:tt)*) => {{
         use $crate::wlroots_sys::_wlr_log;
