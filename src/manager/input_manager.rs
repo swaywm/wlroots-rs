@@ -21,6 +21,10 @@ pub enum Input {
 }
 
 impl Input {
+    // TODO FIXME This isn't really safe...
+    // Make these instead store the types/ ones
+    // e.g Keyboard(types::Keyboard)
+    // For one thing all we need is the dev pointers...
     pub fn input_device(&self) -> &InputDevice {
         use self::Input::*;
         match *self {
