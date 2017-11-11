@@ -112,7 +112,7 @@ impl Compositor {
     pub fn add_server_decoration_manager(&mut self) {
         if self.server_decoration_manager.is_some() {
             wlr_log!(L_ERROR, "Server decoration manager already loaded!");
-            return
+            return;
         }
         unsafe {
             self.server_decoration_manager = ServerDecorationManager::new(self.display);
