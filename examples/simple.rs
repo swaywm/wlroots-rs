@@ -5,8 +5,7 @@ use std::time::Instant;
 
 use wlroots::{Compositor, InputDevice, KeyEvent};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler};
-use wlroots::types::keyboard::KeyboardHandle;
-use wlroots::types::output;
+use wlroots::types::{KeyboardHandle, OutputHandle};
 use wlroots::types::server_decoration::ServerDecorationMode;
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -46,7 +45,7 @@ impl InputManagerHandler for InputManager {
 }
 
 impl OutputManagerHandler for OutputManager {
-    fn output_added(&mut self, output: &mut output::OutputHandle) -> Option<Box<OutputHandler>> {
+    fn output_added(&mut self, output: &mut OutputHandle) -> Option<Box<OutputHandler>> {
         output.choose_best_mode();
         Some(Box::new(Output {
                           color: [0.0, 0.0, 0.0],
@@ -57,7 +56,7 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl OutputHandler for Output {
-    fn output_frame(&mut self, output: &mut output::OutputHandle) {
+    fn output_frame(&mut self, output: &mut OutputHandle) {
         let now = Instant::now();
         let delta = now.duration_since(self.last_frame);
         let seconds_delta = delta.as_secs();

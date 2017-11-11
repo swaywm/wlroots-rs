@@ -3,7 +3,7 @@
 use events::pointer_events;
 
 use libc;
-use types::pointer::PointerHandle;
+use types::PointerHandle;
 use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion,
                   wlr_input_device};
 

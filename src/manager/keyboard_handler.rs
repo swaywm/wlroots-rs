@@ -2,7 +2,7 @@
 
 use events::key_events::KeyEvent;
 use libc;
-use types::keyboard::KeyboardHandle;
+use types::KeyboardHandle;
 use wlroots_sys::{wlr_event_keyboard_key, wlr_input_device};
 
 pub trait KeyboardHandler {

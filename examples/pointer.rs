@@ -7,9 +7,7 @@ use wlroots::{AxisEvent, ButtonEvent, Compositor, Cursor, InputDevice, KeyEvent,
               OutputLayout, XCursorTheme};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
               PointerHandler};
-use wlroots::types::keyboard::KeyboardHandle;
-use wlroots::types::output;
-use wlroots::types::pointer::PointerHandle;
+use wlroots::types::{KeyboardHandle, OutputHandle, PointerHandle};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -37,7 +35,7 @@ struct Pointer {
 struct ExKeyboardHandler;
 
 impl OutputManagerHandler for OutputManager {
-    fn output_added(&mut self, output: &mut output::OutputHandle) -> Option<Box<OutputHandler>> {
+    fn output_added(&mut self, output: &mut OutputHandle) -> Option<Box<OutputHandler>> {
         output.choose_best_mode();
         let mut cursor = self.cursor.borrow_mut();
         {
@@ -104,7 +102,7 @@ impl PointerHandler for Pointer {
 }
 
 impl OutputHandler for Output {
-    fn output_frame(&mut self, output: &mut output::OutputHandle) {
+    fn output_frame(&mut self, output: &mut OutputHandle) {
         output.make_current();
         unsafe {
             gl::ClearColor(self.color.get()[0],
