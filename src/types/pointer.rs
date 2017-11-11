@@ -1,4 +1,5 @@
 use wlroots_sys::{wlr_input_device, wlr_pointer};
+
 /// A wlr_input_device that is guaranteed to be a pointer.
 pub struct PointerHandle {
     /// The device that refers to this pointer
@@ -25,5 +26,9 @@ impl PointerHandle {
     /// Gets the wlr_input_device associated with this Pointer
     pub unsafe fn input_device(&self) -> *mut wlr_input_device {
         self.device
+    }
+
+    pub unsafe fn pointer(&self) -> *mut wlr_pointer {
+        self.pointer
     }
 }
