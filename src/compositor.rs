@@ -126,7 +126,7 @@ impl Compositor {
         self.server_decoration_manager.as_mut()
     }
 
-    pub fn terminate(&mut self) {
+    fn terminate(&mut self) {
         unsafe {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
         }
