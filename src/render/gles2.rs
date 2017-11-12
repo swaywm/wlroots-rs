@@ -31,11 +31,6 @@ impl GLES2 {
         }
     }
 
-    // TODO This should probably make a wrapper type or something
-    // Because you shouldn't be able to call these methods otherwise.
-    // Make this a GLES2
-    // Make the thing in the callback a GLES2Renderer
-
     pub fn render<'output>(&mut self, output: &'output mut OutputHandle) -> GLES2Renderer<'output> {
         output.make_current();
         unsafe {
