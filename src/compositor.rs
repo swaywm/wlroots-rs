@@ -115,7 +115,7 @@ pub struct Compositor {
     display: *mut wl_display,
     event_loop: *mut wl_event_loop,
     pub server_decoration_manager: Option<ServerDecorationManager>,
-    gles2_renderer: Option<GLES2Renderer>
+    pub gles2_renderer: Option<GLES2Renderer>
 }
 
 impl Compositor {
