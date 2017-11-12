@@ -164,3 +164,24 @@ macro_rules! wayland_listener {
         }
     }
 }
+
+
+/// Used to indicate what data is global compositor data.
+/// It will automatically implement the CompositorData trait for the struct,
+/// and also add a method to `Compositor` to unwrap the data from the fat
+/// pointer.
+#[macro_export]
+macro_rules! compositor_data {
+    ($struct_name: ty) => {
+        impl<'a>::std::convert::From<&'a mut $crate::Compositor> for &'a mut $struct_name {
+            fn from(compositor: &'a mut $crate::Compositor) -> &'a mut $struct_name {
+                &mut *compositor.data.downcast_mut::<$struct_name>()
+                    .unwrap_or_else(|| {
+                        wlr_log!(L_ERROR, "Could not cast compositor state to {:#?}",
+                                 stringify!($struct_name));
+                        panic!("Could not cast compositor state to correct value")
+                    })
+            }
+        }
+    }
+}

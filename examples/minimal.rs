@@ -8,6 +8,6 @@ impl wlroots::InputManagerHandler for InputManager {}
 
 fn main() {
     wlroots::CompositorBuilder::new()
-        .build_auto(Box::new(InputManager), Box::new(OutputManager))
+        .build_auto((), Box::new(InputManager), Box::new(OutputManager))
         .run()
 }

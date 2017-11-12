@@ -9,7 +9,7 @@ use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, Keyb
 use wlroots::render::Texture;
 use wlroots::types::{KeyboardHandle, OutputHandle};
 use wlroots::wlroots_sys::wl_output_transform;
-use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
+use wlroots::xkbcommon::xkb::keysyms;
 
 const CAT_STRIDE: i32 = 128;
 const CAT_WIDTH: i32 = 128;
@@ -28,6 +28,28 @@ impl Iterator for StepRange {
             Some(v)
         } else {
             None
+        }
+    }
+}
+
+struct CompositorState {
+    cat_texture: Option<Texture>,
+    x_offs: f32,
+    y_offs: f32,
+    x_vel: f32,
+    y_vel: f32
+}
+
+compositor_data!(CompositorState);
+
+impl CompositorState {
+    fn new() -> Self {
+        CompositorState {
+            cat_texture: None,
+            x_offs: 0.0,
+            y_offs: 0.0,
+            x_vel: 0.0,
+            y_vel: 0.0
         }
     }
 }
@@ -117,26 +139,32 @@ impl KeyboardHandler for KeyboardManager {
               key_event: &mut KeyEvent) {
         let keys = key_event.input_keys();
 
-        wlr_log!(L_DEBUG,
-                 "Got key event. Keys: {:?}. Modifiers: {}",
-                 keys,
-                 keyboard.get_modifiers());
-
         for key in keys {
-            if key == KEY_Escape {
-                compositor.terminate()
+            match key {
+                keysyms::KEY_Escape => compositor.terminate(),
+                keysyms::KEY_Right => update_velocities(compositor.into(), -16.0, 0.0),
+                keysyms::KEY_Left => update_velocities(compositor.into(), 16.0, 0.0),
+                keysyms::KEY_Up => update_velocities(compositor.into(), 0.0, -16.0),
+                keysyms::KEY_Down => update_velocities(compositor.into(), 0.0, 16.0),
+                _ => {}
             }
         }
     }
 }
 
+fn update_velocities(compositor: &mut CompositorState, x_diff: f32, y_diff: f32) {
+    compositor.x_vel += x_diff;
+    compositor.y_vel += y_diff;
+}
+
 fn main() {
+    let compositor_state = CompositorState::new();
     let input_manager = Box::new(InputManager);
     let cat_texture = Rc::new(RefCell::new(None));
     let output_manager = Box::new(OutputManager { cat_texture: cat_texture.clone() });
     let mut compositor = CompositorBuilder::new()
         .gles2_renderer(true)
-        .build_auto(input_manager, output_manager);
+        .build_auto(compositor_state, input_manager, output_manager);
     {
         let gles2_renderer = &mut compositor.gles2_renderer.as_mut().unwrap();
         *cat_texture.borrow_mut() = gles2_renderer

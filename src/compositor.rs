@@ -1,12 +1,15 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
-use extensions::server_decoration::ServerDecorationManager;
-use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
-use render::GLES2Renderer;
+use std::any::Any;
 use std::cell::UnsafeCell;
 use std::env;
 use std::ffi::CStr;
+
+use extensions::server_decoration::ServerDecorationManager;
+use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
+use render::GLES2Renderer;
+
 use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_display, wl_event_loop};
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
@@ -42,10 +45,11 @@ impl CompositorBuilder {
     ///
     /// Also automatically opens the socket for clients to communicate to the
     /// compositor with.
-    pub fn build_auto(self,
-                      input_manager_handler: Box<InputManagerHandler>,
-                      output_manager_handler: Box<OutputManagerHandler>)
-                      -> Compositor {
+    pub fn build_auto<T: Any + 'static>(self,
+                                        data: T,
+                                        input_manager_handler: Box<InputManagerHandler>,
+                                        output_manager_handler: Box<OutputManagerHandler>)
+                                        -> Compositor {
         unsafe {
             let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as
                 *mut wl_display;
@@ -95,6 +99,7 @@ impl CompositorBuilder {
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name);
             Compositor {
+                data: Box::new(data),
                 input_manager,
                 output_manager,
                 backend,
@@ -109,6 +114,7 @@ impl CompositorBuilder {
 
 #[allow(dead_code)]
 pub struct Compositor {
+    pub data: Box<Any>,
     input_manager: Box<InputManager>,
     output_manager: Box<OutputManager>,
     backend: *mut wlr_backend,

@@ -172,6 +172,6 @@ fn main() {
 
     let (output_manager, input_manager) = managers(cursor);
     let compositor = CompositorBuilder::new()
-        .build_auto(Box::new(input_manager), Box::new(output_manager));
+        .build_auto((), Box::new(input_manager), Box::new(output_manager));
     compositor.run();
 }
