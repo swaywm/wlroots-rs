@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate wlroots;
 
+use std::env;
 use std::time::Instant;
 
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
@@ -32,6 +33,7 @@ impl Iterator for StepRange {
 
 struct CompositorState {
     cat_texture: Option<Texture>,
+    rotation: wl_output_transform,
     last_frame: Instant,
     x_offs: f32,
     y_offs: f32,
@@ -42,9 +44,10 @@ struct CompositorState {
 compositor_data!(CompositorState);
 
 impl CompositorState {
-    fn new() -> Self {
+    fn new(rotation: wl_output_transform) -> Self {
         CompositorState {
             cat_texture: None,
+            rotation,
             last_frame: Instant::now(),
             x_offs: 0.0,
             y_offs: 0.0,
@@ -68,19 +71,13 @@ struct KeyboardManager;
 
 impl OutputManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
-                             _: &mut Compositor,
+                             compositor: &mut Compositor,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
+        let compositor_data: &mut CompositorState = compositor.into();
         let output = Output;
         let res = builder.build_best_mode(output);
-        // TODO
-        // for output in self.outputs() {
-        //    if output.name() == "pre-configured-name-from-config" {
-        // TODO Don't hard code, alias name, read from file
-        res.output
-            .transform(wl_output_transform::WL_OUTPUT_TRANSFORM_NORMAL);
-        //    }
-        // }
+        res.output.transform(compositor_data.rotation);
         Some(res)
     }
 }
@@ -160,7 +157,24 @@ fn update_velocities(compositor: &mut CompositorState, x_diff: f32, y_diff: f32)
 }
 
 fn main() {
-    let compositor_state = CompositorState::new();
+    use wl_output_transform::*;
+    let mut args = env::args();
+    args.next();
+    let rotation = if let Some(arg) = args.next() {
+        match arg.as_str() {
+            "90" => WL_OUTPUT_TRANSFORM_90,
+            "180" => WL_OUTPUT_TRANSFORM_180,
+            "270" => WL_OUTPUT_TRANSFORM_270,
+            "flipped" => WL_OUTPUT_TRANSFORM_FLIPPED,
+            "flipped_90" => WL_OUTPUT_TRANSFORM_FLIPPED_90,
+            "flipped_180" => WL_OUTPUT_TRANSFORM_FLIPPED_180,
+            "flipped_270" => WL_OUTPUT_TRANSFORM_FLIPPED_270,
+            _ => WL_OUTPUT_TRANSFORM_NORMAL,
+        }
+    } else {
+        WL_OUTPUT_TRANSFORM_NORMAL
+    };
+    let compositor_state = CompositorState::new(rotation);
     let input_manager = Box::new(InputManager);
     let output_manager = Box::new(OutputManager);
     let mut compositor = CompositorBuilder::new()
