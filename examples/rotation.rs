@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
-use wlroots::render::Texture;
+use wlroots::render::{Texture, TextureFormat};
 use wlroots::types::{KeyboardHandle, OutputHandle};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
@@ -94,8 +94,6 @@ impl OutputHandler for Output {
         let nano_delta = delta.subsec_nanos() as u64;
         let ms = (seconds_delta * 1000.0) + nano_delta as f32 / 1000000.0;
         let seconds = ms / 1000.0;
-        // TODO the method probably takes a different type, because you nede to call
-        // start first. Will look into it.
         let transform_matrix = output.transform_matrix();
         let mut renderer = renderer.render(output);
         let cat_texture = compositor_data.cat_texture.as_ref().unwrap();
@@ -181,7 +179,11 @@ fn main() {
         compositor_data.cat_texture = gles2
             .create_texture()
             .map(|mut cat_texture| {
-                     cat_texture.upload_pixels(CAT_STRIDE, CAT_WIDTH, CAT_HEIGHT, CAT_DATA);
+                     cat_texture.upload_pixels(TextureFormat::ABGR8888,
+                                               CAT_STRIDE,
+                                               CAT_WIDTH,
+                                               CAT_HEIGHT,
+                                               CAT_DATA);
                      cat_texture
                  })
     }
