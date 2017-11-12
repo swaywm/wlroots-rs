@@ -4,9 +4,10 @@ extern crate wlroots;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use wlroots::{CompositorBuilder, InputDevice, InputManagerHandler, KeyEvent, KeyboardHandler,
-              OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
-use wlroots::render::{GLES2Renderer, Texture};
+use wlroots::{Compositor, CompositorBuilder, InputDevice, InputManagerHandler, KeyEvent,
+              KeyboardHandler, OutputBuilder, OutputBuilderResult, OutputHandler,
+              OutputManagerHandler};
+use wlroots::render::Texture;
 use wlroots::types::{KeyboardHandle, OutputHandle};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -16,8 +17,6 @@ const CAT_WIDTH: i32 = 128;
 const CAT_HEIGHT: i32 = 128;
 const CAT_BYTES_PER_PXEL: i32 = 4;
 const CAT_DATA: &'static [u8] = include_bytes!("cat.data");
-
-static mut RENDERER: *mut GLES2Renderer = 0 as *mut _;
 
 /// Helper step by iterator, because `step_by` on `Range` is unstable.
 struct StepRange(i32, i32, i32);
@@ -56,6 +55,7 @@ struct KeyboardManager;
 
 impl OutputManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
+                             _: &mut Compositor,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
         let output = Output {
@@ -79,12 +79,13 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl OutputHandler for Output {
-    fn output_frame(&mut self, output: &mut OutputHandle) {
+    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut OutputHandle) {
         let (width, height) = output.effective_resolution();
         output.make_current();
-        // TODO Make this safe
-        // let renderer = self.gles2_renderer().expect("Renderer was not loaded");
-        let renderer: &mut GLES2Renderer = unsafe { &mut *RENDERER };
+        let renderer = compositor
+            .gles2_renderer
+            .as_mut()
+            .expect("Compositor was not loaded with gles2 renderer");
         // TODO the method probably takes a different type, because you nede to call
         // start
         // first. Will look into it.
@@ -105,13 +106,19 @@ impl OutputHandler for Output {
 }
 
 impl InputManagerHandler for InputManager {
-    fn keyboard_added(&mut self, _: &mut InputDevice) -> Option<Box<KeyboardHandler>> {
+    fn keyboard_added(&mut self,
+                      _: &mut Compositor,
+                      _: &mut InputDevice)
+                      -> Option<Box<KeyboardHandler>> {
         Some(Box::new(KeyboardManager))
     }
 }
 
 impl KeyboardHandler for KeyboardManager {
-    fn on_key(&mut self, keyboard: &mut KeyboardHandle, key_event: &mut KeyEvent) {
+    fn on_key(&mut self,
+              compositor: &mut Compositor,
+              keyboard: &mut KeyboardHandle,
+              key_event: &mut KeyEvent) {
         let keys = key_event.input_keys();
 
         wlr_log!(L_DEBUG,
@@ -121,7 +128,7 @@ impl KeyboardHandler for KeyboardManager {
 
         for key in keys {
             if key == KEY_Escape {
-                wlroots::terminate()
+                compositor.terminate()
             }
         }
     }
@@ -142,9 +149,6 @@ fn main() {
                      cat_texture.upload_pixels(CAT_STRIDE, CAT_WIDTH, CAT_HEIGHT, CAT_DATA);
                      cat_texture
                  });
-        unsafe {
-            RENDERER = *gles2_renderer;
-        }
     }
     compositor.run();
 }

@@ -2,12 +2,16 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
-use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper};
 use libc;
+
 use std::env;
 use std::process::abort;
+
+use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper};
+use compositor::{COMPOSITOR_PTR, Compositor};
 use types::{InputDevice, KeyboardHandle, PointerHandle};
 use utils::safe_as_cstring;
+
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_input_device, wlr_input_device_type, wlr_keyboard_set_keymap,
@@ -34,18 +38,21 @@ impl Input {
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
     /// Callback triggered when an input device is added.
-    fn input_added(&mut self, &mut InputDevice) {}
+    fn input_added(&mut self, &mut Compositor, &mut InputDevice) {}
 
     /// Callback triggered when an input device is removed.
-    fn input_removed(&mut self, &mut InputDevice) {
+    fn input_removed(&mut self, &mut Compositor, &mut InputDevice) {
         // TODO
     }
 
-    fn keyboard_added(&mut self, &mut InputDevice) -> Option<Box<KeyboardHandler>> {
+    fn keyboard_added(&mut self,
+                      &mut Compositor,
+                      &mut InputDevice)
+                      -> Option<Box<KeyboardHandler>> {
         None
     }
 
-    fn pointer_added(&mut self, &mut InputDevice) -> Option<Box<PointerHandler>> {
+    fn pointer_added(&mut self, &mut Compositor, &mut InputDevice) -> Option<Box<PointerHandler>> {
         None
     }
 }
@@ -56,13 +63,14 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
         let (ref mut inputs, ref mut manager) = this.data;
         use self::wlr_input_device_type::*;
         let mut dev = InputDevice::from_ptr(data);
+        let compositor = &mut *COMPOSITOR_PTR;
         unsafe {
             match dev.dev_type() {
                 WLR_INPUT_DEVICE_KEYBOARD => {
                     // Boring setup that we won't make the user do
                     add_keyboard(&mut dev);
                     // Get the optional user keyboard struct, add the on_key signal
-                    if let Some(keyboard_handler) = manager.keyboard_added(&mut dev) {
+                    if let Some(keyboard_handler) = manager.keyboard_added(compositor, &mut dev) {
                         let dev_ = match KeyboardHandle::from_input_device(data) {
                             Some(dev) => dev,
                             None => {
@@ -79,7 +87,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                 },
                 WLR_INPUT_DEVICE_POINTER => {
                     // Get the optional user pointer struct, add the signals
-                    if let Some(pointer) = manager.pointer_added(&mut dev) {
+                    if let Some(pointer) = manager.pointer_added(compositor, &mut dev) {
                         let dev_ = match PointerHandle::from_input_device(data) {
                             Some(dev) => dev,
                             None => {
@@ -104,12 +112,13 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                 _ => unimplemented!(), // TODO FIXME We _really_ shouldn't panic here
             }
         }
-        manager.input_added(&mut dev)
+        manager.input_added(compositor, &mut dev)
     };
     remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         let data = data as *mut wlr_input_device;
         let (ref mut inputs, ref mut manager) = this.data;
-        manager.input_removed(&mut InputDevice::from_ptr(data));
+        let compositor = &mut *COMPOSITOR_PTR;
+        manager.input_removed(compositor, &mut InputDevice::from_ptr(data));
         // Remove user output data
         let find_index = inputs.iter()
             .position(|input| input.input_device() == data);

@@ -12,7 +12,7 @@ use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
-static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
+pub static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
 pub struct CompositorBuilder {
     gles2_renderer: bool,
@@ -147,7 +147,7 @@ impl Compositor {
         // TODO Clean up
     }
 
-    fn terminate(&mut self) {
+    pub fn terminate(&mut self) {
         unsafe {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
         }
