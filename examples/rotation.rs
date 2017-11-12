@@ -4,9 +4,8 @@ extern crate wlroots;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use wlroots::{Compositor, CompositorBuilder, InputDevice, InputManagerHandler, KeyEvent,
-              KeyboardHandler, OutputBuilder, OutputBuilderResult, OutputHandler,
-              OutputManagerHandler};
+use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
+              OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
 use wlroots::render::Texture;
 use wlroots::types::{KeyboardHandle, OutputHandle};
 use wlroots::wlroots_sys::wl_output_transform;
@@ -108,7 +107,7 @@ impl OutputHandler for Output {
 impl InputManagerHandler for InputManager {
     fn keyboard_added(&mut self,
                       _: &mut Compositor,
-                      _: &mut InputDevice)
+                      _: &mut KeyboardHandle)
                       -> Option<Box<KeyboardHandler>> {
         Some(Box::new(KeyboardManager))
     }

@@ -47,12 +47,15 @@ pub trait InputManagerHandler {
 
     fn keyboard_added(&mut self,
                       &mut Compositor,
-                      &mut InputDevice)
+                      &mut KeyboardHandle)
                       -> Option<Box<KeyboardHandler>> {
         None
     }
 
-    fn pointer_added(&mut self, &mut Compositor, &mut InputDevice) -> Option<Box<PointerHandler>> {
+    fn pointer_added(&mut self,
+                     &mut Compositor,
+                     &mut PointerHandle)
+                     -> Option<Box<PointerHandler>> {
         None
     }
 }
@@ -70,15 +73,17 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     // Boring setup that we won't make the user do
                     add_keyboard(&mut dev);
                     // Get the optional user keyboard struct, add the on_key signal
-                    if let Some(keyboard_handler) = manager.keyboard_added(compositor, &mut dev) {
-                        let dev_ = match KeyboardHandle::from_input_device(data) {
-                            Some(dev) => dev,
-                            None => {
-                                wlr_log!(L_ERROR, "Device {:#?} was not a keyboard!", dev);
-                                abort()
-                            }
-                        };
-                        let mut keyboard = KeyboardWrapper::new((dev_, keyboard_handler));
+                    let mut keyboard_handle = match KeyboardHandle::from_input_device(data) {
+                        Some(dev) => dev,
+                        None => {
+                            wlr_log!(L_ERROR, "Device {:#?} was not a keyboard!", dev);
+                            abort()
+                        }
+                    };
+                    if let Some(keyboard_handler) = manager.keyboard_added(compositor,
+                                                                           &mut keyboard_handle) {
+                        let mut keyboard = KeyboardWrapper::new((keyboard_handle,
+                                                                 keyboard_handler));
                         wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
                                     keyboard.key_listener() as *mut _ as _);
                         // Forget until we need to drop it in the destroy callback
@@ -87,15 +92,15 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                 },
                 WLR_INPUT_DEVICE_POINTER => {
                     // Get the optional user pointer struct, add the signals
-                    if let Some(pointer) = manager.pointer_added(compositor, &mut dev) {
-                        let dev_ = match PointerHandle::from_input_device(data) {
-                            Some(dev) => dev,
-                            None => {
-                                wlr_log!(L_ERROR, "Device {:#?} was not a pointer!", dev);
-                                abort()
-                            }
-                        };
-                        let mut pointer = PointerWrapper::new((dev_, pointer));
+                    let mut pointer_handle = match PointerHandle::from_input_device(data) {
+                        Some(dev) => dev,
+                        None => {
+                            wlr_log!(L_ERROR, "Device {:#?} was not a pointer!", dev);
+                            abort()
+                        }
+                    };
+                    if let Some(pointer) = manager.pointer_added(compositor, &mut pointer_handle) {
+                        let mut pointer = PointerWrapper::new((pointer_handle, pointer));
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.motion as *mut _ as _,
                                     pointer.motion_listener() as *mut _ as _);
                         wl_signal_add(&mut (*dev.dev_union().pointer)

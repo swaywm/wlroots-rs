@@ -3,10 +3,9 @@ extern crate wlroots;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, InputDevice,
-              InputManagerHandler, KeyEvent, KeyboardHandler, MotionEvent, OutputBuilder,
-              OutputBuilderResult, OutputHandler, OutputLayout, OutputManagerHandler,
-              PointerHandler, XCursorTheme};
+use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, InputManagerHandler,
+              KeyEvent, KeyboardHandler, MotionEvent, OutputBuilder, OutputBuilderResult,
+              OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursorTheme};
 use wlroots::types::{KeyboardHandle, OutputHandle, PointerHandle};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
@@ -128,7 +127,7 @@ impl OutputHandler for Output {
 impl InputManagerHandler for InputManager {
     fn pointer_added(&mut self,
                      _: &mut Compositor,
-                     _: &mut InputDevice)
+                     _: &mut PointerHandle)
                      -> Option<Box<PointerHandler>> {
         Some(Box::new(Pointer {
                           color: self.color.clone(),
@@ -139,7 +138,7 @@ impl InputManagerHandler for InputManager {
 
     fn keyboard_added(&mut self,
                       _: &mut Compositor,
-                      _: &mut InputDevice)
+                      _: &mut KeyboardHandle)
                       -> Option<Box<KeyboardHandler>> {
         Some(Box::new(ExKeyboardHandler))
     }
