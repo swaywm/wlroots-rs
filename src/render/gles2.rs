@@ -40,6 +40,7 @@ impl GLES2Renderer {
             wlr_renderer_begin(self.renderer, output.to_ptr());
             f(self, output);
             wlr_renderer_end(self.renderer);
+            output.swap_buffers();
         }
     }
 

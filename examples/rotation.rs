@@ -98,9 +98,6 @@ impl OutputHandler for Output {
             }
             *self.cat_texture.borrow_mut() = Some(cat_texture)
         });
-        // TODO Render stuff
-        output.swap_buffers();
-        // TODO time stuff
     }
 }
 
