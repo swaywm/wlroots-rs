@@ -48,8 +48,8 @@ impl CompositorState {
             last_frame: Instant::now(),
             x_offs: 0.0,
             y_offs: 0.0,
-            x_vel: 0.0,
-            y_vel: 0.0
+            x_vel: 128.0,
+            y_vel: 128.0
         }
     }
 }
