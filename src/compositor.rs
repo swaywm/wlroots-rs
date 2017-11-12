@@ -1,11 +1,11 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
+use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
 use std::cell::UnsafeCell;
 use std::env;
 use std::ffi::CStr;
-use types::server_decoration::ServerDecorationManager;
 use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_display, wl_event_loop};
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};

@@ -37,6 +37,7 @@ mod manager;
 mod compositor;
 pub mod events;
 pub mod types;
+pub mod extensions;
 mod utils;
 
 

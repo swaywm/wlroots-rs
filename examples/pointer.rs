@@ -7,7 +7,7 @@ use wlroots::{AxisEvent, ButtonEvent, Compositor, Cursor, InputDevice, KeyEvent,
               OutputLayout, XCursorTheme};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
               PointerHandler};
-use wlroots::types::output;
+use wlroots::types::{KeyboardHandle, OutputHandle, PointerHandle};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -35,7 +35,7 @@ struct Pointer {
 struct ExKeyboardHandler;
 
 impl OutputManagerHandler for OutputManager {
-    fn output_added(&mut self, output: &mut output::OutputHandle) -> Option<Box<OutputHandler>> {
+    fn output_added(&mut self, output: &mut OutputHandle) -> Option<Box<OutputHandler>> {
         output.choose_best_mode();
         let mut cursor = self.cursor.borrow_mut();
         {
@@ -60,7 +60,7 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self, key_event: &mut KeyEvent) {
+    fn on_key(&mut self, _: &mut KeyboardHandle, key_event: &mut KeyEvent) {
         for key in key_event.input_keys() {
             if key == KEY_Escape {
                 wlroots::terminate()
@@ -70,14 +70,14 @@ impl KeyboardHandler for ExKeyboardHandler {
 }
 
 impl PointerHandler for Pointer {
-    fn on_motion(&mut self, _: &mut InputDevice, event: &MotionEvent) {
+    fn on_motion(&mut self, _: &mut PointerHandle, event: &MotionEvent) {
         let (delta_x, delta_y) = event.delta();
         self.cursor
             .borrow_mut()
             .move_to(&event.device(), delta_x, delta_y);
     }
 
-    fn on_button(&mut self, _: &mut InputDevice, event: &ButtonEvent) {
+    fn on_button(&mut self, _: &mut PointerHandle, event: &ButtonEvent) {
         if event.state() == WLR_BUTTON_RELEASED {
             self.color.set(self.default_color.clone())
         } else {
@@ -87,7 +87,7 @@ impl PointerHandler for Pointer {
         }
     }
 
-    fn on_axis(&mut self, _: &mut InputDevice, event: &AxisEvent) {
+    fn on_axis(&mut self, _: &mut PointerHandle, event: &AxisEvent) {
         for color_byte in &mut self.default_color[..3] {
             *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
             if *color_byte > 1.0 {
@@ -102,7 +102,7 @@ impl PointerHandler for Pointer {
 }
 
 impl OutputHandler for Output {
-    fn output_frame(&mut self, output: &mut output::OutputHandle) {
+    fn output_frame(&mut self, output: &mut OutputHandle) {
         output.make_current();
         unsafe {
             gl::ClearColor(self.color.get()[0],

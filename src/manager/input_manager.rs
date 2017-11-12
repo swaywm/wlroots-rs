@@ -5,7 +5,8 @@
 use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper};
 use libc;
 use std::env;
-use types::input_device::InputDevice;
+use std::process::abort;
+use types::{InputDevice, KeyboardHandle, PointerHandle};
 use utils::safe_as_cstring;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
@@ -21,11 +22,7 @@ pub enum Input {
 }
 
 impl Input {
-    // TODO FIXME This isn't really safe...
-    // Make these instead store the types/ ones
-    // e.g Keyboard(types::Keyboard)
-    // For one thing all we need is the dev pointers...
-    pub fn input_device(&self) -> &InputDevice {
+    pub unsafe fn input_device(&self) -> *mut wlr_input_device {
         use self::Input::*;
         match *self {
             Keyboard(ref keyboard) => keyboard.input_device(),
@@ -55,9 +52,10 @@ pub trait InputManagerHandler {
 
 wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
     add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
+        let data = data as *mut wlr_input_device;
         let (ref mut inputs, ref mut manager) = this.data;
         use self::wlr_input_device_type::*;
-        let mut dev = InputDevice::from_ptr(data as *mut wlr_input_device);
+        let mut dev = InputDevice::from_ptr(data);
         unsafe {
             match dev.dev_type() {
                 WLR_INPUT_DEVICE_KEYBOARD => {
@@ -65,7 +63,13 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     add_keyboard(&mut dev);
                     // Get the optional user keyboard struct, add the on_key signal
                     if let Some(keyboard_handler) = manager.keyboard_added(&mut dev) {
-                        let dev_ = InputDevice::from_ptr(data as *mut wlr_input_device);
+                        let dev_ = match KeyboardHandle::from_input_device(data) {
+                            Some(dev) => dev,
+                            None => {
+                                wlr_log!(L_ERROR, "Device {:#?} was not a keyboard!", dev);
+                                abort()
+                            }
+                        };
                         let mut keyboard = KeyboardWrapper::new((dev_, keyboard_handler));
                         wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
                                     keyboard.key_listener() as *mut _ as _);
@@ -76,7 +80,13 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                 WLR_INPUT_DEVICE_POINTER => {
                     // Get the optional user pointer struct, add the signals
                     if let Some(pointer) = manager.pointer_added(&mut dev) {
-                        let dev_ = InputDevice::from_ptr(data as *mut wlr_input_device);
+                        let dev_ = match PointerHandle::from_input_device(data) {
+                            Some(dev) => dev,
+                            None => {
+                                wlr_log!(L_ERROR, "Device {:#?} was not a pointer!", dev);
+                                abort()
+                            }
+                        };
                         let mut pointer = PointerWrapper::new((dev_, pointer));
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.motion as *mut _ as _,
                                     pointer.motion_listener() as *mut _ as _);
@@ -97,11 +107,12 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
         manager.input_added(&mut dev)
     };
     remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
+        let data = data as *mut wlr_input_device;
         let (ref mut inputs, ref mut manager) = this.data;
-        manager.input_removed(&mut InputDevice::from_ptr(data as *mut wlr_input_device));
+        manager.input_removed(&mut InputDevice::from_ptr(data));
         // Remove user output data
         let find_index = inputs.iter()
-            .position(|input| input.input_device().to_ptr() == data as _);
+            .position(|input| input.input_device() == data);
         if let Some(index) = find_index {
             let removed_input = inputs.remove(index);
             match removed_input {
