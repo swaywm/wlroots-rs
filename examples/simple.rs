@@ -4,7 +4,8 @@ extern crate wlroots;
 use std::time::Instant;
 
 use wlroots::{Compositor, InputDevice, KeyEvent};
-use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler};
+use wlroots::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
+              OutputHandler, OutputManagerHandler};
 use wlroots::extensions::server_decoration::ServerDecorationMode;
 use wlroots::types::{KeyboardHandle, OutputHandle};
 use wlroots::wlroots_sys::gl;
@@ -45,13 +46,14 @@ impl InputManagerHandler for InputManager {
 }
 
 impl OutputManagerHandler for OutputManager {
-    fn output_added(&mut self, output: &mut OutputHandle) -> Option<Box<OutputHandler>> {
-        output.choose_best_mode();
-        Some(Box::new(Output {
-                          color: [0.0, 0.0, 0.0],
-                          dec: 0,
-                          last_frame: Instant::now()
-                      }))
+    fn output_added<'output>(&mut self,
+                             builder: OutputBuilder<'output>)
+                             -> Option<OutputBuilderResult<'output>> {
+        Some(builder.build_best_mode(Output {
+                                         color: [0.0, 0.0, 0.0],
+                                         dec: 0,
+                                         last_frame: Instant::now()
+                                     }))
     }
 }
 

@@ -75,6 +75,13 @@ impl OutputHandle {
     }
 
     /// Sets the best modesetting for an output.
+    ///
+    /// NOTE You _cannot_ call this when the output will be removed.
+    /// It must only be called at startup.
+    ///
+    /// I'm still marking it as safe though because we protect against that
+    /// action
+    /// in the output destruction callback.
     pub fn choose_best_mode(&mut self) {
         unsafe {
             let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_list_length, self.modes() as _);

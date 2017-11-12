@@ -5,8 +5,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use wlroots::{AxisEvent, ButtonEvent, Compositor, Cursor, InputDevice, KeyEvent, MotionEvent,
               OutputLayout, XCursorTheme};
-use wlroots::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
-              PointerHandler};
+use wlroots::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
+              OutputHandler, OutputManagerHandler, PointerHandler};
 use wlroots::types::{KeyboardHandle, OutputHandle, PointerHandle};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
@@ -35,27 +35,33 @@ struct Pointer {
 struct ExKeyboardHandler;
 
 impl OutputManagerHandler for OutputManager {
-    fn output_added(&mut self, output: &mut OutputHandle) -> Option<Box<OutputHandler>> {
-        output.choose_best_mode();
-        let mut cursor = self.cursor.borrow_mut();
+    fn output_added<'output>(&mut self,
+                             builder: OutputBuilder<'output>)
+                             -> Option<OutputBuilderResult<'output>> {
+        let mut result = builder.build_best_mode(Output { color: self.color.clone() });
+        let mut cursor;
         {
-            let xcursor = cursor.xcursor().expect("XCursor was not set!");
-            let image = &xcursor.images()[0];
-            // TODO use output config if present instead of auto
-            let layout = cursor
-                .output_layout()
-                .as_ref()
-                .expect("Could not get output layout");
-            output.add_layout_auto(layout.clone());
-            if output.set_cursor(image).is_err() {
-                wlr_log!(L_DEBUG, "Failed to set hardware cursor");
-                return None;
+            let output = &mut result.output;
+            cursor = self.cursor.borrow_mut();
+            {
+                let xcursor = cursor.xcursor().expect("XCursor was not set!");
+                let image = &xcursor.images()[0];
+                // TODO use output config if present instead of auto
+                let layout = cursor
+                    .output_layout()
+                    .as_ref()
+                    .expect("Could not get output layout");
+                output.add_layout_auto(layout.clone());
+                if output.set_cursor(image).is_err() {
+                    wlr_log!(L_DEBUG, "Failed to set hardware cursor");
+                    return None;
+                }
             }
         }
         let (x, y) = cursor.coords();
         // https://en.wikipedia.org/wiki/Mouse_warping
         cursor.warp(None, x, y);
-        Some(Box::new(Output { color: self.color.clone() }))
+        Some(result)
     }
 }
 
