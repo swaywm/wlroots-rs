@@ -3,6 +3,7 @@
 
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
+use render::GLES2Renderer;
 use std::cell::UnsafeCell;
 use std::env;
 use std::ffi::CStr;
@@ -13,25 +14,38 @@ use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
-#[allow(dead_code)]
-pub struct Compositor {
-    input_manager: Box<InputManager>,
-    output_manager: Box<OutputManager>,
-    backend: *mut wlr_backend,
-    display: *mut wl_display,
-    event_loop: *mut wl_event_loop,
-    pub server_decoration_manager: Option<ServerDecorationManager>
+pub struct CompositorBuilder {
+    gles2_renderer: bool,
+    server_decoration_manager: bool
 }
 
-impl Compositor {
+impl CompositorBuilder {
+    pub fn new() -> Self {
+        CompositorBuilder {
+            gles2_renderer: false,
+            server_decoration_manager: false
+        }
+    }
+
+    pub fn gles2_renderer(mut self, gles2_renderer: bool) -> Self {
+        self.gles2_renderer = gles2_renderer;
+        self
+    }
+
+    pub fn server_decoration_manager(mut self, server_decoration_manager: bool) -> Self {
+        self.server_decoration_manager = server_decoration_manager;
+        self
+    }
+
     /// Makes a new compositor that handles the setup of the graphical backend
     /// (e.g, Wayland, X11, or DRM).
     ///
     /// Also automatically opens the socket for clients to communicate to the
     /// compositor with.
-    pub fn new(input_manager_handler: Box<InputManagerHandler>,
-               output_manager_handler: Box<OutputManagerHandler>)
-               -> Self {
+    pub fn build_auto(self,
+                      input_manager_handler: Box<InputManagerHandler>,
+                      output_manager_handler: Box<OutputManagerHandler>)
+                      -> Compositor {
         unsafe {
             let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as
                 *mut wl_display;
@@ -56,6 +70,17 @@ impl Compositor {
             wl_signal_add(&mut (*backend).events.output_remove as *mut _ as _,
                           output_manager.remove_listener() as *mut _ as _);
 
+            let server_decoration_manager = if self.server_decoration_manager {
+                ServerDecorationManager::new(display)
+            } else {
+                None
+            };
+            let gles2_renderer = if self.gles2_renderer {
+                GLES2Renderer::new(backend)
+            } else {
+                None
+            };
+
             let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
             if socket.is_null() {
                 // NOTE Rationale for panicking:
@@ -75,11 +100,25 @@ impl Compositor {
                 backend,
                 display,
                 event_loop,
-                server_decoration_manager: None
+                server_decoration_manager,
+                gles2_renderer
             }
         }
     }
+}
 
+#[allow(dead_code)]
+pub struct Compositor {
+    input_manager: Box<InputManager>,
+    output_manager: Box<OutputManager>,
+    backend: *mut wlr_backend,
+    display: *mut wl_display,
+    event_loop: *mut wl_event_loop,
+    pub server_decoration_manager: Option<ServerDecorationManager>,
+    gles2_renderer: Option<GLES2Renderer>
+}
+
+impl Compositor {
     /// Enters the wayland event loop. Won't return until the compositor is
     /// shut off
     pub fn run(self) {
@@ -106,24 +145,6 @@ impl Compositor {
                           (*compositor.get()).display);
         }
         // TODO Clean up
-    }
-
-    /// Adds the server decoration manager protocol.
-    pub fn add_server_decoration_manager(&mut self) {
-        if self.server_decoration_manager.is_some() {
-            wlr_log!(L_ERROR, "Server decoration manager already loaded!");
-            return;
-        }
-        unsafe {
-            self.server_decoration_manager = ServerDecorationManager::new(self.display);
-            if self.server_decoration_manager.is_none() {
-                wlr_log!(L_ERROR, "Server decoration manager could not be loaded");
-            }
-        }
-    }
-
-    pub fn server_decoration_manager(&mut self) -> Option<&mut ServerDecorationManager> {
-        self.server_decoration_manager.as_mut()
     }
 
     fn terminate(&mut self) {

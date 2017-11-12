@@ -38,10 +38,11 @@ mod compositor;
 pub mod events;
 pub mod types;
 pub mod extensions;
+mod render;
 mod utils;
 
 
-pub use self::compositor::{Compositor, terminate};
+pub use self::compositor::{Compositor, CompositorBuilder, terminate};
 pub use self::events::key_events::*;
 pub use self::events::pointer_events::*;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,

@@ -3,7 +3,7 @@ extern crate wlroots;
 
 use std::time::Instant;
 
-use wlroots::{Compositor, InputDevice, KeyEvent};
+use wlroots::{CompositorBuilder, InputDevice, KeyEvent};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
               OutputHandler, OutputManagerHandler};
 use wlroots::extensions::server_decoration::ServerDecorationMode;
@@ -87,10 +87,7 @@ impl OutputHandler for Output {
 fn main() {
     let input_manager = InputManager;
     let output_manager = OutputManager;
-    let mut compositor = Compositor::new(Box::new(input_manager), Box::new(output_manager));
-
-    if let Some(ref mut decoration_manager) = compositor.server_decoration_manager() {
-        decoration_manager.set_default_mode(ServerDecorationMode::Client);
-    }
+    let mut compositor = CompositorBuilder::new()
+        .build_auto(Box::new(input_manager), Box::new(output_manager));
     compositor.run();
 }

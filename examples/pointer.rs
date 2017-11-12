@@ -3,8 +3,8 @@ extern crate wlroots;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use wlroots::{AxisEvent, ButtonEvent, Compositor, Cursor, InputDevice, KeyEvent, MotionEvent,
-              OutputLayout, XCursorTheme};
+use wlroots::{AxisEvent, ButtonEvent, CompositorBuilder, Cursor, InputDevice, KeyEvent,
+              MotionEvent, OutputLayout, XCursorTheme};
 use wlroots::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
               OutputHandler, OutputManagerHandler, PointerHandler};
 use wlroots::types::{KeyboardHandle, OutputHandle, PointerHandle};
@@ -162,6 +162,7 @@ fn main() {
     cursor.set_xcursor(Some(xcursor));
 
     let (output_manager, input_manager) = managers(cursor);
-    let compositor = Compositor::new(Box::new(input_manager), Box::new(output_manager));
+    let compositor = CompositorBuilder::new()
+        .build_auto(Box::new(input_manager), Box::new(output_manager));
     compositor.run();
 }
