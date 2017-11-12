@@ -44,7 +44,7 @@ impl OutputManagerHandler for OutputManager {
                              compositor: &mut Compositor,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
-        let mut result = builder.build_best_mode(Output);
+        let result = builder.build_best_mode(Output);
         let state: &mut State = compositor.into();
         let cursor = &mut state.cursor;
         // TODO use output config if present instead of auto
