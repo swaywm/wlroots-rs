@@ -44,8 +44,8 @@ mod utils;
 pub use self::compositor::{Compositor, terminate};
 pub use self::events::key_events::*;
 pub use self::events::pointer_events::*;
-pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputHandler, OutputManagerHandler,
-                        PointerHandler};
+pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
+                        OutputHandler, OutputManagerHandler, PointerHandler};
 pub use self::types::cursor::*;
 pub use self::types::input_device::*;
 pub use self::types::keyboard::*;

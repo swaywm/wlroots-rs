@@ -11,10 +11,35 @@ use wlroots_sys::wlr_output;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 
+pub struct OutputBuilder<'output> {
+    output: &'output mut OutputHandle
+}
+
+/// Used to ensure that the builder is used to construct
+/// the OutputHandler instance.
+pub struct OutputBuilderResult<'output> {
+    pub output: &'output mut OutputHandle,
+    result: Box<OutputHandler>
+}
+
+impl<'output> OutputBuilder<'output> {
+    pub fn build_best_mode<T: OutputHandler + 'static>(self,
+                                                       data: T)
+                                                       -> OutputBuilderResult<'output> {
+        self.output.choose_best_mode();
+        OutputBuilderResult {
+            output: self.output,
+            result: Box::new(data)
+        }
+    }
+}
+
 /// Handles output addition and removal.
 pub trait OutputManagerHandler {
     /// Called whenever an output is added.
-    fn output_added(&mut self, _: &mut OutputHandle) -> Option<Box<OutputHandler>> {
+    fn output_added<'output>(&mut self,
+                             _: OutputBuilder<'output>)
+                             -> Option<OutputBuilderResult<'output>> {
         None
     }
 
@@ -33,7 +58,8 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
         let (ref mut outputs, ref mut manager) = this.data;
         let data = data as *mut wlr_output;
         let mut output = OutputHandle::from_ptr(data as *mut wlr_output);
-        if let Some(output) = manager.output_added(&mut output) {
+        let builder = OutputBuilder { output: &mut output };
+        if let Some(OutputBuilderResult {result: output, ..}) = manager.output_added(builder) {
             let mut output = UserOutput::new((data, output));
             // Add the output frame event to this manager
             wl_signal_add(&mut (*data).events.frame as *mut _ as _,
