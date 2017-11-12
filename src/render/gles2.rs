@@ -5,12 +5,18 @@ use wlroots_sys::{wlr_backend, wlr_gles2_renderer_create, wlr_render_texture_cre
                   wlr_render_with_matrix, wlr_renderer, wlr_renderer_begin, wlr_renderer_destroy,
                   wlr_renderer_end};
 
-/// Renderer for GLES2
-pub struct GLES2Renderer {
+/// Holds the state necessary to start rendering for GLES2.
+pub struct GLES2 {
     renderer: *mut wlr_renderer
 }
 
-impl GLES2Renderer {
+/// Renderer for GLES2
+pub struct GLES2Renderer<'output> {
+    renderer: *mut wlr_renderer,
+    output: &'output mut OutputHandle
+}
+
+impl GLES2 {
     pub(crate) unsafe fn new(backend: *mut wlr_backend) -> Option<Self> {
         if backend.is_null() {
             wlr_log!(L_ERROR, "Backend was null");
@@ -21,7 +27,7 @@ impl GLES2Renderer {
             wlr_log!(L_ERROR, "Could not construct GLES2 renderer");
             None
         } else {
-            Some(GLES2Renderer { renderer })
+            Some(GLES2 { renderer })
         }
     }
 
@@ -30,41 +36,54 @@ impl GLES2Renderer {
     // Make this a GLES2
     // Make the thing in the callback a GLES2Renderer
 
-    pub fn render<F>(&mut self, output: &mut OutputHandle, f: F)
-    where
-        F: Fn(&mut GLES2Renderer, &mut OutputHandle),
-    {
-
+    pub fn render<'output>(&mut self, output: &'output mut OutputHandle) -> GLES2Renderer<'output> {
+        output.make_current();
         unsafe {
-            output.make_current();
             wlr_renderer_begin(self.renderer, output.to_ptr());
-            f(self, output);
-            wlr_renderer_end(self.renderer);
-            output.swap_buffers();
+        }
+        GLES2Renderer {
+            renderer: self.renderer,
+            output
         }
     }
 
+    pub fn create_texture(&mut self) -> Option<Texture> {
+        unsafe { create_texture(self.renderer) }
+    }
+}
+
+impl<'output> GLES2Renderer<'output> {
     pub fn render_with_matrix(&mut self, texture: &Texture, matrix: &[f32; 16]) -> bool {
         unsafe { wlr_render_with_matrix(self.renderer, texture.to_ptr(), matrix) }
     }
 
     /// Create a texture using the GLES2 backend.
     pub fn create_texture(&mut self) -> Option<Texture> {
-        unsafe {
-            let texture = wlr_render_texture_create(self.renderer);
-            if texture.is_null() {
-                wlr_log!(L_ERROR, "Could not create texture");
-                None
-            } else {
-                Some(Texture::from_ptr(texture))
-            }
-        }
+        unsafe { create_texture(self.renderer) }
     }
 }
 
+impl<'output> Drop for GLES2Renderer<'output> {
+    fn drop(&mut self) {
+        unsafe {
+            wlr_renderer_end(self.renderer);
+        }
+        self.output.swap_buffers()
+    }
+}
 
-impl Drop for GLES2Renderer {
+impl Drop for GLES2 {
     fn drop(&mut self) {
         unsafe { wlr_renderer_destroy(self.renderer) }
+    }
+}
+
+unsafe fn create_texture(renderer: *mut wlr_renderer) -> Option<Texture> {
+    let texture = wlr_render_texture_create(renderer);
+    if texture.is_null() {
+        wlr_log!(L_ERROR, "Could not create texture");
+        None
+    } else {
+        Some(Texture::from_ptr(texture))
     }
 }

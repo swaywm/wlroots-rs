@@ -8,7 +8,7 @@ use std::ffi::CStr;
 
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
-use render::GLES2Renderer;
+use render::GLES2;
 
 use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_display, wl_event_loop};
 use wayland_sys::server::signal::wl_signal_add;
@@ -18,20 +18,20 @@ use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_
 pub static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
 pub struct CompositorBuilder {
-    gles2_renderer: bool,
+    gles2: bool,
     server_decoration_manager: bool
 }
 
 impl CompositorBuilder {
     pub fn new() -> Self {
         CompositorBuilder {
-            gles2_renderer: false,
+            gles2: false,
             server_decoration_manager: false
         }
     }
 
-    pub fn gles2_renderer(mut self, gles2_renderer: bool) -> Self {
-        self.gles2_renderer = gles2_renderer;
+    pub fn gles2(mut self, gles2_renderer: bool) -> Self {
+        self.gles2 = gles2_renderer;
         self
     }
 
@@ -79,8 +79,8 @@ impl CompositorBuilder {
             } else {
                 None
             };
-            let gles2_renderer = if self.gles2_renderer {
-                GLES2Renderer::new(backend)
+            let gles2 = if self.gles2 {
+                GLES2::new(backend)
             } else {
                 None
             };
@@ -106,7 +106,7 @@ impl CompositorBuilder {
                 display,
                 event_loop,
                 server_decoration_manager,
-                gles2_renderer
+                gles2
             }
         }
     }
@@ -121,7 +121,7 @@ pub struct Compositor {
     display: *mut wl_display,
     event_loop: *mut wl_event_loop,
     pub server_decoration_manager: Option<ServerDecorationManager>,
-    pub gles2_renderer: Option<GLES2Renderer>
+    pub gles2: Option<GLES2>
 }
 
 impl Compositor {

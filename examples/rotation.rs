@@ -82,7 +82,7 @@ impl OutputHandler for Output {
     fn output_frame(&mut self, compositor: &mut Compositor, output: &mut OutputHandle) {
         let (width, height) = output.effective_resolution();
         let renderer = compositor
-            .gles2_renderer
+            .gles2
             .as_mut()
             .expect("Compositor was not loaded with gles2 renderer");
         let compositor_data: &mut CompositorState = (&mut compositor.data)
@@ -96,15 +96,15 @@ impl OutputHandler for Output {
         let seconds = ms / 1000.0;
         // TODO the method probably takes a different type, because you nede to call
         // start first. Will look into it.
-        renderer.render(output, |renderer, output| {
-            let cat_texture = compositor_data.cat_texture.as_ref().unwrap();
-            for y in StepRange(-128 + compositor_data.y_offs as i32, height, 128) {
-                for x in StepRange(-128 + compositor_data.x_offs as i32, width, 128) {
-                    let matrix = cat_texture.get_matrix(&output.transform_matrix(), x, y);
-                    renderer.render_with_matrix(&cat_texture, &matrix);
-                }
+        let transform_matrix = output.transform_matrix();
+        let mut renderer = renderer.render(output);
+        let cat_texture = compositor_data.cat_texture.as_ref().unwrap();
+        for y in StepRange(-128 + compositor_data.y_offs as i32, height, 128) {
+            for x in StepRange(-128 + compositor_data.x_offs as i32, width, 128) {
+                let matrix = cat_texture.get_matrix(&transform_matrix, x, y);
+                renderer.render_with_matrix(&cat_texture, &matrix);
             }
-        });
+        }
         compositor_data.x_offs += compositor_data.x_vel * seconds;
         compositor_data.y_offs += compositor_data.y_vel * seconds;
         if compositor_data.x_offs > 128.0 {
@@ -173,17 +173,17 @@ fn main() {
     let input_manager = Box::new(InputManager);
     let output_manager = Box::new(OutputManager);
     let mut compositor = CompositorBuilder::new()
-        .gles2_renderer(true)
+        .gles2(true)
         .build_auto(compositor_state, input_manager, output_manager);
     {
-        let gles2_renderer = &mut compositor.gles2_renderer.as_mut().unwrap();
+        let gles2 = &mut compositor.gles2.as_mut().unwrap();
         let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
-        compositor_data.cat_texture = gles2_renderer
+        compositor_data.cat_texture = gles2
             .create_texture()
             .map(|mut cat_texture| {
                      cat_texture.upload_pixels(CAT_STRIDE, CAT_WIDTH, CAT_HEIGHT, CAT_DATA);
                      cat_texture
                  })
-    };
+    }
     compositor.run();
 }
