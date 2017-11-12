@@ -1,4 +1,6 @@
-use wlroots_sys::{wlr_backend, wlr_gles2_renderer_create, wlr_renderer, wlr_renderer_destroy};
+use types::OutputHandle;
+use wlroots_sys::{wlr_backend, wlr_gles2_renderer_create, wlr_renderer, wlr_renderer_begin,
+                  wlr_renderer_destroy, wlr_renderer_end};
 
 /// Renderer for GLES2
 pub struct GLES2Renderer {
@@ -17,6 +19,19 @@ impl GLES2Renderer {
             None
         } else {
             Some(GLES2Renderer { renderer })
+        }
+    }
+
+    pub fn render<F>(&mut self, output: &mut OutputHandle, f: F)
+    where
+        F: Fn(&mut OutputHandle, &mut GLES2Renderer),
+    {
+
+        unsafe {
+            output.make_current();
+            wlr_renderer_begin(self.renderer, output.to_ptr());
+            f(output, self);
+            wlr_renderer_end(self.renderer);
         }
     }
 }

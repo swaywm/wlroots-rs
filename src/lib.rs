@@ -38,7 +38,7 @@ mod compositor;
 pub mod events;
 pub mod types;
 pub mod extensions;
-mod render;
+pub mod render;
 mod utils;
 
 
