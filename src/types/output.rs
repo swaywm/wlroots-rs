@@ -75,7 +75,12 @@ impl OutputHandle {
     }
 
     /// Sets the best modesetting for an output.
-    pub fn choose_best_mode(&mut self) {
+    ///
+    /// NOTE You _cannot_ call this when the output will be removed.
+    /// It must only be called at startup.
+    /// For this reason, it's only public to the crate and is marked
+    /// `unsafe`.
+    pub(crate) unsafe fn choose_best_mode(&mut self) {
         unsafe {
             let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_list_length, self.modes() as _);
             if length > 0 {

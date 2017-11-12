@@ -26,7 +26,13 @@ impl<'output> OutputBuilder<'output> {
     pub fn build_best_mode<T: OutputHandler + 'static>(self,
                                                        data: T)
                                                        -> OutputBuilderResult<'output> {
-        self.output.choose_best_mode();
+        // NOTE Rationale for why this is safe:
+        // * The builder is only constructed in output_added callback
+        // * Can't be copied or otherwise escape (due to the lifetime constraints)
+        // * Is only called once per output because this function consumes
+        unsafe {
+            self.output.choose_best_mode();
+        }
         OutputBuilderResult {
             output: self.output,
             result: Box::new(data)
