@@ -24,13 +24,13 @@ impl GLES2Renderer {
 
     pub fn render<F>(&mut self, output: &mut OutputHandle, f: F)
     where
-        F: Fn(&mut OutputHandle, &mut GLES2Renderer),
+        F: Fn(&mut GLES2Renderer, &mut OutputHandle),
     {
 
         unsafe {
             output.make_current();
             wlr_renderer_begin(self.renderer, output.to_ptr());
-            f(output, self);
+            f(self, output);
             wlr_renderer_end(self.renderer);
         }
     }
