@@ -57,10 +57,6 @@ impl CompositorState {
     }
 }
 
-// TODO Basic rotation
-// TODO Config reading
-// TODO Arrow key velocity control
-
 struct OutputManager;
 
 struct Output;
@@ -105,7 +101,6 @@ impl OutputHandler for Output {
             for y in StepRange(-128 + compositor_data.y_offs as i32, height, 128) {
                 for x in StepRange(-128 + compositor_data.x_offs as i32, width, 128) {
                     let matrix = cat_texture.get_matrix(&output.transform_matrix(), x, y);
-                    // wlr_log!(L_ERROR, "x: {}, y: {}", x, y);
                     renderer.render_with_matrix(&cat_texture, &matrix);
                 }
             }
