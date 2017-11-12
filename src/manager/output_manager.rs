@@ -41,10 +41,6 @@ pub trait OutputManagerHandler {
     fn output_removed(&mut self, OutputDestruction) {
         // TODO
     }
-    /// Called every time the output frame is updated.
-    fn output_frame(&mut self, &mut OutputHandle) {}
-    /// Called every time the output resolution is updated.
-    fn output_resolution(&mut self, &mut OutputHandle) {}
 }
 
 
