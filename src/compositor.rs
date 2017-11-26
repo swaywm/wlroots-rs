@@ -1,37 +1,55 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
-use extensions::server_decoration::ServerDecorationManager;
-use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
+use std::any::Any;
 use std::cell::UnsafeCell;
 use std::env;
 use std::ffi::CStr;
+
+use extensions::server_decoration::ServerDecorationManager;
+use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
+use render::GLES2;
+
 use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_display, wl_event_loop};
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
-static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
+pub static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
-#[allow(dead_code)]
-pub struct Compositor {
-    input_manager: Box<InputManager>,
-    output_manager: Box<OutputManager>,
-    backend: *mut wlr_backend,
-    display: *mut wl_display,
-    event_loop: *mut wl_event_loop,
-    pub server_decoration_manager: Option<ServerDecorationManager>
+pub struct CompositorBuilder {
+    gles2: bool,
+    server_decoration_manager: bool
 }
 
-impl Compositor {
+impl CompositorBuilder {
+    pub fn new() -> Self {
+        CompositorBuilder {
+            gles2: false,
+            server_decoration_manager: false
+        }
+    }
+
+    pub fn gles2(mut self, gles2_renderer: bool) -> Self {
+        self.gles2 = gles2_renderer;
+        self
+    }
+
+    pub fn server_decoration_manager(mut self, server_decoration_manager: bool) -> Self {
+        self.server_decoration_manager = server_decoration_manager;
+        self
+    }
+
     /// Makes a new compositor that handles the setup of the graphical backend
     /// (e.g, Wayland, X11, or DRM).
     ///
     /// Also automatically opens the socket for clients to communicate to the
     /// compositor with.
-    pub fn new(input_manager_handler: Box<InputManagerHandler>,
-               output_manager_handler: Box<OutputManagerHandler>)
-               -> Self {
+    pub fn build_auto<T: Any + 'static>(self,
+                                        data: T,
+                                        input_manager_handler: Box<InputManagerHandler>,
+                                        output_manager_handler: Box<OutputManagerHandler>)
+                                        -> Compositor {
         unsafe {
             let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as
                 *mut wl_display;
@@ -56,6 +74,17 @@ impl Compositor {
             wl_signal_add(&mut (*backend).events.output_remove as *mut _ as _,
                           output_manager.remove_listener() as *mut _ as _);
 
+            let server_decoration_manager = if self.server_decoration_manager {
+                ServerDecorationManager::new(display)
+            } else {
+                None
+            };
+            let gles2 = if self.gles2 {
+                GLES2::new(backend)
+            } else {
+                None
+            };
+
             let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
             if socket.is_null() {
                 // NOTE Rationale for panicking:
@@ -70,16 +99,32 @@ impl Compositor {
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name);
             Compositor {
+                data: Box::new(data),
                 input_manager,
                 output_manager,
                 backend,
                 display,
                 event_loop,
-                server_decoration_manager: None
+                server_decoration_manager,
+                gles2
             }
         }
     }
+}
 
+#[allow(dead_code)]
+pub struct Compositor {
+    pub data: Box<Any>,
+    input_manager: Box<InputManager>,
+    output_manager: Box<OutputManager>,
+    backend: *mut wlr_backend,
+    display: *mut wl_display,
+    event_loop: *mut wl_event_loop,
+    pub server_decoration_manager: Option<ServerDecorationManager>,
+    pub gles2: Option<GLES2>
+}
+
+impl Compositor {
     /// Enters the wayland event loop. Won't return until the compositor is
     /// shut off
     pub fn run(self) {
@@ -108,25 +153,7 @@ impl Compositor {
         // TODO Clean up
     }
 
-    /// Adds the server decoration manager protocol.
-    pub fn add_server_decoration_manager(&mut self) {
-        if self.server_decoration_manager.is_some() {
-            wlr_log!(L_ERROR, "Server decoration manager already loaded!");
-            return;
-        }
-        unsafe {
-            self.server_decoration_manager = ServerDecorationManager::new(self.display);
-            if self.server_decoration_manager.is_none() {
-                wlr_log!(L_ERROR, "Server decoration manager could not be loaded");
-            }
-        }
-    }
-
-    pub fn server_decoration_manager(&mut self) -> Option<&mut ServerDecorationManager> {
-        self.server_decoration_manager.as_mut()
-    }
-
-    fn terminate(&mut self) {
+    pub fn terminate(&mut self) {
         unsafe {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
         }

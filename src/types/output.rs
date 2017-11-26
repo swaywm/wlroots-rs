@@ -3,10 +3,11 @@
 use types::cursor::XCursorImage;
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wl_list, wlr_output, wlr_output_events, wlr_output_layout,
-                  wlr_output_layout_add_auto, wlr_output_layout_create, wlr_output_layout_destroy,
-                  wlr_output_layout_remove, wlr_output_make_current, wlr_output_mode,
-                  wlr_output_set_cursor, wlr_output_set_mode, wlr_output_swap_buffers};
+use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
+                  wlr_output_events, wlr_output_layout, wlr_output_layout_add_auto,
+                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_remove,
+                  wlr_output_make_current, wlr_output_mode, wlr_output_set_cursor,
+                  wlr_output_set_mode, wlr_output_swap_buffers, wlr_output_transform};
 
 use std::cell::RefCell;
 use std::ffi::CStr;
@@ -140,6 +141,24 @@ impl OutputHandle {
     /// Get the physical dimensions of the output as (width, height).
     pub fn physical_dimensions(&self) -> (i32, i32) {
         unsafe { ((*self.output).phys_width, (*self.output).phys_height) }
+    }
+
+    pub fn effective_resolution(&self) -> (i32, i32) {
+        unsafe {
+            let (mut x, mut y) = (0, 0);
+            wlr_output_effective_resolution(self.output, &mut x, &mut y);
+            (x, y)
+        }
+    }
+
+    pub fn transform_matrix(&self) -> [f32; 16] {
+        unsafe { (*self.output).transform_matrix }
+    }
+
+    pub fn transform(&mut self, transform: wl_output_transform) {
+        unsafe {
+            wlr_output_transform(self.output, transform);
+        }
     }
 
     // TODO Wrap this somehow? Hmm

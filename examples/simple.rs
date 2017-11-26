@@ -3,10 +3,8 @@ extern crate wlroots;
 
 use std::time::Instant;
 
-use wlroots::{Compositor, InputDevice, KeyEvent};
-use wlroots::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
-              OutputHandler, OutputManagerHandler};
-use wlroots::extensions::server_decoration::ServerDecorationMode;
+use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
+              OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
 use wlroots::types::{KeyboardHandle, OutputHandle};
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -23,7 +21,10 @@ struct InputManager;
 struct ExKeyboardHandler;
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self, keyboard: &mut KeyboardHandle, key_event: &mut KeyEvent) {
+    fn on_key(&mut self,
+              compositor: &mut Compositor,
+              keyboard: &mut KeyboardHandle,
+              key_event: &mut KeyEvent) {
         let keys = key_event.input_keys();
 
         wlr_log!(L_DEBUG,
@@ -33,20 +34,24 @@ impl KeyboardHandler for ExKeyboardHandler {
 
         for key in keys {
             if key == KEY_Escape {
-                wlroots::terminate()
+                compositor.terminate()
             }
         }
     }
 }
 
 impl InputManagerHandler for InputManager {
-    fn keyboard_added(&mut self, _: &mut InputDevice) -> Option<Box<KeyboardHandler>> {
+    fn keyboard_added(&mut self,
+                      _: &mut Compositor,
+                      _: &mut KeyboardHandle)
+                      -> Option<Box<KeyboardHandler>> {
         Some(Box::new(ExKeyboardHandler))
     }
 }
 
 impl OutputManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
+                             _: &mut Compositor,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
         Some(builder.build_best_mode(Output {
@@ -58,7 +63,7 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl OutputHandler for Output {
-    fn output_frame(&mut self, output: &mut OutputHandle) {
+    fn output_frame(&mut self, _: &mut Compositor, output: &mut OutputHandle) {
         let now = Instant::now();
         let delta = now.duration_since(self.last_frame);
         let seconds_delta = delta.as_secs();
@@ -85,12 +90,7 @@ impl OutputHandler for Output {
 }
 
 fn main() {
-    let input_manager = InputManager;
-    let output_manager = OutputManager;
-    let mut compositor = Compositor::new(Box::new(input_manager), Box::new(output_manager));
-
-    if let Some(ref mut decoration_manager) = compositor.server_decoration_manager() {
-        decoration_manager.set_default_mode(ServerDecorationMode::Client);
-    }
-    compositor.run();
+    CompositorBuilder::new()
+        .build_auto((), Box::new(InputManager), Box::new(OutputManager))
+        .run()
 }

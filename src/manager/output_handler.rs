@@ -1,12 +1,13 @@
 //! Handler for outputs
 
+use compositor::{COMPOSITOR_PTR, Compositor};
 use libc;
 use types::OutputHandle;
 use wlroots_sys::wlr_output;
 
 pub trait OutputHandler {
     /// Called every time the output frame is updated.
-    fn output_frame(&mut self, &mut OutputHandle) {}
+    fn output_frame(&mut self, &mut Compositor, &mut OutputHandle) {}
 
     /// Called every time the output resolution changes.
     fn output_resolution(&mut self, &mut OutputHandle) {}
@@ -15,7 +16,8 @@ pub trait OutputHandler {
 wayland_listener!(UserOutput, (*mut wlr_output, Box<OutputHandler>), [
     frame_listener => frame_notify: |this: &mut UserOutput, data: *mut libc::c_void,| unsafe {
         let manager = &mut this.data.1;
-        manager.output_frame(&mut OutputHandle::from_ptr(data as *mut wlr_output))
+        let output = &mut *COMPOSITOR_PTR;
+        manager.output_frame(output, &mut OutputHandle::from_ptr(data as *mut wlr_output))
     };
     resolution_listener => resolution_notify: |this: &mut UserOutput, data: *mut libc::c_void,|
     unsafe {
