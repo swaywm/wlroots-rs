@@ -1,10 +1,9 @@
-
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
                   wlr_output_events, wlr_output_layout, wlr_output_layout_add_auto,
                   wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_remove,
-                  wlr_output_make_current, wlr_output_mode,
-                  wlr_output_set_mode, wlr_output_swap_buffers, wlr_output_transform};
+                  wlr_output_make_current, wlr_output_mode, wlr_output_set_mode,
+                  wlr_output_swap_buffers, wlr_output_transform};
 
 use std::cell::RefCell;
 use std::ffi::CStr;

@@ -9,8 +9,8 @@ use types::output::OutputLayout;
 use utils::safe_as_cstring;
 
 use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
-                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_warp,
-                  wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
+                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_warp, wlr_xcursor,
+                  wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
                   wlr_xcursor_theme_load};
 
 #[derive(Debug)]
