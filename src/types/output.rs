@@ -1,12 +1,9 @@
 
-
-use types::cursor::XCursorImage;
-
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
                   wlr_output_events, wlr_output_layout, wlr_output_layout_add_auto,
                   wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_remove,
-                  wlr_output_make_current, wlr_output_mode, wlr_output_set_cursor,
+                  wlr_output_make_current, wlr_output_mode,
                   wlr_output_set_mode, wlr_output_swap_buffers, wlr_output_transform};
 
 use std::cell::RefCell;
@@ -56,21 +53,6 @@ impl OutputHandle {
                 self.set_user_data(Rc::new(OutputState { layout: Some(layout) }));
             } else {
                 (*user_data).layout = Some(layout);
-            }
-        }
-    }
-
-    pub fn set_cursor<'cursor>(&mut self, image: &'cursor XCursorImage<'cursor>) -> Result<(), ()> {
-        unsafe {
-            match wlr_output_set_cursor(self.output,
-                                          image.buffer.as_ptr(),
-                                          image.width as i32,
-                                          image.width,
-                                          image.height,
-                                          image.hotspot_x as i32,
-                                          image.hotspot_y as i32) {
-                true => Ok(()),
-                false => Err(()),
             }
         }
     }

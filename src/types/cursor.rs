@@ -1,7 +1,7 @@
 //! Wrapper for wlr_cursor
 
 
-use std::{mem, ptr, slice};
+use std::{ptr};
 use std::cell::RefCell;
 use std::rc::Rc;
 use types::input_device::InputDevice;
@@ -9,25 +9,19 @@ use types::output::OutputLayout;
 use utils::safe_as_cstring;
 
 use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
-                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_set_xcursor, wlr_cursor_warp,
-                  wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
+                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_warp,
+                  wlr_xcursor_theme,
                   wlr_xcursor_theme_load};
 
 #[derive(Debug)]
 pub struct Cursor {
     cursor: *mut wlr_cursor,
-    xcursor: Option<XCursor>,
     layout: Option<Rc<RefCell<OutputLayout>>>
 }
 
 #[derive(Debug)]
 pub struct XCursorTheme {
     theme: *mut wlr_xcursor_theme
-}
-
-#[derive(Debug)]
-pub struct XCursor {
-    xcursor: *mut wlr_xcursor
 }
 
 impl Cursor {
@@ -39,7 +33,6 @@ impl Cursor {
             } else {
                 Some(Cursor {
                          cursor: cursor,
-                         xcursor: None,
                          layout: None
                      })
             }
@@ -55,21 +48,6 @@ impl Cursor {
             let dev_ptr = dev.map(|dev| dev.to_ptr()).unwrap_or(ptr::null_mut());
             wlr_cursor_warp(self.cursor, dev_ptr, x, y)
         }
-    }
-
-    pub fn set_xcursor(&mut self, xcursor: Option<XCursor>) {
-        self.xcursor = xcursor;
-        unsafe {
-            let xcursor_ptr = self.xcursor
-                .as_mut()
-                .map(|xcursor| xcursor.as_raw())
-                .unwrap_or(ptr::null_mut());
-            wlr_cursor_set_xcursor(self.cursor, xcursor_ptr)
-        }
-    }
-
-    pub fn xcursor(&self) -> Option<&XCursor> {
-        self.xcursor.as_ref()
     }
 
     /// Attaches an output layout to the cursor.
@@ -113,61 +91,8 @@ impl XCursorTheme {
         }
     }
 
-    pub fn get_cursor(&self, name: String) -> Option<XCursor> {
-        let name_str = safe_as_cstring(name);
-        let xcursor = unsafe { wlr_xcursor_theme_get_cursor(self.theme, name_str.as_ptr()) };
-        if xcursor.is_null() {
-            None
-        } else {
-            Some(XCursor { xcursor })
-        }
-    }
-
     pub fn into_raw(self) -> *mut wlr_xcursor_theme {
         self.theme
     }
 }
 
-impl XCursor {
-    pub unsafe fn as_raw(&mut self) -> *mut wlr_xcursor {
-        self.xcursor
-    }
-
-    pub fn images<'cursor>(&'cursor self) -> Vec<XCursorImage<'cursor>> {
-        unsafe {
-            let image_ptr = (*self.xcursor).images as *const *const wlr_xcursor_image;
-            let length = (*self.xcursor).image_count;
-            let cursors_slice: &'cursor [*const wlr_xcursor_image] =
-                slice::from_raw_parts::<'cursor, *const wlr_xcursor_image>(image_ptr,
-                                                                           length as usize);
-            let mut result = Vec::with_capacity(cursors_slice.len());
-            for cursor in cursors_slice {
-                result.push(XCursorImage {
-                                width: (**cursor).width,
-                                height: (**cursor).height,
-                                hotspot_x: (**cursor).hotspot_x,
-                                hotspot_y: (**cursor).hotspot_y,
-                                delay: (**cursor).delay,
-                                buffer:
-                                    slice::from_raw_parts::<'cursor, u8>((**cursor).buffer as
-                                                                             *const u8,
-                                                                         (**cursor).width as usize *
-                                                                             (**cursor).height as
-                                                                                 usize *
-                                                                             mem::size_of::<u32>())
-                            })
-            }
-            result
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct XCursorImage<'cursor> {
-    pub width: u32,
-    pub height: u32,
-    pub hotspot_x: u32,
-    pub hotspot_y: u32,
-    pub delay: u32,
-    pub buffer: &'cursor [u8]
-}
