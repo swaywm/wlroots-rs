@@ -19,6 +19,7 @@ arch:
     - libinput
     - pixman
     - libxkbcommon
+    - xcb-util-image
     - libcap
     - rustup
     - clang
