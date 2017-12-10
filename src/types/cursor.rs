@@ -9,8 +9,8 @@ use types::output::OutputLayout;
 use utils::safe_as_cstring;
 
 use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
-                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_set_xcursor, wlr_cursor_warp,
-                  wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
+                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_warp, wlr_xcursor,
+                  wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
                   wlr_xcursor_theme_load};
 
 #[derive(Debug)]
@@ -54,17 +54,6 @@ impl Cursor {
         unsafe {
             let dev_ptr = dev.map(|dev| dev.to_ptr()).unwrap_or(ptr::null_mut());
             wlr_cursor_warp(self.cursor, dev_ptr, x, y)
-        }
-    }
-
-    pub fn set_xcursor(&mut self, xcursor: Option<XCursor>) {
-        self.xcursor = xcursor;
-        unsafe {
-            let xcursor_ptr = self.xcursor
-                .as_mut()
-                .map(|xcursor| xcursor.as_raw())
-                .unwrap_or(ptr::null_mut());
-            wlr_cursor_set_xcursor(self.cursor, xcursor_ptr)
         }
     }
 

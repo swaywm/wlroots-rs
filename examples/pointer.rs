@@ -54,12 +54,12 @@ impl OutputManagerHandler for OutputManager {
                 .as_ref()
                 .expect("Could not get output layout");
             result.output.add_layout_auto(layout.clone());
-            let xcursor = cursor.xcursor().expect("XCursor was not set!");
+            /*let xcursor = cursor.xcursor().expect("XCursor was not set!");
             let image = &xcursor.images()[0];
             if result.output.set_cursor(image).is_err() {
                 wlr_log!(L_DEBUG, "Failed to set hardware cursor");
                 return None;
-            }
+            }*/
         }
         let (x, y) = cursor.coords();
         // https://en.wikipedia.org/wiki/Mouse_warping
@@ -149,14 +149,14 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     let mut cursor = Cursor::new().expect("Could not create cursor");
-    let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
+    /*let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
     let xcursor = xcursor_theme
         .get_cursor("left_ptr".into())
         .expect("Could not load cursor from theme");
     let layout = Rc::new(RefCell::new(OutputLayout::new()));
     cursor.set_xcursor(Some(xcursor));
 
-    cursor.attach_output_layout(layout);
+    cursor.attach_output_layout(layout);*/
     let compositor = CompositorBuilder::new().build_auto(State::new(cursor),
                                                          Box::new(InputManager),
                                                          Box::new(OutputManager));
