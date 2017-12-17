@@ -8,7 +8,7 @@ use std::env;
 use std::process::abort;
 
 use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper};
-use compositor::{COMPOSITOR_PTR, Compositor};
+use compositor::{Compositor, COMPOSITOR_PTR};
 use types::{InputDevice, KeyboardHandle, PointerHandle};
 use utils::safe_as_cstring;
 
@@ -30,7 +30,7 @@ impl Input {
         use self::Input::*;
         match *self {
             Keyboard(ref keyboard) => keyboard.input_device(),
-            Pointer(ref pointer) => pointer.input_device(),
+            Pointer(ref pointer) => pointer.input_device()
         }
     }
 }
@@ -161,13 +161,11 @@ pub unsafe fn add_keyboard(dev: &mut InputDevice) {
     let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT").unwrap_or("".into()));
     let variant = safe_as_cstring(env::var("XKB_DEFAULT_VARIANT").unwrap_or("".into()));
     let options = safe_as_cstring(env::var("XKB_DEFAULT_OPTIONS").unwrap_or("".into()));
-    let rules = xkb_rule_names {
-        rules: rules.into_raw(),
-        model: model.into_raw(),
-        layout: layout.into_raw(),
-        variant: variant.into_raw(),
-        options: options.into_raw()
-    };
+    let rules = xkb_rule_names { rules: rules.into_raw(),
+                                 model: model.into_raw(),
+                                 layout: layout.into_raw(),
+                                 variant: variant.into_raw(),
+                                 options: options.into_raw() };
     let context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     if context.is_null() {
         wlr_log!(L_ERROR, "Failed to create XKB context");

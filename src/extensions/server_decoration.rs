@@ -3,8 +3,7 @@ use wlroots_sys::{wl_display, wlr_server_decoration_manager, wlr_server_decorati
                   wlr_server_decoration_manager_destroy,
                   wlr_server_decoration_manager_set_default_mode};
 pub use wlroots_sys::protocols::server_decoration
-::server::org_kde_kwin_server_decoration_manager::Mode
-as ServerDecorationMode;
+::server::org_kde_kwin_server_decoration_manager::Mode as ServerDecorationMode;
 
 #[derive(Debug)]
 pub struct ServerDecorationManager {
@@ -24,7 +23,9 @@ impl ServerDecorationManager {
 
     pub fn set_default_mode(&mut self, mode: ServerDecorationMode) {
         wlr_log!(L_INFO, "New server decoration mode: {:?}", mode);
-        unsafe { wlr_server_decoration_manager_set_default_mode(self.manager, mode.to_raw()) }
+        unsafe {
+            wlr_server_decoration_manager_set_default_mode(self.manager, mode.to_raw())
+        }
     }
 }
 

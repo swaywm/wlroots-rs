@@ -19,7 +19,7 @@ impl PointerHandle {
                 let pointer = (*device).__bindgen_anon_1.pointer;
                 Some(PointerHandle { device, pointer })
             }
-            _ => None,
+            _ => None
         }
     }
 

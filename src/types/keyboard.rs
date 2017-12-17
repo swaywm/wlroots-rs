@@ -17,7 +17,7 @@ impl KeyboardHandle {
                 let keyboard = (*device).__bindgen_anon_1.keyboard;
                 Some(KeyboardHandle { device, keyboard })
             }
-            _ => None,
+            _ => None
         }
     }
 
@@ -39,7 +39,9 @@ impl KeyboardHandle {
     }
 
     pub fn get_modifiers(&self) -> KeyboardModifier {
-        unsafe { KeyboardModifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard)) }
+        unsafe {
+            KeyboardModifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard))
+        }
     }
 
     pub unsafe fn input_device(&self) -> *mut wlr_input_device {
@@ -70,22 +72,19 @@ bitflags! {
 
 impl fmt::Display for KeyboardModifier {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let mod_vec = vec![
-            ("Shift", KeyboardModifier::WLR_MODIFIER_SHIFT),
-            ("Caps lock", KeyboardModifier::WLR_MODIFIER_CAPS),
-            ("Ctrl", KeyboardModifier::WLR_MODIFIER_CTRL),
-            ("Alt", KeyboardModifier::WLR_MODIFIER_ALT),
-            ("Mod2", KeyboardModifier::WLR_MODIFIER_MOD2),
-            ("Mod3", KeyboardModifier::WLR_MODIFIER_MOD3),
-            ("Logo", KeyboardModifier::WLR_MODIFIER_LOGO),
-            ("Mod5", KeyboardModifier::WLR_MODIFIER_MOD5),
-        ];
+        let mod_vec = vec![("Shift", KeyboardModifier::WLR_MODIFIER_SHIFT),
+                           ("Caps lock", KeyboardModifier::WLR_MODIFIER_CAPS),
+                           ("Ctrl", KeyboardModifier::WLR_MODIFIER_CTRL),
+                           ("Alt", KeyboardModifier::WLR_MODIFIER_ALT),
+                           ("Mod2", KeyboardModifier::WLR_MODIFIER_MOD2),
+                           ("Mod3", KeyboardModifier::WLR_MODIFIER_MOD3),
+                           ("Logo", KeyboardModifier::WLR_MODIFIER_LOGO),
+                           ("Mod5", KeyboardModifier::WLR_MODIFIER_MOD5)];
 
-        let mods: Vec<&str> = mod_vec
-            .into_iter()
-            .filter(|&(_, flag)| self.contains(flag))
-            .map(|(st, _)| st)
-            .collect();
+        let mods: Vec<&str> = mod_vec.into_iter()
+                                     .filter(|&(_, flag)| self.contains(flag))
+                                     .map(|(st, _)| st)
+                                     .collect();
 
         write!(formatter, "{:?}", mods)
     }

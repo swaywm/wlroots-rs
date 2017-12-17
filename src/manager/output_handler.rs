@@ -1,6 +1,6 @@
 //! Handler for outputs
 
-use compositor::{COMPOSITOR_PTR, Compositor};
+use compositor::{Compositor, COMPOSITOR_PTR};
 use libc;
 use types::OutputHandle;
 use wlroots_sys::wlr_output;

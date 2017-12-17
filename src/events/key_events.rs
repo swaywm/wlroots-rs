@@ -21,9 +21,8 @@ impl KeyEvent {
         unsafe {
             let mut syms = 0 as *const xkb_keysym_t;
             let key_length = xkb_state_key_get_syms(self.xkb_state, self.keycode(), &mut syms);
-            (0..key_length)
-                .map(|index| *syms.offset(index as isize))
-                .collect()
+            (0..key_length).map(|index| *syms.offset(index as isize))
+                           .collect()
         }
     }
 }

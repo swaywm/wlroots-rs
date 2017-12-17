@@ -26,9 +26,7 @@ arch:
   script:
     - rustup install stable
     # For rustfmt
-    - rustup install nightly
     - rustup default stable
-    - rustup run nightly cargo install rustfmt
     - export RUST_BACKTRACE=full
     - git submodule update --init --recursive
 
@@ -40,12 +38,9 @@ arch:
 
     # Build wlroots-rs
     - cargo build --verbose
-    - cargo +nightly fmt -- --write-mode=diff
     - cargo build --examples
     - cargo doc
 
-before_script:
-  - which rustfmt || cargo install rustfmt
 script:
   - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
 
