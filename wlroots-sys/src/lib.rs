@@ -1,9 +1,9 @@
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
 extern crate libc;
+extern crate wayland_server;
 #[macro_use]
 extern crate wayland_sys;
-extern crate wayland_server;
 
 // For graphical functions
 pub mod gl {
@@ -26,8 +26,8 @@ mod generated {
                     include!(concat!(env!("OUT_DIR"), "/server_decoration_interfaces.rs"));
                 }
 
-                use wayland_server::{Client, EventLoopHandle, EventResult,
-                                     Implementable, Liveness, Resource};
+                use wayland_server::{Client, EventLoopHandle, EventResult, Implementable,
+                                     Liveness, Resource};
                 use wayland_server::protocol::wl_surface;
                 include!(concat!(env!("OUT_DIR"), "/server_decoration_server_api.rs"));
             }
