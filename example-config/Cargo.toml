@@ -1,0 +1,9 @@
+[package]
+name = "example-config"
+version = "0.1.0"
+authors = ["Timidger <APragmaticPlace@gmail.com>"]
+
+[dependencies]
+rust-ini = "0.10.0"
+wlroots-sys = { path = "../wlroots-sys" }
+wlroots = { path = "../" }
