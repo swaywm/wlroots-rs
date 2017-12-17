@@ -18,7 +18,7 @@ gcc = "0.3"
 # This is for the simple example
 gl_generator = "0.5.0"
 # TODO Update once scanner fixes have been released
-wayland-scanner = { git = "https://github.com/smithay/wayland-rs", rev = "a54e033" }
+wayland-scanner = "0.12.*" #{ git = "https://github.com/smithay/wayland-rs", rev = "a54e033" }
 
 [dependencies]
 libc = "^0.2.*"
