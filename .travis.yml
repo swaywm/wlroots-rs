@@ -24,6 +24,7 @@ arch:
     - rustup
     - clang
   script:
+    - rustup update
     - rustup install stable
     # For rustfmt
     - rustup install nightly
