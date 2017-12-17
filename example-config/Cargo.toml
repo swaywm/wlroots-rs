@@ -7,3 +7,4 @@ authors = ["Timidger <APragmaticPlace@gmail.com>"]
 rust-ini = "0.10.0"
 wlroots-sys = { path = "../wlroots-sys" }
 wlroots = { path = "../" }
+clap = "2.29.0"
