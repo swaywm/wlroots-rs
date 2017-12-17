@@ -102,3 +102,12 @@ impl DerefMut for Area {
         &mut self.0
     }
 }
+
+impl PartialEq for Area {
+    fn eq(&self, other: &Area) -> bool {
+        self.x == other.x && self.y == other.y &&
+            self.height == other.height && self.width == other.width
+    }
+}
+
+impl Eq for Area {}
