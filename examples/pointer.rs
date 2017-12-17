@@ -153,10 +153,11 @@ fn main() {
     let xcursor = xcursor_theme
         .get_cursor("left_ptr".into())
         .expect("Could not load cursor from theme");
-    let layout = Rc::new(RefCell::new(OutputLayout::new()));
     cursor.set_xcursor(Some(xcursor));
+    */
+    let layout = Rc::new(RefCell::new(OutputLayout::new()));
 
-    cursor.attach_output_layout(layout);*/
+    cursor.attach_output_layout(layout);
     let compositor = CompositorBuilder::new().build_auto(State::new(cursor),
                                                          Box::new(InputManager),
                                                          Box::new(OutputManager));
