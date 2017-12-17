@@ -105,8 +105,8 @@ impl DerefMut for Area {
 
 impl PartialEq for Area {
     fn eq(&self, other: &Area) -> bool {
-        self.x == other.x && self.y == other.y &&
-            self.height == other.height && self.width == other.width
+        self.x == other.x && self.y == other.y && self.height == other.height
+        && self.width == other.width
     }
 }
 

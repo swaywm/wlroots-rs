@@ -175,7 +175,9 @@ pub fn parse_args(app: App) -> Option<ExampleConfig> {
 fn parse_geometry(input: &str) -> Option<Area> {
     let mut area = Area::default();
     if !(input.contains("x")) {
-        wlr_log!(L_ERROR, "Can't find 'x' separator in geometry: \"{}\"", input);
+        wlr_log!(L_ERROR,
+                 "Can't find 'x' separator in geometry: \"{}\"",
+                 input);
         return None
     }
     let (width, height, x, y) = {
@@ -199,7 +201,6 @@ fn parse_geometry(input: &str) -> Option<Area> {
     }
     Some(area)
 }
-
 
 #[cfg(test)]
 mod tests {
