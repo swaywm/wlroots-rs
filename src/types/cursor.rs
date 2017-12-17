@@ -1,6 +1,5 @@
 //! Wrapper for wlr_cursor
 
-
 use std::{mem, ptr, slice};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -37,11 +36,9 @@ impl Cursor {
             if cursor.is_null() {
                 None
             } else {
-                Some(Cursor {
-                         cursor: cursor,
-                         xcursor: None,
-                         layout: None
-                     })
+                Some(Cursor { cursor: cursor,
+                              xcursor: None,
+                              layout: None })
             }
         }
     }
@@ -104,7 +101,8 @@ impl XCursorTheme {
 
     pub fn get_cursor(&self, name: String) -> Option<XCursor> {
         let name_str = safe_as_cstring(name);
-        let xcursor = unsafe { wlr_xcursor_theme_get_cursor(self.theme, name_str.as_ptr()) };
+        let xcursor =
+            unsafe { wlr_xcursor_theme_get_cursor(self.theme, name_str.as_ptr()) };
         if xcursor.is_null() {
             None
         } else {
@@ -132,19 +130,17 @@ impl XCursor {
             let mut result = Vec::with_capacity(cursors_slice.len());
             for cursor in cursors_slice {
                 result.push(XCursorImage {
-                                width: (**cursor).width,
-                                height: (**cursor).height,
-                                hotspot_x: (**cursor).hotspot_x,
-                                hotspot_y: (**cursor).hotspot_y,
-                                delay: (**cursor).delay,
-                                buffer:
-                                    slice::from_raw_parts::<'cursor, u8>((**cursor).buffer as
-                                                                             *const u8,
-                                                                         (**cursor).width as usize *
-                                                                             (**cursor).height as
-                                                                                 usize *
-                                                                             mem::size_of::<u32>())
-                            })
+                    width: (**cursor).width,
+                    height: (**cursor).height,
+                    hotspot_x: (**cursor).hotspot_x,
+                    hotspot_y: (**cursor).hotspot_y,
+                    delay: (**cursor).delay,
+                    buffer: slice::from_raw_parts::<'cursor, u8>(
+                        (**cursor).buffer as *const u8,
+                        (**cursor).width as usize * (**cursor).height as usize
+                            * mem::size_of::<u32>()
+                    )
+                })
             }
             result
         }

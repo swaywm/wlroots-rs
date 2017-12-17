@@ -10,7 +10,7 @@ use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
 use render::GLES2;
 
-use wayland_sys::server::{WAYLAND_SERVER_HANDLE, wl_display, wl_event_loop};
+use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
 
@@ -24,10 +24,8 @@ pub struct CompositorBuilder {
 
 impl CompositorBuilder {
     pub fn new() -> Self {
-        CompositorBuilder {
-            gles2: false,
-            server_decoration_manager: false
-        }
+        CompositorBuilder { gles2: false,
+                            server_decoration_manager: false }
     }
 
     pub fn gles2(mut self, gles2_renderer: bool) -> Self {
@@ -51,8 +49,8 @@ impl CompositorBuilder {
                                         output_manager_handler: Box<OutputManagerHandler>)
                                         -> Compositor {
         unsafe {
-            let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as
-                *mut wl_display;
+            let display =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
             let backend = wlr_backend_autocreate(display as *mut _);
@@ -98,16 +96,14 @@ impl CompositorBuilder {
                      "Running compositor on wayland display {}",
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name);
-            Compositor {
-                data: Box::new(data),
-                input_manager,
-                output_manager,
-                backend,
-                display,
-                event_loop,
-                server_decoration_manager,
-                gles2
-            }
+            Compositor { data: Box::new(data),
+                         input_manager,
+                         output_manager,
+                         backend,
+                         display,
+                         event_loop,
+                         server_decoration_manager,
+                         gles2 }
         }
     }
 }

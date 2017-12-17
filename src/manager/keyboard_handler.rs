@@ -2,7 +2,7 @@
 
 use libc;
 
-use compositor::{COMPOSITOR_PTR, Compositor};
+use compositor::{Compositor, COMPOSITOR_PTR};
 use events::key_events::KeyEvent;
 use types::KeyboardHandle;
 

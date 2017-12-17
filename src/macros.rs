@@ -165,7 +165,6 @@ macro_rules! wayland_listener {
     }
 }
 
-
 /// Used to indicate what data is global compositor data.
 /// It will automatically implement the CompositorData trait for the struct,
 /// and also add a method to `Compositor` to unwrap the data from the fat

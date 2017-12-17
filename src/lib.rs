@@ -41,8 +41,7 @@ pub mod extensions;
 pub mod render;
 mod utils;
 
-
-pub use self::compositor::{Compositor, CompositorBuilder, terminate};
+pub use self::compositor::{terminate, Compositor, CompositorBuilder};
 pub use self::events::key_events::*;
 pub use self::events::pointer_events::*;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,

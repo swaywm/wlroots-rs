@@ -2,7 +2,7 @@
 
 use libc;
 
-use compositor::{COMPOSITOR_PTR, Compositor};
+use compositor::{Compositor, COMPOSITOR_PTR};
 use events::pointer_events::{AbsoluteMotionEvent, AxisEvent, ButtonEvent, MotionEvent};
 use types::PointerHandle;
 

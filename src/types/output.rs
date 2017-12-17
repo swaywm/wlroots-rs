@@ -82,27 +82,24 @@ impl OutputHandle {
     /// Gets the name of the output in UTF-8.
     pub fn name(&self) -> String {
         unsafe {
-            CStr::from_ptr((*self.output).name.as_ptr())
-                .to_string_lossy()
-                .into_owned()
+            CStr::from_ptr((*self.output).name.as_ptr()).to_string_lossy()
+                                                        .into_owned()
         }
     }
 
     /// Gets the make of the output in UTF-8.
     pub fn make(&self) -> String {
         unsafe {
-            CStr::from_ptr((*self.output).make.as_ptr())
-                .to_string_lossy()
-                .into_owned()
+            CStr::from_ptr((*self.output).make.as_ptr()).to_string_lossy()
+                                                        .into_owned()
         }
     }
 
     /// Gets the model of the output in UTF-8.
     pub fn model(&self) -> String {
         unsafe {
-            CStr::from_ptr((*self.output).model.as_ptr())
-                .to_string_lossy()
-                .into_owned()
+            CStr::from_ptr((*self.output).model.as_ptr()).to_string_lossy()
+                                                         .into_owned()
         }
     }
 

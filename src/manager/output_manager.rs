@@ -2,8 +2,7 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
-
-use compositor::{COMPOSITOR_PTR, Compositor};
+use compositor::{Compositor, COMPOSITOR_PTR};
 use libc;
 use manager::{OutputHandler, UserOutput};
 use types::OutputHandle;
@@ -45,16 +44,13 @@ pub trait OutputManagerHandler {
     }
 }
 
-
 impl<'output> OutputBuilder<'output> {
     pub fn build_best_mode<T: OutputHandler + 'static>(self,
                                                        data: T)
                                                        -> OutputBuilderResult<'output> {
         self.output.choose_best_mode();
-        OutputBuilderResult {
-            output: self.output,
-            result: Box::new(data)
-        }
+        OutputBuilderResult { output: self.output,
+                              result: Box::new(data) }
     }
 }
 

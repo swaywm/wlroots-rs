@@ -1,9 +1,9 @@
 use render::Texture;
 use types::OutputHandle;
 
-use wlroots_sys::{wlr_backend, wlr_gles2_renderer_create, wlr_render_texture_create,
-                  wlr_render_with_matrix, wlr_renderer, wlr_renderer_begin, wlr_renderer_destroy,
-                  wlr_renderer_end};
+use wlroots_sys::{wlr_backend, wlr_render_texture_create, wlr_render_with_matrix, wlr_renderer,
+                  wlr_renderer_begin, wlr_renderer_destroy, wlr_renderer_end,
+                  wlr_gles2_renderer_create};
 
 /// Holds the state necessary to start rendering for GLES2.
 pub struct GLES2 {
@@ -20,7 +20,7 @@ impl GLES2 {
     pub(crate) unsafe fn new(backend: *mut wlr_backend) -> Option<Self> {
         if backend.is_null() {
             wlr_log!(L_ERROR, "Backend was null");
-            return None;
+            return None
         }
         let renderer = wlr_gles2_renderer_create(backend);
         if renderer.is_null() {
@@ -36,10 +36,8 @@ impl GLES2 {
         unsafe {
             wlr_renderer_begin(self.renderer, output.to_ptr());
         }
-        GLES2Renderer {
-            renderer: self.renderer,
-            output
-        }
+        GLES2Renderer { renderer: self.renderer,
+                        output }
     }
 
     pub fn create_texture(&mut self) -> Option<Texture> {
