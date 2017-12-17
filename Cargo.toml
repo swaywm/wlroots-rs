@@ -1,3 +1,6 @@
+[workspace]
+members = [ "wlroots-sys" ]
+
 [package]
 name = "wlroots"
 version = "0.0.0"
@@ -16,7 +19,7 @@ travis-ci = { repository = "way-cooler/wlroots-rs/" }
 
 [dependencies]
 libc = "^0.2.*"
-wlroots-sys = { path = "wlroots-sys", version = "0.0.0" }
+wlroots-sys = { path = "wlroots-sys" }
 wayland-sys = { version = "0.9.*", features = ["client", "dlopen", "server",] }
 lazy_static = "0.2"
 xkbcommon = "0.3"
