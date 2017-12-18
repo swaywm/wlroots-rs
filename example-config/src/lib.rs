@@ -16,7 +16,7 @@ use clap::{App, Arg};
 
 use ini::Ini;
 
-use wlroots::{Area, Origin, Size};
+use wlroots::{Area};
 
 /// Main example configuration, holds the configuration sections for
 /// outputs and devices.
@@ -205,7 +205,7 @@ fn parse_geometry(input: &str) -> Option<Area> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use wlroots::{Origin, Size};
     #[test]
     fn basic_geometry_parse() {
         let geometry = "800x600";
