@@ -46,8 +46,8 @@ pub use self::events::key_events::*;
 pub use self::events::pointer_events::*;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
                         OutputHandler, OutputManagerHandler, PointerHandler};
+pub use self::types::area::*;
 pub use self::types::cursor::*;
 pub use self::types::input_device::*;
 pub use self::types::keyboard::*;
 pub use self::types::output::*;
-pub use self::types::area::*;

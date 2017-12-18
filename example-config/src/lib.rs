@@ -16,7 +16,7 @@ use clap::{App, Arg};
 
 use ini::Ini;
 
-use wlroots::{Area};
+use wlroots::Area;
 
 /// Main example configuration, holds the configuration sections for
 /// outputs and devices.
