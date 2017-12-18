@@ -26,5 +26,5 @@ wayland-sys = {version = "0.12.*" }
 wayland-server = { version = "0.12.*" }
 
 [features]
+default = ["static"]
 static = ["meson"]
-example = ["static"]
