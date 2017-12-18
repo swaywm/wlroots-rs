@@ -16,7 +16,7 @@ use clap::{App, Arg};
 
 use ini::Ini;
 
-use wlroots::types::Area;
+use wlroots::{Area, Origin, Size};
 
 /// Main example configuration, holds the configuration sections for
 /// outputs and devices.
@@ -209,14 +209,18 @@ mod tests {
     #[test]
     fn basic_geometry_parse() {
         let geometry = "800x600";
-        let expected_area = Some(Area::new(0, 0, 800, 600));
+        let expected_area = Some(Area::new(Origin::default(),
+                                           Size { width: 800,
+                                                  height: 600 }));
         assert_eq!(expected_area, parse_geometry(geometry));
     }
 
     #[test]
     fn geometry_with_origin_parse() {
         let geometry = "800x600+256+127";
-        let expected_area = Some(Area::new(256, 127, 800, 600));
+        let expected_area = Some(Area::new(Origin { x: 256, y: 127 },
+                                           Size { width: 800,
+                                                  height: 600 }));
         assert_eq!(expected_area, parse_geometry(geometry))
     }
 }
