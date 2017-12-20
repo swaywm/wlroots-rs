@@ -12,12 +12,15 @@
 //! struct InputManager;
 //! struct OutputManager;
 //!
-//! impl wlroots::manager::OutputManagerHandler for OutputManager {}
-//! impl wlroots::manager::InputManagerHandler for InputManager {}
+//! impl wlroots::OutputManagerHandler for OutputManager {}
+//! impl wlroots::InputManagerHandler for InputManager {}
 //!
 //! fn main() {
-//!     wlroots::compositor::Compositor::new(Box::new(InputManager),
-//!     Box::new(OutputManager)).run()
+//!     wlroots::CompositorBuilder::new()
+//!          .build_auto((), // Dummy state
+//!                      Box::new(InputManager),
+//!                      Box::new(OutputManager))
+//!          .run()
 //! }
 //! ```
 
@@ -27,7 +30,7 @@ extern crate bitflags;
 extern crate lazy_static;
 extern crate libc;
 #[macro_use]
-extern crate wayland_sys;
+pub extern crate wayland_sys;
 pub extern crate wlroots_sys;
 pub extern crate xkbcommon;
 
