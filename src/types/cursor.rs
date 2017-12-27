@@ -8,8 +8,8 @@ use types::output::OutputLayout;
 use utils::safe_as_cstring;
 
 use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
-                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_warp, wlr_xcursor,
-                  wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
+                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_set_image, wlr_cursor_warp,
+                  wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
                   wlr_xcursor_theme_load};
 
 #[derive(Debug)]
@@ -75,6 +75,26 @@ impl Cursor {
 
     pub fn output_layout(&self) -> &Option<Rc<RefCell<OutputLayout>>> {
         &self.layout
+    }
+
+    /// Sets the image of the cursor to the image from the XCursor.
+    pub fn set_cursor_image(&mut self, image: &XCursorImage) {
+        unsafe {
+            let scale = 0.0;
+            // NOTE Rationale for why lifetime isn't attached:
+            //
+            // wlr_cursor_set_image uses gl calls internally, which copies
+            // the buffer and so it doesn't matter what happens to the
+            // xcursor image after this call.
+            wlr_cursor_set_image(self.cursor,
+                                 image.buffer.as_ptr(),
+                                 image.width as i32,
+                                 image.width,
+                                 image.height,
+                                 image.hotspot_x as i32,
+                                 image.hotspot_y as i32,
+                                 scale)
+        }
     }
 }
 

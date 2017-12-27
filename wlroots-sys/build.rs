@@ -70,40 +70,6 @@ fn main() {
     Registry::new(Api::Gl, (4, 5), Profile::Core, Fallbacks::All, [])
         .write_bindings(StaticGenerator, &mut file)
         .unwrap();
-    if cfg!(feature = "example") {
-        // Build share.d for examples
-        let example_generated = bindgen::builder()
-            .derive_debug(true)
-            .derive_default(true)
-            .generate_comments(true)
-            .header("wlroots/examples/shared.h")
-            .clang_arg("-Iwlroots/include")
-            .clang_arg("-Iwlroots/include/wlr")
-            .clang_arg("-Iwlroots/include/xcursor")
-            .clang_arg("-I/usr/include/pixman-1")
-            // Work around bug https://github.com/rust-lang-nursery/rust-bindgen/issues/687
-            .hide_type("FP_NAN")
-            .hide_type("FP_INFINITE")
-            .hide_type("FP_ZERO")
-            .hide_type("FP_SUBNORMAL")
-            .hide_type("FP_NORMAL")
-            .generate().unwrap();
-        example_generated
-            .write_to_file(format!("{}/shared.rs", dest))
-            .unwrap();
-
-        // Build shared.c for examples
-        let mut config = gcc::Build::new();
-        config.flag("-Wall");
-        config.flag("-Wpedantic");
-        config.flag("-Iwlroots/include");
-        config.flag("-Iwlroots/include/wlr");
-        config.file("wlroots/examples/shared.c");
-        config.compile("libshared.a");
-
-        // Link against libpam
-        println!("cargo:rustc-flags=-l shared")
-    }
 }
 
 #[cfg(not(feature = "static"))]
