@@ -3,7 +3,7 @@
 
 use std::ops::{Deref, DerefMut};
 
-use libc::c_int;
+use libc::{c_double, c_int};
 
 use wlroots_sys::{wl_output_transform, wlr_box, wlr_box_closest_point, wlr_box_contains_point,
                   wlr_box_empty, wlr_box_intersection, wlr_box_transform};
@@ -15,6 +15,31 @@ pub enum IntersectionResult {
     Intersection(Area),
     /// There was not an intersection, here is the resulting area anyways.
     NoIntersection(Area)
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Origin {
+    pub x: c_int,
+    pub y: c_int
+}
+
+impl Default for Origin {
+    fn default() -> Self {
+        Origin { x: 0, y: 0 }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Size {
+    pub width: c_int,
+    pub height: c_int
+}
+
+impl Default for Size {
+    fn default() -> Self {
+        Size { width: 0,
+               height: 0 }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -32,11 +57,11 @@ impl Default for Area {
 }
 
 impl Area {
-    pub fn new(x: c_int, y: c_int, width: c_int, height: c_int) -> Self {
-        Area(wlr_box { x,
-                       y,
-                       width,
-                       height })
+    pub fn new(origin: Origin, size: Size) -> Self {
+        Area(wlr_box { x: origin.x,
+                       y: origin.y,
+                       width: size.width,
+                       height: size.height })
     }
 
     /// Finds the closest point within the box to the given point.
@@ -44,7 +69,7 @@ impl Area {
     /// corner and returns that.
     ///
     /// Returned value is in form of (x, y).
-    pub fn closest_point(&mut self, x: f64, y: f64) -> (f64, f64) {
+    pub fn closest_point(&mut self, x: c_double, y: c_double) -> (c_double, c_double) {
         unsafe {
             let (mut dest_x, mut dest_y) = (0.0, 0.0);
             wlr_box_closest_point(&mut self.0, x, y, &mut dest_x, &mut dest_y);
@@ -67,7 +92,7 @@ impl Area {
     }
 
     /// Determines if the box contains the given point.
-    pub fn contains_point(&mut self, x: f64, y: f64) -> bool {
+    pub fn contains_point(&mut self, x: c_double, y: c_double) -> bool {
         unsafe { wlr_box_contains_point(&mut self.0, x, y) }
     }
 
@@ -102,3 +127,12 @@ impl DerefMut for Area {
         &mut self.0
     }
 }
+
+impl PartialEq for Area {
+    fn eq(&self, other: &Area) -> bool {
+        self.x == other.x && self.y == other.y && self.height == other.height
+        && self.width == other.width
+    }
+}
+
+impl Eq for Area {}

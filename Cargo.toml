@@ -1,5 +1,5 @@
 [workspace]
-members = [ "wlroots-sys" ]
+members = [ "wlroots-sys", "example-config" ]
 
 [package]
 name = "wlroots"
@@ -19,6 +19,7 @@ travis-ci = { repository = "way-cooler/wlroots-rs/" }
 
 [dependencies]
 libc = "^0.2.*"
+rust-ini = "0.10.0"
 wlroots-sys = { path = "wlroots-sys" }
 wayland-sys = { version = "0.9.*", features = ["client", "dlopen", "server",] }
 lazy_static = "0.2"

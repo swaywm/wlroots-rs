@@ -74,12 +74,21 @@ macro_rules! wlr_log {
 /// `unsafe`.
 ///
 /// # Example
-/// ```
+/// ```rust,no_run
+/// #[macro_use] extern crate wlroots;
+/// extern crate wlroots_sys;
+/// #[macro_use] extern crate wayland_sys;
+/// extern crate libc;
+///
+/// use wlroots::InputDevice;
+/// use wlroots_sys::wlr_input_device;
+///
 /// // Handles input addition and removal.
 /// pub trait InputManagerHandler {
 ///     // Callback triggered when an input device is added.
-///     fn input_added(&mut self, Device);
+///     fn input_added(&mut self, InputDevice);
 /// }
+///
 /// wayland_listener!(
 ///     // The name of the structure that will be defined.
 ///     InputManager,
@@ -89,20 +98,17 @@ macro_rules! wlr_log {
 ///     Box<InputManagerHandler>,
 ///     [
 ///         // Adds a new listener called `add_listener`.
-///         add_listener =>
 ///         // Adds an unsafe function called `add_notify` that is triggered
 ///         // whenever add_listener is activated from a Wayland event.
-///         add_notify: |input_manager: &mut Box<InputManagerHandler>,
-///                      data: *mut libc::c_void,| unsafe {
-/// // Call the method defined above, wrapping it in a safe
-/// interface.
-/// // It is your job to ensure that the code in here doesn't
-/// trigger UB!
-/// input_manager.input_added(Device::from_ptr(data as *mut
-/// wlr_input_device))
+///         add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
+///             let ref mut manager = this.data;
+///             // Call the method defined above, wrapping it in a safe interface.
+///             // It is your job to ensure that the code in here doesn't trigger UB!
+///             manager.input_added(InputDevice::from_ptr(data as *mut wlr_input_device))
 ///         };
 ///     ]
 /// );
+/// # fn main() {}
 /// ```
 ///
 /// # Unsafety
