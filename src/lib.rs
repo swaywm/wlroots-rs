@@ -42,7 +42,7 @@ pub mod events;
 pub mod types;
 pub mod extensions;
 pub mod render;
-mod utils;
+pub mod utils;
 
 pub use self::compositor::{terminate, Compositor, CompositorBuilder};
 pub use self::events::key_events::*;
