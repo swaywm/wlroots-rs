@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, InputManagerHandler,
               KeyEvent, KeyboardHandler, MotionEvent, OutputBuilder, OutputBuilderResult,
-              OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursorTheme};
+              OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursorTheme, XCursor};
 use wlroots::types::{KeyboardHandle, OutputHandle, PointerHandle};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
@@ -14,15 +14,17 @@ use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 struct State {
     color: [f32; 4],
     default_color: [f32; 4],
-    cursor: Cursor
+    cursor: Cursor,
+    xcursor: XCursor
 }
 
 impl State {
-    fn new(cursor: Cursor) -> Self {
+    fn new(cursor: Cursor, xcursor: XCursor) -> Self {
         State {
             color: [0.25, 0.25, 0.25, 1.0],
             default_color: [0.25, 0.25, 0.25, 1.0],
-            cursor
+            cursor,
+            xcursor
         }
     }
 }
@@ -54,13 +56,9 @@ impl OutputManagerHandler for OutputManager {
                 .as_ref()
                 .expect("Could not get output layout");
             result.output.add_layout_auto(layout.clone());
-            /*let xcursor = cursor.xcursor().expect("XCursor was not set!");
-            let image = &xcursor.images()[0];
-            if result.output.set_cursor(image).is_err() {
-                wlr_log!(L_DEBUG, "Failed to set hardware cursor");
-                return None;
-            }*/
         }
+        let image = &state.xcursor.images()[0];
+        cursor.set_cursor_image(image);
         let (x, y) = cursor.coords();
         // https://en.wikipedia.org/wiki/Mouse_warping
         cursor.warp(None, x, y);
@@ -149,16 +147,14 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     let mut cursor = Cursor::new().expect("Could not create cursor");
-    /*let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
+    let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
     let xcursor = xcursor_theme
         .get_cursor("left_ptr".into())
         .expect("Could not load cursor from theme");
-    cursor.set_xcursor(Some(xcursor));
-    */
     let layout = Rc::new(RefCell::new(OutputLayout::new()));
 
     cursor.attach_output_layout(layout);
-    let compositor = CompositorBuilder::new().build_auto(State::new(cursor),
+    let compositor = CompositorBuilder::new().build_auto(State::new(cursor, xcursor),
                                                          Box::new(InputManager),
                                                          Box::new(OutputManager));
     compositor.run();
