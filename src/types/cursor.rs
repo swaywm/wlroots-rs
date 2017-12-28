@@ -15,7 +15,6 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create
 #[derive(Debug)]
 pub struct Cursor {
     cursor: *mut wlr_cursor,
-    xcursor: Option<XCursor>,
     layout: Option<Rc<RefCell<OutputLayout>>>
 }
 
@@ -37,7 +36,6 @@ impl Cursor {
                 None
             } else {
                 Some(Cursor { cursor: cursor,
-                              xcursor: None,
                               layout: None })
             }
         }
@@ -52,10 +50,6 @@ impl Cursor {
             let dev_ptr = dev.map(|dev| dev.to_ptr()).unwrap_or(ptr::null_mut());
             wlr_cursor_warp(self.cursor, dev_ptr, x, y)
         }
-    }
-
-    pub fn xcursor(&self) -> Option<&XCursor> {
-        self.xcursor.as_ref()
     }
 
     /// Attaches an output layout to the cursor.
