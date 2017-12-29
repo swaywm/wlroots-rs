@@ -5,7 +5,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, InputManagerHandler,
               KeyEvent, KeyboardHandler, MotionEvent, OutputBuilder, OutputBuilderResult,
-              OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursorTheme, XCursor};
+              OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursor,
+              XCursorTheme};
 use wlroots::types::{KeyboardHandle, OutputHandle, PointerHandle};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
@@ -20,12 +21,10 @@ struct State {
 
 impl State {
     fn new(cursor: Cursor, xcursor: XCursor) -> Self {
-        State {
-            color: [0.25, 0.25, 0.25, 1.0],
-            default_color: [0.25, 0.25, 0.25, 1.0],
-            cursor,
-            xcursor
-        }
+        State { color: [0.25, 0.25, 0.25, 1.0],
+                default_color: [0.25, 0.25, 0.25, 1.0],
+                cursor,
+                xcursor }
     }
 }
 
@@ -51,10 +50,9 @@ impl OutputManagerHandler for OutputManager {
         let cursor = &mut state.cursor;
         // TODO use output config if present instead of auto
         {
-            let layout = cursor
-                .output_layout()
-                .as_ref()
-                .expect("Could not get output layout");
+            let layout = cursor.output_layout()
+                               .as_ref()
+                               .expect("Could not get output layout");
             result.output.add_layout_auto(layout.clone());
         }
         let image = &state.xcursor.images()[0];
@@ -148,9 +146,8 @@ impl InputManagerHandler for InputManager {
 fn main() {
     let mut cursor = Cursor::new().expect("Could not create cursor");
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
-    let xcursor = xcursor_theme
-        .get_cursor("left_ptr".into())
-        .expect("Could not load cursor from theme");
+    let xcursor = xcursor_theme.get_cursor("left_ptr".into())
+                               .expect("Could not load cursor from theme");
     let layout = Rc::new(RefCell::new(OutputLayout::new()));
 
     cursor.attach_output_layout(layout);

@@ -45,15 +45,13 @@ compositor_data!(CompositorState);
 
 impl CompositorState {
     fn new(rotation: wl_output_transform) -> Self {
-        CompositorState {
-            cat_texture: None,
-            rotation,
-            last_frame: Instant::now(),
-            x_offs: 0.0,
-            y_offs: 0.0,
-            x_vel: 128.0,
-            y_vel: 128.0
-        }
+        CompositorState { cat_texture: None,
+                          rotation,
+                          last_frame: Instant::now(),
+                          x_offs: 0.0,
+                          y_offs: 0.0,
+                          x_vel: 128.0,
+                          y_vel: 128.0 }
     }
 }
 
@@ -81,13 +79,10 @@ impl OutputManagerHandler for OutputManager {
 impl OutputHandler for Output {
     fn output_frame(&mut self, compositor: &mut Compositor, output: &mut OutputHandle) {
         let (width, height) = output.effective_resolution();
-        let renderer = compositor
-            .gles2
-            .as_mut()
-            .expect("Compositor was not loaded with gles2 renderer");
-        let compositor_data: &mut CompositorState = (&mut compositor.data)
-            .downcast_mut()
-            .unwrap();
+        let renderer = compositor.gles2
+                                 .as_mut()
+                                 .expect("Compositor was not loaded with gles2 renderer");
+        let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
         let now = Instant::now();
         let delta = now.duration_since(compositor_data.last_frame);
         let seconds_delta = delta.as_secs() as f32;
@@ -162,7 +157,7 @@ fn main() {
             "flipped_90" => WL_OUTPUT_TRANSFORM_FLIPPED_90,
             "flipped_180" => WL_OUTPUT_TRANSFORM_FLIPPED_180,
             "flipped_270" => WL_OUTPUT_TRANSFORM_FLIPPED_270,
-            _ => WL_OUTPUT_TRANSFORM_NORMAL,
+            _ => WL_OUTPUT_TRANSFORM_NORMAL
         }
     } else {
         WL_OUTPUT_TRANSFORM_NORMAL
@@ -170,22 +165,20 @@ fn main() {
     let compositor_state = CompositorState::new(rotation);
     let input_manager = Box::new(InputManager);
     let output_manager = Box::new(OutputManager);
-    let mut compositor = CompositorBuilder::new()
-        .gles2(true)
-        .build_auto(compositor_state, input_manager, output_manager);
+    let mut compositor =
+        CompositorBuilder::new().gles2(true)
+                                .build_auto(compositor_state, input_manager, output_manager);
     {
         let gles2 = &mut compositor.gles2.as_mut().unwrap();
         let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
-        compositor_data.cat_texture = gles2
-            .create_texture()
-            .map(|mut cat_texture| {
-                     cat_texture.upload_pixels(TextureFormat::ABGR8888,
-                                               CAT_STRIDE,
-                                               CAT_WIDTH,
-                                               CAT_HEIGHT,
-                                               CAT_DATA);
-                     cat_texture
-                 })
+        compositor_data.cat_texture = gles2.create_texture().map(|mut cat_texture| {
+            cat_texture.upload_pixels(TextureFormat::ABGR8888,
+                                      CAT_STRIDE,
+                                      CAT_WIDTH,
+                                      CAT_HEIGHT,
+                                      CAT_DATA);
+            cat_texture
+        })
     }
     compositor.run();
 }

@@ -54,11 +54,9 @@ impl OutputManagerHandler for OutputManager {
                              _: &mut Compositor,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
-        Some(builder.build_best_mode(Output {
-                                         color: [0.0, 0.0, 0.0],
-                                         dec: 0,
-                                         last_frame: Instant::now()
-                                     }))
+        Some(builder.build_best_mode(Output { color: [0.0, 0.0, 0.0],
+                                              dec: 0,
+                                              last_frame: Instant::now() }))
     }
 }
 
@@ -90,7 +88,6 @@ impl OutputHandler for Output {
 }
 
 fn main() {
-    CompositorBuilder::new()
-        .build_auto((), Box::new(InputManager), Box::new(OutputManager))
-        .run()
+    CompositorBuilder::new().build_auto((), Box::new(InputManager), Box::new(OutputManager))
+                            .run()
 }

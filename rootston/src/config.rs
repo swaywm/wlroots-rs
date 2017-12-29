@@ -1,9 +1,9 @@
 //! Parsing logic for the ini file format used in rootston.
 
-use std::process::exit;
 use std::ffi::CStr;
 use std::num::{ParseFloatError, ParseIntError};
 use std::path::PathBuf;
+use std::process::exit;
 use std::str::{ParseBoolError, Utf8Error};
 
 use self::wl_output_transform::*;
@@ -592,8 +592,8 @@ mod test {
     static DEFAULT_CONFIG_PATH: &'static str = "../rootston.ini.example";
     use ::*;
     use std::ffi::CStr;
-    use wlroots::wlroots_sys::xkb_keysym_from_name;
     use wlroots::wlroots_sys::xkb_keysym_flags::XKB_KEYSYM_NO_FLAGS;
+    use wlroots::wlroots_sys::xkb_keysym_from_name;
 
     #[test]
     fn fallback_test() {

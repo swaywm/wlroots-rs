@@ -1,8 +1,8 @@
-extern crate gcc;
 extern crate bindgen;
+extern crate gcc;
+extern crate gl_generator;
 #[cfg(feature = "static")]
 extern crate meson;
-extern crate gl_generator;
 extern crate wayland_scanner;
 
 use gl_generator::{Api, Fallbacks, Profile, Registry, StaticGenerator};
@@ -77,12 +77,11 @@ fn meson() {}
 
 #[cfg(feature = "static")]
 fn meson() {
-    let build_path = PathBuf::from(env::var("OUT_DIR")
-                                       .expect("Could not get OUT_DIR env variable"));
+    let build_path =
+        PathBuf::from(env::var("OUT_DIR").expect("Could not get OUT_DIR env variable"));
     build_path.join("build");
-    let build_path_str = build_path
-        .to_str()
-        .expect("Could not turn build path into a string");
+    let build_path_str = build_path.to_str()
+                                   .expect("Could not turn build path into a string");
     println!("cargo:rustc-link-search=native=wlroots");
     println!("cargo:rustc-link-search=native={}/lib", build_path_str);
     println!("cargo:rustc-link-search=native={}/lib64", build_path_str);
@@ -116,9 +115,7 @@ fn generate_protocols() {
 
     let output_dir = Path::new(&output_dir_str);
 
-    let protocols = &[
-        ("./wlroots/protocol/server-decoration.xml", "server_decoration"),
-    ];
+    let protocols = &[("./wlroots/protocol/server-decoration.xml", "server_decoration")];
 
     for protocol in protocols {
         wayland_scanner::generate_code(protocol.0,
@@ -128,7 +125,7 @@ fn generate_protocols() {
                                        output_dir.join(format!("{}_client_api.rs", protocol.1)),
                                        wayland_scanner::Side::Client);
         wayland_scanner::generate_interfaces(protocol.0,
-                                             output_dir
-                                                 .join(format!("{}_interfaces.rs", protocol.1)));
+                                             output_dir.join(format!("{}_interfaces.rs",
+                                                                     protocol.1)));
     }
 }
