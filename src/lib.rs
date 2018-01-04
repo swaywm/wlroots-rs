@@ -54,3 +54,4 @@ pub use self::types::cursor::*;
 pub use self::types::input_device::*;
 pub use self::types::keyboard::*;
 pub use self::types::output::*;
+pub use self::types::seat::*;
