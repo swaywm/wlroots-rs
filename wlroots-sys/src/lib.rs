@@ -1,9 +1,9 @@
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
 extern crate libc;
-extern crate wayland_server;
+pub extern crate wayland_server;
 #[macro_use]
-extern crate wayland_sys;
+pub extern crate wayland_sys;
 
 // For graphical functions
 pub mod gl {
