@@ -4,16 +4,21 @@
 use std::time::Duration;
 
 use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_destroy,
-                  wlr_seat_pointer_clear_focus, wlr_seat_pointer_enter,
+                  wlr_seat_keyboard_end_grab, wlr_seat_keyboard_has_grab,
+                  wlr_seat_keyboard_start_grab, wlr_seat_pointer_clear_focus,
+                  wlr_seat_pointer_end_grab, wlr_seat_pointer_enter, wlr_seat_pointer_has_grab,
                   wlr_seat_pointer_send_axis, wlr_seat_pointer_send_button,
-                  wlr_seat_pointer_send_motion, wlr_seat_pointer_surface_has_focus,
-                  wlr_seat_set_capabilities, wlr_seat_set_name};
+                  wlr_seat_pointer_send_motion, wlr_seat_pointer_start_grab,
+                  wlr_seat_pointer_surface_has_focus, wlr_seat_set_capabilities,
+                  wlr_seat_set_name, wlr_seat_touch_end_grab, wlr_seat_touch_has_grab,
+                  wlr_seat_touch_start_grab};
 use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 
 use compositor::Compositor;
 use utils::{c_to_rust_string, safe_as_cstring};
 
-use Surface;
+use super::grab::{KeyboardGrab, PointerGrab, TouchGrab};
+use types::surface::Surface;
 
 /// A wrapper around `wlr_seat`.
 pub struct Seat {
@@ -140,11 +145,52 @@ impl Seat {
         }
     }
 
+    /// Start a grab of the pointer of this seat. The grabber is responsible for
+    /// handling all pointer events until the grab ends.
+    pub fn pointer_start_grab(&mut self, grab: PointerGrab) {
+        unsafe { wlr_seat_pointer_start_grab(self.seat, grab.as_ptr()) }
+    }
+
+    /// End the grab of the pointer of this seat. This reverts the grab back to the
+    /// default grab for the pointer.
+    pub fn pointer_end_grab(&mut self) {
+        unsafe { wlr_seat_pointer_end_grab(self.seat) }
+    }
+
+    /// Whether or not the pointer has a grab other than the default grab.
+    pub fn pointer_has_grab(&self) -> bool {
+        unsafe { wlr_seat_pointer_has_grab(self.seat) }
+    }
+
+    pub fn keyboard_start_grab(&mut self, grab: KeyboardGrab) {
+        unsafe { wlr_seat_keyboard_start_grab(self.seat, grab.as_ptr()) }
+    }
+
+    pub fn keyboard_end_grab(&mut self) {
+        unsafe { wlr_seat_keyboard_end_grab(self.seat) }
+    }
+
+    pub fn keyboard_has_grab(&self) -> bool {
+        unsafe { wlr_seat_keyboard_has_grab(self.seat) }
+    }
+
+    pub fn touch_start_grab(&mut self, grab: TouchGrab) {
+        unsafe { wlr_seat_touch_start_grab(self.seat, grab.as_ptr()) }
+    }
+
+    pub fn touch_end_grab(&mut self) {
+        unsafe { wlr_seat_touch_end_grab(self.seat) }
+    }
+
+    pub fn touch_has_grab(&self) -> bool {
+        unsafe { wlr_seat_touch_has_grab(self.seat) }
+    }
+
+    // TODO notify and some other specific input misc functions
+
     pub unsafe fn to_ptr(&self) -> *mut wlr_seat {
         self.seat
     }
-
-    // TODO grab, notify, and some other specific input misc functions
 }
 
 impl Drop for Seat {
