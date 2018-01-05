@@ -5,6 +5,7 @@ pub mod keyboard;
 pub mod output;
 pub mod area;
 pub mod seat;
+pub mod surface;
 
 pub use self::area::*;
 pub use self::cursor::*;
@@ -13,3 +14,4 @@ pub use self::keyboard::*;
 pub use self::output::*;
 pub use self::pointer::*;
 pub use self::seat::*;
+pub use self::surface::*;

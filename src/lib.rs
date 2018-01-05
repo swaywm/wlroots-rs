@@ -55,3 +55,4 @@ pub use self::types::input_device::*;
 pub use self::types::keyboard::*;
 pub use self::types::output::*;
 pub use self::types::seat::*;
+pub use self::types::surface::*;
