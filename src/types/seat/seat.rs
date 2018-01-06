@@ -179,6 +179,50 @@ impl Seat {
         unsafe { wlr_seat_pointer_clear_focus(self.seat) }
     }
 
+    /// Notify the seat of a pointer enter event to the given surface and request it
+    /// to be the focused surface for the pointer.
+    ///
+    /// Pass surface-local coordinates where the enter occurred.
+    pub fn pointer_notify_enter(&mut self, surface: Surface, sx: f64, sy: f64) {
+        unsafe { wlr_seat_pointer_notify_enter(self.seat, surface.as_ptr(), sx, sy) }
+    }
+
+    /// Notify the seat of motion over the given surface.
+    ///
+    /// Pass surface-local coordinates where the pointer motion occurred.
+    pub fn pointer_notify_motion(&mut self, time: Duration, sx: f64, sy: f64) {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe { wlr_seat_pointer_notify_motion(self.seat, ms, sx, sy) }
+    }
+
+    // TODO Wrapper type around Button and State
+
+    /// Notify the seat that a button has been pressed.
+    ///
+    /// Returns the serial of the button press or zero if no button press was sent.
+    pub fn pointer_notify_button(&mut self, time: Duration, button: u32, state: u32) -> u32 {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe { wlr_seat_pointer_notify_button(self.seat, ms, button, state) }
+    }
+
+    /// Notify the seat of an axis event.
+    pub fn pointer_notify_axis(&mut self,
+                               time: Duration,
+                               orientation: wlr_axis_orientation,
+                               value: f64) {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe { wlr_seat_pointer_notify_axis(self.seat, ms, orientation, value) }
+    }
+
     /// Send a keyboard enter event to the given surface and consider it to be the
     /// focused surface for the keyboard.
     ///
