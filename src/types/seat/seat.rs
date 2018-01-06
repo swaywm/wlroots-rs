@@ -16,12 +16,12 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_client, wlr_seat_crea
                   wlr_seat_pointer_send_button, wlr_seat_pointer_send_motion,
                   wlr_seat_pointer_start_grab, wlr_seat_pointer_surface_has_focus,
                   wlr_seat_set_capabilities, wlr_seat_set_keyboard, wlr_seat_set_name,
-                  wlr_seat_touch_end_grab, wlr_seat_touch_has_grab, wlr_seat_touch_notify_down,
-                  wlr_seat_touch_notify_motion, wlr_seat_touch_notify_up,
-                  wlr_seat_touch_num_points, wlr_seat_touch_point_clear_focus,
-                  wlr_seat_touch_point_focus, wlr_seat_touch_send_down,
-                  wlr_seat_touch_send_motion, wlr_seat_touch_send_up, wlr_seat_touch_start_grab,
-                  wlr_touch_point};
+                  wlr_seat_touch_end_grab, wlr_seat_touch_get_point, wlr_seat_touch_has_grab,
+                  wlr_seat_touch_notify_down, wlr_seat_touch_notify_motion,
+                  wlr_seat_touch_notify_up, wlr_seat_touch_num_points,
+                  wlr_seat_touch_point_clear_focus, wlr_seat_touch_point_focus,
+                  wlr_seat_touch_send_down, wlr_seat_touch_send_motion, wlr_seat_touch_send_up,
+                  wlr_seat_touch_start_grab, wlr_touch_point};
 use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 
 use compositor::Compositor;
@@ -230,6 +230,56 @@ impl Seat {
         unsafe { wlr_seat_touch_has_grab(self.seat) }
     }
 
+    // Get the active touch point with the given `touch_id`. If the touch point does
+    // not exist or is no longer active, returns None.
+    pub fn get_touch_point(&self, touch_id: TouchId) -> Option<TouchPoint> {
+        unsafe {
+            let touch_point = wlr_seat_touch_get_point(self.seat, touch_id.into());
+            if touch_point.is_null() {
+                return None
+            } else {
+                Some(TouchPoint::from_ptr(touch_point))
+            }
+        }
+    }
+
+    // TODO Should this be returning a u32? Should I wrap whatever that number is?
+
+    /// Notify the seat of a touch down on the given surface. Defers to any grab of
+    /// the touch device.
+    pub fn touch_notify_down(&mut self,
+                             surface: Surface,
+                             time: Duration,
+                             touch_id: TouchId,
+                             sx: f64,
+                             sy: f64)
+                             -> u32 {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe {
+            wlr_seat_touch_notify_down(self.seat, surface.as_ptr(), ms, touch_id.into(), sx, sy)
+        }
+    }
+
+    /// Notify the seat that the touch point given by `touch_id` is up. Defers to any
+    /// grab of the touch device.
+    pub fn touch_notify_up(&mut self, time: Duration, touch_id: TouchId) {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe { wlr_seat_touch_notify_up(self.seat, ms, touch_id.into()) }
+    }
+
+    pub fn touch_notify_motion(&mut self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe { wlr_seat_touch_notify_motion(self.seat, ms, touch_id.into(), sx, sy) }
+    }
     // TODO notify and some other specific input misc functions
 
     pub unsafe fn to_ptr(&self) -> *mut wlr_seat {
