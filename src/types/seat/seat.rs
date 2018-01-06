@@ -1,5 +1,7 @@
 //! Wrapper for wlr_seat. For more information about what a seat is, please
 //! consult the Wayland documentation ([libinput docs](https://wayland.freedesktop.org/libinput/doc/latest/seats.html), [wayland docs](https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_seat))
+//!
+//! TODO This module could really use some examples, as the API surface is huge.
 
 use std::time::Duration;
 
