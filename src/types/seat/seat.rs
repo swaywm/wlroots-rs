@@ -213,6 +213,34 @@ impl Seat {
         unsafe { wlr_seat_keyboard_clear_focus(self.seat) }
     }
 
+    /// Notify the seat that the modifiers for the keyboard have changed.
+    ///
+    /// Defers to any keyboard grabs.
+    pub fn keyboard_notify_modifiers(&mut self) {
+        unsafe { wlr_seat_keyboard_notify_modifiers(self.seat) }
+    }
+
+    /// Notify the seat that the keyboard focus has changed and request it to be the
+    /// focused surface for this keyboard.
+    ///
+    /// Defers to any current grab of the seat's keyboard.
+    pub fn keyboard_notify_enter(&mut self, surface: Surface) {
+        unsafe { wlr_seat_keyboard_notify_enter(self.seat, surface.as_ptr()) }
+    }
+
+    // TODO Wrapper type for Key and State
+
+    /// Notify the seat that a key has been pressed on the keyboard.
+    ///
+    /// Defers to any keyboard grabs.
+    pub fn keyboard_notify_key(&mut self, time: Duration, key: u32, state: u32) {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe { wlr_seat_keyboard_notify_key(self.seat, ms, key, state) }
+    }
+
     /// Start a grab of the touch device of this seat. The grabber is responsible for
     /// handling all touch events until the grab ends.
     pub fn touch_start_grab(&mut self, grab: TouchGrab) {
