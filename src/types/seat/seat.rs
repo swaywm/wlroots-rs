@@ -172,6 +172,12 @@ impl Seat {
         unsafe { wlr_seat_pointer_has_grab(self.seat) }
     }
 
+    /// Clear the focused surface for the pointer and leave all entered
+    /// surfaces.
+    pub fn pointer_clear_focus(&mut self) {
+        unsafe { wlr_seat_pointer_clear_focus(self.seat) }
+    }
+
     /// Start a grab of the keyboard of this seat. The grabber is responsible for
     /// handling all keyboard events until the grab ends.
     pub fn keyboard_start_grab(&mut self, grab: KeyboardGrab) {
@@ -187,6 +193,12 @@ impl Seat {
     /// Whether or not the keyboard has a grab other than the default grab
     pub fn keyboard_has_grab(&self) -> bool {
         unsafe { wlr_seat_keyboard_has_grab(self.seat) }
+    }
+
+    /// Clear the focused surface for the keyboard and leave all entered
+    /// surfaces.
+    pub fn keyboard_clear_focus(&mut self) {
+        unsafe { wlr_seat_keyboard_clear_focus(self.seat) }
     }
 
     /// Start a grab of the touch device of this seat. The grabber is responsible for
