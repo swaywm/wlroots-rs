@@ -5,7 +5,7 @@
 
 use std::time::Duration;
 
-use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_client, wlr_seat_create,
+use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create,
                   wlr_seat_destroy, wlr_seat_keyboard_clear_focus, wlr_seat_keyboard_end_grab,
                   wlr_seat_keyboard_enter, wlr_seat_keyboard_has_grab,
                   wlr_seat_keyboard_notify_enter, wlr_seat_keyboard_notify_key,
@@ -32,6 +32,7 @@ use utils::{c_to_rust_string, safe_as_cstring};
 use super::grab::{KeyboardGrab, PointerGrab, TouchGrab};
 use super::touch_point::{TouchId, TouchPoint};
 use types::surface::Surface;
+use types::input_device::InputDevice;
 
 /// A wrapper around `wlr_seat`.
 pub struct Seat {
@@ -223,6 +224,31 @@ impl Seat {
         let nano_delta = time.subsec_nanos();
         let ms = (seconds_delta * 1000) + nano_delta / 1000000;
         unsafe { wlr_seat_pointer_notify_axis(self.seat, ms, orientation, value) }
+    }
+
+    /// Set this keyboard as the active keyboard for the seat.
+    pub fn set_keyboard(&mut self, dev: InputDevice) {
+        unsafe { wlr_seat_set_keyboard(self.seat, dev.to_ptr()) }
+    }
+
+    // TODO Point to the correct function name in this documentation.
+
+    /// Send the keyboard key to focused keyboard resources.
+    ///
+    /// Compositors should use `wlr_seat_notify_key()` to respect keyboard grabs.
+    pub fn keyboard_send_key(&mut self, time: Duration, key: u32, state: u32) {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe { wlr_seat_keyboard_send_key(self.seat, ms, key, state) }
+    }
+
+    /// Send the modifier state to focused keyboard resources.
+    ///
+    /// Compositors should use `Seat::keyboard_notify_modifiers()` to respect any keyboard grabs.
+    pub fn keyboard_send_modifiers(&mut self) {
+        unsafe { wlr_seat_keyboard_send_modifiers(self.seat) }
     }
 
     /// Send a keyboard enter event to the given surface and consider it to be the
