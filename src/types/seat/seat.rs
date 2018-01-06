@@ -172,26 +172,36 @@ impl Seat {
         unsafe { wlr_seat_pointer_has_grab(self.seat) }
     }
 
+    /// Start a grab of the keyboard of this seat. The grabber is responsible for
+    /// handling all keyboard events until the grab ends.
     pub fn keyboard_start_grab(&mut self, grab: KeyboardGrab) {
         unsafe { wlr_seat_keyboard_start_grab(self.seat, grab.as_ptr()) }
     }
 
+    /// End the grab of the keyboard of this seat. This reverts the grab back to the
+    /// default grab for the keyboard.
     pub fn keyboard_end_grab(&mut self) {
         unsafe { wlr_seat_keyboard_end_grab(self.seat) }
     }
 
+    /// Whether or not the keyboard has a grab other than the default grab
     pub fn keyboard_has_grab(&self) -> bool {
         unsafe { wlr_seat_keyboard_has_grab(self.seat) }
     }
 
+    /// Start a grab of the touch device of this seat. The grabber is responsible for
+    /// handling all touch events until the grab ends.
     pub fn touch_start_grab(&mut self, grab: TouchGrab) {
         unsafe { wlr_seat_touch_start_grab(self.seat, grab.as_ptr()) }
     }
 
+    /// End the grab of the touch device of this seat. This reverts the grab back to
+    /// the default grab for the touch device.
     pub fn touch_end_grab(&mut self) {
         unsafe { wlr_seat_touch_end_grab(self.seat) }
     }
 
+    /// Whether or not the seat has a touch grab other than the default grab.
     pub fn touch_has_grab(&self) -> bool {
         unsafe { wlr_seat_touch_has_grab(self.seat) }
     }
