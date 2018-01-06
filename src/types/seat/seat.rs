@@ -5,8 +5,8 @@
 
 use std::time::Duration;
 
-use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create,
-                  wlr_seat_destroy, wlr_seat_keyboard_clear_focus, wlr_seat_keyboard_end_grab,
+use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_destroy,
+                  wlr_seat_keyboard_clear_focus, wlr_seat_keyboard_end_grab,
                   wlr_seat_keyboard_enter, wlr_seat_keyboard_has_grab,
                   wlr_seat_keyboard_notify_enter, wlr_seat_keyboard_notify_key,
                   wlr_seat_keyboard_notify_modifiers, wlr_seat_keyboard_send_key,
@@ -23,7 +23,7 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create,
                   wlr_seat_touch_notify_up, wlr_seat_touch_num_points,
                   wlr_seat_touch_point_clear_focus, wlr_seat_touch_point_focus,
                   wlr_seat_touch_send_down, wlr_seat_touch_send_motion, wlr_seat_touch_send_up,
-                  wlr_seat_touch_start_grab, wlr_touch_point};
+                  wlr_seat_touch_start_grab};
 use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 
 use compositor::Compositor;
@@ -31,8 +31,8 @@ use utils::{c_to_rust_string, safe_as_cstring};
 
 use super::grab::{KeyboardGrab, PointerGrab, TouchGrab};
 use super::touch_point::{TouchId, TouchPoint};
-use types::surface::Surface;
 use types::input_device::InputDevice;
+use types::surface::Surface;
 
 /// A wrapper around `wlr_seat`.
 pub struct Seat {
@@ -313,6 +313,11 @@ impl Seat {
         unsafe { wlr_seat_keyboard_notify_key(self.seat, ms, key, state) }
     }
 
+    /// How many touch ponits are currently down for the seat.
+    pub fn touch_num_points(&mut self) -> i32 {
+        unsafe { wlr_seat_touch_num_points(self.seat) }
+    }
+
     /// Start a grab of the touch device of this seat. The grabber is responsible for
     /// handling all touch events until the grab ends.
     pub fn touch_start_grab(&mut self, grab: TouchGrab) {
@@ -341,6 +346,94 @@ impl Seat {
                 Some(TouchPoint::from_ptr(touch_point))
             }
         }
+    }
+
+    /// Notify the seat that the touch point given by `touch_id` has entered a new
+    /// surface.
+    ///
+    /// The surface is required. To clear focus, use `Seat::touch_point_clear_focus()`.
+    pub fn touch_point_focus(&mut self,
+                             surface: Surface,
+                             time: Duration,
+                             touch_id: TouchId,
+                             sx: f64,
+                             sy: f64) {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe {
+            wlr_seat_touch_point_focus(self.seat, surface.as_ptr(), ms, touch_id.into(), sx, sy)
+        }
+    }
+
+    //// Clear the focused surface for the touch point given by `touch_id`.
+    pub fn touch_point_clear_focus(&mut self, time: Duration, touch_id: TouchId) {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe { wlr_seat_touch_point_clear_focus(self.seat, ms, touch_id.into()) }
+    }
+
+    /// Send a touch down event to the client of the given surface.
+    ///
+    /// All future touch events for this point will go to this surface.
+    ///
+    /// If the touch down is valid, this will add a new touch point with the given `touch_id`.
+    ///
+    /// The touch down may not be valid if the surface seat client does not accept touch input.
+    ///
+    /// Coordinates are surface-local.
+    ///
+    /// Compositors should use `Seat::touch_notify_down()` to
+    /// respect any grabs of the touch device.
+    pub fn touch_send_down(&mut self,
+                           surface: Surface,
+                           time: Duration,
+                           touch_id: TouchId,
+                           sx: f64,
+                           sy: f64)
+                           -> u32 {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe {
+            wlr_seat_touch_send_down(self.seat, surface.as_ptr(), ms, touch_id.into(), sx, sy)
+        }
+    }
+
+    /// Send a touch up event for the touch point given by the `touch_id`.
+    ///
+    /// The event will go to the client for the surface given in the cooresponding touch down
+    /// event.
+    ///
+    /// This will remove the touch point.
+    ///
+    /// Compositors should use `Seat::touch_notify_up()` to
+    /// respect any grabs of the touch device.
+    pub fn touch_send_up(&mut self, time: Duration, touch_id: TouchId) {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe { wlr_seat_touch_send_up(self.seat, ms, touch_id.into()) }
+    }
+
+    /// Send a touch motion event for the touch point given by the `touch_id`.
+    ///
+    /// The event will go to the client for the surface given in the corresponding touch
+    /// down event.
+    ///
+    /// Compositors should use `Seat::touch_notify_motion()` to
+    /// respect any grabs of the touch device.
+    pub fn touch_send_motion(&mut self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
+        // TODO Is this the correct amount of time to pass?
+        let seconds_delta = time.as_secs() as u32;
+        let nano_delta = time.subsec_nanos();
+        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
+        unsafe { wlr_seat_touch_send_motion(self.seat, ms, touch_id.into(), sx, sy) }
     }
 
     // TODO Should this be returning a u32? Should I wrap whatever that number is?
