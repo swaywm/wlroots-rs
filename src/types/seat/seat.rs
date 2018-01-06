@@ -273,6 +273,12 @@ impl Seat {
         unsafe { wlr_seat_touch_notify_up(self.seat, ms, touch_id.into()) }
     }
 
+    /// Notify the seat that the touch point given by `touch_id` has moved.
+    ///
+    /// Defers to any grab of the touch device.
+    ///
+    /// The seat should be notified of touch motion even if the surface is
+    /// not the owner of the touch point for processing by grabs.
     pub fn touch_notify_motion(&mut self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
         // TODO Is this the correct amount of time to pass?
         let seconds_delta = time.as_secs() as u32;
@@ -280,7 +286,6 @@ impl Seat {
         let ms = (seconds_delta * 1000) + nano_delta / 1000000;
         unsafe { wlr_seat_touch_notify_motion(self.seat, ms, touch_id.into(), sx, sy) }
     }
-    // TODO notify and some other specific input misc functions
 
     pub unsafe fn to_ptr(&self) -> *mut wlr_seat {
         self.seat
