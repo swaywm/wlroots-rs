@@ -94,7 +94,7 @@ impl Seat {
     //
     // Coordinates for the enter event are surface-local.
     //
-    // Compositor should use `Seat::notify_enter` to
+    // Compositor should use `Seat::pointer_notify_enter` to
     // change pointer focus to respect pointer grabs.
     pub fn pointer_enter(&mut self, surface: Surface, sx: f64, sy: f64) {
         unsafe {
@@ -176,6 +176,17 @@ impl Seat {
     /// surfaces.
     pub fn pointer_clear_focus(&mut self) {
         unsafe { wlr_seat_pointer_clear_focus(self.seat) }
+    }
+
+    /// Send a keyboard enter event to the given surface and consider it to be the
+    /// focused surface for the keyboard.
+    ///
+    /// This will send a leave event to the last surface that was entered.
+    ///
+    /// Compositors should use `Seat::keyboard_notify_enter()` to
+    /// change keyboard focus to respect keyboard grabs.
+    pub fn keyboard_enter(&mut self, surface: Surface) {
+        unsafe { wlr_seat_keyboard_enter(self.seat, surface.as_ptr()) }
     }
 
     /// Start a grab of the keyboard of this seat. The grabber is responsible for
