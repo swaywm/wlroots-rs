@@ -28,6 +28,7 @@ use compositor::Compositor;
 use utils::{c_to_rust_string, safe_as_cstring};
 
 use super::grab::{KeyboardGrab, PointerGrab, TouchGrab};
+use super::touch_point::{TouchId, TouchPoint};
 use types::surface::Surface;
 
 /// A wrapper around `wlr_seat`.
