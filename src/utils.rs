@@ -2,7 +2,24 @@
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
+use std::time::Duration;
 use std::process::exit;
+
+/// Trait to convert something to mili seconds.
+///
+/// Used primarily to convert a `std::time::Duration` into
+/// something usable by wlroots
+pub trait ToMS {
+    fn to_ms(self) -> u32;
+}
+
+impl ToMS for Duration {
+    fn to_ms(self) -> u32 {
+        let seconds_delta = self.as_secs() as u32;
+        let nano_delta = self.subsec_nanos();
+        (seconds_delta * 1000) + nano_delta / 1000000
+    }
+}
 
 /// Converts a Rust string into C string without error handling.
 /// If any error occurs, it is logged and then the program is immediantly

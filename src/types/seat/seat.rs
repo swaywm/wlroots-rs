@@ -29,10 +29,11 @@ use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use compositor::Compositor;
 use utils::{c_to_rust_string, safe_as_cstring};
 
-use super::grab::{KeyboardGrab, PointerGrab, TouchGrab};
-use super::touch_point::{TouchId, TouchPoint};
 use types::input_device::InputDevice;
 use types::surface::Surface;
+use utils::ToMS;
+use super::grab::{KeyboardGrab, PointerGrab, TouchGrab};
+use super::touch_point::{TouchId, TouchPoint};
 
 /// A wrapper around `wlr_seat`.
 pub struct Seat {
@@ -119,13 +120,8 @@ impl Seat {
     /// Compositors should use `Seat::notify_motion` to
     /// send motion events to the respect pointer grabs.
     pub fn send_motion(&mut self, time: Duration, sx: f64, sy: f64) {
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
         unsafe {
-            // TODO FIXME what kind of time? ms? s?
-            // I'm just guessing it's ms, there's no documentation on this.
-            wlr_seat_pointer_send_motion(self.seat, ms, sx, sy)
+            wlr_seat_pointer_send_motion(self.seat, time.to_ms(), sx, sy)
         }
     }
 
@@ -140,10 +136,7 @@ impl Seat {
     /// Compositors should use `Seat::notify_button` to
     /// send button events to respect pointer grabs.
     pub fn send_button(&mut self, time: Duration, button: u32, state: u32) -> u32 {
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_pointer_send_button(self.seat, ms, button, state) }
+        unsafe { wlr_seat_pointer_send_button(self.seat, time.to_ms(), button, state) }
     }
 
     /// Send an axis event to the surface with pointer focus.
@@ -151,11 +144,8 @@ impl Seat {
     /// Compositors should use `Seat::notify_axis` to
     /// send axis events to respect pointer grabs.
     pub fn send_axis(&mut self, time: Duration, orientation: wlr_axis_orientation, value: f64) {
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
         unsafe {
-            wlr_seat_pointer_send_axis(self.seat, ms, orientation, value);
+            wlr_seat_pointer_send_axis(self.seat, time.to_ms(), orientation, value);
         }
     }
 
@@ -194,11 +184,7 @@ impl Seat {
     ///
     /// Pass surface-local coordinates where the pointer motion occurred.
     pub fn pointer_notify_motion(&mut self, time: Duration, sx: f64, sy: f64) {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_pointer_notify_motion(self.seat, ms, sx, sy) }
+        unsafe { wlr_seat_pointer_notify_motion(self.seat, time.to_ms(), sx, sy) }
     }
 
     // TODO Wrapper type around Button and State
@@ -207,11 +193,7 @@ impl Seat {
     ///
     /// Returns the serial of the button press or zero if no button press was sent.
     pub fn pointer_notify_button(&mut self, time: Duration, button: u32, state: u32) -> u32 {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_pointer_notify_button(self.seat, ms, button, state) }
+        unsafe { wlr_seat_pointer_notify_button(self.seat, time.to_ms(), button, state) }
     }
 
     /// Notify the seat of an axis event.
@@ -219,11 +201,7 @@ impl Seat {
                                time: Duration,
                                orientation: wlr_axis_orientation,
                                value: f64) {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_pointer_notify_axis(self.seat, ms, orientation, value) }
+        unsafe { wlr_seat_pointer_notify_axis(self.seat, time.to_ms(), orientation, value) }
     }
 
     /// Set this keyboard as the active keyboard for the seat.
@@ -237,11 +215,7 @@ impl Seat {
     ///
     /// Compositors should use `wlr_seat_notify_key()` to respect keyboard grabs.
     pub fn keyboard_send_key(&mut self, time: Duration, key: u32, state: u32) {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_keyboard_send_key(self.seat, ms, key, state) }
+        unsafe { wlr_seat_keyboard_send_key(self.seat, time.to_ms(), key, state) }
     }
 
     /// Send the modifier state to focused keyboard resources.
@@ -306,11 +280,7 @@ impl Seat {
     ///
     /// Defers to any keyboard grabs.
     pub fn keyboard_notify_key(&mut self, time: Duration, key: u32, state: u32) {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_keyboard_notify_key(self.seat, ms, key, state) }
+        unsafe { wlr_seat_keyboard_notify_key(self.seat, time.to_ms(), key, state) }
     }
 
     /// How many touch ponits are currently down for the seat.
@@ -358,22 +328,14 @@ impl Seat {
                              touch_id: TouchId,
                              sx: f64,
                              sy: f64) {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
         unsafe {
-            wlr_seat_touch_point_focus(self.seat, surface.as_ptr(), ms, touch_id.into(), sx, sy)
+            wlr_seat_touch_point_focus(self.seat, surface.as_ptr(), time.to_ms(), touch_id.into(), sx, sy)
         }
     }
 
     //// Clear the focused surface for the touch point given by `touch_id`.
     pub fn touch_point_clear_focus(&mut self, time: Duration, touch_id: TouchId) {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_touch_point_clear_focus(self.seat, ms, touch_id.into()) }
+        unsafe { wlr_seat_touch_point_clear_focus(self.seat, time.to_ms(), touch_id.into()) }
     }
 
     /// Send a touch down event to the client of the given surface.
@@ -395,12 +357,8 @@ impl Seat {
                            sx: f64,
                            sy: f64)
                            -> u32 {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
         unsafe {
-            wlr_seat_touch_send_down(self.seat, surface.as_ptr(), ms, touch_id.into(), sx, sy)
+            wlr_seat_touch_send_down(self.seat, surface.as_ptr(), time.to_ms(), touch_id.into(), sx, sy)
         }
     }
 
@@ -414,11 +372,7 @@ impl Seat {
     /// Compositors should use `Seat::touch_notify_up()` to
     /// respect any grabs of the touch device.
     pub fn touch_send_up(&mut self, time: Duration, touch_id: TouchId) {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_touch_send_up(self.seat, ms, touch_id.into()) }
+        unsafe { wlr_seat_touch_send_up(self.seat, time.to_ms(), touch_id.into()) }
     }
 
     /// Send a touch motion event for the touch point given by the `touch_id`.
@@ -429,11 +383,7 @@ impl Seat {
     /// Compositors should use `Seat::touch_notify_motion()` to
     /// respect any grabs of the touch device.
     pub fn touch_send_motion(&mut self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_touch_send_motion(self.seat, ms, touch_id.into(), sx, sy) }
+        unsafe { wlr_seat_touch_send_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy) }
     }
 
     // TODO Should this be returning a u32? Should I wrap whatever that number is?
@@ -447,23 +397,15 @@ impl Seat {
                              sx: f64,
                              sy: f64)
                              -> u32 {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
         unsafe {
-            wlr_seat_touch_notify_down(self.seat, surface.as_ptr(), ms, touch_id.into(), sx, sy)
+            wlr_seat_touch_notify_down(self.seat, surface.as_ptr(), time.to_ms(), touch_id.into(), sx, sy)
         }
     }
 
     /// Notify the seat that the touch point given by `touch_id` is up. Defers to any
     /// grab of the touch device.
     pub fn touch_notify_up(&mut self, time: Duration, touch_id: TouchId) {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_touch_notify_up(self.seat, ms, touch_id.into()) }
+        unsafe { wlr_seat_touch_notify_up(self.seat, time.to_ms(), touch_id.into()) }
     }
 
     /// Notify the seat that the touch point given by `touch_id` has moved.
@@ -473,11 +415,7 @@ impl Seat {
     /// The seat should be notified of touch motion even if the surface is
     /// not the owner of the touch point for processing by grabs.
     pub fn touch_notify_motion(&mut self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
-        // TODO Is this the correct amount of time to pass?
-        let seconds_delta = time.as_secs() as u32;
-        let nano_delta = time.subsec_nanos();
-        let ms = (seconds_delta * 1000) + nano_delta / 1000000;
-        unsafe { wlr_seat_touch_notify_motion(self.seat, ms, touch_id.into(), sx, sy) }
+        unsafe { wlr_seat_touch_notify_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy) }
     }
 
     pub unsafe fn to_ptr(&self) -> *mut wlr_seat {
