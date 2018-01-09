@@ -154,6 +154,14 @@ impl Compositor {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
         }
     }
+
+    pub unsafe fn display(&self) -> *mut wl_display {
+        self.display
+    }
+
+    pub unsafe fn event_loop(&self) -> *mut wl_event_loop {
+        self.event_loop
+    }
 }
 
 /// Terminates the compositor.
