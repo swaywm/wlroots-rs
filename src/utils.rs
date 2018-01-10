@@ -2,8 +2,8 @@
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-use std::time::Duration;
 use std::process::exit;
+use std::time::Duration;
 
 /// Trait to convert something to mili seconds.
 ///

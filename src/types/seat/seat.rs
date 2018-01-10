@@ -29,11 +29,11 @@ use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use compositor::Compositor;
 use utils::{c_to_rust_string, safe_as_cstring};
 
+use super::grab::{KeyboardGrab, PointerGrab, TouchGrab};
+use super::touch_point::{TouchId, TouchPoint};
 use types::input_device::InputDevice;
 use types::surface::Surface;
 use utils::ToMS;
-use super::grab::{KeyboardGrab, PointerGrab, TouchGrab};
-use super::touch_point::{TouchId, TouchPoint};
 
 /// A wrapper around `wlr_seat`.
 pub struct Seat {
@@ -120,9 +120,7 @@ impl Seat {
     /// Compositors should use `Seat::notify_motion` to
     /// send motion events to the respect pointer grabs.
     pub fn send_motion(&mut self, time: Duration, sx: f64, sy: f64) {
-        unsafe {
-            wlr_seat_pointer_send_motion(self.seat, time.to_ms(), sx, sy)
-        }
+        unsafe { wlr_seat_pointer_send_motion(self.seat, time.to_ms(), sx, sy) }
     }
 
     // TODO Button and State should probably be wrapped in some sort of type...
@@ -329,7 +327,12 @@ impl Seat {
                              sx: f64,
                              sy: f64) {
         unsafe {
-            wlr_seat_touch_point_focus(self.seat, surface.as_ptr(), time.to_ms(), touch_id.into(), sx, sy)
+            wlr_seat_touch_point_focus(self.seat,
+                                       surface.as_ptr(),
+                                       time.to_ms(),
+                                       touch_id.into(),
+                                       sx,
+                                       sy)
         }
     }
 
@@ -358,7 +361,12 @@ impl Seat {
                            sy: f64)
                            -> u32 {
         unsafe {
-            wlr_seat_touch_send_down(self.seat, surface.as_ptr(), time.to_ms(), touch_id.into(), sx, sy)
+            wlr_seat_touch_send_down(self.seat,
+                                     surface.as_ptr(),
+                                     time.to_ms(),
+                                     touch_id.into(),
+                                     sx,
+                                     sy)
         }
     }
 
@@ -383,7 +391,9 @@ impl Seat {
     /// Compositors should use `Seat::touch_notify_motion()` to
     /// respect any grabs of the touch device.
     pub fn touch_send_motion(&mut self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
-        unsafe { wlr_seat_touch_send_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy) }
+        unsafe {
+            wlr_seat_touch_send_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy)
+        }
     }
 
     // TODO Should this be returning a u32? Should I wrap whatever that number is?
@@ -398,7 +408,12 @@ impl Seat {
                              sy: f64)
                              -> u32 {
         unsafe {
-            wlr_seat_touch_notify_down(self.seat, surface.as_ptr(), time.to_ms(), touch_id.into(), sx, sy)
+            wlr_seat_touch_notify_down(self.seat,
+                                       surface.as_ptr(),
+                                       time.to_ms(),
+                                       touch_id.into(),
+                                       sx,
+                                       sy)
         }
     }
 
@@ -415,7 +430,9 @@ impl Seat {
     /// The seat should be notified of touch motion even if the surface is
     /// not the owner of the touch point for processing by grabs.
     pub fn touch_notify_motion(&mut self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
-        unsafe { wlr_seat_touch_notify_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy) }
+        unsafe {
+            wlr_seat_touch_notify_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy)
+        }
     }
 
     pub unsafe fn to_ptr(&self) -> *mut wlr_seat {
