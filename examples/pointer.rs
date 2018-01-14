@@ -7,7 +7,7 @@ use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, Inp
               KeyEvent, KeyboardHandler, MotionEvent, OutputBuilder, OutputBuilderResult,
               OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursor,
               XCursorTheme};
-use wlroots::types::{KeyboardHandle, OutputHandle, PointerHandle};
+use wlroots::types::{KeyboardHandle, OutputHandle, Pointer};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -36,7 +36,7 @@ struct Output;
 
 struct InputManager;
 
-struct Pointer;
+struct ExPointer;
 
 struct ExKeyboardHandler;
 
@@ -77,20 +77,14 @@ impl KeyboardHandler for ExKeyboardHandler {
     }
 }
 
-impl PointerHandler for Pointer {
-    fn on_motion(&mut self,
-                 compositor: &mut Compositor,
-                 _: &mut PointerHandle,
-                 event: &MotionEvent) {
+impl PointerHandler for ExPointer {
+    fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
         state.cursor.move_to(&event.device(), delta_x, delta_y);
     }
 
-    fn on_button(&mut self,
-                 compositor: &mut Compositor,
-                 _: &mut PointerHandle,
-                 event: &ButtonEvent) {
+    fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &ButtonEvent) {
         let state: &mut State = compositor.into();
         if event.state() == WLR_BUTTON_RELEASED {
             state.color = state.default_color;
@@ -100,7 +94,7 @@ impl PointerHandler for Pointer {
         }
     }
 
-    fn on_axis(&mut self, compositor: &mut Compositor, _: &mut PointerHandle, event: &AxisEvent) {
+    fn on_axis(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &AxisEvent) {
         let state: &mut State = compositor.into();
         for color_byte in &mut state.default_color[..3] {
             *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
@@ -130,9 +124,9 @@ impl OutputHandler for Output {
 impl InputManagerHandler for InputManager {
     fn pointer_added(&mut self,
                      _: &mut Compositor,
-                     _: &mut PointerHandle)
+                     _: &mut Pointer)
                      -> Option<Box<PointerHandler>> {
-        Some(Box::new(Pointer))
+        Some(Box::new(ExPointer))
     }
 
     fn keyboard_added(&mut self,

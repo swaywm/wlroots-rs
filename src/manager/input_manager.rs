@@ -9,7 +9,7 @@ use std::process::abort;
 
 use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper};
 use compositor::{Compositor, COMPOSITOR_PTR};
-use types::{InputDevice, KeyboardHandle, PointerHandle};
+use types::{InputDevice, KeyboardHandle, Pointer};
 use utils::safe_as_cstring;
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -52,10 +52,7 @@ pub trait InputManagerHandler {
         None
     }
 
-    fn pointer_added(&mut self,
-                     &mut Compositor,
-                     &mut PointerHandle)
-                     -> Option<Box<PointerHandler>> {
+    fn pointer_added(&mut self, &mut Compositor, &mut Pointer) -> Option<Box<PointerHandler>> {
         None
     }
 }
@@ -92,7 +89,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                 },
                 WLR_INPUT_DEVICE_POINTER => {
                     // Get the optional user pointer struct, add the signals
-                    let mut pointer_handle = match PointerHandle::from_input_device(data) {
+                    let mut pointer_handle = match Pointer::from_input_device(data) {
                         Some(dev) => dev,
                         None => {
                             wlr_log!(L_ERROR, "Device {:#?} was not a pointer!", dev);

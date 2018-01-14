@@ -4,24 +4,24 @@ use libc;
 
 use compositor::{Compositor, COMPOSITOR_PTR};
 use events::pointer_events::{AbsoluteMotionEvent, AxisEvent, ButtonEvent, MotionEvent};
-use types::PointerHandle;
+use types::Pointer;
 
 use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion,
                   wlr_input_device};
 
 pub trait PointerHandler {
     /// Callback that is triggered when the pointer moves.
-    fn on_motion(&mut self, &mut Compositor, &mut PointerHandle, &MotionEvent) {}
+    fn on_motion(&mut self, &mut Compositor, &mut Pointer, &MotionEvent) {}
 
-    fn on_motion_absolute(&mut self, &mut Compositor, &mut PointerHandle, &AbsoluteMotionEvent) {}
+    fn on_motion_absolute(&mut self, &mut Compositor, &mut Pointer, &AbsoluteMotionEvent) {}
 
     /// Callback that is triggered when the buttons on the pointer are pressed.
-    fn on_button(&mut self, &mut Compositor, &mut PointerHandle, &ButtonEvent) {}
+    fn on_button(&mut self, &mut Compositor, &mut Pointer, &ButtonEvent) {}
 
-    fn on_axis(&mut self, &mut Compositor, &mut PointerHandle, &AxisEvent) {}
+    fn on_axis(&mut self, &mut Compositor, &mut Pointer, &AxisEvent) {}
 }
 
-wayland_listener!(PointerWrapper, (PointerHandle, Box<PointerHandler>), [
+wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
     button_listener => key_notify: |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
         let event = ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button);
         let compositor = &mut *COMPOSITOR_PTR;
