@@ -9,7 +9,7 @@ use std::process::abort;
 
 use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper};
 use compositor::{Compositor, COMPOSITOR_PTR};
-use types::{InputDevice, KeyboardHandle, Pointer};
+use types::{InputDevice, Keyboard, Pointer};
 use utils::safe_as_cstring;
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -45,10 +45,7 @@ pub trait InputManagerHandler {
         // TODO
     }
 
-    fn keyboard_added(&mut self,
-                      &mut Compositor,
-                      &mut KeyboardHandle)
-                      -> Option<Box<KeyboardHandler>> {
+    fn keyboard_added(&mut self, &mut Compositor, &mut Keyboard) -> Option<Box<KeyboardHandler>> {
         None
     }
 
@@ -70,7 +67,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     // Boring setup that we won't make the user do
                     add_keyboard(&mut dev);
                     // Get the optional user keyboard struct, add the on_key signal
-                    let mut keyboard_handle = match KeyboardHandle::from_input_device(data) {
+                    let mut keyboard_handle = match Keyboard::from_input_device(data) {
                         Some(dev) => dev,
                         None => {
                             wlr_log!(L_ERROR, "Device {:#?} was not a keyboard!", dev);

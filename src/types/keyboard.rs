@@ -1,28 +1,69 @@
+//! TODO Documentation
 use std::fmt;
+use std::rc::{Rc, Weak};
+
 use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
                   wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap,
                   xkb_keymap};
 
 #[derive(Debug)]
-pub struct KeyboardHandle {
+pub struct Keyboard {
+    /// The structure that ensures weak handles to this structure are still alive.
+    ///
+    /// They contain weak handles, and will safely not use dead memory when this
+    /// is freed by wlroots.
+    ///
+    /// If this is `None`, then this is from an upgraded `KeyboardHandle`, and
+    /// the operations are **unchecked**.
+    /// This is means safe operations might fail, but only if you use the unsafe
+    /// marked function `upgrade` on a `KeyboardHandle`.
+    liveliness: Option<Rc<()>>,
+    /// The device that refers to this keyboard.
     device: *mut wlr_input_device,
+    /// The underlying keyboard data.
     keyboard: *mut wlr_keyboard
 }
 
-impl KeyboardHandle {
+#[derive(Debug)]
+pub struct KeyboardHandle {
+    /// The Rc that ensures that this handle is still alive.
+    ///
+    /// When wlroots deallocates the keyboard associated with this handle,
+    handle: Weak<()>,
+    /// The device that refers to this keyboard.
+    device: *mut wlr_input_device,
+    /// The underlying keyboard data.
+    keyboard: *mut wlr_keyboard
+}
+
+impl Keyboard {
     pub(crate) unsafe fn from_input_device(device: *mut wlr_input_device) -> Option<Self> {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_KEYBOARD => {
                 let keyboard = (*device).__bindgen_anon_1.keyboard;
-                Some(KeyboardHandle { device, keyboard })
+                Some(Keyboard { liveliness: Some(Rc::new(())),
+                                device,
+                                keyboard })
             }
             _ => None
         }
     }
 
-    pub(crate) unsafe fn to_ptr(&self) -> *mut wlr_keyboard {
+    unsafe fn from_handle(handle: &KeyboardHandle) -> Self {
+        Keyboard { liveliness: None,
+                   device: handle.input_device(),
+                   keyboard: handle.keyboard_ptr() }
+    }
+
+    /// Gets the wlr_keyboard associated with this KeyboardHandle.
+    pub unsafe fn keyboard_ptr(&self) -> *mut wlr_keyboard {
         self.keyboard
+    }
+
+    /// Gets the wlr_input_device associated with this KeyboardHandle
+    pub unsafe fn input_device(&self) -> *mut wlr_input_device {
+        self.device
     }
 
     // TODO: Implement keymap wrapper?
@@ -44,8 +85,42 @@ impl KeyboardHandle {
         }
     }
 
+    /// Creates a weak reference to a `Keyboard`.
+    ///
+    /// # Panics
+    /// If this `Keyboard` is a previously upgraded `KeyboardHandle`,
+    /// then this function will panic.
+    pub fn weak_reference(&self) -> KeyboardHandle {
+        let arc = self.liveliness.as_ref()
+                      .expect("Cannot downgrade previously upgraded KeyboardHandle!");
+        KeyboardHandle { handle: Rc::downgrade(arc),
+                         device: self.device,
+                         keyboard: self.keyboard }
+    }
+}
+
+impl KeyboardHandle {
+    /// Upgrades the keyboard handle to a reference to the backing `Keyboard`.
+    ///
+    /// # Unsafety
+    /// This function is unsafe, because it creates a lifetime bound to
+    /// KeyboardHandle, which may live forever..
+    /// But no output lives forever and might be disconnected at any time.
+    pub unsafe fn upgrade(&self) -> Option<Keyboard> {
+        self.handle.upgrade()
+        // NOTE
+        // We drop the upgrade here because we don't want to cause a memory leak!
+            .map(|_| Keyboard::from_handle(self))
+    }
+
+    /// Gets the wlr_input_device associated with this KeyboardHandle
     pub unsafe fn input_device(&self) -> *mut wlr_input_device {
         self.device
+    }
+
+    /// Gets the wlr_keyboard associated with this KeyboardHandle.
+    pub unsafe fn keyboard_ptr(&self) -> *mut wlr_keyboard {
+        self.keyboard
     }
 }
 

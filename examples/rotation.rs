@@ -7,7 +7,7 @@ use std::time::Instant;
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
 use wlroots::render::{Texture, TextureFormat};
-use wlroots::types::{KeyboardHandle, OutputHandle};
+use wlroots::types::{Keyboard, OutputHandle};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
 
@@ -113,17 +113,14 @@ impl OutputHandler for Output {
 impl InputManagerHandler for InputManager {
     fn keyboard_added(&mut self,
                       _: &mut Compositor,
-                      _: &mut KeyboardHandle)
+                      _: &mut Keyboard)
                       -> Option<Box<KeyboardHandler>> {
         Some(Box::new(KeyboardManager))
     }
 }
 
 impl KeyboardHandler for KeyboardManager {
-    fn on_key(&mut self,
-              compositor: &mut Compositor,
-              _: &mut KeyboardHandle,
-              key_event: &mut KeyEvent) {
+    fn on_key(&mut self, compositor: &mut Compositor, _: &mut Keyboard, key_event: &mut KeyEvent) {
         let keys = key_event.input_keys();
 
         for key in keys {

@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
-use wlroots::types::{KeyboardHandle, OutputHandle};
+use wlroots::types::{Keyboard, OutputHandle};
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
@@ -23,7 +23,7 @@ struct ExKeyboardHandler;
 impl KeyboardHandler for ExKeyboardHandler {
     fn on_key(&mut self,
               compositor: &mut Compositor,
-              keyboard: &mut KeyboardHandle,
+              keyboard: &mut Keyboard,
               key_event: &mut KeyEvent) {
         let keys = key_event.input_keys();
 
@@ -43,7 +43,7 @@ impl KeyboardHandler for ExKeyboardHandler {
 impl InputManagerHandler for InputManager {
     fn keyboard_added(&mut self,
                       _: &mut Compositor,
-                      _: &mut KeyboardHandle)
+                      _: &mut Keyboard)
                       -> Option<Box<KeyboardHandler>> {
         Some(Box::new(ExKeyboardHandler))
     }

@@ -7,7 +7,7 @@ use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, Inp
               KeyEvent, KeyboardHandler, MotionEvent, OutputBuilder, OutputBuilderResult,
               OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursor,
               XCursorTheme};
-use wlroots::types::{KeyboardHandle, OutputHandle, Pointer};
+use wlroots::types::{Keyboard, OutputHandle, Pointer};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -65,10 +65,7 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self,
-              compositor: &mut Compositor,
-              _: &mut KeyboardHandle,
-              key_event: &mut KeyEvent) {
+    fn on_key(&mut self, compositor: &mut Compositor, _: &mut Keyboard, key_event: &mut KeyEvent) {
         for key in key_event.input_keys() {
             if key == KEY_Escape {
                 compositor.terminate()
@@ -131,7 +128,7 @@ impl InputManagerHandler for InputManager {
 
     fn keyboard_added(&mut self,
                       _: &mut Compositor,
-                      _: &mut KeyboardHandle)
+                      _: &mut Keyboard)
                       -> Option<Box<KeyboardHandler>> {
         Some(Box::new(ExKeyboardHandler))
     }
