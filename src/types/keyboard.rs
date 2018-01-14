@@ -99,6 +99,26 @@ impl Keyboard {
     }
 }
 
+impl Drop for Keyboard {
+    fn drop(&mut self) {
+        match self.liveliness {
+            None => {}
+            Some(ref liveliness) => {
+                if Rc::strong_count(liveliness) == 1 {
+                    wlr_log!(L_DEBUG, "Dropped Keyboard {:p}", self.keyboard);
+                    let weak_count = Rc::weak_count(liveliness);
+                    if weak_count > 0 {
+                        wlr_log!(L_DEBUG,
+                                 "Still {} weak pointers to Keyboard {:p}",
+                                 weak_count,
+                                 self.keyboard);
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl KeyboardHandle {
     /// Upgrades the keyboard handle to a reference to the backing `Keyboard`.
     ///

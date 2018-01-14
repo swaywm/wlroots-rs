@@ -84,6 +84,26 @@ impl Pointer {
     }
 }
 
+impl Drop for Pointer {
+    fn drop(&mut self) {
+        match self.liveliness {
+            None => {}
+            Some(ref liveliness) => {
+                if Rc::strong_count(liveliness) == 1 {
+                    wlr_log!(L_DEBUG, "Dropped Pointer {:p}", self.pointer);
+                    let weak_count = Rc::weak_count(liveliness);
+                    if weak_count > 0 {
+                        wlr_log!(L_DEBUG,
+                                 "Still {} weak pointers to Pointer {:p}",
+                                 weak_count,
+                                 self.pointer);
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl PointerHandle {
     /// Upgrades the pointer handle to a reference to the backing `Pointer`.
     ///

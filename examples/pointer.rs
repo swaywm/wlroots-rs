@@ -7,7 +7,7 @@ use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, Inp
               KeyEvent, KeyboardHandler, MotionEvent, OutputBuilder, OutputBuilderResult,
               OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursor,
               XCursorTheme};
-use wlroots::types::{Keyboard, OutputHandle, Pointer};
+use wlroots::types::{Keyboard, Output, Pointer};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -32,7 +32,7 @@ compositor_data!(State);
 
 struct OutputManager;
 
-struct Output;
+struct ExOutput;
 
 struct InputManager;
 
@@ -45,7 +45,7 @@ impl OutputManagerHandler for OutputManager {
                              compositor: &mut Compositor,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
-        let result = builder.build_best_mode(Output);
+        let result = builder.build_best_mode(ExOutput);
         let state: &mut State = compositor.into();
         let cursor = &mut state.cursor;
         // TODO use output config if present instead of auto
@@ -106,8 +106,8 @@ impl PointerHandler for ExPointer {
     }
 }
 
-impl OutputHandler for Output {
-    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut OutputHandle) {
+impl OutputHandler for ExOutput {
+    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
         let state: &mut State = compositor.into();
         output.make_current();
         unsafe {

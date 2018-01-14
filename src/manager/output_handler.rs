@@ -2,32 +2,38 @@
 
 use compositor::{Compositor, COMPOSITOR_PTR};
 use libc;
-use types::OutputHandle;
+use types::Output;
 use wlroots_sys::wlr_output;
 
 pub trait OutputHandler {
     /// Called every time the output frame is updated.
-    fn output_frame(&mut self, &mut Compositor, &mut OutputHandle) {}
+    fn output_frame(&mut self, &mut Compositor, &mut Output) {}
 
     /// Called every time the output resolution changes.
-    fn output_resolution(&mut self, &mut OutputHandle) {}
+    fn output_resolution(&mut self, &mut Output) {}
 }
 
-wayland_listener!(UserOutput, (*mut wlr_output, Box<OutputHandler>), [
-    frame_listener => frame_notify: |this: &mut UserOutput, data: *mut libc::c_void,| unsafe {
+wayland_listener!(UserOutput, (Output, Box<OutputHandler>), [
+    frame_listener => frame_notify: |this: &mut UserOutput, _output: *mut libc::c_void,| unsafe {
+        let output = &mut this.data.0;
         let manager = &mut this.data.1;
-        let output = &mut *COMPOSITOR_PTR;
-        manager.output_frame(output, &mut OutputHandle::from_ptr(data as *mut wlr_output))
+        let compositor = &mut *COMPOSITOR_PTR;
+        manager.output_frame(compositor, output)
     };
-    resolution_listener => resolution_notify: |this: &mut UserOutput, data: *mut libc::c_void,|
+    resolution_listener => resolution_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
     unsafe {
+        let output = &mut this.data.0;
         let manager = &mut this.data.1;
-        manager.output_resolution(&mut OutputHandle::from_ptr(data as *mut wlr_output))
+        manager.output_resolution(output)
     };
 ]);
 
 impl UserOutput {
+    pub(crate) fn output_mut(&mut self) -> &mut Output {
+        &mut self.data.0
+    }
+
     pub unsafe fn output_ptr(&self) -> *mut wlr_output {
-        self.data.0
+        self.data.0.to_ptr()
     }
 }

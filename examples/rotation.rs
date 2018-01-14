@@ -7,7 +7,7 @@ use std::time::Instant;
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
 use wlroots::render::{Texture, TextureFormat};
-use wlroots::types::{Keyboard, OutputHandle};
+use wlroots::types::{Keyboard, Output};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
 
@@ -57,7 +57,7 @@ impl CompositorState {
 
 struct OutputManager;
 
-struct Output;
+struct ExOutput;
 
 struct InputManager;
 
@@ -69,15 +69,15 @@ impl OutputManagerHandler for OutputManager {
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
         let compositor_data: &mut CompositorState = compositor.into();
-        let output = Output;
+        let output = ExOutput;
         let res = builder.build_best_mode(output);
         res.output.transform(compositor_data.rotation);
         Some(res)
     }
 }
 
-impl OutputHandler for Output {
-    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut OutputHandle) {
+impl OutputHandler for ExOutput {
+    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
         let (width, height) = output.effective_resolution();
         let renderer = compositor.gles2
                                  .as_mut()

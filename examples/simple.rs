@@ -5,11 +5,11 @@ use std::time::Instant;
 
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
-use wlroots::types::{Keyboard, OutputHandle};
+use wlroots::types::{Keyboard, Output};
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
-struct Output {
+struct ExOutput {
     color: [f32; 3],
     dec: usize,
     last_frame: Instant
@@ -54,14 +54,14 @@ impl OutputManagerHandler for OutputManager {
                              _: &mut Compositor,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
-        Some(builder.build_best_mode(Output { color: [0.0, 0.0, 0.0],
-                                              dec: 0,
-                                              last_frame: Instant::now() }))
+        Some(builder.build_best_mode(ExOutput { color: [0.0, 0.0, 0.0],
+                                                dec: 0,
+                                                last_frame: Instant::now() }))
     }
 }
 
-impl OutputHandler for Output {
-    fn output_frame(&mut self, _: &mut Compositor, output: &mut OutputHandle) {
+impl OutputHandler for ExOutput {
+    fn output_frame(&mut self, _: &mut Compositor, output: &mut Output) {
         let now = Instant::now();
         let delta = now.duration_since(self.last_frame);
         let seconds_delta = delta.as_secs();
