@@ -54,7 +54,7 @@ impl Pointer {
     }
 
     /// Creates an unbound Pointer from a `PointerHandle`
-    pub unsafe fn from_handle(handle: &PointerHandle) -> Pointer {
+    unsafe fn from_handle(handle: &PointerHandle) -> Self {
         Pointer { liveliness: None,
                   device: handle.input_device(),
                   pointer: handle.pointer_ptr() }
