@@ -8,7 +8,7 @@ use wlroots_sys::{wlr_input_device, wlr_pointer};
 pub struct Pointer {
     /// The structure that ensures weak handles to this structure are still alive.
     ///
-    /// They containe weak handles, and will safely not use dead memory when this
+    /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
     ///
     /// If this is `None`, then this is from an upgraded `PointerHandle`, and
@@ -57,7 +57,7 @@ impl Pointer {
     pub unsafe fn from_handle(handle: &PointerHandle) -> Pointer {
         Pointer { liveliness: None,
                   device: handle.input_device(),
-                  pointer: handle.pointer() }
+                  pointer: handle.pointer_ptr() }
     }
 
     /// Gets the wlr_input_device associated with this Pointer.
@@ -66,7 +66,7 @@ impl Pointer {
     }
 
     /// Gets the wlr_pointer associated with this Pointer.
-    pub unsafe fn pointer(&self) -> *mut wlr_pointer {
+    pub unsafe fn pointer_ptr(&self) -> *mut wlr_pointer {
         self.pointer
     }
 
@@ -104,7 +104,7 @@ impl PointerHandle {
     }
 
     /// Gets the wlr_pointer associated with this PointerHandle.
-    pub unsafe fn pointer(&self) -> *mut wlr_pointer {
+    pub unsafe fn pointer_ptr(&self) -> *mut wlr_pointer {
         self.pointer
     }
 }
