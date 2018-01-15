@@ -37,9 +37,13 @@ pub struct PointerHandle {
 }
 
 impl Pointer {
-    /// Tries to convert an input device to a pointer
+    /// Tries to convert an input device to a Pointer
     ///
-    /// Returns none if it is of a different input varient.
+    /// Returns none if it is of a different input variant.
+    ///
+    /// # Safety
+    /// This creates a totally new Pointer (e.g with its own reference count)
+    /// so only do this once per `wlr_input_device`!
     pub(crate) unsafe fn from_input_device(device: *mut wlr_input_device) -> Option<Self> {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {

@@ -37,6 +37,13 @@ pub struct KeyboardHandle {
 }
 
 impl Keyboard {
+    /// Tries to convert an input device to a Keyboard
+    ///
+    /// Returns None if it is of a different type of input variant.
+    ///
+    /// # Safety
+    /// This creates a totally new Keyboard (e.g with its own reference count)
+    /// so only do this once per `wlr_input_device`!
     pub(crate) unsafe fn from_input_device(device: *mut wlr_input_device) -> Option<Self> {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {

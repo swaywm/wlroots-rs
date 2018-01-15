@@ -64,8 +64,9 @@ impl Output {
 
     /// Makes a new `Output` from a `wlr_output`.
     ///
-    /// # Unsafety
-    // Do not call this function multiple times for the same `wlr_output`.
+    /// # Safety
+    /// This creates a totally new Output (e.g with its own reference count)
+    /// so only do this once per `wlr_output`!
     pub unsafe fn new(output: *mut wlr_output) -> Self {
         Output { liveliness: Some(Rc::new(())),
                  output }
