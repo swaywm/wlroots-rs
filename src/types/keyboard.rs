@@ -46,7 +46,7 @@ impl Keyboard {
     /// # Safety
     /// This creates a totally new Keyboard (e.g with its own reference count)
     /// so only do this once per `wlr_input_device`!
-    pub(crate) unsafe fn from_input_device(device: *mut wlr_input_device) -> Option<Self> {
+    pub(crate) unsafe fn new_from_input_device(device: *mut wlr_input_device) -> Option<Self> {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_KEYBOARD => {
