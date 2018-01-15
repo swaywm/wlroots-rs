@@ -7,34 +7,34 @@ use wlroots_sys::{wlr_button_state, wlr_event_pointer_axis, wlr_event_pointer_bu
 
 pub type ButtonState = wlr_button_state;
 
-#[derive(Debug)]
 /// Event that triggers when the pointer device scrolls (e.g using a wheel
 // or in the case of a touchpad when you use two fingers to scroll).
+#[derive(Debug)]
 pub struct AxisEvent {
     event: *mut wlr_event_pointer_axis,
     device: InputDevice
 }
 
-#[derive(Debug)]
 /// Event that triggers when a button is pressed (e.g left click, right click,
 /// a gaming mouse button, etc.).
+#[derive(Debug)]
 pub struct ButtonEvent {
     event: *mut wlr_event_pointer_button,
     device: InputDevice
 }
 
-#[derive(Debug)]
 /// Event that triggers when the pointer moves.
+#[derive(Debug)]
 pub struct MotionEvent {
     event: *mut wlr_event_pointer_motion,
     device: InputDevice
 }
 
-#[derive(Debug)]
 /// Event that triggers when data from a device that supports absolute motion
 /// sends data to the compositor.
 ///
 /// For more information on absolute motion, [see this link](https://wayland.freedesktop.org/libinput/doc/latest/absolute_axes.html).
+#[derive(Debug)]
 pub struct AbsoluteMotionEvent {
     event: *mut wlr_event_pointer_motion_absolute,
     device: InputDevice
