@@ -6,6 +6,8 @@ use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wl
                   wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap,
                   xkb_keymap};
 
+use InputDevice;
+
 #[derive(Debug)]
 pub struct Keyboard {
     /// The structure that ensures weak handles to this structure are still alive.
@@ -19,7 +21,7 @@ pub struct Keyboard {
     /// marked function `upgrade` on a `KeyboardHandle`.
     liveliness: Option<Rc<()>>,
     /// The device that refers to this keyboard.
-    device: *mut wlr_input_device,
+    device: InputDevice,
     /// The underlying keyboard data.
     keyboard: *mut wlr_keyboard
 }
@@ -31,7 +33,7 @@ pub struct KeyboardHandle {
     /// When wlroots deallocates the keyboard associated with this handle,
     handle: Weak<()>,
     /// The device that refers to this keyboard.
-    device: *mut wlr_input_device,
+    device: InputDevice,
     /// The underlying keyboard data.
     keyboard: *mut wlr_keyboard
 }
@@ -50,7 +52,7 @@ impl Keyboard {
             WLR_INPUT_DEVICE_KEYBOARD => {
                 let keyboard = (*device).__bindgen_anon_1.keyboard;
                 Some(Keyboard { liveliness: Some(Rc::new(())),
-                                device,
+                                device: InputDevice::from_ptr(device),
                                 keyboard })
             }
             _ => None
@@ -59,7 +61,7 @@ impl Keyboard {
 
     unsafe fn from_handle(handle: &KeyboardHandle) -> Self {
         Keyboard { liveliness: None,
-                   device: handle.input_device(),
+                   device: handle.input_device().clone(),
                    keyboard: handle.as_ptr() }
     }
 
@@ -69,8 +71,8 @@ impl Keyboard {
     }
 
     /// Gets the wlr_input_device associated with this KeyboardHandle
-    pub unsafe fn input_device(&self) -> *mut wlr_input_device {
-        self.device
+    pub fn input_device(&self) -> &InputDevice {
+        &self.device
     }
 
     // TODO: Implement keymap wrapper?
@@ -101,7 +103,10 @@ impl Keyboard {
         let arc = self.liveliness.as_ref()
                       .expect("Cannot downgrade previously upgraded KeyboardHandle!");
         KeyboardHandle { handle: Rc::downgrade(arc),
-                         device: self.device,
+                         // NOTE Rationale for cloning:
+                         // We can't use the keyboard handle unless the keyboard is alive,
+                         // which means the device pointer is still alive.
+                         device: unsafe { self.device.clone() },
                          keyboard: self.keyboard }
     }
 }
@@ -161,8 +166,8 @@ impl KeyboardHandle {
     }
 
     /// Gets the wlr_input_device associated with this KeyboardHandle
-    pub unsafe fn input_device(&self) -> *mut wlr_input_device {
-        self.device
+    pub fn input_device(&self) -> &InputDevice {
+        &self.device
     }
 
     /// Gets the wlr_keyboard associated with this KeyboardHandle.

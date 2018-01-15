@@ -33,7 +33,8 @@ pub struct AbsoluteMotionEvent {
 
 impl ButtonEvent {
     pub unsafe fn from_ptr(event: *mut wlr_event_pointer_button) -> Self {
-        ButtonEvent { device: InputDevice::from_ptr((*event).device), event }
+        ButtonEvent { device: InputDevice::from_ptr((*event).device),
+                      event }
     }
 
     pub fn device(&self) -> &InputDevice {
@@ -51,7 +52,8 @@ impl ButtonEvent {
 
 impl AxisEvent {
     pub unsafe fn from_ptr(event: *mut wlr_event_pointer_axis) -> Self {
-        AxisEvent { device: InputDevice::from_ptr((*event).device), event }
+        AxisEvent { device: InputDevice::from_ptr((*event).device),
+                    event }
     }
 
     pub fn device(&self) -> &InputDevice {
@@ -65,7 +67,8 @@ impl AxisEvent {
 
 impl MotionEvent {
     pub unsafe fn from_ptr(event: *mut wlr_event_pointer_motion) -> Self {
-        MotionEvent { device: InputDevice::from_ptr((*event).device), event }
+        MotionEvent { device: InputDevice::from_ptr((*event).device),
+                      event }
     }
 
     pub fn device(&self) -> &InputDevice {
@@ -79,7 +82,8 @@ impl MotionEvent {
 
 impl AbsoluteMotionEvent {
     pub unsafe fn from_ptr(event: *mut wlr_event_pointer_motion_absolute) -> Self {
-        AbsoluteMotionEvent { device: InputDevice::from_ptr((*event).device), event }
+        AbsoluteMotionEvent { device: InputDevice::from_ptr((*event).device),
+                              event }
     }
 
     pub fn device(&self) -> &InputDevice {

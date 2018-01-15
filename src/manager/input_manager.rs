@@ -29,8 +29,8 @@ impl Input {
     pub unsafe fn input_device(&self) -> *mut wlr_input_device {
         use self::Input::*;
         match *self {
-            Keyboard(ref keyboard) => keyboard.input_device(),
-            Pointer(ref pointer) => pointer.input_device()
+            Keyboard(ref keyboard) => keyboard.input_device().as_ptr(),
+            Pointer(ref pointer) => pointer.input_device().as_ptr()
         }
     }
 }
