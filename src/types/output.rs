@@ -197,6 +197,23 @@ impl Output {
     pub unsafe fn to_ptr(&self) -> *mut wlr_output {
         self.output
     }
+
+    /// Creates a weak reference to an `Output`.
+    ///
+    /// # Panics
+    /// If this `Output` is a previously upgraded `OutputHandle`,
+    /// then this function will panic.
+    pub fn weak_reference(&self) -> OutputHandle {
+        let arc = self.liveliness.as_ref()
+                      .expect("Cannot downgrade a previously upgraded OutputHandle");
+        OutputHandle { handle: Rc::downgrade(arc),
+                       output: self.output }
+    }
+
+    unsafe fn from_handle(handle: &OutputHandle) -> Self {
+        Output { liveliness: None,
+                 output: handle.as_ptr() }
+    }
 }
 
 impl Drop for Output {
@@ -219,6 +236,25 @@ impl Drop for Output {
                 }
             }
         }
+    }
+}
+
+impl OutputHandle {
+    /// Upgrades the output handle to a reference to the backing `Output`.
+    ///
+    /// # Unsafety
+    /// This function is unsafe, because it creates a lifetime bound to
+    /// OutputHandle, which may live forever..
+    /// But no output lives forever and might be disconnected at any time.
+    pub unsafe fn upgrade(&self) -> Option<Output> {
+        self.handle.upgrade()
+            // NOTE
+            // We drop the upgrade here because we don't want to cause a memory leak!
+            .map(|_| Output::from_handle(self))
+    }
+
+    pub unsafe fn as_ptr(&self) -> *mut wlr_output {
+        self.output
     }
 }
 
