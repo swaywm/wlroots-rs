@@ -61,7 +61,7 @@ impl Pointer {
     unsafe fn from_handle(handle: &PointerHandle) -> Self {
         Pointer { liveliness: None,
                   device: handle.input_device(),
-                  pointer: handle.pointer_ptr() }
+                  pointer: handle.as_ptr() }
     }
 
     /// Gets the wlr_input_device associated with this Pointer.
@@ -70,7 +70,7 @@ impl Pointer {
     }
 
     /// Gets the wlr_pointer associated with this Pointer.
-    pub unsafe fn pointer_ptr(&self) -> *mut wlr_pointer {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_pointer {
         self.pointer
     }
 
@@ -148,7 +148,7 @@ impl PointerHandle {
     }
 
     /// Gets the wlr_pointer associated with this PointerHandle.
-    pub unsafe fn pointer_ptr(&self) -> *mut wlr_pointer {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_pointer {
         self.pointer
     }
 }

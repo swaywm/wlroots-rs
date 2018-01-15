@@ -60,11 +60,11 @@ impl Keyboard {
     unsafe fn from_handle(handle: &KeyboardHandle) -> Self {
         Keyboard { liveliness: None,
                    device: handle.input_device(),
-                   keyboard: handle.keyboard_ptr() }
+                   keyboard: handle.as_ptr() }
     }
 
     /// Gets the wlr_keyboard associated with this KeyboardHandle.
-    pub unsafe fn keyboard_ptr(&self) -> *mut wlr_keyboard {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
         self.keyboard
     }
 
@@ -166,7 +166,7 @@ impl KeyboardHandle {
     }
 
     /// Gets the wlr_keyboard associated with this KeyboardHandle.
-    pub unsafe fn keyboard_ptr(&self) -> *mut wlr_keyboard {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
         self.keyboard
     }
 }
