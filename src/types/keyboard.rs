@@ -123,13 +123,14 @@ impl KeyboardHandle {
     /// Upgrades the keyboard handle to a reference to the backing `Keyboard`.
     ///
     /// # Unsafety
-    /// This function is unsafe, because it creates a lifetime bound to
-    /// KeyboardHandle, which may live forever..
+    /// This function is unsafe, because it creates an unbounded `Keyboard`
+    /// which may live forever..
     /// But no keyboard lives forever and might be disconnected at any time.
     pub unsafe fn upgrade(&self) -> Option<Keyboard> {
         self.handle.upgrade()
         // NOTE
-        // We drop the upgrade here because we don't want to cause a memory leak!
+        // We drop the Rc here because having two would allow a dangling
+        // pointer to exist!
             .map(|_| Keyboard::from_handle(self))
     }
 

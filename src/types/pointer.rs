@@ -108,13 +108,14 @@ impl PointerHandle {
     /// Upgrades the pointer handle to a reference to the backing `Pointer`.
     ///
     /// # Unsafety
-    /// This function is unsafe, because it creates a lifetime bound to
-    /// PointerHandle, which may live forever..
+    /// This function is unsafe, because it creates an unbound `Pointer`
+    /// which may live forever..
     /// But no pointer lives forever and might be disconnected at any time.
     pub unsafe fn upgrade(&self) -> Option<Pointer> {
         self.handle.upgrade()
             // NOTE
-            // We drop the upgrade here because we don't want to cause a memory leak!
+            // We drop the Rc here because having two would allow a dangling
+            // pointer to exist!
             .map(|_| Pointer::from_handle(self))
     }
 

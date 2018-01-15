@@ -241,13 +241,14 @@ impl OutputHandle {
     /// Upgrades the output handle to a reference to the backing `Output`.
     ///
     /// # Unsafety
-    /// This function is unsafe, because it creates a lifetime bound to
-    /// OutputHandle, which may live forever..
+    /// This function is unsafe, because it creates an unbound `Output`
+    /// which may live forever..
     /// But no output lives forever and might be disconnected at any time.
     pub unsafe fn upgrade(&self) -> Option<Output> {
         self.handle.upgrade()
             // NOTE
-            // We drop the upgrade here because we don't want to cause a memory leak!
+            // We drop the Rc here because having two would allow a dangling
+            // pointer to exist!
             .map(|_| Output::from_handle(self))
     }
 
