@@ -9,14 +9,21 @@ pub struct KeyEvent {
 }
 
 impl KeyEvent {
+    /// Constructs a KeyEvent from the raw key event pointer information.
     pub(crate) unsafe fn new(key: *mut wlr_event_keyboard_key, xkb_state: *mut xkb_state) -> Self {
         KeyEvent { key, xkb_state }
     }
 
+    /// Gets the raw keycode from the device.
+    ///
+    /// Usually you want to use `KeyEvent::input_keys` since you care about what
+    /// value XKB says this is.
     pub fn keycode(&self) -> u32 {
         unsafe { (*self.key).keycode + 8 }
     }
 
+    /// Gets the keys that are pressed using XKB to convert them to a more
+    /// programmer friendly form.
     pub fn input_keys(&self) -> Vec<Key> {
         unsafe {
             let mut syms = 0 as *const xkb_keysym_t;
