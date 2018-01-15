@@ -5,6 +5,8 @@ use types::input_device::InputDevice;
 use wlroots_sys::{wlr_button_state, wlr_event_pointer_axis, wlr_event_pointer_button,
                   wlr_event_pointer_motion, wlr_event_pointer_motion_absolute};
 
+pub type ButtonState = wlr_button_state;
+
 #[derive(Debug)]
 /// Event that triggers when the pointer device scrolls (e.g using a wheel
 // or in the case of a touchpad when you use two fingers to scroll).
@@ -51,7 +53,7 @@ impl ButtonEvent {
     }
 
     /// Get the state of the button (e.g pressed or released).
-    pub fn state(&self) -> wlr_button_state {
+    pub fn state(&self) -> ButtonState {
         unsafe { (*self.event).state }
     }
 
