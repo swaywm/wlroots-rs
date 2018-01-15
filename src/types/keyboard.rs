@@ -125,7 +125,7 @@ impl KeyboardHandle {
     /// # Unsafety
     /// This function is unsafe, because it creates a lifetime bound to
     /// KeyboardHandle, which may live forever..
-    /// But no output lives forever and might be disconnected at any time.
+    /// But no keyboard lives forever and might be disconnected at any time.
     pub unsafe fn upgrade(&self) -> Option<Keyboard> {
         self.handle.upgrade()
         // NOTE

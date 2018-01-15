@@ -110,7 +110,7 @@ impl PointerHandle {
     /// # Unsafety
     /// This function is unsafe, because it creates a lifetime bound to
     /// PointerHandle, which may live forever..
-    /// But no output lives forever and might be disconnected at any time.
+    /// But no pointer lives forever and might be disconnected at any time.
     pub unsafe fn upgrade(&self) -> Option<Pointer> {
         self.handle.upgrade()
             // NOTE
