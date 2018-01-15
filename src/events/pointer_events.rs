@@ -40,7 +40,7 @@ pub struct AbsoluteMotionEvent {
 
 impl ButtonEvent {
     /// Constructs a `ButtonEvent` from the raw event pointer.
-    pub unsafe fn from_ptr(event: *mut wlr_event_pointer_button) -> Self {
+    pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_button) -> Self {
         ButtonEvent { device: InputDevice::from_ptr((*event).device),
                       event }
     }
@@ -67,7 +67,7 @@ impl ButtonEvent {
 
 impl AxisEvent {
     /// Constructs a `AxisEvent` from a raw event pointer.
-    pub unsafe fn from_ptr(event: *mut wlr_event_pointer_axis) -> Self {
+    pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_axis) -> Self {
         AxisEvent { device: InputDevice::from_ptr((*event).device),
                     event }
     }
@@ -87,7 +87,7 @@ impl AxisEvent {
 
 impl MotionEvent {
     /// Constructs a `MotionEvent` from a raw event pointer.
-    pub unsafe fn from_ptr(event: *mut wlr_event_pointer_motion) -> Self {
+    pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_motion) -> Self {
         MotionEvent { device: InputDevice::from_ptr((*event).device),
                       event }
     }
@@ -111,7 +111,7 @@ impl MotionEvent {
 
 impl AbsoluteMotionEvent {
     /// Construct an `AbsoluteMotionEvent` from a raw event pointer.
-    pub unsafe fn from_ptr(event: *mut wlr_event_pointer_motion_absolute) -> Self {
+    pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_motion_absolute) -> Self {
         AbsoluteMotionEvent { device: InputDevice::from_ptr((*event).device),
                               event }
     }
