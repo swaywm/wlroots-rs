@@ -7,7 +7,7 @@ use std::time::Instant;
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
 use wlroots::render::{Texture, TextureFormat};
-use wlroots::types::{KeyboardHandle, OutputHandle};
+use wlroots::types::{Keyboard, Output};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
 
@@ -57,7 +57,7 @@ impl CompositorState {
 
 struct OutputManager;
 
-struct Output;
+struct ExOutput;
 
 struct InputManager;
 
@@ -69,15 +69,15 @@ impl OutputManagerHandler for OutputManager {
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
         let compositor_data: &mut CompositorState = compositor.into();
-        let output = Output;
+        let output = ExOutput;
         let res = builder.build_best_mode(output);
         res.output.transform(compositor_data.rotation);
         Some(res)
     }
 }
 
-impl OutputHandler for Output {
-    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut OutputHandle) {
+impl OutputHandler for ExOutput {
+    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
         let (width, height) = output.effective_resolution();
         let renderer = compositor.gles2
                                  .as_mut()
@@ -113,17 +113,14 @@ impl OutputHandler for Output {
 impl InputManagerHandler for InputManager {
     fn keyboard_added(&mut self,
                       _: &mut Compositor,
-                      _: &mut KeyboardHandle)
+                      _: &mut Keyboard)
                       -> Option<Box<KeyboardHandler>> {
         Some(Box::new(KeyboardManager))
     }
 }
 
 impl KeyboardHandler for KeyboardManager {
-    fn on_key(&mut self,
-              compositor: &mut Compositor,
-              _: &mut KeyboardHandle,
-              key_event: &mut KeyEvent) {
+    fn on_key(&mut self, compositor: &mut Compositor, _: &mut Keyboard, key_event: &mut KeyEvent) {
         let keys = key_event.input_keys();
 
         for key in keys {

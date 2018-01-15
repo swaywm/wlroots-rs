@@ -7,7 +7,7 @@ use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, Inp
               KeyEvent, KeyboardHandler, MotionEvent, OutputBuilder, OutputBuilderResult,
               OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursor,
               XCursorTheme};
-use wlroots::types::{KeyboardHandle, OutputHandle, PointerHandle};
+use wlroots::types::{Keyboard, Output, Pointer};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -32,11 +32,11 @@ compositor_data!(State);
 
 struct OutputManager;
 
-struct Output;
+struct ExOutput;
 
 struct InputManager;
 
-struct Pointer;
+struct ExPointer;
 
 struct ExKeyboardHandler;
 
@@ -45,7 +45,7 @@ impl OutputManagerHandler for OutputManager {
                              compositor: &mut Compositor,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
-        let result = builder.build_best_mode(Output);
+        let result = builder.build_best_mode(ExOutput);
         let state: &mut State = compositor.into();
         let cursor = &mut state.cursor;
         // TODO use output config if present instead of auto
@@ -65,10 +65,7 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self,
-              compositor: &mut Compositor,
-              _: &mut KeyboardHandle,
-              key_event: &mut KeyEvent) {
+    fn on_key(&mut self, compositor: &mut Compositor, _: &mut Keyboard, key_event: &mut KeyEvent) {
         for key in key_event.input_keys() {
             if key == KEY_Escape {
                 compositor.terminate()
@@ -77,20 +74,14 @@ impl KeyboardHandler for ExKeyboardHandler {
     }
 }
 
-impl PointerHandler for Pointer {
-    fn on_motion(&mut self,
-                 compositor: &mut Compositor,
-                 _: &mut PointerHandle,
-                 event: &MotionEvent) {
+impl PointerHandler for ExPointer {
+    fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
         state.cursor.move_to(&event.device(), delta_x, delta_y);
     }
 
-    fn on_button(&mut self,
-                 compositor: &mut Compositor,
-                 _: &mut PointerHandle,
-                 event: &ButtonEvent) {
+    fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &ButtonEvent) {
         let state: &mut State = compositor.into();
         if event.state() == WLR_BUTTON_RELEASED {
             state.color = state.default_color;
@@ -100,7 +91,7 @@ impl PointerHandler for Pointer {
         }
     }
 
-    fn on_axis(&mut self, compositor: &mut Compositor, _: &mut PointerHandle, event: &AxisEvent) {
+    fn on_axis(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &AxisEvent) {
         let state: &mut State = compositor.into();
         for color_byte in &mut state.default_color[..3] {
             *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
@@ -115,8 +106,8 @@ impl PointerHandler for Pointer {
     }
 }
 
-impl OutputHandler for Output {
-    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut OutputHandle) {
+impl OutputHandler for ExOutput {
+    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
         let state: &mut State = compositor.into();
         output.make_current();
         unsafe {
@@ -130,14 +121,14 @@ impl OutputHandler for Output {
 impl InputManagerHandler for InputManager {
     fn pointer_added(&mut self,
                      _: &mut Compositor,
-                     _: &mut PointerHandle)
+                     _: &mut Pointer)
                      -> Option<Box<PointerHandler>> {
-        Some(Box::new(Pointer))
+        Some(Box::new(ExPointer))
     }
 
     fn keyboard_added(&mut self,
                       _: &mut Compositor,
-                      _: &mut KeyboardHandle)
+                      _: &mut Keyboard)
                       -> Option<Box<KeyboardHandler>> {
         Some(Box::new(ExKeyboardHandler))
     }

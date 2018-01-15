@@ -1,5 +1,5 @@
 use render::Texture;
-use types::OutputHandle;
+use types::Output;
 
 use wlroots_sys::{wlr_backend, wlr_render_texture_create, wlr_render_with_matrix, wlr_renderer,
                   wlr_renderer_begin, wlr_renderer_destroy, wlr_renderer_end,
@@ -13,7 +13,7 @@ pub struct GLES2 {
 /// Renderer for GLES2
 pub struct GLES2Renderer<'output> {
     renderer: *mut wlr_renderer,
-    output: &'output mut OutputHandle
+    output: &'output mut Output
 }
 
 impl GLES2 {
@@ -31,7 +31,7 @@ impl GLES2 {
         }
     }
 
-    pub fn render<'output>(&mut self, output: &'output mut OutputHandle) -> GLES2Renderer<'output> {
+    pub fn render<'output>(&mut self, output: &'output mut Output) -> GLES2Renderer<'output> {
         output.make_current();
         unsafe {
             wlr_renderer_begin(self.renderer, output.to_ptr());
