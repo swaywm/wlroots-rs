@@ -253,6 +253,25 @@ impl OutputHandle {
             .map(|_| Output::from_handle(self))
     }
 
+    /// Run a function on the referenced Output, if it still exists
+    ///
+    /// Returns the result of the function, if successful
+    ///
+    /// # Safety
+    /// By enforcing a rather harsh limit on the lifetime of the output
+    /// to a short lived scope of an anonymous function,
+    /// this function ensures the Output does not live longer
+    /// than it exists.
+    pub fn run<F, R>(&self, runner: F) -> Option<R>
+        where F: FnOnce(&Output) -> R
+    {
+        let output = unsafe { self.upgrade() };
+        match output {
+            None => None,
+            Some(output) => Some(runner(&output))
+        }
+    }
+
     pub unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
     }

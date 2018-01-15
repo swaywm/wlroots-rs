@@ -118,6 +118,25 @@ impl PointerHandle {
             .map(|_| Pointer::from_handle(self))
     }
 
+    /// Run a function on the referenced Pointer, if it still exists
+    ///
+    /// Returns the result of the function, if successful
+    ///
+    /// # Safety
+    /// By enforcing a rather harsh limit on the lifetime of the output
+    /// to a short lived scope of an anonymous function,
+    /// this function ensures the Pointer does not live longer
+    /// than it exists.
+    pub fn run<F, R>(&self, runner: F) -> Option<R>
+        where F: FnOnce(&Pointer) -> R
+    {
+        let pointer = unsafe { self.upgrade() };
+        match pointer {
+            None => None,
+            Some(pointer) => Some(runner(&pointer))
+        }
+    }
+
     /// Gets the wlr_input_device associated with this PointerHandle.
     pub unsafe fn input_device(&self) -> *mut wlr_input_device {
         self.device
