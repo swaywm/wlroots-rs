@@ -7,6 +7,19 @@ pub struct InputDevice {
 }
 
 impl InputDevice {
+    /// Just like `std::clone::Clone`, but unsafe.
+    ///
+    /// # Unsafety
+    /// This is unsafe because the user should not be able to clone
+    /// this type out because it isn't bound by anything but the underlying
+    /// pointer could be removed at any time.
+    ///
+    /// This isn't exposed to the user, but still marked as `unsafe` to reduce
+    /// possible bugs from using this.
+    pub(crate) unsafe fn clone(&self) -> Self {
+        InputDevice { device: self.device }
+    }
+
     /// Get the type of the device
     pub fn dev_type(&self) -> wlr_input_device_type {
         unsafe { (*self.device).type_ }
@@ -21,7 +34,7 @@ impl InputDevice {
         InputDevice { device: device }
     }
 
-    pub unsafe fn to_ptr(&self) -> *mut wlr_input_device {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_input_device {
         self.device
     }
 }

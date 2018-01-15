@@ -32,7 +32,7 @@ impl<'wlr_seat> SeatClient<'wlr_seat> {
     pub unsafe fn client_for_wl_client(seat: &'wlr_seat mut Seat,
                                        client: *mut wl_client)
                                        -> Option<SeatClient<'wlr_seat>> {
-        let client = wlr_seat_client_for_wl_client(seat.to_ptr(), client);
+        let client = wlr_seat_client_for_wl_client(seat.as_ptr(), client);
         if client.is_null() {
             None
         } else {
@@ -54,7 +54,7 @@ impl<'wlr_seat> SeatClient<'wlr_seat> {
                      _phantom: PhantomData }
     }
 
-    pub unsafe fn to_ptr(&self) -> *mut wlr_seat_client {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_seat_client {
         self.client
     }
 }

@@ -34,6 +34,6 @@ impl UserOutput {
     }
 
     pub unsafe fn output_ptr(&self) -> *mut wlr_output {
-        self.data.0.to_ptr()
+        self.data.0.as_ptr()
     }
 }

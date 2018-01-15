@@ -64,8 +64,9 @@ impl Output {
 
     /// Makes a new `Output` from a `wlr_output`.
     ///
-    /// # Unsafety
-    // Do not call this function multiple times for the same `wlr_output`.
+    /// # Safety
+    /// This creates a totally new Output (e.g with its own reference count)
+    /// so only do this once per `wlr_output`!
     pub unsafe fn new(output: *mut wlr_output) -> Self {
         Output { liveliness: Some(Rc::new(())),
                  output }
@@ -92,7 +93,7 @@ impl Output {
 
     pub fn add_layout_auto(&mut self, layout: Rc<RefCell<OutputLayout>>) {
         unsafe {
-            wlr_output_layout_add_auto(layout.borrow_mut().to_ptr(), self.output);
+            wlr_output_layout_add_auto(layout.borrow_mut().as_ptr(), self.output);
             let user_data = self.user_data();
             if user_data.is_null() {
                 self.set_user_data(Rc::new(OutputState { layout: Some(layout) }));
@@ -118,7 +119,7 @@ impl Output {
                 first_mode_ptr = container_of!(&mut (*(*self.modes()).prev) as *mut _,
                                                wlr_output_mode,
                                                link);
-                wlr_output_set_mode(self.to_ptr(), first_mode_ptr);
+                wlr_output_set_mode(self.as_ptr(), first_mode_ptr);
             }
         }
     }
@@ -192,7 +193,7 @@ impl Output {
         (*self.output).events
     }
 
-    pub unsafe fn to_ptr(&self) -> *mut wlr_output {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
     }
 
@@ -281,7 +282,7 @@ impl OutputLayout {
         unsafe { OutputLayout { layout: wlr_output_layout_create() } }
     }
 
-    pub unsafe fn to_ptr(&self) -> *mut wlr_output_layout {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
         self.layout
     }
 
@@ -294,7 +295,7 @@ impl OutputLayout {
     /// pass it an invalid OutputHandle (e.g one that has already been freed).
     /// For now, this function is unsafe
     pub unsafe fn remove(&mut self, output: &mut Output) {
-        wlr_output_layout_remove(self.layout, output.to_ptr())
+        wlr_output_layout_remove(self.layout, output.as_ptr())
     }
 }
 

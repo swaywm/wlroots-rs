@@ -2,12 +2,11 @@
 
 use libc;
 
+use {InputDevice, Pointer};
 use compositor::{Compositor, COMPOSITOR_PTR};
 use events::pointer_events::{AbsoluteMotionEvent, AxisEvent, ButtonEvent, MotionEvent};
-use types::Pointer;
 
-use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion,
-                  wlr_input_device};
+use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion};
 
 pub trait PointerHandler {
     /// Callback that is triggered when the pointer moves.
@@ -47,7 +46,7 @@ wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
 ]);
 
 impl PointerWrapper {
-    pub unsafe fn input_device(&self) -> *mut wlr_input_device {
+    pub unsafe fn input_device(&self) -> &InputDevice {
         self.data.0.input_device()
     }
 }

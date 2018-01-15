@@ -4,6 +4,8 @@ use std::rc::{Rc, Weak};
 
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
+use InputDevice;
+
 #[derive(Debug)]
 pub struct Pointer {
     /// The structure that ensures weak handles to this structure are still alive.
@@ -17,7 +19,7 @@ pub struct Pointer {
     /// marked function `upgrade` on a `PointerHandle`.
     liveliness: Option<Rc<()>>,
     /// The device that refers to this pointer.
-    device: *mut wlr_input_device,
+    device: InputDevice,
     /// The underlying pointer data.
     pointer: *mut wlr_pointer
 }
@@ -31,22 +33,26 @@ pub struct PointerHandle {
     /// this can no longer be used.
     handle: Weak<()>,
     /// The device that refers to this pointer.
-    device: *mut wlr_input_device,
+    device: InputDevice,
     /// The underlying pointer data.
     pointer: *mut wlr_pointer
 }
 
 impl Pointer {
-    /// Tries to convert an input device to a pointer
+    /// Tries to convert an input device to a Pointer
     ///
-    /// Returns none if it is of a different input varient.
-    pub(crate) unsafe fn from_input_device(device: *mut wlr_input_device) -> Option<Self> {
+    /// Returns none if it is of a different input variant.
+    ///
+    /// # Safety
+    /// This creates a totally new Pointer (e.g with its own reference count)
+    /// so only do this once per `wlr_input_device`!
+    pub(crate) unsafe fn new_from_input_device(device: *mut wlr_input_device) -> Option<Self> {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_POINTER => {
                 let pointer = (*device).__bindgen_anon_1.pointer;
                 Some(Pointer { liveliness: Some(Rc::new(())),
-                               device,
+                               device: InputDevice::from_ptr(device),
                                pointer })
             }
             _ => None
@@ -56,17 +62,17 @@ impl Pointer {
     /// Creates an unbound Pointer from a `PointerHandle`
     unsafe fn from_handle(handle: &PointerHandle) -> Self {
         Pointer { liveliness: None,
-                  device: handle.input_device(),
-                  pointer: handle.pointer_ptr() }
+                  device: handle.input_device().clone(),
+                  pointer: handle.as_ptr() }
     }
 
     /// Gets the wlr_input_device associated with this Pointer.
-    pub unsafe fn input_device(&self) -> *mut wlr_input_device {
-        self.device
+    pub fn input_device(&self) -> &InputDevice {
+        &self.device
     }
 
     /// Gets the wlr_pointer associated with this Pointer.
-    pub unsafe fn pointer_ptr(&self) -> *mut wlr_pointer {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_pointer {
         self.pointer
     }
 
@@ -79,7 +85,10 @@ impl Pointer {
         let arc = self.liveliness.as_ref()
                       .expect("Cannot downgrade a previously upgraded PointerHandle!");
         PointerHandle { handle: Rc::downgrade(arc),
-                        device: self.device,
+                        // NOTE Rationale for cloning:
+                        // We can't use the keyboard handle unless the keyboard is alive,
+                        // which means the device pointer is still alive.
+                        device: unsafe { self.device.clone() },
                         pointer: self.pointer }
     }
 }
@@ -139,12 +148,12 @@ impl PointerHandle {
     }
 
     /// Gets the wlr_input_device associated with this PointerHandle.
-    pub unsafe fn input_device(&self) -> *mut wlr_input_device {
-        self.device
+    pub fn input_device(&self) -> &InputDevice {
+        &self.device
     }
 
     /// Gets the wlr_pointer associated with this PointerHandle.
-    pub unsafe fn pointer_ptr(&self) -> *mut wlr_pointer {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_pointer {
         self.pointer
     }
 }

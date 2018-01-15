@@ -81,7 +81,7 @@ impl Texture {
         Texture { texture }
     }
 
-    pub(crate) unsafe fn to_ptr(&self) -> *mut wlr_texture {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_texture {
         self.texture
     }
 
