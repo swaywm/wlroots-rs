@@ -34,7 +34,7 @@ impl GLES2 {
     pub fn render<'output>(&mut self, output: &'output mut Output) -> GLES2Renderer<'output> {
         output.make_current();
         unsafe {
-            wlr_renderer_begin(self.renderer, output.to_ptr());
+            wlr_renderer_begin(self.renderer, output.as_ptr());
         }
         GLES2Renderer { renderer: self.renderer,
                         output }
@@ -47,7 +47,7 @@ impl GLES2 {
 
 impl<'output> GLES2Renderer<'output> {
     pub fn render_with_matrix(&mut self, texture: &Texture, matrix: &[f32; 16]) -> bool {
-        unsafe { wlr_render_with_matrix(self.renderer, texture.to_ptr(), matrix) }
+        unsafe { wlr_render_with_matrix(self.renderer, texture.as_ptr(), matrix) }
     }
 
     /// Create a texture using the GLES2 backend.

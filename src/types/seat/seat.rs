@@ -204,7 +204,7 @@ impl Seat {
 
     /// Set this keyboard as the active keyboard for the seat.
     pub fn set_keyboard(&mut self, dev: InputDevice) {
-        unsafe { wlr_seat_set_keyboard(self.seat, dev.to_ptr()) }
+        unsafe { wlr_seat_set_keyboard(self.seat, dev.as_ptr()) }
     }
 
     // TODO Point to the correct function name in this documentation.
@@ -435,7 +435,7 @@ impl Seat {
         }
     }
 
-    pub unsafe fn to_ptr(&self) -> *mut wlr_seat {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_seat {
         self.seat
     }
 }

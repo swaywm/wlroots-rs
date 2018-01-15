@@ -21,7 +21,7 @@ impl InputDevice {
         InputDevice { device: device }
     }
 
-    pub unsafe fn to_ptr(&self) -> *mut wlr_input_device {
+    pub unsafe fn as_ptr(&self) -> *mut wlr_input_device {
         self.device
     }
 }

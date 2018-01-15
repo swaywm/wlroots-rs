@@ -47,7 +47,7 @@ impl Cursor {
 
     pub fn warp(&mut self, dev: Option<InputDevice>, x: f64, y: f64) -> bool {
         unsafe {
-            let dev_ptr = dev.map(|dev| dev.to_ptr()).unwrap_or(ptr::null_mut());
+            let dev_ptr = dev.map(|dev| dev.as_ptr()).unwrap_or(ptr::null_mut());
             wlr_cursor_warp(self.cursor, dev_ptr, x, y)
         }
     }
@@ -58,13 +58,13 @@ impl Cursor {
         unsafe {
             // NOTE Rationale for why the pointer isn't leaked from the refcell:
             // * A pointer is not stored to the layout, the internal state is just updated.
-            wlr_cursor_attach_output_layout(self.cursor, layout.borrow_mut().to_ptr());
+            wlr_cursor_attach_output_layout(self.cursor, layout.borrow_mut().as_ptr());
             self.layout = Some(layout);
         }
     }
 
     pub fn move_to(&mut self, dev: &InputDevice, delta_x: f64, delta_y: f64) {
-        unsafe { wlr_cursor_move(self.cursor, dev.to_ptr(), delta_x, delta_y) }
+        unsafe { wlr_cursor_move(self.cursor, dev.as_ptr(), delta_x, delta_y) }
     }
 
     pub fn output_layout(&self) -> &Option<Rc<RefCell<OutputLayout>>> {
