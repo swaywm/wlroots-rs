@@ -1,6 +1,8 @@
 //! Wrapper for the `wlr_box` type.
 //! Note that we renamed it to `Area` to avoid conflicts with Rust's Box.
 
+use std::ops::{Deref, DerefMut};
+
 use libc::{c_double, c_int};
 
 use wlroots_sys::{wl_output_transform, wlr_box, wlr_box_closest_point, wlr_box_contains_point,
@@ -123,10 +125,24 @@ impl Area {
     }
 }
 
+impl Deref for Area {
+    type Target = wlr_box;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Area {
+    fn deref_mut(&mut self) -> &mut wlr_box {
+        &mut self.0
+    }
+}
+
 impl PartialEq for Area {
     fn eq(&self, other: &Area) -> bool {
-        self.0.x == other.0.x && self.0.y == other.0.y && self.0.height == other.0.height
-        && self.0.width == other.0.width
+        self.x == other.x && self.y == other.y && self.height == other.height
+        && self.width == other.width
     }
 }
 
