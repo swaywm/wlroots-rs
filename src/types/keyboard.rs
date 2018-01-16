@@ -10,14 +10,29 @@ use wlroots_sys::{wlr_input_device, wlr_key_state, wlr_keyboard, wlr_keyboard_ge
                   wlr_keyboard_led, wlr_keyboard_led_update, wlr_keyboard_modifier,
                   wlr_keyboard_set_keymap};
 
-use xkbcommon::xkb::{self, Keymap};
+use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex, ModMask};
 
 use InputDevice;
 
-/// The maximum number of keycodes stored in a `Keyboard`.
-pub const WLR_KEYBOARD_KEYS_CAP: usize = 32;
-
 pub type KeyState = wlr_key_state;
+
+/// The masks for each group of modifiers.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct ModifierMasks {
+    pub depressed: ModMask,
+    pub latched: ModMask,
+    pub locked: ModMask,
+    pub group: ModMask
+}
+
+/// Information about repeated keypresses for a particular Keyboard.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct RepeatInfo {
+    /// The rate at which extended keypresses will fire more events.
+    rate: i32,
+    /// How long it takes for a keypress to register on this device.
+    delay: i32
+}
 
 pub struct Keyboard {
     /// The structure that ensures weak handles to this structure are still alive.
@@ -126,7 +141,7 @@ impl Keyboard {
         }
     }
 
-    /// Get the XKB keymap associated with this `Keyboard`.
+    /// Get the XKB keymap associated with this Keyboard.
     pub fn get_keymap(&mut self) -> Option<&Keymap> {
         unsafe {
             let keymap_ptr = (*self.keyboard).keymap as *mut _;
@@ -139,6 +154,34 @@ impl Keyboard {
         }
     }
 
+    /// Get the keycodes for this keyboard as reported by XKB.
+    ///
+    /// # Limitations
+    /// wlroots limits this list to `WLR_KEYBOARD_KEYS_CAP` elements,
+    /// which at the time of writing is `32`.
+    pub fn keycodes(&self) -> Vec<Keycode> {
+        unsafe {
+            let mut result = (*self.keyboard).keycodes.to_vec();
+            result.truncate((*self.keyboard).num_keycodes);
+            result
+        }
+    }
+
+    /// Get the list of LEDs for this keyboard as reported by XKB.
+    pub fn led_list(&self) -> Vec<LedIndex> {
+        unsafe { (*self.keyboard).led_indexes.to_vec() }
+    }
+
+    /// Get the list of modifiers for this keyboard as reported by XKB.
+    pub fn modifier_list(&self) -> Vec<ModIndex> {
+        unsafe { (*self.keyboard).mod_indexes.to_vec() }
+    }
+
+    /// Get the size of the keymap.
+    pub fn keymap_size(&self) -> usize {
+        unsafe { (*self.keyboard).keymap_size }
+    }
+
     /// Get the XKB state associated with this `Keyboard`.
     pub fn get_xkb_state(&mut self) -> Option<&xkb::State> {
         unsafe {
@@ -149,6 +192,14 @@ impl Keyboard {
                 self.xkb_state = Some(ManuallyDrop::new(xkb::State::from_raw_ptr(xkb_state_ptr)));
                 self.xkb_state.as_ref().map(Deref::deref)
             }
+        }
+    }
+
+    /// Get the repeat info for this keyboard.
+    pub fn repeat_info(&self) -> RepeatInfo {
+        unsafe {
+            RepeatInfo { rate: (*self.keyboard).repeat_info.rate,
+                         delay: (*self.keyboard).repeat_info.delay }
         }
     }
 
@@ -165,6 +216,16 @@ impl Keyboard {
     pub fn get_modifiers(&self) -> KeyboardModifier {
         unsafe {
             KeyboardModifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard))
+        }
+    }
+
+    /// Get the modifier masks for each group.
+    pub fn get_modifier_masks(&self) -> ModifierMasks {
+        unsafe {
+            ModifierMasks { depressed: (*self.keyboard).modifiers.depressed,
+                            latched: (*self.keyboard).modifiers.latched,
+                            locked: (*self.keyboard).modifiers.locked,
+                            group: (*self.keyboard).modifiers.group }
         }
     }
 
