@@ -4,8 +4,9 @@ use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
-use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
-                  wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap};
+use wlroots_sys::{wlr_input_device, wlr_key_state, wlr_keyboard, wlr_keyboard_get_modifiers,
+                  wlr_keyboard_led, wlr_keyboard_led_update, wlr_keyboard_modifier,
+                  wlr_keyboard_set_keymap};
 
 use xkbcommon::xkb::Keymap;
 
@@ -13,6 +14,8 @@ use InputDevice;
 
 /// The maximum number of keycodes stored in a `Keyboard`.
 pub const WLR_KEYBOARD_KEYS_CAP: usize = 32;
+
+pub type KeyState = wlr_key_state;
 
 #[derive(Debug)]
 pub struct Keyboard {
