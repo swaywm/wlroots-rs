@@ -8,7 +8,7 @@ use libc::{c_double, c_int};
 use wlroots_sys::{wl_output_transform, wlr_box, wlr_box_closest_point, wlr_box_contains_point,
                   wlr_box_empty, wlr_box_intersection, wlr_box_transform};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 /// Result of applying an intersection of two `Area`s.
 pub enum IntersectionResult {
     /// This area is the intersection between the two points.
