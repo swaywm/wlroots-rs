@@ -122,7 +122,7 @@ impl InputManagerHandler for InputManager {
 
 impl KeyboardHandler for KeyboardManager {
     fn on_key(&mut self, compositor: &mut Compositor, _: &mut Keyboard, key_event: &mut KeyEvent) {
-        let keys = key_event.input_keys();
+        let keys = key_event.pressed_keys();
 
         for key in keys {
             match key {
