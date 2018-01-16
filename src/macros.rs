@@ -1,5 +1,4 @@
 /// Gets the offset of a field. Used by container_of!
-#[macro_export]
 macro_rules! offset_of(
     ($ty:ty, $field:ident) => {
         &(*(0 as *const $ty)).$field as *const _ as usize
@@ -9,7 +8,6 @@ macro_rules! offset_of(
 /// Gets the parent struct from a pointer.
 /// VERY unsafe. The parent struct _must_ be repr(C), and the
 /// type passed to this macro _must_ match the type of the parent.
-#[macro_export]
 macro_rules! container_of (
     ($ptr: expr, $container: ty, $field: ident) => {
         ($ptr as *mut u8).offset(-(offset_of!($container, $field) as isize)) as *mut $container
@@ -27,7 +25,6 @@ macro_rules! c_str {
     }
 }
 
-#[macro_export]
 /// Logs a message using wlroots' logging capability.
 ///
 /// Possible values for `verb`:
@@ -36,6 +33,7 @@ macro_rules! c_str {
 /// * L_INFO
 /// * L_DEBUG
 /// * L_ERROR
+#[macro_export]
 macro_rules! wlr_log {
     ($verb: expr, $($msg:tt)*) => {{
         use $crate::wlroots_sys::_wlr_log;
@@ -74,7 +72,7 @@ macro_rules! wlr_log {
 /// `unsafe`.
 ///
 /// # Example
-/// ```rust,no_run
+/// ```rust,no_run,ignore
 /// #[macro_use] extern crate wlroots;
 /// extern crate wlroots_sys;
 /// #[macro_use] extern crate wayland_sys;
@@ -123,7 +121,6 @@ macro_rules! wlr_log {
 ///
 /// Second, this macro doesn't protect against the stored data being unsized.
 /// Passing a pointer of unsized data to C is UB, don't do it.
-#[macro_export]
 macro_rules! wayland_listener {
     ($struct_name: ident, $data: ty, $([
         $($listener: ident => $listener_func: ident :
