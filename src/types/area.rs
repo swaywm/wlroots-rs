@@ -91,8 +91,7 @@ impl Area {
     pub fn intersection(&self, other_box: &Area) -> IntersectionResult {
         unsafe {
             let mut res = Area::default();
-            let is_empty =
-                wlr_box_intersection(&self.0, &other_box.0, &mut res.0);
+            let is_empty = wlr_box_intersection(&self.0, &other_box.0, &mut res.0);
             if is_empty {
                 IntersectionResult::NoIntersection
             } else {
@@ -126,10 +125,8 @@ impl Area {
 
 impl PartialEq for Area {
     fn eq(&self, other: &Area) -> bool {
-        self.0.x == other.0.x &&
-            self.0.y == other.0.y &&
-            self.0.height == other.0.height &&
-            self.0.width == other.0.width
+        self.0.x == other.0.x && self.0.y == other.0.y && self.0.height == other.0.height
+        && self.0.width == other.0.width
     }
 }
 
