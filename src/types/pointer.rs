@@ -75,7 +75,8 @@ impl Pointer {
     }
 
     /// Gets the wlr_pointer associated with this Pointer.
-    pub unsafe fn as_ptr(&self) -> *mut wlr_pointer {
+    #[allow(dead_code)]
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_pointer {
         self.pointer
     }
 
@@ -198,7 +199,7 @@ impl PointerHandle {
     }
 
     /// Gets the wlr_pointer associated with this PointerHandle.
-    pub unsafe fn as_ptr(&self) -> *mut wlr_pointer {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_pointer {
         self.pointer
     }
 }

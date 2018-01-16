@@ -58,7 +58,7 @@ wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
 ]);
 
 impl PointerWrapper {
-    pub unsafe fn input_device(&self) -> &InputDevice {
+    pub(crate) unsafe fn input_device(&self) -> &InputDevice {
         self.data.0.input_device()
     }
 }

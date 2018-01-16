@@ -30,11 +30,11 @@ impl InputDevice {
         (*self.device).__bindgen_anon_1
     }
 
-    pub unsafe fn from_ptr(device: *mut wlr_input_device) -> Self {
+    pub(crate) unsafe fn from_ptr(device: *mut wlr_input_device) -> Self {
         InputDevice { device: device }
     }
 
-    pub unsafe fn as_ptr(&self) -> *mut wlr_input_device {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_input_device {
         self.device
     }
 }

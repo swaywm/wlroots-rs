@@ -130,7 +130,8 @@ impl XCursorTheme {
 }
 
 impl XCursor {
-    pub unsafe fn as_raw(&mut self) -> *mut wlr_xcursor {
+    #[allow(dead_code)]
+    pub(crate) unsafe fn as_raw(&mut self) -> *mut wlr_xcursor {
         self.xcursor
     }
 

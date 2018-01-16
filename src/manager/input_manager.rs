@@ -26,7 +26,7 @@ pub enum Input {
 }
 
 impl Input {
-    pub unsafe fn input_device(&self) -> *mut wlr_input_device {
+    pub(crate) unsafe fn input_device(&self) -> *mut wlr_input_device {
         use self::Input::*;
         match *self {
             Keyboard(ref keyboard) => keyboard.input_device().as_ptr(),
@@ -174,7 +174,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
     };
 ]);
 
-pub unsafe fn add_keyboard(dev: &mut InputDevice) {
+pub(crate) unsafe fn add_keyboard(dev: &mut InputDevice) {
     // Set the XKB settings
     let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES").unwrap_or("".into()));
     let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL").unwrap_or("".into()));

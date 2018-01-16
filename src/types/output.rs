@@ -70,16 +70,16 @@ impl Output {
     /// # Safety
     /// This creates a totally new Output (e.g with its own reference count)
     /// so only do this once per `wlr_output`!
-    pub unsafe fn new(output: *mut wlr_output) -> Self {
+    pub(crate) unsafe fn new(output: *mut wlr_output) -> Self {
         Output { liveliness: Some(Rc::new(AtomicBool::new(false))),
                  output }
     }
 
-    pub unsafe fn set_user_data(&mut self, data: Rc<OutputState>) {
+    pub(crate) unsafe fn set_user_data(&mut self, data: Rc<OutputState>) {
         (*self.output).data = Rc::into_raw(data) as *mut _
     }
 
-    pub unsafe fn user_data(&mut self) -> *mut OutputState {
+    pub(crate) unsafe fn user_data(&mut self) -> *mut OutputState {
         (*self.output).data as *mut _
     }
 
@@ -187,16 +187,17 @@ impl Output {
         }
     }
 
-    // TODO Wrap this somehow? Hmm
+    /// TODO Make safe
     pub unsafe fn modes(&self) -> *mut wl_list {
         &mut (*self.output).modes
     }
 
+    /// TODO Make safe
     pub unsafe fn events(&self) -> wlr_output_events {
         (*self.output).events
     }
 
-    pub unsafe fn as_ptr(&self) -> *mut wlr_output {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
     }
 
@@ -316,24 +317,26 @@ impl OutputHandle {
         }
     }
 
-    pub unsafe fn as_ptr(&self) -> *mut wlr_output {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
     }
 }
 
+#[allow(dead_code)]
 impl OutputLayout {
     pub fn new() -> Self {
         unsafe { OutputLayout { layout: wlr_output_layout_create() } }
     }
 
-    pub unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
         self.layout
     }
 
-    pub unsafe fn from_ptr(layout: *mut wlr_output_layout) -> Self {
+    pub(crate) unsafe fn from_ptr(layout: *mut wlr_output_layout) -> Self {
         OutputLayout { layout }
     }
 
+    /// TODO Make safe
     /// # Unsafety
     /// The underlying function hasn't been proven to be stable if you
     /// pass it an invalid OutputHandle (e.g one that has already been freed).
