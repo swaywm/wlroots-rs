@@ -11,8 +11,8 @@ use wlroots_sys::{wl_output_transform, wlr_box, wlr_box_closest_point, wlr_box_c
 pub enum IntersectionResult {
     /// This area is the intersection between the two points.
     Intersection(Area),
-    /// There was not an intersection, here is the resulting area anyways.
-    NoIntersection(Area)
+    /// There was not an intersection
+    NoIntersection
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -92,9 +92,9 @@ impl Area {
         unsafe {
             let mut res = Area::default();
             let is_empty =
-                wlr_box_intersection(&self.0, &other_box.0, &mut res.0 as *mut _);
+                wlr_box_intersection(&self.0, &other_box.0, &mut res.0);
             if is_empty {
-                IntersectionResult::NoIntersection(res)
+                IntersectionResult::NoIntersection
             } else {
                 IntersectionResult::Intersection(res)
             }
