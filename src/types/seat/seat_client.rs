@@ -50,7 +50,7 @@ impl<'wlr_seat> SeatClient<'wlr_seat> {
     /// Note also that the struct has an *boundless lifetime*. You _must_ ensure
     /// this struct does not live longer than the `Seat` that manages it.
     pub(crate) unsafe fn from_ptr<'unbound_seat>(client: *mut wlr_seat_client)
-                                          -> SeatClient<'unbound_seat> {
+                                                 -> SeatClient<'unbound_seat> {
         SeatClient { client,
                      _phantom: PhantomData }
     }
