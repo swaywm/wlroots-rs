@@ -11,6 +11,7 @@ use wlroots::types::{Keyboard, Output, Pointer};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
+use wlroots::utils::{L_DEBUG, init_logging};
 
 struct State {
     color: [f32; 4],
@@ -135,6 +136,7 @@ impl InputManagerHandler for InputManager {
 }
 
 fn main() {
+    init_logging(L_DEBUG, None);
     let mut cursor = Cursor::new().expect("Could not create cursor");
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
     let xcursor = xcursor_theme.get_cursor("left_ptr".into())

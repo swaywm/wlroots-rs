@@ -8,6 +8,7 @@ use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, Keyb
 use wlroots::types::{Keyboard, Output};
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
+use wlroots::utils::{init_logging, L_DEBUG};
 
 struct ExOutput {
     color: [f32; 3],
@@ -88,6 +89,7 @@ impl OutputHandler for ExOutput {
 }
 
 fn main() {
+    init_logging(L_DEBUG, None);
     CompositorBuilder::new().build_auto((), Box::new(InputManager), Box::new(OutputManager))
                             .run()
 }

@@ -10,6 +10,7 @@ use wlroots::render::{Texture, TextureFormat};
 use wlroots::types::{Keyboard, Output};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
+use wlroots::utils::{init_logging, L_DEBUG};
 
 const CAT_STRIDE: i32 = 128;
 const CAT_WIDTH: i32 = 128;
@@ -142,6 +143,7 @@ fn update_velocities(compositor: &mut CompositorState, x_diff: f32, y_diff: f32)
 }
 
 fn main() {
+    init_logging(L_DEBUG, None);
     use wl_output_transform::*;
     let mut args = env::args();
     args.next();
