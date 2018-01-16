@@ -78,11 +78,11 @@ impl Area {
     }
 
     /// Gets the intersection of the two areas.
-    pub fn intersection(&mut self, other_box: &mut Area) -> IntersectionResult {
+    pub fn intersection(&self, other_box: &Area) -> IntersectionResult {
         unsafe {
             let mut res = Area::default();
             let is_empty =
-                wlr_box_intersection(&mut self.0, &mut other_box.0, &mut (&mut res.0 as *mut _));
+                wlr_box_intersection(&self.0, &other_box.0, &mut res.0 as *mut _);
             if is_empty {
                 IntersectionResult::NoIntersection(res)
             } else {

@@ -12,6 +12,8 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 fn main() {
+    meson();
+    let target_dir = env::var("OUT_DIR").expect("$OUT_DIR not set!");
     let generated = bindgen::builder()
         .derive_debug(true)
         .derive_default(true)
@@ -25,6 +27,10 @@ fn main() {
         .ctypes_prefix("libc")
         .clang_arg("-Iwlroots/include")
         .clang_arg("-Iwlroots/include/wlr")
+        // NOTE Necessary because they use the out directory to put
+        // pragma information on what features are available in a header file
+        // titled "config.h"
+        .clang_arg(format!("-I{}{}", target_dir, "/include/"))
         .clang_arg("-Iwlroots/include/xcursor")
         .clang_arg("-I/usr/include/pixman-1")
         // Work around bug https://github.com/rust-lang-nursery/rust-bindgen/issues/687
@@ -62,11 +68,9 @@ fn main() {
     generated.write_to_file("src/gen.rs").unwrap();
 
     generate_protocols();
-    meson();
 
     // Example Khronos building stuff
-    let dest = env::var("OUT_DIR").unwrap();
-    let mut file = File::create(&Path::new(&dest).join("bindings.rs")).unwrap();
+    let mut file = File::create(&Path::new(&target_dir).join("bindings.rs")).unwrap();
     Registry::new(Api::Gl, (4, 5), Profile::Core, Fallbacks::All, [])
         .write_bindings(StaticGenerator, &mut file)
         .unwrap();
