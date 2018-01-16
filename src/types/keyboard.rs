@@ -5,8 +5,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
-                  wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap,
-                  xkb_keymap};
+                  wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap};
+
+use xkbcommon::xkb::Keymap;
 
 use InputDevice;
 
@@ -80,10 +81,10 @@ impl Keyboard {
         &self.device
     }
 
-    // TODO: Implement keymap wrapper?
-    pub fn set_keymap(&mut self, keymap: *mut xkb_keymap) {
+    /// Set the keymap for this Keyboard.
+    pub fn set_keymap(&mut self, keymap: &Keymap) {
         unsafe {
-            wlr_keyboard_set_keymap(self.keyboard, keymap);
+            wlr_keyboard_set_keymap(self.keyboard, keymap.get_raw_ptr() as _);
         }
     }
 
