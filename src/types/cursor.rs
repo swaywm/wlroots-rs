@@ -45,7 +45,7 @@ impl Cursor {
         unsafe { ((*self.cursor).x, (*self.cursor).y) }
     }
 
-    pub fn warp(&mut self, dev: Option<InputDevice>, x: f64, y: f64) -> bool {
+    pub fn warp(&mut self, dev: Option<&InputDevice>, x: f64, y: f64) -> bool {
         unsafe {
             let dev_ptr = dev.map(|dev| dev.as_ptr()).unwrap_or(ptr::null_mut());
             wlr_cursor_warp(self.cursor, dev_ptr, x, y)
