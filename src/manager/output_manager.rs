@@ -94,12 +94,8 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
         // NOTE
         // We get it from the list so that we can get the Rc'd `Output`, because there's
         // no way to re-construct that using just the raw pointer.
-        {
-            let output = &mut outputs.iter_mut().find(|output| output.output_ptr() == data)
-                // NOTE
-                // Rationale for panicking: Will be caught by panic catchers.
-                .expect("remove_listener got an output that it doesn't control!")
-                .output_mut();
+        if let Some(output) = outputs.iter_mut().find(|output| output.output_ptr() == data) {
+            let output = output.output_mut();
             let compositor = &mut *COMPOSITOR_PTR;
             manager.output_removed(compositor, OutputDestruction(output));
             if let Some(layout) = output.layout() {
