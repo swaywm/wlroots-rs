@@ -88,12 +88,16 @@ impl Keyboard {
         }
     }
 
+    /// Update the LED lights using the provided bitmap.
+    ///
+    /// 1 means one, 0 means off.
     pub fn update_led(&mut self, leds: KeyboardLed) {
         unsafe {
             wlr_keyboard_led_update(self.keyboard, leds.bits() as u32);
         }
     }
 
+    /// Get the modifiers that are currently pressed on the keyboard.
     pub fn get_modifiers(&self) -> KeyboardModifier {
         unsafe {
             KeyboardModifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard))
