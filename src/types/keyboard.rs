@@ -10,6 +10,9 @@ use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wl
 
 use InputDevice;
 
+/// The maximum number of keycodes stored in a `Keyboard`.
+pub const WLR_KEYBOARD_KEYS_CAP: usize = 32;
+
 #[derive(Debug)]
 pub struct Keyboard {
     /// The structure that ensures weak handles to this structure are still alive.
