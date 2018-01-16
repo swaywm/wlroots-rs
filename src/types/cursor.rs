@@ -124,14 +124,15 @@ impl XCursorTheme {
         }
     }
 
-    pub fn into_raw(self) -> *mut wlr_xcursor_theme {
+    #[allow(dead_code)]
+    pub(crate) unsafe fn as_ptr(self) -> *mut wlr_xcursor_theme {
         self.theme
     }
 }
 
 impl XCursor {
     #[allow(dead_code)]
-    pub(crate) unsafe fn as_raw(&mut self) -> *mut wlr_xcursor {
+    pub(crate) unsafe fn as_ptr(&mut self) -> *mut wlr_xcursor {
         self.xcursor
     }
 
