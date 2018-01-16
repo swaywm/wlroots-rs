@@ -6,9 +6,9 @@ use std::time::Instant;
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
 use wlroots::types::{Keyboard, Output};
+use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
-use wlroots::utils::{init_logging, L_DEBUG};
 
 struct ExOutput {
     color: [f32; 3],

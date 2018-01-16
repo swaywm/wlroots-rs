@@ -8,10 +8,10 @@ use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, Inp
               OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursor,
               XCursorTheme};
 use wlroots::types::{Keyboard, Output, Pointer};
+use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
-use wlroots::utils::{L_DEBUG, init_logging};
 
 struct State {
     color: [f32; 4],

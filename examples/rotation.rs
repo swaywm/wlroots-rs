@@ -8,9 +8,9 @@ use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, Keyb
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
 use wlroots::render::{Texture, TextureFormat};
 use wlroots::types::{Keyboard, Output};
+use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
-use wlroots::utils::{init_logging, L_DEBUG};
 
 const CAT_STRIDE: i32 = 128;
 const CAT_WIDTH: i32 = 128;
