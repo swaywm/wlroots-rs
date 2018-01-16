@@ -103,7 +103,8 @@ impl CompositorBuilder {
                          display,
                          event_loop,
                          server_decoration_manager,
-                         gles2 }
+                         gles2,
+                         panic_error: None }
         }
     }
 }
@@ -117,7 +118,9 @@ pub struct Compositor {
     display: *mut wl_display,
     event_loop: *mut wl_event_loop,
     pub server_decoration_manager: Option<ServerDecorationManager>,
-    pub gles2: Option<GLES2>
+    pub gles2: Option<GLES2>,
+    /// The error from the panic, if there was one.
+    panic_error: Option<Box<Any + Send>>
 }
 
 impl Compositor {
@@ -145,8 +148,14 @@ impl Compositor {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_display_run,
                           (*compositor.get()).display);
+            match (*compositor.get()).panic_error.take() {
+                None => {}
+                Some(err) => {
+                    // A panic occured, now we can re-throw it safely.
+                    ::std::panic::resume_unwind(err)
+                }
+            }
         }
-        // TODO Clean up
     }
 
     pub fn terminate(&mut self) {
@@ -161,6 +170,12 @@ impl Compositor {
 
     pub unsafe fn event_loop(&self) -> *mut wl_event_loop {
         self.event_loop
+    }
+
+    /// Saves the panic error information in the compositor, to be re-thrown
+    /// later when we are out of the C callback stack.
+    pub(crate) fn save_panic_error(&mut self, error: Box<Any + Send>) {
+        self.panic_error = Some(error);
     }
 }
 
