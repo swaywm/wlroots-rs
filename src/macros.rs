@@ -165,7 +165,11 @@ macro_rules! wayland_listener {
                 let manager: &mut $struct_name = &mut (*container_of!(listener,
                                                                       $struct_name,
                                                                       $listener));
-                (|$($func_arg: $func_type,)*| { $body })(manager, data);
+                $crate::utils::handle_unwind(
+                    ::std::panic::catch_unwind(
+                        ::std::panic::AssertUnwindSafe(|| {
+                            (|$($func_arg: $func_type,)*| { $body })(manager, data)
+                        })));
             })*)*
         }
     }
