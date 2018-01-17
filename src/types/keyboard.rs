@@ -155,13 +155,13 @@ impl KeyboardHandle {
     /// to a short lived scope of an anonymous function,
     /// this function ensures the Keyboard does not live longer
     /// than it exists.
-    pub fn run<F, R>(&self, runner: F) -> Option<R>
-        where F: FnOnce(&Keyboard) -> R
+    pub fn run<F, R>(&mut self, runner: F) -> Option<R>
+        where F: FnOnce(&mut Keyboard) -> R
     {
-        let pointer = unsafe { self.upgrade() };
-        match pointer {
+        let mut keyboard = unsafe { self.upgrade() };
+        match keyboard {
             None => None,
-            Some(pointer) => Some(runner(&pointer))
+            Some(ref mut keyboard) => Some(runner(keyboard))
         }
     }
 

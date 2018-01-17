@@ -262,13 +262,13 @@ impl OutputHandle {
     /// to a short lived scope of an anonymous function,
     /// this function ensures the Output does not live longer
     /// than it exists.
-    pub fn run<F, R>(&self, runner: F) -> Option<R>
-        where F: FnOnce(&Output) -> R
+    pub fn run<F, R>(&mut self, runner: F) -> Option<R>
+        where F: FnOnce(&mut Output) -> R
     {
-        let output = unsafe { self.upgrade() };
+        let mut output = unsafe { self.upgrade() };
         match output {
             None => None,
-            Some(output) => Some(runner(&output))
+            Some(ref mut output) => Some(runner(output))
         }
     }
 

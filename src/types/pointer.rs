@@ -137,13 +137,13 @@ impl PointerHandle {
     /// to a short lived scope of an anonymous function,
     /// this function ensures the Pointer does not live longer
     /// than it exists.
-    pub fn run<F, R>(&self, runner: F) -> Option<R>
+    pub fn run<F, R>(&mut self, runner: F) -> Option<R>
         where F: FnOnce(&Pointer) -> R
     {
-        let pointer = unsafe { self.upgrade() };
+        let mut pointer = unsafe { self.upgrade() };
         match pointer {
             None => None,
-            Some(pointer) => Some(runner(&pointer))
+            Some(ref mut pointer) => Some(runner(pointer))
         }
     }
 
