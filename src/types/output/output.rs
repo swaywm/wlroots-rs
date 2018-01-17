@@ -9,14 +9,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
-                  wlr_output_events, wlr_output_layout, wlr_output_layout_add_auto,
-                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_remove,
-                  wlr_output_make_current, wlr_output_mode, wlr_output_set_mode,
-                  wlr_output_set_transform, wlr_output_swap_buffers};
+                  wlr_output_events, wlr_output_layout_add_auto, wlr_output_make_current,
+                  wlr_output_mode, wlr_output_set_mode, wlr_output_set_transform,
+                  wlr_output_swap_buffers};
 
 pub struct OutputState {
     pub layout: Option<Rc<RefCell<OutputLayout>>>
 }
+
+use OutputLayout;
 
 #[derive(Debug)]
 pub struct Output {
@@ -44,11 +45,6 @@ pub struct OutputHandle {
     handle: Weak<AtomicBool>,
     /// The output ptr that refers to this `Output`
     output: *mut wlr_output
-}
-
-#[derive(Debug)]
-pub struct OutputLayout {
-    layout: *mut wlr_output_layout
 }
 
 impl Output {
@@ -316,35 +312,5 @@ impl OutputHandle {
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
-    }
-}
-
-#[allow(dead_code)]
-impl OutputLayout {
-    pub fn new() -> Self {
-        unsafe { OutputLayout { layout: wlr_output_layout_create() } }
-    }
-
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
-        self.layout
-    }
-
-    pub(crate) unsafe fn from_ptr(layout: *mut wlr_output_layout) -> Self {
-        OutputLayout { layout }
-    }
-
-    /// TODO Make safe
-    /// # Unsafety
-    /// The underlying function hasn't been proven to be stable if you
-    /// pass it an invalid OutputHandle (e.g one that has already been freed).
-    /// For now, this function is unsafe
-    pub unsafe fn remove(&mut self, output: &mut Output) {
-        wlr_output_layout_remove(self.layout, output.as_ptr())
-    }
-}
-
-impl Drop for OutputLayout {
-    fn drop(&mut self) {
-        unsafe { wlr_output_layout_destroy(self.layout) }
     }
 }

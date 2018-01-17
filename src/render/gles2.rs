@@ -1,5 +1,5 @@
+use Output;
 use render::Texture;
-use types::Output;
 
 use wlroots_sys::{wlr_backend, wlr_render_texture_create, wlr_render_with_matrix, wlr_renderer,
                   wlr_renderer_begin, wlr_renderer_destroy, wlr_renderer_end,

@@ -4,10 +4,9 @@ extern crate wlroots;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, InputManagerHandler,
-              KeyEvent, KeyboardHandler, MotionEvent, OutputBuilder, OutputBuilderResult,
-              OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursor,
-              XCursorTheme};
-use wlroots::types::{Keyboard, Output, Pointer};
+              KeyEvent, Keyboard, KeyboardHandler, MotionEvent, Output, OutputBuilder,
+              OutputBuilderResult, OutputHandler, OutputLayout, OutputManagerHandler, Pointer,
+              PointerHandler, XCursor, XCursorTheme};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
@@ -141,7 +140,8 @@ fn main() {
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
     let xcursor = xcursor_theme.get_cursor("left_ptr".into())
                                .expect("Could not load cursor from theme");
-    let layout = Rc::new(RefCell::new(OutputLayout::new()));
+    let layout =
+        Rc::new(RefCell::new(OutputLayout::new().expect("Could not construct an output layout")));
 
     cursor.attach_output_layout(layout);
     let compositor = CompositorBuilder::new().build_auto(State::new(cursor, xcursor),

@@ -1,8 +1,8 @@
 //! Handler for outputs
 
+use Output;
 use compositor::{Compositor, COMPOSITOR_PTR};
 use libc;
-use types::Output;
 use wlroots_sys::wlr_output;
 
 pub trait OutputHandler {

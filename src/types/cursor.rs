@@ -1,10 +1,9 @@
 //! Wrapper for wlr_cursor
 
+use {InputDevice, OutputLayout};
 use std::{mem, ptr, slice};
 use std::cell::RefCell;
 use std::rc::Rc;
-use types::input_device::InputDevice;
-use types::output::OutputLayout;
 use utils::safe_as_cstring;
 
 use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
