@@ -23,6 +23,12 @@ pub struct Origin {
     pub y: c_int
 }
 
+impl Origin {
+    pub fn new(x: c_int, y: c_int) -> Self {
+        Origin { x, y }
+    }
+}
+
 impl Default for Origin {
     fn default() -> Self {
         Origin { x: 0, y: 0 }
@@ -39,6 +45,12 @@ impl Into<Area> for Origin {
 pub struct Size {
     pub width: c_int,
     pub height: c_int
+}
+
+impl Size {
+    pub fn new(width: c_int, height: c_int) -> Self {
+        Size { width, height }
+    }
 }
 
 impl Default for Size {
