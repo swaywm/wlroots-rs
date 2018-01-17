@@ -1,6 +1,7 @@
 //! TODO Documentation
 use std::fmt;
 use std::rc::{Rc, Weak};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
                   wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap,
@@ -19,7 +20,7 @@ pub struct Keyboard {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `KeyboardHandle`.
-    liveliness: Option<Rc<()>>,
+    liveliness: Option<Rc<AtomicBool>>,
     /// The device that refers to this keyboard.
     device: InputDevice,
     /// The underlying keyboard data.
@@ -31,7 +32,7 @@ pub struct KeyboardHandle {
     /// The Rc that ensures that this handle is still alive.
     ///
     /// When wlroots deallocates the keyboard associated with this handle,
-    handle: Weak<()>,
+    handle: Weak<AtomicBool>,
     /// The device that refers to this keyboard.
     device: InputDevice,
     /// The underlying keyboard data.
@@ -51,7 +52,7 @@ impl Keyboard {
         match (*device).type_ {
             WLR_INPUT_DEVICE_KEYBOARD => {
                 let keyboard = (*device).__bindgen_anon_1.keyboard;
-                Some(Keyboard { liveliness: Some(Rc::new(())),
+                Some(Keyboard { liveliness: Some(Rc::new(AtomicBool::new(false))),
                                 device: InputDevice::from_ptr(device),
                                 keyboard })
             }
@@ -138,12 +139,23 @@ impl KeyboardHandle {
     /// This function is unsafe, because it creates an unbounded `Keyboard`
     /// which may live forever..
     /// But no keyboard lives forever and might be disconnected at any time.
-    pub unsafe fn upgrade(&self) -> Option<Keyboard> {
+    ///
+    /// # Panics
+    /// This function will panic if multiple mutable borrows are detected.
+    pub(crate) unsafe fn upgrade(&self) -> Option<Keyboard> {
         self.handle.upgrade()
         // NOTE
         // We drop the Rc here because having two would allow a dangling
         // pointer to exist!
-            .map(|_| Keyboard::from_handle(self))
+            .map(|check| {
+                let keyboard = Keyboard::from_handle(self);
+                if check.load(Ordering::Acquire) {
+                    wlr_log!(L_ERROR, "Double mutable borrows on {:?}", keyboard);
+                    panic!("Double mutable borrows detected");
+                }
+                check.store(true, Ordering::Release);
+                keyboard
+            })
     }
 
     /// Run a function on the referenced Keyboard, if it still exists
@@ -155,13 +167,32 @@ impl KeyboardHandle {
     /// to a short lived scope of an anonymous function,
     /// this function ensures the Keyboard does not live longer
     /// than it exists.
+    ///
+    /// # Panics
+    /// This function will panic if multiple mutable borrows are detected.
+    /// This will happen if you call `upgrade` directly within this callback,
+    /// or if you run this function within the another run to the same `Output`.
+    ///
+    /// So don't nest `run` calls and everything will be ok :).
     pub fn run<F, R>(&mut self, runner: F) -> Option<R>
         where F: FnOnce(&mut Keyboard) -> R
     {
         let mut keyboard = unsafe { self.upgrade() };
         match keyboard {
             None => None,
-            Some(ref mut keyboard) => Some(runner(keyboard))
+            Some(ref mut keyboard) => {
+                let res = Some(runner(keyboard));
+                self.handle.upgrade().map(|check| {
+                    // Sanity check that it hasn't been tampered with.
+                    if !check.load(Ordering::Acquire) {
+                        wlr_log!(L_ERROR, "After running keyboard callback, \
+                                           mutable lock was false for: {:?}", keyboard);
+                        panic!("Lock in incorrect state!");
+                    }
+                    check.store(false, Ordering::Release);
+                });
+                res
+            }
         }
     }
 

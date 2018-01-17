@@ -1,6 +1,7 @@
 //! TODO Documentation
 
 use std::rc::{Rc, Weak};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
@@ -17,7 +18,7 @@ pub struct Pointer {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `PointerHandle`.
-    liveliness: Option<Rc<()>>,
+    liveliness: Option<Rc<AtomicBool>>,
     /// The device that refers to this pointer.
     device: InputDevice,
     /// The underlying pointer data.
@@ -31,7 +32,7 @@ pub struct PointerHandle {
     ///
     /// When wlroots deallocates the pointer associated with this handle,
     /// this can no longer be used.
-    handle: Weak<()>,
+    handle: Weak<AtomicBool>,
     /// The device that refers to this pointer.
     device: InputDevice,
     /// The underlying pointer data.
@@ -51,7 +52,7 @@ impl Pointer {
         match (*device).type_ {
             WLR_INPUT_DEVICE_POINTER => {
                 let pointer = (*device).__bindgen_anon_1.pointer;
-                Some(Pointer { liveliness: Some(Rc::new(())),
+                Some(Pointer { liveliness: Some(Rc::new(AtomicBool::new(false))),
                                device: InputDevice::from_ptr(device),
                                pointer })
             }
@@ -120,12 +121,23 @@ impl PointerHandle {
     /// This function is unsafe, because it creates an unbound `Pointer`
     /// which may live forever..
     /// But no pointer lives forever and might be disconnected at any time.
+    ///
+    /// # Panics
+    /// This function will panic if multiple mutable borrows are detected.
     pub unsafe fn upgrade(&self) -> Option<Pointer> {
         self.handle.upgrade()
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
-            .map(|_| Pointer::from_handle(self))
+            .map(|check| {
+                let pointer = Pointer::from_handle(self);
+                if check.load(Ordering::Acquire) {
+                    wlr_log!(L_ERROR, "Double mutable borrows on {:?}", pointer);
+                    panic!("Double mutable borrows detected");
+                }
+                check.store(true, Ordering::Release);
+                pointer
+            })
     }
 
     /// Run a function on the referenced Pointer, if it still exists
@@ -137,13 +149,32 @@ impl PointerHandle {
     /// to a short lived scope of an anonymous function,
     /// this function ensures the Pointer does not live longer
     /// than it exists.
+    ///
+    /// # Panics
+    /// This function will panic if multiple mutable borrows are detected.
+    /// This will happen if you call `upgrade` directly within this callback,
+    /// or if you run this function within the another run to the same `Output`.
+    ///
+    /// So don't nest `run` calls and everything will be ok :).
     pub fn run<F, R>(&mut self, runner: F) -> Option<R>
         where F: FnOnce(&Pointer) -> R
     {
         let mut pointer = unsafe { self.upgrade() };
         match pointer {
             None => None,
-            Some(ref mut pointer) => Some(runner(pointer))
+            Some(ref mut pointer) => {
+                let res = Some(runner(pointer));
+                self.handle.upgrade().map(|check| {
+                    // Sanity check that it hasn't been tampered with.
+                    if !check.load(Ordering::Acquire) {
+                        wlr_log!(L_ERROR, "After running pointer callback, \
+                                           mutable lock was false for: {:?}", pointer);
+                        panic!("Lock in incorrect state!");
+                    }
+                    check.store(false, Ordering::Release);
+                });
+                res
+            }
         }
     }
 
