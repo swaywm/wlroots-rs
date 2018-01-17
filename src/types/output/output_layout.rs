@@ -26,18 +26,10 @@ impl OutputLayout {
         self.layout
     }
 
-    #[allow(dead_code)]
-    pub(crate) unsafe fn from_ptr(layout: *mut wlr_output_layout) -> Self {
-        OutputLayout { layout }
-    }
-
     /// Remove an output from this layout.
     ///
-    /// # Unsafety
-    /// The underlying function hasn't been proven to be stable if you
-    /// pass it an invalid Output(e.g one that has already been freed).
-    /// For now, this function is unsafe
-    pub unsafe fn remove(&mut self, output: &mut Output) {
+    /// If the output was not in the layout, does nothing.
+    pub fn remove(&mut self, output: &mut Output) {
         wlr_output_layout_remove(self.layout, output.as_ptr())
     }
 }
