@@ -11,6 +11,8 @@ use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_output;
 
+use std::panic;
+
 /// Used to ensure the output sets the mode before doing any other
 /// operation on the Output.
 pub struct OutputBuilder<'output> {
@@ -31,6 +33,9 @@ pub struct OutputDestruction<'output>(&'output mut Output);
 /// Handles output addition and removal.
 pub trait OutputManagerHandler {
     /// Called whenever an output is added.
+    ///
+    /// # Panics
+    /// Any panic in this function will cause the process to abort.
     fn output_added<'output>(&mut self,
                              &mut Compositor,
                              _: OutputBuilder<'output>)
@@ -76,7 +81,19 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
         let builder = OutputBuilder { output: &mut output };
         let compositor = &mut *COMPOSITOR_PTR;
         output_clone.set_lock(true);
-        let build_result = manager.output_added(compositor, builder);
+        let res = panic::catch_unwind(
+            panic::AssertUnwindSafe(||manager.output_added(compositor, builder)));
+        let build_result = match res {
+            Ok(res) => res,
+            // NOTE
+            // Either Wayland or wlroots does not handle failure to set up output correctly.
+            // Calling wl_display_terminate does not work if output is incorrectly set up.
+            //
+            // Instead, execution keeps going with an eventual segfault (if lucky).
+            //
+            // To fix this, we abort the process if there was a panic in output setup.
+            Err(_) => ::std::process::abort()
+        };
         if let Some(OutputBuilderResult {result: output_ptr, .. }) = build_result {
             output_clone.set_lock(false);
             let mut output = UserOutput::new((output_clone, output_ptr));
