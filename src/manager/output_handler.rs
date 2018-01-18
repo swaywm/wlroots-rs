@@ -18,13 +18,17 @@ wayland_listener!(UserOutput, (Output, Box<OutputHandler>), [
         let output = &mut this.data.0;
         let manager = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
-        manager.output_frame(compositor, output)
+        output.set_lock(true);
+        manager.output_frame(compositor, output);
+        output.set_lock(false);
     };
     resolution_listener => resolution_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
     unsafe {
         let output = &mut this.data.0;
         let manager = &mut this.data.1;
-        manager.output_resolution(output)
+        output.set_lock(true);
+        manager.output_resolution(output);
+        output.set_lock(false);
     };
 ]);
 

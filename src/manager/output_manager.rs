@@ -75,8 +75,10 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
         let output_clone = output.clone();
         let builder = OutputBuilder { output: &mut output };
         let compositor = &mut *COMPOSITOR_PTR;
+        output_clone.set_lock(true);
         let build_result = manager.output_added(compositor, builder);
         if let Some(OutputBuilderResult {result: output_ptr, .. }) = build_result {
+            output_clone.set_lock(false);
             let mut output = UserOutput::new((output_clone, output_ptr));
             // Add the output frame event to this manager
             wl_signal_add(&mut (*data).events.frame as *mut _ as _,
@@ -97,7 +99,9 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
         if let Some(output) = outputs.iter_mut().find(|output| output.output_ptr() == data) {
             let output = output.output_mut();
             let compositor = &mut *COMPOSITOR_PTR;
+            output.set_lock(true);
             manager.output_removed(compositor, OutputDestruction(output));
+            // NOTE We don't remove the lock because we are removing it
             if let Some(layout) = output.layout() {
                 layout.borrow_mut().remove(output);
             }

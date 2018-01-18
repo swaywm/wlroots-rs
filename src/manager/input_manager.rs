@@ -74,8 +74,10 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                             abort()
                         }
                     };
+                    keyboard_handle.set_lock(true);
                     if let Some(keyboard_handler) = manager.keyboard_added(compositor,
                                                                            &mut keyboard_handle) {
+                        keyboard_handle.set_lock(false);
                         let mut keyboard = KeyboardWrapper::new((keyboard_handle,
                                                                  keyboard_handler));
                         wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
@@ -93,7 +95,9 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                             abort()
                         }
                     };
+                    pointer_handle.set_lock(true);
                     if let Some(pointer) = manager.pointer_added(compositor, &mut pointer_handle) {
+                        pointer_handle.set_lock(false);
                         let mut pointer = PointerWrapper::new((pointer_handle, pointer));
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.motion as *mut _ as _,
                                     pointer.motion_listener() as *mut _ as _);

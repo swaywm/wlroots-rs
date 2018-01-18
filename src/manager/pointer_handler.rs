@@ -22,26 +22,38 @@ pub trait PointerHandler {
 
 wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
     button_listener => key_notify: |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
+        let pointer = &mut this.data.0;
         let event = ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button);
         let compositor = &mut *COMPOSITOR_PTR;
-        this.data.1.on_button(compositor, &mut this.data.0, &event)
+        pointer.set_lock(true);
+        this.data.1.on_button(compositor, pointer, &event);
+        pointer.set_lock(false);
     };
     motion_listener => motion_notify:  |this: &mut PointerWrapper, data: *mut libc::c_void,|
     unsafe {
+        let pointer = &mut this.data.0;
         let event = MotionEvent::from_ptr(data as *mut wlr_event_pointer_motion);
         let compositor = &mut *COMPOSITOR_PTR;
-        this.data.1.on_motion(compositor, &mut this.data.0, &event)
+        pointer.set_lock(true);
+        this.data.1.on_motion(compositor, pointer, &event);
+        pointer.set_lock(false);
     };
     motion_absolute_listener => motion_absolute_notify:
     |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
+        let pointer = &mut this.data.0;
         let event = AbsoluteMotionEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
-        this.data.1.on_motion_absolute(compositor, &mut this.data.0, &event)
+        pointer.set_lock(true);
+        this.data.1.on_motion_absolute(compositor, pointer, &event);
+        pointer.set_lock(false);
     };
     axis_listener => axis_notify:  |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
+        let pointer = &mut this.data.0;
         let event = AxisEvent::from_ptr(data as *mut wlr_event_pointer_axis);
         let compositor = &mut *COMPOSITOR_PTR;
-        this.data.1.on_axis(compositor, &mut this.data.0, &event)
+        pointer.set_lock(true);
+        this.data.1.on_axis(compositor, pointer, &event);
+        pointer.set_lock(false);
     };
 ]);
 
