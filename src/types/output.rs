@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::ffi::CStr;
+use std::panic;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -299,7 +300,7 @@ impl OutputHandle {
         match output {
             None => None,
             Some(ref mut output) => {
-                let res = Some(runner(output));
+                let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(output))));
                 self.handle.upgrade().map(|check| {
                                               // Sanity check that it hasn't been tampered with.
                                               if !check.load(Ordering::Acquire) {
@@ -311,7 +312,10 @@ impl OutputHandle {
                                               }
                                               check.store(false, Ordering::Release);
                                           });
-                res
+                match res {
+                    Ok(res) => res,
+                    Err(err) => panic::resume_unwind(err)
+                }
             }
         }
     }

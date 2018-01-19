@@ -1,5 +1,5 @@
 //! TODO Documentation
-use std::fmt;
+use std::{fmt, panic};
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -192,7 +192,7 @@ impl KeyboardHandle {
         match keyboard {
             None => None,
             Some(ref mut keyboard) => {
-                let res = Some(runner(keyboard));
+                let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(keyboard))));
                 self.handle.upgrade().map(|check| {
                                               // Sanity check that it hasn't been tampered with.
                                               if !check.load(Ordering::Acquire) {
@@ -204,7 +204,10 @@ impl KeyboardHandle {
                                               }
                                               check.store(false, Ordering::Release);
                                           });
-                res
+                match res {
+                    Ok(res) => res,
+                    Err(err) => panic::resume_unwind(err)
+                }
             }
         }
     }
