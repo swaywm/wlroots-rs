@@ -38,6 +38,7 @@ pub extern crate xkbcommon;
 mod macros;
 mod manager;
 mod compositor;
+mod errors;
 pub mod events;
 pub mod types;
 pub mod extensions;
@@ -57,3 +58,5 @@ pub use self::types::output::*;
 pub use self::types::pointer::*;
 pub use self::types::seat::*;
 pub use self::types::surface::*;
+
+pub use self::errors::*;
