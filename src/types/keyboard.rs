@@ -3,6 +3,7 @@ use std::{fmt, panic};
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
                   wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap,
                   xkb_keymap};
@@ -153,19 +154,19 @@ impl KeyboardHandle {
     ///
     /// # Panics
     /// This function will panic if multiple mutable borrows are detected.
-    pub(crate) unsafe fn upgrade(&self) -> Option<Keyboard> {
+    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Keyboard> {
         self.handle.upgrade()
-        // NOTE
-        // We drop the Rc here because having two would allow a dangling
-        // pointer to exist!
-            .map(|check| {
+            .ok_or(UpgradeHandleErr::DoubleUpgrade)
+            // NOTE
+            // We drop the Rc here because having two would allow a dangling
+            // pointer to exist!
+            .and_then(|check| {
                 let keyboard = Keyboard::from_handle(self);
                 if check.load(Ordering::Acquire) {
-                    wlr_log!(L_ERROR, "Double mutable borrows on {:?}", keyboard);
-                    panic!("Double mutable borrows detected");
+                    return Err(UpgradeHandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
-                keyboard
+                Ok(keyboard)
             })
     }
 
@@ -185,30 +186,25 @@ impl KeyboardHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> Option<R>
+    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<Option<R>>
         where F: FnOnce(&mut Keyboard) -> R
     {
-        let mut keyboard = unsafe { self.upgrade() };
-        match keyboard {
-            None => None,
-            Some(ref mut keyboard) => {
-                let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(keyboard))));
-                self.handle.upgrade().map(|check| {
-                                              // Sanity check that it hasn't been tampered with.
-                                              if !check.load(Ordering::Acquire) {
-                                                  wlr_log!(L_ERROR,
-                                                           "After running keyboard callback, \
-                                                            mutable lock was false for: {:?}",
-                                                           keyboard);
-                                                  panic!("Lock in incorrect state!");
-                                              }
-                                              check.store(false, Ordering::Release);
-                                          });
-                match res {
-                    Ok(res) => res,
-                    Err(err) => panic::resume_unwind(err)
-                }
-            }
+        let mut keyboard = unsafe { self.upgrade()? };
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(&mut keyboard))));
+        self.handle.upgrade().map(|check| {
+                                      // Sanity check that it hasn't been tampered with.
+                                      if !check.load(Ordering::Acquire) {
+                                          wlr_log!(L_ERROR,
+                                                   "After running keyboard callback, mutable \
+                                                    lock was false for: {:?}",
+                                                   keyboard);
+                                          panic!("Lock in incorrect state!");
+                                      }
+                                      check.store(false, Ordering::Release);
+                                  });
+        match res {
+            Ok(res) => Ok(res),
+            Err(err) => panic::resume_unwind(err)
         }
     }
 

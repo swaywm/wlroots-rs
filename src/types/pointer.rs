@@ -4,6 +4,7 @@ use std::panic;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
 use InputDevice;
@@ -136,19 +137,20 @@ impl PointerHandle {
     ///
     /// # Panics
     /// This function will panic if multiple mutable borrows are detected.
-    pub unsafe fn upgrade(&self) -> Option<Pointer> {
+    pub unsafe fn upgrade(&self) -> UpgradeHandleResult<Pointer> {
         self.handle.upgrade()
+            .ok_or(UpgradeHandleErr::DoubleUpgrade)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
-            .map(|check| {
+            .and_then(|check| {
                 let pointer = Pointer::from_handle(self);
                 if check.load(Ordering::Acquire) {
                     wlr_log!(L_ERROR, "Double mutable borrows on {:?}", pointer);
                     panic!("Double mutable borrows detected");
                 }
                 check.store(true, Ordering::Release);
-                pointer
+                Ok(pointer)
             })
     }
 
@@ -168,30 +170,25 @@ impl PointerHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> Option<R>
+    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<Option<R>>
         where F: FnOnce(&Pointer) -> R
     {
-        let mut pointer = unsafe { self.upgrade() };
-        match pointer {
-            None => None,
-            Some(ref mut pointer) => {
-                let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(pointer))));
-                self.handle.upgrade().map(|check| {
-                                              // Sanity check that it hasn't been tampered with.
-                                              if !check.load(Ordering::Acquire) {
-                                                  wlr_log!(L_ERROR,
-                                                           "After running pointer callback, \
-                                                            mutable lock was false for: {:?}",
-                                                           pointer);
-                                                  panic!("Lock in incorrect state!");
-                                              }
-                                              check.store(false, Ordering::Release);
-                                          });
-                match res {
-                    Ok(res) => res,
-                    Err(err) => panic::resume_unwind(err)
-                }
-            }
+        let mut pointer = unsafe { self.upgrade()? };
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(&mut pointer))));
+        self.handle.upgrade().map(|check| {
+                                      // Sanity check that it hasn't been tampered with.
+                                      if !check.load(Ordering::Acquire) {
+                                          wlr_log!(L_ERROR,
+                                                   "After running pointer callback, mutable lock \
+                                                    was false for: {:?}",
+                                                   pointer);
+                                          panic!("Lock in incorrect state!");
+                                      }
+                                      check.store(false, Ordering::Release);
+                                  });
+        match res {
+            Ok(res) => Ok(res),
+            Err(err) => panic::resume_unwind(err)
         }
     }
 

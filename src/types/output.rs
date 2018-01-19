@@ -6,6 +6,7 @@ use std::panic;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
                   wlr_output_events, wlr_output_layout, wlr_output_layout_add_auto,
@@ -261,19 +262,19 @@ impl OutputHandle {
     ///
     /// # Panics
     /// This function will panic if multiple mutable borrows are detected.
-    pub(crate) unsafe fn upgrade(&self) -> Option<Output> {
+    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Output> {
         self.handle.upgrade()
+            .ok_or(UpgradeHandleErr::DoubleUpgrade)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
-            .map(|check| {
+            .and_then(|check| {
                 let output = Output::from_handle(self);
                 if check.load(Ordering::Acquire) {
-                    wlr_log!(L_ERROR, "Double mutable borrows on {:?}", output);
-                    panic!("Double mutable borrow detected");
+                    return Err(UpgradeHandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
-                output
+                Ok(output)
             })
     }
 
@@ -293,30 +294,25 @@ impl OutputHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> Option<R>
+    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<Option<R>>
         where F: FnOnce(&mut Output) -> R
     {
-        let mut output = unsafe { self.upgrade() };
-        match output {
-            None => None,
-            Some(ref mut output) => {
-                let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(output))));
-                self.handle.upgrade().map(|check| {
-                                              // Sanity check that it hasn't been tampered with.
-                                              if !check.load(Ordering::Acquire) {
-                                                  wlr_log!(L_ERROR,
-                                                           "After running output callback, \
-                                                            mutable lock was false for: {:?}",
-                                                           output);
-                                                  panic!("Lock in incorrect state!");
-                                              }
-                                              check.store(false, Ordering::Release);
-                                          });
-                match res {
-                    Ok(res) => res,
-                    Err(err) => panic::resume_unwind(err)
-                }
-            }
+        let mut output = unsafe { self.upgrade()? };
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(&mut output))));
+        self.handle.upgrade().map(|check| {
+                                      // Sanity check that it hasn't been tampered with.
+                                      if !check.load(Ordering::Acquire) {
+                                          wlr_log!(L_ERROR,
+                                                   "After running output callback, mutable lock \
+                                                    was false for: {:?}",
+                                                   output);
+                                          panic!("Lock in incorrect state!");
+                                      }
+                                      check.store(false, Ordering::Release);
+                                  });
+        match res {
+            Ok(res) => Ok(res),
+            Err(err) => panic::resume_unwind(err)
         }
     }
 
