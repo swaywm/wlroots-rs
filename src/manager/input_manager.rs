@@ -123,7 +123,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                         inputs.push(Input::Pointer(pointer))
                     }
                 },
-                _ => unimplemented!(), // TODO FIXME We _really_ shouldn't panic here
+                _ => unimplemented!(),
             }
             manager.input_added(compositor, &mut dev)
         }));
@@ -136,7 +136,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
             // Instead, execution keeps going with an eventual segfault (if lucky).
             //
             // To fix this, we abort the process if there was a panic in input setup.
-            Err(_) => ::std::process::abort()
+            Err(_) => abort()
         }
     };
     remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
