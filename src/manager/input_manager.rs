@@ -72,7 +72,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
         use self::wlr_input_device_type::*;
         let mut dev = InputDevice::from_ptr(data);
         let compositor = &mut *COMPOSITOR_PTR;
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| unsafe {
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             match dev.dev_type() {
                 WLR_INPUT_DEVICE_KEYBOARD => {
                     // Boring setup that we won't make the user do
