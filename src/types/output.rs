@@ -301,14 +301,16 @@ impl OutputHandle {
             Some(ref mut output) => {
                 let res = Some(runner(output));
                 self.handle.upgrade().map(|check| {
-                    // Sanity check that it hasn't been tampered with.
-                    if !check.load(Ordering::Acquire) {
-                        wlr_log!(L_ERROR, "After running output callback, \
-                                           mutable lock was false for: {:?}", output);
-                        panic!("Lock in incorrect state!");
-                    }
-                    check.store(false, Ordering::Release);
-                });
+                                              // Sanity check that it hasn't been tampered with.
+                                              if !check.load(Ordering::Acquire) {
+                                                  wlr_log!(L_ERROR,
+                                                           "After running output callback, \
+                                                            mutable lock was false for: {:?}",
+                                                           output);
+                                                  panic!("Lock in incorrect state!");
+                                              }
+                                              check.store(false, Ordering::Release);
+                                          });
                 res
             }
         }

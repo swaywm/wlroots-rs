@@ -194,14 +194,16 @@ impl KeyboardHandle {
             Some(ref mut keyboard) => {
                 let res = Some(runner(keyboard));
                 self.handle.upgrade().map(|check| {
-                    // Sanity check that it hasn't been tampered with.
-                    if !check.load(Ordering::Acquire) {
-                        wlr_log!(L_ERROR, "After running keyboard callback, \
-                                           mutable lock was false for: {:?}", keyboard);
-                        panic!("Lock in incorrect state!");
-                    }
-                    check.store(false, Ordering::Release);
-                });
+                                              // Sanity check that it hasn't been tampered with.
+                                              if !check.load(Ordering::Acquire) {
+                                                  wlr_log!(L_ERROR,
+                                                           "After running keyboard callback, \
+                                                            mutable lock was false for: {:?}",
+                                                           keyboard);
+                                                  panic!("Lock in incorrect state!");
+                                              }
+                                              check.store(false, Ordering::Release);
+                                          });
                 res
             }
         }
