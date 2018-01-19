@@ -4,7 +4,7 @@
 
 use libc;
 
-use std::env;
+use std::{env, panic};
 use std::process::abort;
 
 use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper};
@@ -38,6 +38,9 @@ impl Input {
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
     /// Callback triggered when an input device is added.
+    ///
+    /// # Panics
+    /// Any panic in this function will cause the process to abort.
     fn input_added(&mut self, &mut Compositor, &mut InputDevice) {}
 
     /// Callback triggered when an input device is removed.
@@ -45,10 +48,18 @@ pub trait InputManagerHandler {
         // TODO
     }
 
+    /// Callback triggered when a keyboard device is added.
+    ///
+    /// # Panics
+    /// Any panic in this function will cause the process to abort.
     fn keyboard_added(&mut self, &mut Compositor, &mut Keyboard) -> Option<Box<KeyboardHandler>> {
         None
     }
 
+    /// Callback triggered when a pointer device is added.
+    ///
+    /// # Panics
+    /// Any panic in this function will cause the process to abort.
     fn pointer_added(&mut self, &mut Compositor, &mut Pointer) -> Option<Box<PointerHandler>> {
         None
     }
@@ -61,7 +72,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
         use self::wlr_input_device_type::*;
         let mut dev = InputDevice::from_ptr(data);
         let compositor = &mut *COMPOSITOR_PTR;
-        unsafe {
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             match dev.dev_type() {
                 WLR_INPUT_DEVICE_KEYBOARD => {
                     // Boring setup that we won't make the user do
@@ -74,8 +85,10 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                             abort()
                         }
                     };
+                    keyboard_handle.set_lock(true);
                     if let Some(keyboard_handler) = manager.keyboard_added(compositor,
                                                                            &mut keyboard_handle) {
+                        keyboard_handle.set_lock(false);
                         let mut keyboard = KeyboardWrapper::new((keyboard_handle,
                                                                  keyboard_handler));
                         wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
@@ -93,7 +106,9 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                             abort()
                         }
                     };
+                    pointer_handle.set_lock(true);
                     if let Some(pointer) = manager.pointer_added(compositor, &mut pointer_handle) {
+                        pointer_handle.set_lock(false);
                         let mut pointer = PointerWrapper::new((pointer_handle, pointer));
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.motion as *mut _ as _,
                                     pointer.motion_listener() as *mut _ as _);
@@ -108,10 +123,21 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                         inputs.push(Input::Pointer(pointer))
                     }
                 },
-                _ => unimplemented!(), // TODO FIXME We _really_ shouldn't panic here
+                _ => unimplemented!(),
             }
+            manager.input_added(compositor, &mut dev)
+        }));
+        match res {
+            Ok(_) => {},
+            // NOTE
+            // Either Wayland or wlroots does not handle failure to set up input correctly.
+            // Calling wl_display_terminate does not work if input is incorrectly set up.
+            //
+            // Instead, execution keeps going with an eventual segfault (if lucky).
+            //
+            // To fix this, we abort the process if there was a panic in input setup.
+            Err(_) => abort()
         }
-        manager.input_added(compositor, &mut dev)
     };
     remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         let data = data as *mut wlr_input_device;

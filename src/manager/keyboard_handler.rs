@@ -20,7 +20,9 @@ wayland_listener!(KeyboardWrapper, (Keyboard, Box<KeyboardHandler>), [
         let xkb_state = (*keyboard.as_ptr()).xkb_state;
         let mut key = KeyEvent::new(data as *mut wlr_event_keyboard_key, xkb_state);
 
-        keyboard_handler.on_key(compositor, keyboard, &mut key)
+        keyboard.set_lock(true);
+        keyboard_handler.on_key(compositor, keyboard, &mut key);
+        keyboard.set_lock(false);
     };
 ]);
 
