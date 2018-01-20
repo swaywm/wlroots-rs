@@ -137,6 +137,9 @@ impl Keyboard {
     /// Set the keymap for this Keyboard.
     pub fn set_keymap(&mut self, keymap: &Keymap) {
         unsafe {
+            // NOTE wlr_keyboard_set_keymap updates the reference count,
+            // so we don't need to mem::forget the key map here
+            // or take it by value.
             wlr_keyboard_set_keymap(self.keyboard, keymap.get_raw_ptr() as _);
         }
     }
