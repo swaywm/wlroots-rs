@@ -256,9 +256,6 @@ impl KeyboardHandle {
     /// This function is unsafe, because it creates an unbounded `Keyboard`
     /// which may live forever..
     /// But no keyboard lives forever and might be disconnected at any time.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
     pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Keyboard> {
         self.handle.upgrade()
             .ok_or(UpgradeHandleErr::DoubleUpgrade)
