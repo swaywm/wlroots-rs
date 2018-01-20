@@ -32,6 +32,7 @@ pub struct RepeatInfo {
     delay: i32
 }
 
+#[derive(Debug)]
 pub struct Keyboard {
     /// The structure that ensures weak handles to this structure are still alive.
     ///
@@ -49,6 +50,7 @@ pub struct Keyboard {
     keyboard: *mut wlr_keyboard
 }
 
+#[derive(Debug)]
 pub struct KeyboardHandle {
     /// The Rc that ensures that this handle is still alive.
     ///
@@ -241,14 +243,6 @@ impl Drop for Keyboard {
     }
 }
 
-impl fmt::Debug for Keyboard {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f,
-               "Keyboard {{ device: {:?}, keyboard: {:?} }}",
-               self.device, self.keyboard)
-    }
-}
-
 impl KeyboardHandle {
     /// Upgrades the keyboard handle to a reference to the backing `Keyboard`.
     ///
@@ -318,14 +312,6 @@ impl KeyboardHandle {
     /// Gets the wlr_keyboard associated with this KeyboardHandle.
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
         self.keyboard
-    }
-}
-
-impl fmt::Debug for KeyboardHandle {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f,
-               "Keyboard {{ device: {:?}, keyboard: {:?} }}",
-               self.device, self.keyboard)
     }
 }
 
