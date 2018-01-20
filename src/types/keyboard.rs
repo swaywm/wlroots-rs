@@ -68,7 +68,7 @@ impl Keyboard {
     }
 
     /// Gets the wlr_keyboard associated with this KeyboardHandle.
-    pub unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
         self.keyboard
     }
 
@@ -214,7 +214,7 @@ impl KeyboardHandle {
     }
 
     /// Gets the wlr_keyboard associated with this KeyboardHandle.
-    pub unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
         self.keyboard
     }
 }

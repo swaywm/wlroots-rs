@@ -435,7 +435,7 @@ impl Seat {
         }
     }
 
-    pub unsafe fn as_ptr(&self) -> *mut wlr_seat {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_seat {
         self.seat
     }
 }

@@ -20,6 +20,7 @@ pub struct SeatClient<'wlr_seat> {
     _phantom: PhantomData<&'wlr_seat Seat>
 }
 
+#[allow(dead_code)]
 impl<'wlr_seat> SeatClient<'wlr_seat> {
     /// Gets a SeatClient for the specified client,
     /// if there is one bound for that client.
@@ -48,13 +49,13 @@ impl<'wlr_seat> SeatClient<'wlr_seat> {
     ///
     /// Note also that the struct has an *boundless lifetime*. You _must_ ensure
     /// this struct does not live longer than the `Seat` that manages it.
-    pub unsafe fn from_ptr<'unbound_seat>(client: *mut wlr_seat_client)
-                                          -> SeatClient<'unbound_seat> {
+    pub(crate) unsafe fn from_ptr<'unbound_seat>(client: *mut wlr_seat_client)
+                                                 -> SeatClient<'unbound_seat> {
         SeatClient { client,
                      _phantom: PhantomData }
     }
 
-    pub unsafe fn as_ptr(&self) -> *mut wlr_seat_client {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_seat_client {
         self.client
     }
 }

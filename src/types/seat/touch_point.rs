@@ -23,11 +23,12 @@ impl TouchPoint {
         unsafe { TouchId((*self.touch_point).touch_id) }
     }
 
-    pub unsafe fn as_ptr(&self) -> *mut wlr_touch_point {
+    #[allow(dead_code)]
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_touch_point {
         self.touch_point
     }
 
-    pub unsafe fn from_ptr(touch_point: *mut wlr_touch_point) -> Self {
+    pub(crate) unsafe fn from_ptr(touch_point: *mut wlr_touch_point) -> Self {
         TouchPoint { touch_point }
     }
 }
