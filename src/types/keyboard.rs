@@ -133,13 +133,13 @@ impl Keyboard {
     }
 
     /// Get the list of LEDs for this keyboard as reported by XKB.
-    pub fn led_list(&self) -> Vec<LedIndex> {
-        unsafe { (*self.keyboard).led_indexes.to_vec() }
+    pub fn led_list(&self) -> &[LedIndex] {
+        unsafe { &(*self.keyboard).led_indexes }
     }
 
     /// Get the list of modifiers for this keyboard as reported by XKB.
-    pub fn modifier_list(&self) -> Vec<ModIndex> {
-        unsafe { (*self.keyboard).mod_indexes.to_vec() }
+    pub fn modifier_list(&self) -> &[ModIndex] {
+        unsafe { &(*self.keyboard).mod_indexes }
     }
 
     /// Get the size of the keymap.
