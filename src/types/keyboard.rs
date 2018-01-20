@@ -1,7 +1,5 @@
 //! TODO Documentation
 use std::{fmt, panic};
-use std::mem::ManuallyDrop;
-use std::ops::Deref;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -48,22 +46,7 @@ pub struct Keyboard {
     /// The device that refers to this keyboard.
     device: InputDevice,
     /// The underlying keyboard data.
-    keyboard: *mut wlr_keyboard,
-    /// The keymap used by wlroots.
-    /// Stored here so that we can ensure you can only borrow the keymap
-    /// as long as the keyboard.
-    ///
-    /// NOTE We have it marked as manually drop because otherwise
-    /// we'd unref it twice (once here and again in wlroots).
-    keymap: Option<ManuallyDrop<Keymap>>,
-    /// The keyboard state used by wlroots.
-    /// Stored here so that we can ensure you can only borrow the state
-    /// as long as the keyboard.
-    ///
-    /// NOTE We have it marked as manually drop because otherwise
-    /// we'd unref it twice (once here and again in wlroots).
-    #[allow(dead_code)]
-    xkb_state: Option<ManuallyDrop<xkb::State>>
+    keyboard: *mut wlr_keyboard
 }
 
 pub struct KeyboardHandle {
@@ -74,23 +57,7 @@ pub struct KeyboardHandle {
     /// The device that refers to this keyboard.
     device: InputDevice,
     /// The underlying keyboard data.
-    keyboard: *mut wlr_keyboard,
-    /// The keymap used by wlroots.
-    /// Stored here so that we can ensure you can only borrow the keymap
-    /// as long as the keyboard.
-    ///
-    /// NOTE We have it marked as manually drop because otherwise
-    /// we'd unref it twice (once here and again in wlroots).
-    #[allow(dead_code)]
-    keymap: Option<ManuallyDrop<Keymap>>,
-    /// The keyboard state used by wlroots.
-    /// Stored here so that we can ensure you can only borrow the state
-    /// as long as the keyboard.
-    ///
-    /// NOTE We have it marked as manually drop because otherwise
-    /// we'd unref it twice (once here and again in wlroots).
-    #[allow(dead_code)]
-    xkb_state: Option<ManuallyDrop<xkb::State>>
+    keyboard: *mut wlr_keyboard
 }
 
 impl Keyboard {
@@ -108,9 +75,7 @@ impl Keyboard {
                 let keyboard = (*device).__bindgen_anon_1.keyboard;
                 Some(Keyboard { liveliness: Some(Rc::new(AtomicBool::new(false))),
                                 device: InputDevice::from_ptr(device),
-                                keyboard,
-                                keymap: None,
-                                xkb_state: None })
+                                keyboard })
             }
             _ => None
         }
@@ -119,9 +84,7 @@ impl Keyboard {
     unsafe fn from_handle(handle: &KeyboardHandle) -> Self {
         Keyboard { liveliness: None,
                    device: handle.input_device().clone(),
-                   keyboard: handle.as_ptr(),
-                   keymap: None,
-                   xkb_state: None }
+                   keyboard: handle.as_ptr() }
     }
 
     /// Gets the wlr_keyboard associated with this KeyboardHandle.
@@ -145,14 +108,13 @@ impl Keyboard {
     }
 
     /// Get the XKB keymap associated with this Keyboard.
-    pub fn get_keymap(&mut self) -> Option<&Keymap> {
+    pub fn get_keymap(&mut self) -> Option<Keymap> {
         unsafe {
             let keymap_ptr = (*self.keyboard).keymap as *mut _;
             if keymap_ptr.is_null() {
                 None
             } else {
-                self.keymap = Some(ManuallyDrop::new(Keymap::from_raw_ptr(keymap_ptr)));
-                self.keymap.as_ref().map(Deref::deref)
+                Some(Keymap::from_raw_ptr(keymap_ptr))
             }
         }
     }
@@ -186,14 +148,13 @@ impl Keyboard {
     }
 
     /// Get the XKB state associated with this `Keyboard`.
-    pub fn get_xkb_state(&mut self) -> Option<&xkb::State> {
+    pub fn get_xkb_state(&mut self) -> Option<xkb::State> {
         unsafe {
             let xkb_state_ptr = (*self.keyboard).xkb_state as *mut _;
             if xkb_state_ptr.is_null() {
                 None
             } else {
-                self.xkb_state = Some(ManuallyDrop::new(xkb::State::from_raw_ptr(xkb_state_ptr)));
-                self.xkb_state.as_ref().map(Deref::deref)
+                Some(xkb::State::from_raw_ptr(xkb_state_ptr))
             }
         }
     }
@@ -245,9 +206,7 @@ impl Keyboard {
                          // We can't use the keyboard handle unless the keyboard is alive,
                          // which means the device pointer is still alive.
                          device: unsafe { self.device.clone() },
-                         keyboard: self.keyboard,
-                         keymap: None,
-                         xkb_state: None }
+                         keyboard: self.keyboard }
     }
 
     /// Manually set the lock used to determine if a double-borrow is
