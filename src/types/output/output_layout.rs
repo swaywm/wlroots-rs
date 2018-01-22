@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use std::panic;
+use std::{panic, ptr};
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -12,7 +12,7 @@ use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resoluti
 use super::output::OutputState;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
-use {Cursor, Origin, Output};
+use {Cursor, CursorBuilder, Origin, Output};
 
 #[derive(Debug)]
 pub struct OutputLayout {
@@ -27,7 +27,8 @@ pub struct OutputLayout {
     /// marked function `upgrade` on a `OutputHandle`.
     liveliness: Option<Rc<AtomicBool>>,
     /// The output_layout ptr that refers to this `OutputLayout`
-    layout: *mut wlr_output_layout
+    layout: *mut wlr_output_layout,
+    cursors: Vec<Cursor>
 }
 
 /// A handle to an `OutputLayout`.
@@ -59,16 +60,22 @@ impl OutputLayout {
                 None
             } else {
                 Some(OutputLayout { liveliness: Some(Rc::new(AtomicBool::new(false))),
-                                    layout })
+                                    layout,
+                                    cursors: Vec::new() })
             }
         }
     }
 
+    pub fn cursors(&mut self) -> &mut [Cursor] {
+        self.cursors.as_mut_slice()
+    }
+
     /// Attach a cursor to this OutputLayout.
-    pub fn attach_cursor(&mut self, cursor: &mut Cursor) {
+    pub fn attach_cursor(&mut self, cursor: CursorBuilder) {
         unsafe {
+            let cursor = cursor.build();
             wlr_cursor_attach_output_layout(cursor.as_ptr(), self.layout);
-            cursor.layout = Some(self.weak_reference())
+            self.cursors.push(cursor);
         }
     }
 
@@ -122,7 +129,8 @@ impl OutputLayout {
 
     unsafe fn from_handle(handle: &OutputLayoutHandle) -> Self {
         OutputLayout { liveliness: None,
-                       layout: handle.as_ptr() }
+                       layout: handle.as_ptr(),
+                       cursors: Vec::new() }
     }
 }
 
@@ -132,6 +140,14 @@ impl Drop for OutputLayout {
             None => {}
             Some(ref liveliness) => {
                 if Rc::strong_count(liveliness) == 1 {
+                    // NOTE
+                    // Have to deattach cursors before destroying OutputLayout.
+                    // Otherwise it could lead to a segfault.
+                    for cursor in &mut self.cursors {
+                        unsafe {
+                            wlr_cursor_attach_output_layout(cursor.as_ptr(), ptr::null_mut())
+                        }
+                    }
                     unsafe { wlr_output_layout_destroy(self.layout) }
                     wlr_log!(L_DEBUG, "Dropped {:?}", self);
                     let weak_count = Rc::weak_count(liveliness);

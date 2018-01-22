@@ -2,18 +2,21 @@
 
 use std::{mem, ptr, slice};
 
-use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
-                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_set_image, wlr_cursor_warp,
-                  wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
-                  wlr_xcursor_theme_load};
+use wlroots_sys::{wlr_cursor, wlr_cursor_create, wlr_cursor_destroy, wlr_cursor_move,
+                  wlr_cursor_set_image, wlr_cursor_warp, wlr_xcursor, wlr_xcursor_image,
+                  wlr_xcursor_theme, wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load};
 
-use {InputDevice, OutputLayoutHandle};
+use InputDevice;
 use utils::safe_as_cstring;
 
 #[derive(Debug)]
+pub struct CursorBuilder {
+    cursor: *mut wlr_cursor
+}
+
+#[derive(Debug)]
 pub struct Cursor {
-    cursor: *mut wlr_cursor,
-    pub(crate) layout: Option<OutputLayoutHandle>
+    cursor: *mut wlr_cursor
 }
 
 #[derive(Debug)]
@@ -26,33 +29,45 @@ pub struct XCursor {
     xcursor: *mut wlr_xcursor
 }
 
-impl Cursor {
-    pub fn new() -> Option<Cursor> {
+impl CursorBuilder {
+    pub fn new() -> Option<Self> {
         unsafe {
             let cursor = wlr_cursor_create();
             if cursor.is_null() {
                 None
             } else {
-                Some(Cursor { cursor: cursor,
-                              layout: None })
+                Some(CursorBuilder { cursor: cursor })
             }
         }
     }
 
-    /// Deattach the Cursor from an OutputLayout, if it is attached to an
-    /// OutputLayout.
-    pub fn deattach_output(&mut self) {
+    /// Sets the image of the cursor to the image from the XCursor.
+    pub fn set_cursor_image(self, image: &XCursorImage) -> Self {
         unsafe {
-            // NOTE We use wlr_cursor_attach_output_layout here because there's
-            // no exposed deattach output layout.
+            let scale = 0.0;
+            // NOTE Rationale for why lifetime isn't attached:
             //
-            // By passing NULL it first de-attaches and then returns early
-            // from the NULL
-            wlr_cursor_attach_output_layout(self.cursor, ptr::null_mut());
-            self.layout = None
+            // wlr_cursor_set_image uses gl calls internally, which copies
+            // the buffer and so it doesn't matter what happens to the
+            // xcursor image after this call.
+            wlr_cursor_set_image(self.cursor,
+                                 image.buffer.as_ptr(),
+                                 image.width as i32,
+                                 image.width,
+                                 image.height,
+                                 image.hotspot_x as i32,
+                                 image.hotspot_y as i32,
+                                 scale)
         }
+        self
     }
 
+    pub(crate) fn build(self) -> Cursor {
+        Cursor { cursor: self.cursor }
+    }
+}
+
+impl Cursor {
     pub fn coords(&self) -> (f64, f64) {
         unsafe { ((*self.cursor).x, (*self.cursor).y) }
     }
