@@ -101,8 +101,8 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
             wl_signal_add(&mut (*data).events.frame as *mut _ as _,
                         output.frame_listener() as _);
             // Add the output resolution event to this manager
-            wl_signal_add(&mut (*data).events.resolution as *mut _ as _,
-                        output.resolution_listener() as _);
+            wl_signal_add(&mut (*data).events.mode as *mut _ as _,
+                        output.mode_listener() as _);
             // Store the user UserOutput, free later in remove listener
             outputs.push(output);
         }
@@ -131,7 +131,7 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
                           &mut (*removed_output.frame_listener()).link as *mut _ as _);
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
-                          &mut (*removed_output.resolution_listener()).link as *mut _ as _);
+                          &mut (*removed_output.mode_listener()).link as *mut _ as _);
 
         }
     };

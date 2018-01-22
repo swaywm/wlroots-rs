@@ -9,8 +9,8 @@ pub trait OutputHandler {
     /// Called every time the output frame is updated.
     fn output_frame(&mut self, &mut Compositor, &mut Output) {}
 
-    /// Called every time the output resolution changes.
-    fn output_resolution(&mut self, &mut Output) {}
+    /// Called every time the output mode changes.
+    fn output_mode(&mut self, &mut Output) {}
 }
 
 wayland_listener!(UserOutput, (Output, Box<OutputHandler>), [
@@ -22,12 +22,12 @@ wayland_listener!(UserOutput, (Output, Box<OutputHandler>), [
         manager.output_frame(compositor, output);
         output.set_lock(false);
     };
-    resolution_listener => resolution_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
+    mode_listener => mode_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
     unsafe {
         let output = &mut this.data.0;
         let manager = &mut this.data.1;
         output.set_lock(true);
-        manager.output_resolution(output);
+        manager.output_mode(output);
         output.set_lock(false);
     };
 ]);
