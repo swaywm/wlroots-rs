@@ -5,6 +5,8 @@
 
 use std::time::Duration;
 
+use xkbcommon::xkb::Keycode;
+
 use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_destroy,
                   wlr_seat_keyboard_clear_focus, wlr_seat_keyboard_end_grab,
                   wlr_seat_keyboard_enter, wlr_seat_keyboard_has_grab,
@@ -34,6 +36,8 @@ use super::touch_point::{TouchId, TouchPoint};
 use types::input_device::InputDevice;
 use types::surface::Surface;
 use utils::ToMS;
+
+use KeyboardModifiers;
 
 /// A wrapper around `wlr_seat`.
 pub struct Seat {
@@ -219,8 +223,8 @@ impl Seat {
     /// Send the modifier state to focused keyboard resources.
     ///
     /// Compositors should use `Seat::keyboard_notify_modifiers()` to respect any keyboard grabs.
-    pub fn keyboard_send_modifiers(&mut self) {
-        unsafe { wlr_seat_keyboard_send_modifiers(self.seat) }
+    pub fn keyboard_send_modifiers(&mut self, modifiers: &mut KeyboardModifiers) {
+        unsafe { wlr_seat_keyboard_send_modifiers(self.seat, modifiers) }
     }
 
     /// Send a keyboard enter event to the given surface and consider it to be the
@@ -230,8 +234,11 @@ impl Seat {
     ///
     /// Compositors should use `Seat::keyboard_notify_enter()` to
     /// change keyboard focus to respect keyboard grabs.
-    pub fn keyboard_enter(&mut self, surface: Surface) {
-        unsafe { wlr_seat_keyboard_enter(self.seat, surface.as_ptr()) }
+    pub fn keyboard_enter(&mut self, surface: Surface, keycodes: &mut [Keycode],
+                          modifiers: &mut KeyboardModifiers) {
+        let keycodes_length = keycodes.len();
+        unsafe { wlr_seat_keyboard_enter(self.seat, surface.as_ptr(), keycodes.as_mut_ptr(),
+                                         keycodes_length, modifiers) }
     }
 
     /// Start a grab of the keyboard of this seat. The grabber is responsible for
@@ -260,16 +267,18 @@ impl Seat {
     /// Notify the seat that the modifiers for the keyboard have changed.
     ///
     /// Defers to any keyboard grabs.
-    pub fn keyboard_notify_modifiers(&mut self) {
-        unsafe { wlr_seat_keyboard_notify_modifiers(self.seat) }
+    pub fn keyboard_notify_modifiers(&mut self, modifiers: &mut KeyboardModifiers) {
+        unsafe { wlr_seat_keyboard_notify_modifiers(self.seat, modifiers) }
     }
 
     /// Notify the seat that the keyboard focus has changed and request it to be the
     /// focused surface for this keyboard.
     ///
     /// Defers to any current grab of the seat's keyboard.
-    pub fn keyboard_notify_enter(&mut self, surface: Surface) {
-        unsafe { wlr_seat_keyboard_notify_enter(self.seat, surface.as_ptr()) }
+    pub fn keyboard_notify_enter(&mut self, surface: Surface, keycodes: &mut [Keycode],
+                                 modifiers: &mut KeyboardModifiers) {
+        let keycodes_length = keycodes.len();
+        unsafe { wlr_seat_keyboard_notify_enter(self.seat, surface.as_ptr(), keycodes.as_mut_ptr(), keycodes_length, modifiers) }
     }
 
     // TODO Wrapper type for Key and State
