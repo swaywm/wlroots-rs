@@ -140,14 +140,6 @@ impl Drop for OutputLayout {
             None => {}
             Some(ref liveliness) => {
                 if Rc::strong_count(liveliness) == 1 {
-                    // NOTE
-                    // Have to deattach cursors before destroying OutputLayout.
-                    // Otherwise it could lead to a segfault.
-                    for cursor in &mut self.cursors {
-                        unsafe {
-                            wlr_cursor_attach_output_layout(cursor.as_ptr(), ptr::null_mut())
-                        }
-                    }
                     unsafe { wlr_output_layout_destroy(self.layout) }
                     wlr_log!(L_DEBUG, "Dropped {:?}", self);
                     let weak_count = Rc::weak_count(liveliness);
