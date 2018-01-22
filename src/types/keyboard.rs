@@ -4,11 +4,33 @@ use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
-use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
-                  wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap,
-                  xkb_keymap};
+use wlroots_sys::{wlr_input_device, wlr_key_state, wlr_keyboard, wlr_keyboard_get_modifiers,
+                  wlr_keyboard_led, wlr_keyboard_led_update, wlr_keyboard_modifier,
+                  wlr_keyboard_set_keymap};
+
+use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex, ModMask};
 
 use InputDevice;
+
+pub type KeyState = wlr_key_state;
+
+/// The masks for each group of modifiers.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct ModifierMasks {
+    pub depressed: ModMask,
+    pub latched: ModMask,
+    pub locked: ModMask,
+    pub group: ModMask
+}
+
+/// Information about repeated keypresses for a particular Keyboard.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct RepeatInfo {
+    /// The rate at which extended keypresses will fire more events.
+    rate: i32,
+    /// How long it takes for a keypress to register on this device.
+    delay: i32
+}
 
 #[derive(Debug)]
 pub struct Keyboard {
@@ -77,22 +99,99 @@ impl Keyboard {
         &self.device
     }
 
-    // TODO: Implement keymap wrapper?
-    pub fn set_keymap(&mut self, keymap: *mut xkb_keymap) {
+    /// Set the keymap for this Keyboard.
+    pub fn set_keymap(&mut self, keymap: &Keymap) {
         unsafe {
-            wlr_keyboard_set_keymap(self.keyboard, keymap);
+            // NOTE wlr_keyboard_set_keymap updates the reference count,
+            // so we don't need to mem::forget the key map here
+            // or take it by value.
+            wlr_keyboard_set_keymap(self.keyboard, keymap.get_raw_ptr() as _);
         }
     }
 
+    /// Get the XKB keymap associated with this Keyboard.
+    pub fn get_keymap(&mut self) -> Option<Keymap> {
+        unsafe {
+            let keymap_ptr = (*self.keyboard).keymap as *mut _;
+            if keymap_ptr.is_null() {
+                None
+            } else {
+                Some(Keymap::from_raw_ptr(keymap_ptr))
+            }
+        }
+    }
+
+    /// Get the keycodes for this keyboard as reported by XKB.
+    ///
+    /// # Limitations
+    /// wlroots limits this list to `WLR_KEYBOARD_KEYS_CAP` elements,
+    /// which at the time of writing is `32`.
+    pub fn keycodes(&self) -> Vec<Keycode> {
+        unsafe {
+            let mut result = (*self.keyboard).keycodes.to_vec();
+            result.truncate((*self.keyboard).num_keycodes);
+            result
+        }
+    }
+
+    /// Get the list of LEDs for this keyboard as reported by XKB.
+    pub fn led_list(&self) -> &[LedIndex] {
+        unsafe { &(*self.keyboard).led_indexes }
+    }
+
+    /// Get the list of modifiers for this keyboard as reported by XKB.
+    pub fn modifier_list(&self) -> &[ModIndex] {
+        unsafe { &(*self.keyboard).mod_indexes }
+    }
+
+    /// Get the size of the keymap.
+    pub fn keymap_size(&self) -> usize {
+        unsafe { (*self.keyboard).keymap_size }
+    }
+
+    /// Get the XKB state associated with this `Keyboard`.
+    pub fn get_xkb_state(&mut self) -> Option<xkb::State> {
+        unsafe {
+            let xkb_state_ptr = (*self.keyboard).xkb_state as *mut _;
+            if xkb_state_ptr.is_null() {
+                None
+            } else {
+                Some(xkb::State::from_raw_ptr(xkb_state_ptr))
+            }
+        }
+    }
+
+    /// Get the repeat info for this keyboard.
+    pub fn repeat_info(&self) -> RepeatInfo {
+        unsafe {
+            RepeatInfo { rate: (*self.keyboard).repeat_info.rate,
+                         delay: (*self.keyboard).repeat_info.delay }
+        }
+    }
+
+    /// Update the LED lights using the provided bitmap.
+    ///
+    /// 1 means one, 0 means off.
     pub fn update_led(&mut self, leds: KeyboardLed) {
         unsafe {
             wlr_keyboard_led_update(self.keyboard, leds.bits() as u32);
         }
     }
 
+    /// Get the modifiers that are currently pressed on the keyboard.
     pub fn get_modifiers(&self) -> KeyboardModifier {
         unsafe {
             KeyboardModifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard))
+        }
+    }
+
+    /// Get the modifier masks for each group.
+    pub fn get_modifier_masks(&self) -> ModifierMasks {
+        unsafe {
+            ModifierMasks { depressed: (*self.keyboard).modifiers.depressed,
+                            latched: (*self.keyboard).modifiers.latched,
+                            locked: (*self.keyboard).modifiers.locked,
+                            group: (*self.keyboard).modifiers.group }
         }
     }
 
@@ -151,9 +250,6 @@ impl KeyboardHandle {
     /// This function is unsafe, because it creates an unbounded `Keyboard`
     /// which may live forever..
     /// But no keyboard lives forever and might be disconnected at any time.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
     pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Keyboard> {
         self.handle.upgrade()
             .ok_or(UpgradeHandleErr::DoubleUpgrade)

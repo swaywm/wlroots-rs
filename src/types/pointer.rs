@@ -135,9 +135,6 @@ impl PointerHandle {
     /// This function is unsafe, because it creates an unbound `Pointer`
     /// which may live forever..
     /// But no pointer lives forever and might be disconnected at any time.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
     pub unsafe fn upgrade(&self) -> UpgradeHandleResult<Pointer> {
         self.handle.upgrade()
             .ok_or(UpgradeHandleErr::DoubleUpgrade)

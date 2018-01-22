@@ -67,7 +67,7 @@ impl OutputManagerHandler for OutputManager {
 
 impl KeyboardHandler for ExKeyboardHandler {
     fn on_key(&mut self, compositor: &mut Compositor, _: &mut Keyboard, key_event: &mut KeyEvent) {
-        for key in key_event.input_keys() {
+        for key in key_event.pressed_keys() {
             if key == KEY_Escape {
                 compositor.terminate()
             }

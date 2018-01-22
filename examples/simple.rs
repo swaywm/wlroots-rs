@@ -26,7 +26,7 @@ impl KeyboardHandler for ExKeyboardHandler {
               compositor: &mut Compositor,
               keyboard: &mut Keyboard,
               key_event: &mut KeyEvent) {
-        let keys = key_event.input_keys();
+        let keys = key_event.pressed_keys();
 
         wlr_log!(L_DEBUG,
                  "Got key event. Keys: {:?}. Modifiers: {}",

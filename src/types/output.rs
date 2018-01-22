@@ -260,9 +260,6 @@ impl OutputHandle {
     /// This function is unsafe, because it creates an unbound `Output`
     /// which may live forever..
     /// But no output lives forever and might be disconnected at any time.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
     pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Output> {
         self.handle.upgrade()
             .ok_or(UpgradeHandleErr::DoubleUpgrade)
