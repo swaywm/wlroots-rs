@@ -241,7 +241,7 @@ impl KeyboardHandle {
     /// But no keyboard lives forever and might be disconnected at any time.
     pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Keyboard> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::DoubleUpgrade)
+            .ok_or(UpgradeHandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!

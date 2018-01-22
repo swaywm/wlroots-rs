@@ -137,7 +137,7 @@ impl PointerHandle {
     /// But no pointer lives forever and might be disconnected at any time.
     pub unsafe fn upgrade(&self) -> UpgradeHandleResult<Pointer> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::DoubleUpgrade)
+            .ok_or(UpgradeHandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!

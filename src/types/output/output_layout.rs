@@ -1,12 +1,46 @@
 //! TODO Documentation
 
-use wlroots_sys::{wlr_output_effective_resolution, wlr_output_layout, wlr_output_layout_create,
-                  wlr_output_layout_destroy, wlr_output_layout_output, wlr_output_layout_remove};
+use std::panic;
+use std::rc::{Rc, Weak};
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use {Origin, Output};
+use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resolution,
+                  wlr_output_layout, wlr_output_layout_add, wlr_output_layout_add_auto,
+                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_move,
+                  wlr_output_layout_output, wlr_output_layout_remove};
+
+use super::output::OutputState;
+use errors::{UpgradeHandleErr, UpgradeHandleResult};
+
+use {Cursor, Origin, Output};
 
 #[derive(Debug)]
 pub struct OutputLayout {
+    /// The structure that ensures weak handles to this structure are still alive.
+    ///
+    /// They contain weak handles, and will safely not use dead memory when this
+    /// is freed by wlroots.
+    ///
+    /// If this is `None`, then this is from an upgraded `OutputHandle`, and
+    /// the operations are **unchecked**.
+    /// This is means safe operations might fail, but only if you use the unsafe
+    /// marked function `upgrade` on a `OutputHandle`.
+    liveliness: Option<Rc<AtomicBool>>,
+    /// The output_layout ptr that refers to this `OutputLayout`
+    layout: *mut wlr_output_layout
+}
+
+/// A handle to an `OutputLayout`.
+///
+/// Used internally by `Output` to gain access to the `OutputLayout`.
+#[derive(Debug, Clone)]
+pub(crate) struct OutputLayoutHandle {
+    /// The Rc that ensures that this handle is still alive.
+    ///
+    /// When wlroots deallocates the pointer associated with this handle,
+    /// this can no longer be used.
+    handle: Weak<AtomicBool>,
+    /// The output_layout ptr that refers to this `OutputLayout`
     layout: *mut wlr_output_layout
 }
 
@@ -17,34 +51,159 @@ pub struct OutputLayoutOutput {
 }
 
 impl OutputLayout {
+    /// Construct a new OuputLayout.
     pub fn new() -> Option<Self> {
         unsafe {
             let layout = wlr_output_layout_create();
             if layout.is_null() {
                 None
             } else {
-                Some(OutputLayout { layout })
+                Some(OutputLayout { liveliness: Some(Rc::new(AtomicBool::new(false))),
+                                    layout })
             }
         }
     }
 
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
-        self.layout
+    /// Attach a cursor to this OutputLayout.
+    pub fn attach_cursor(&mut self, cursor: &mut Cursor) {
+        unsafe {
+            wlr_cursor_attach_output_layout(cursor.as_ptr(), self.layout);
+            cursor.layout = Some(self.weak_reference())
+        }
+    }
+
+    /// Adds an output to the layout at the given coordinates.
+    pub fn add(&mut self, output: &mut Output, origin: Origin) {
+        let (x, y) = (origin.x, origin.y);
+        unsafe { wlr_output_layout_add(self.layout, output.as_ptr(), x, y) }
+    }
+
+    /// Adds an output to the layout, automatically positioning it with
+    /// the others that are already there.
+    pub fn add_auto(&mut self, output: &mut Output) {
+        unsafe {
+            let layout_handle = self.weak_reference();
+            output.set_user_data(Box::new(OutputState { layout_handle }));
+            wlr_output_layout_add_auto(self.layout, output.as_ptr());
+            wlr_log!(L_DEBUG, "Added {:?} to {:?}", output, self);
+        }
+    }
+
+    /// Moves the output to the given coordinates.
+    ///
+    /// If the output is not part of this layout this does nothing.
+    pub fn move_output(&mut self, output: &mut Output, origin: Origin) {
+        let (x, y) = (origin.x, origin.y);
+        unsafe { wlr_output_layout_move(self.layout, output.as_ptr(), x, y) }
     }
 
     /// Remove an output from this layout.
     ///
     /// If the output was not in the layout, does nothing.
     pub fn remove(&mut self, output: &mut Output) {
+        wlr_log!(L_DEBUG, "Removing {:?} from {:?}", output, self);
         unsafe {
-            wlr_output_layout_remove(self.layout, output.as_ptr())
-        }
+            output.clear_user_data();
+            wlr_output_layout_remove(self.layout, output.as_ptr());
+        };
+    }
+
+    /// Creates a weak reference to an `OutputLayout`.
+    ///
+    /// # Panics
+    /// If this `OutputLayout` is a previously upgraded `OutputLayoutHandle`,
+    /// then this function will panic.
+    pub(crate) fn weak_reference(&self) -> OutputLayoutHandle {
+        let arc = self.liveliness.as_ref()
+                      .expect("Cannot dowrgrade a previously upgraded OutputLayoutHandle");
+        OutputLayoutHandle { handle: Rc::downgrade(arc),
+                             layout: self.layout }
+    }
+
+    unsafe fn from_handle(handle: &OutputLayoutHandle) -> Self {
+        OutputLayout { liveliness: None,
+                       layout: handle.as_ptr() }
     }
 }
 
 impl Drop for OutputLayout {
     fn drop(&mut self) {
-        unsafe { wlr_output_layout_destroy(self.layout) }
+        match self.liveliness {
+            None => {}
+            Some(ref liveliness) => {
+                if Rc::strong_count(liveliness) == 1 {
+                    unsafe { wlr_output_layout_destroy(self.layout) }
+                    wlr_log!(L_DEBUG, "Dropped {:?}", self);
+                    let weak_count = Rc::weak_count(liveliness);
+                    if weak_count > 0 {
+                        wlr_log!(L_DEBUG,
+                                 "Still {} weak pointers to OutputLayout {:?}",
+                                 weak_count,
+                                 self.layout);
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl OutputLayoutHandle {
+    /// Upgrades the `OutputLayoutHandle` to a reference
+    /// to the backing `OutputLayout`.
+    ///
+    /// # Unsafety
+    /// This function is unsafe, because it creates an unbound `OutputLayout`
+    /// which may live forever..
+    /// But the actual lifetime of `OutputLayout` is determined by the user.
+    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<OutputLayout> {
+        self.handle.upgrade()
+            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            // NOTE
+            // We drop the Rc here because having two would allow a dangling
+            // pointer to exist!
+            .and_then(|check| {
+                let output_layout = OutputLayout::from_handle(self);
+                if check.load(Ordering::Acquire) {
+                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                }
+                check.store(true, Ordering::Release);
+                Ok(output_layout)
+            })
+    }
+
+    /// Run a function on the referenced OutputLayout, if it still exists
+    ///
+    /// Returns the result of the function, if successful.
+    ///
+    /// # Safety
+    /// By enforcing a rather harsh limit on the lifetime of the OutputLayout
+    /// to a short lived scope of an anonymous function,
+    /// this function ensures the OutputLayout does not live longer
+    /// than it exists (because the lifetime is controlled by the user).
+    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<Option<R>>
+        where F: FnOnce(&mut OutputLayout) -> R
+    {
+        let mut output_layout = unsafe { self.upgrade()? };
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(&mut output_layout))));
+        self.handle.upgrade().map(|check| {
+                                      // Sanity check that it hasn't been tampered with.
+                                      if !check.load(Ordering::Acquire) {
+                                          wlr_log!(L_ERROR,
+                                                   "After running OutputLayout callback, mutable \
+                                                    lock was false for: {:?}",
+                                                   output_layout);
+                                          panic!("Lock in incorrect state!");
+                                      }
+                                      check.store(false, Ordering::Release);
+                                  });
+        match res {
+            Ok(res) => Ok(res),
+            Err(err) => panic::resume_unwind(err)
+        }
+    }
+
+    unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
+        self.layout
     }
 }
 

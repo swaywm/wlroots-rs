@@ -1,20 +1,19 @@
 //! Wrapper for wlr_cursor
 
-use {InputDevice, OutputLayout};
 use std::{mem, ptr, slice};
-use std::cell::RefCell;
-use std::rc::Rc;
-use utils::safe_as_cstring;
 
 use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
                   wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_set_image, wlr_cursor_warp,
                   wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
                   wlr_xcursor_theme_load};
 
+use {InputDevice, OutputLayoutHandle};
+use utils::safe_as_cstring;
+
 #[derive(Debug)]
 pub struct Cursor {
     cursor: *mut wlr_cursor,
-    layout: Option<Rc<RefCell<OutputLayout>>>
+    pub(crate) layout: Option<OutputLayoutHandle>
 }
 
 #[derive(Debug)]
@@ -40,6 +39,20 @@ impl Cursor {
         }
     }
 
+    /// Deattach the Cursor from an OutputLayout, if it is attached to an
+    /// OutputLayout.
+    pub fn deattach_output(&mut self) {
+        unsafe {
+            // NOTE We use wlr_cursor_attach_output_layout here because there's
+            // no exposed deattach output layout.
+            //
+            // By passing NULL it first de-attaches and then returns early
+            // from the NULL
+            wlr_cursor_attach_output_layout(self.cursor, ptr::null_mut());
+            self.layout = None
+        }
+    }
+
     pub fn coords(&self) -> (f64, f64) {
         unsafe { ((*self.cursor).x, (*self.cursor).y) }
     }
@@ -51,23 +64,8 @@ impl Cursor {
         }
     }
 
-    /// Attaches an output layout to the cursor.
-    /// The layout specifies the boundaries of the cursor, i.e where it can go.
-    pub fn attach_output_layout(&mut self, layout: Rc<RefCell<OutputLayout>>) {
-        unsafe {
-            // NOTE Rationale for why the pointer isn't leaked from the refcell:
-            // * A pointer is not stored to the layout, the internal state is just updated.
-            wlr_cursor_attach_output_layout(self.cursor, layout.borrow_mut().as_ptr());
-            self.layout = Some(layout);
-        }
-    }
-
     pub fn move_to(&mut self, dev: &InputDevice, delta_x: f64, delta_y: f64) {
         unsafe { wlr_cursor_move(self.cursor, dev.as_ptr(), delta_x, delta_y) }
-    }
-
-    pub fn output_layout(&self) -> &Option<Rc<RefCell<OutputLayout>>> {
-        &self.layout
     }
 
     /// Sets the image of the cursor to the image from the XCursor.
@@ -88,6 +86,10 @@ impl Cursor {
                                  image.hotspot_y as i32,
                                  scale)
         }
+    }
+
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_cursor {
+        self.cursor
     }
 }
 

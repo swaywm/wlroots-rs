@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate wlroots;
 
-use std::cell::RefCell;
-use std::rc::Rc;
 use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, InputManagerHandler,
               KeyEvent, Keyboard, KeyboardHandler, MotionEvent, Output, OutputBuilder,
               OutputBuilderResult, OutputHandler, OutputLayout, OutputManagerHandler, Pointer,
@@ -16,15 +14,17 @@ struct State {
     color: [f32; 4],
     default_color: [f32; 4],
     cursor: Cursor,
-    xcursor: XCursor
+    xcursor: XCursor,
+    layout: OutputLayout
 }
 
 impl State {
-    fn new(cursor: Cursor, xcursor: XCursor) -> Self {
+    fn new(cursor: Cursor, xcursor: XCursor, layout: OutputLayout) -> Self {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
                 cursor,
-                xcursor }
+                xcursor,
+                layout }
     }
 }
 
@@ -47,14 +47,9 @@ impl OutputManagerHandler for OutputManager {
                              -> Option<OutputBuilderResult<'output>> {
         let result = builder.build_best_mode(ExOutput);
         let state: &mut State = compositor.into();
-        let cursor = &mut state.cursor;
         // TODO use output config if present instead of auto
-        {
-            let layout = cursor.output_layout()
-                               .as_ref()
-                               .expect("Could not get output layout");
-            result.output.add_layout_auto(layout.clone());
-        }
+        state.layout.add_auto(result.output);
+        let cursor = &mut state.cursor;
         let image = &state.xcursor.images()[0];
         cursor.set_cursor_image(image);
         let (x, y) = cursor.coords();
@@ -140,11 +135,10 @@ fn main() {
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
     let xcursor = xcursor_theme.get_cursor("left_ptr".into())
                                .expect("Could not load cursor from theme");
-    let layout =
-        Rc::new(RefCell::new(OutputLayout::new().expect("Could not construct an output layout")));
+    let mut layout = OutputLayout::new().expect("Could not construct an output layout");
 
-    cursor.attach_output_layout(layout);
-    let compositor = CompositorBuilder::new().build_auto(State::new(cursor, xcursor),
+    layout.attach_cursor(&mut cursor);
+    let compositor = CompositorBuilder::new().build_auto(State::new(cursor, xcursor, layout),
                                                          Box::new(InputManager),
                                                          Box::new(OutputManager));
     compositor.run();
