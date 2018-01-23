@@ -75,7 +75,7 @@ impl Output {
         (*self.output).data = Box::into_raw(data) as *mut _
     }
 
-    pub(crate) unsafe fn user_data(&mut self) -> *mut OutputState {
+    unsafe fn user_data(&mut self) -> *mut OutputState {
         (*self.output).data as *mut _
     }
 
@@ -93,14 +93,18 @@ impl Output {
     /// Remove this Output from an OutputLayout, if it is part of an
     /// OutputLayout.
     pub(crate) unsafe fn remove_from_output_layout(&mut self) {
-        if !(*self.output).data.is_null() {
-            // Remove output from previous output layout.
-            let mut layout_handle = (*self.user_data()).layout_handle.clone();
-            match layout_handle.run(|layout| layout.remove(self)) {
-                Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => {}
-                Err(UpgradeHandleErr::AlreadyBorrowed) => {
-                    panic!("Could not add OutputLayout to Output user data!")
-                }
+        let output_data = (*self.output).data;
+        if output_data.is_null() {
+            return
+        }
+        // Remove output from previous output layout.
+        let mut layout_handle = (*output_data).layout_handle.clone();
+        // NOTE This function will remove the OutputLayout pointer from this
+        // output if it completes successfully.
+        match layout_handle.run(|layout| layout.remove(self)) {
+            Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => {}
+            Err(UpgradeHandleErr::AlreadyBorrowed) => {
+                panic!("Could not add OutputLayout to Output user data!")
             }
         }
     }
