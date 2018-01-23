@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use std::{panic, ptr};
+use std::panic;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 

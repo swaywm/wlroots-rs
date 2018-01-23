@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use wlroots_sys::{wlr_input_device, wlr_key_state, wlr_keyboard, wlr_keyboard_get_modifiers,
                   wlr_keyboard_led, wlr_keyboard_led_update, wlr_keyboard_modifier,
-                  wlr_keyboard_set_keymap, wlr_keyboard_modifiers};
+                  wlr_keyboard_modifiers, wlr_keyboard_set_keymap};
 
 use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex};
 
@@ -179,9 +179,7 @@ impl Keyboard {
 
     /// Get the modifier masks for each group.
     pub fn get_modifier_masks(&self) -> KeyboardModifiers {
-        unsafe {
-            (*self.keyboard).modifiers
-        }
+        unsafe { (*self.keyboard).modifiers }
     }
 
     /// Creates a weak reference to a `Keyboard`.
