@@ -93,7 +93,7 @@ impl Output {
     /// Remove this Output from an OutputLayout, if it is part of an
     /// OutputLayout.
     pub(crate) unsafe fn remove_from_output_layout(&mut self) {
-        let output_data = (*self.output).data;
+        let output_data = (*self.output).data as *mut OutputState;
         if output_data.is_null() {
             return
         }
