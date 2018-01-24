@@ -1,21 +1,20 @@
 //! TODO Documentation
 
-use std::cell::RefCell;
+use std::{panic, ptr};
 use std::ffi::CStr;
-use std::panic;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
-                  wlr_output_events, wlr_output_layout, wlr_output_layout_add_auto,
-                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_remove,
-                  wlr_output_make_current, wlr_output_mode, wlr_output_set_mode,
-                  wlr_output_set_transform, wlr_output_swap_buffers};
+                  wlr_output_events, wlr_output_make_current, wlr_output_mode,
+                  wlr_output_set_mode, wlr_output_set_transform, wlr_output_swap_buffers};
 
-pub struct OutputState {
-    pub layout: Option<Rc<RefCell<OutputLayout>>>
+use super::output_layout::OutputLayoutHandle;
+use errors::{UpgradeHandleErr, UpgradeHandleResult};
+
+pub(crate) struct OutputState {
+    pub layout_handle: OutputLayoutHandle
 }
 
 #[derive(Debug)]
@@ -46,11 +45,6 @@ pub struct OutputHandle {
     output: *mut wlr_output
 }
 
-#[derive(Debug)]
-pub struct OutputLayout {
-    layout: *mut wlr_output_layout
-}
-
 impl Output {
     /// Just like `std::clone::Clone`, but unsafe.
     ///
@@ -71,38 +65,61 @@ impl Output {
     /// This creates a totally new Output (e.g with its own reference count)
     /// so only do this once per `wlr_output`!
     pub(crate) unsafe fn new(output: *mut wlr_output) -> Self {
+        (*output).data = ptr::null_mut();
         Output { liveliness: Some(Rc::new(AtomicBool::new(false))),
                  output }
     }
 
-    pub(crate) unsafe fn set_user_data(&mut self, data: Rc<OutputState>) {
-        (*self.output).data = Rc::into_raw(data) as *mut _
+    pub(crate) unsafe fn set_user_data(&mut self, data: Box<OutputState>) {
+        self.remove_from_output_layout();
+        (*self.output).data = Box::into_raw(data) as *mut _
     }
 
-    pub(crate) unsafe fn user_data(&mut self) -> *mut OutputState {
+    unsafe fn user_data(&mut self) -> *mut OutputState {
         (*self.output).data as *mut _
     }
 
-    pub fn layout(&mut self) -> Option<Rc<RefCell<OutputLayout>>> {
-        unsafe {
-            let data = self.user_data();
-            if data.is_null() {
-                None
-            } else {
-                (*data).layout.clone()
+    /// Used to clear the pointer to an OutputLayout when the OutputLayout
+    /// removes this Output from its listing.
+    pub(crate) unsafe fn clear_user_data(&mut self) {
+        let user_data = self.user_data();
+        if user_data.is_null() {
+            return
+        }
+        let _ = Box::from_raw(user_data);
+        (*self.output).data = ptr::null_mut();
+    }
+
+    /// Remove this Output from an OutputLayout, if it is part of an
+    /// OutputLayout.
+    pub(crate) unsafe fn remove_from_output_layout(&mut self) {
+        let output_data = (*self.output).data as *mut OutputState;
+        if output_data.is_null() {
+            return
+        }
+        // Remove output from previous output layout.
+        let mut layout_handle = (*output_data).layout_handle.clone();
+        match layout_handle.run(|layout| layout.remove(self)) {
+            Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => self.clear_user_data(),
+            Err(UpgradeHandleErr::AlreadyBorrowed) => {
+                panic!("Could not add OutputLayout to Output user data!")
             }
         }
     }
 
-    pub fn add_layout_auto(&mut self, layout: Rc<RefCell<OutputLayout>>) {
-        unsafe {
-            wlr_output_layout_add_auto(layout.borrow_mut().as_ptr(), self.output);
-            let user_data = self.user_data();
-            if user_data.is_null() {
-                self.set_user_data(Rc::new(OutputState { layout: Some(layout) }));
-            } else {
-                (*user_data).layout = Some(layout);
-            }
+    /// Gets the OutputLayout this Output is a part of, if it is part
+    /// of an OutputLayout.
+    ///
+    /// # Safety
+    /// Note that this isn't exposed to user space, as they could easily
+    /// create two mutable pointers to the same structure. We keep it internally
+    /// though because we use it during the cleanup process.
+    pub(crate) unsafe fn layout(&mut self) -> Option<OutputLayoutHandle> {
+        let data = self.user_data();
+        if data.is_null() {
+            None
+        } else {
+            Some((*data).layout_handle.clone())
         }
     }
 
@@ -236,7 +253,7 @@ impl Drop for Output {
         // We do _not_ need to call wlr_output_destroy for the output
         // That is handled by the backend automatically
         match self.liveliness {
-            None => {}
+            None => return,
             Some(ref liveliness) => {
                 if Rc::strong_count(liveliness) == 1 {
                     wlr_log!(L_DEBUG, "Dropped output {:p}", self.output);
@@ -247,8 +264,14 @@ impl Drop for Output {
                                  weak_count,
                                  self.output);
                     }
+                } else {
+                    return
                 }
             }
+        }
+        // TODO Move back up in the some after NLL is a thing.
+        unsafe {
+            self.remove_from_output_layout();
         }
     }
 }
@@ -262,7 +285,7 @@ impl OutputHandle {
     /// But no output lives forever and might be disconnected at any time.
     pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Output> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::DoubleUpgrade)
+            .ok_or(UpgradeHandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
@@ -316,35 +339,5 @@ impl OutputHandle {
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
-    }
-}
-
-#[allow(dead_code)]
-impl OutputLayout {
-    pub fn new() -> Self {
-        unsafe { OutputLayout { layout: wlr_output_layout_create() } }
-    }
-
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
-        self.layout
-    }
-
-    pub(crate) unsafe fn from_ptr(layout: *mut wlr_output_layout) -> Self {
-        OutputLayout { layout }
-    }
-
-    /// TODO Make safe
-    /// # Unsafety
-    /// The underlying function hasn't been proven to be stable if you
-    /// pass it an invalid OutputHandle (e.g one that has already been freed).
-    /// For now, this function is unsafe
-    pub unsafe fn remove(&mut self, output: &mut Output) {
-        wlr_output_layout_remove(self.layout, output.as_ptr())
-    }
-}
-
-impl Drop for OutputLayout {
-    fn drop(&mut self) {
-        unsafe { wlr_output_layout_destroy(self.layout) }
     }
 }

@@ -1,13 +1,10 @@
 #[macro_use]
 extern crate wlroots;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, Cursor, InputManagerHandler,
-              KeyEvent, KeyboardHandler, MotionEvent, OutputBuilder, OutputBuilderResult,
-              OutputHandler, OutputLayout, OutputManagerHandler, PointerHandler, XCursor,
-              XCursorTheme};
-use wlroots::types::{Keyboard, Output, Pointer};
+use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, CursorBuilder,
+              InputManagerHandler, KeyEvent, Keyboard, KeyboardHandler, MotionEvent, Output,
+              OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
+              OutputManagerHandler, Pointer, PointerHandler, XCursor, XCursorTheme};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
@@ -16,16 +13,16 @@ use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 struct State {
     color: [f32; 4],
     default_color: [f32; 4],
-    cursor: Cursor,
-    xcursor: XCursor
+    xcursor: XCursor,
+    layout: OutputLayout
 }
 
 impl State {
-    fn new(cursor: Cursor, xcursor: XCursor) -> Self {
+    fn new(xcursor: XCursor, layout: OutputLayout) -> Self {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
-                cursor,
-                xcursor }
+                xcursor,
+                layout }
     }
 }
 
@@ -48,15 +45,10 @@ impl OutputManagerHandler for OutputManager {
                              -> Option<OutputBuilderResult<'output>> {
         let result = builder.build_best_mode(ExOutput);
         let state: &mut State = compositor.into();
-        let cursor = &mut state.cursor;
-        // TODO use output config if present instead of auto
-        {
-            let layout = cursor.output_layout()
-                               .as_ref()
-                               .expect("Could not get output layout");
-            result.output.add_layout_auto(layout.clone());
-        }
         let image = &state.xcursor.images()[0];
+        // TODO use output config if present instead of auto
+        state.layout.add_auto(result.output);
+        let cursor = &mut state.layout.cursors()[0];
         cursor.set_cursor_image(image);
         let (x, y) = cursor.coords();
         // https://en.wikipedia.org/wiki/Mouse_warping
@@ -79,7 +71,7 @@ impl PointerHandler for ExPointer {
     fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
-        state.cursor.move_to(&event.device(), delta_x, delta_y);
+        state.layout.cursors()[0].move_to(&event.device(), delta_x, delta_y);
     }
 
     fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &ButtonEvent) {
@@ -137,14 +129,17 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let mut cursor = Cursor::new().expect("Could not create cursor");
-    let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
-    let xcursor = xcursor_theme.get_cursor("left_ptr".into())
+    let cursor = CursorBuilder::new().expect("Could not create cursor");
+    let xcursor;
+    {
+        let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
+        xcursor = xcursor_theme.get_cursor("left_ptr".into())
                                .expect("Could not load cursor from theme");
-    let layout = Rc::new(RefCell::new(OutputLayout::new()));
+    }
+    let mut layout = OutputLayout::new().expect("Could not construct an output layout");
 
-    cursor.attach_output_layout(layout);
-    let compositor = CompositorBuilder::new().build_auto(State::new(cursor, xcursor),
+    layout.attach_cursor(cursor);
+    let compositor = CompositorBuilder::new().build_auto(State::new(xcursor, layout),
                                                          Box::new(InputManager),
                                                          Box::new(OutputManager));
     compositor.run();

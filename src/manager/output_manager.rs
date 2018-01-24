@@ -2,10 +2,11 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
+use Output;
 use compositor::{Compositor, COMPOSITOR_PTR};
+use errors::UpgradeHandleErr;
 use libc;
 use manager::{OutputHandler, UserOutput};
-use types::Output;
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
@@ -119,8 +120,13 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
             output.set_lock(true);
             manager.output_removed(compositor, OutputDestruction(output));
             // NOTE We don't remove the lock because we are removing it
-            if let Some(layout) = output.layout() {
-                layout.borrow_mut().remove(output);
+            if let Some(mut layout) = output.layout() {
+                match layout.run(|layout| layout.remove(output)) {
+                    Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => {},
+                    Err(UpgradeHandleErr::AlreadyBorrowed) => {
+                        panic!("Tried to remove layout from output, but it's already borrowed");
+                    }
+                }
             }
         }
         // Remove user output data

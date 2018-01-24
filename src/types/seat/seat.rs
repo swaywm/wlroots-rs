@@ -234,11 +234,18 @@ impl Seat {
     ///
     /// Compositors should use `Seat::keyboard_notify_enter()` to
     /// change keyboard focus to respect keyboard grabs.
-    pub fn keyboard_enter(&mut self, surface: Surface, keycodes: &mut [Keycode],
+    pub fn keyboard_enter(&mut self,
+                          surface: Surface,
+                          keycodes: &mut [Keycode],
                           modifiers: &mut KeyboardModifiers) {
         let keycodes_length = keycodes.len();
-        unsafe { wlr_seat_keyboard_enter(self.seat, surface.as_ptr(), keycodes.as_mut_ptr(),
-                                         keycodes_length, modifiers) }
+        unsafe {
+            wlr_seat_keyboard_enter(self.seat,
+                                    surface.as_ptr(),
+                                    keycodes.as_mut_ptr(),
+                                    keycodes_length,
+                                    modifiers)
+        }
     }
 
     /// Start a grab of the keyboard of this seat. The grabber is responsible for
@@ -275,10 +282,18 @@ impl Seat {
     /// focused surface for this keyboard.
     ///
     /// Defers to any current grab of the seat's keyboard.
-    pub fn keyboard_notify_enter(&mut self, surface: Surface, keycodes: &mut [Keycode],
+    pub fn keyboard_notify_enter(&mut self,
+                                 surface: Surface,
+                                 keycodes: &mut [Keycode],
                                  modifiers: &mut KeyboardModifiers) {
         let keycodes_length = keycodes.len();
-        unsafe { wlr_seat_keyboard_notify_enter(self.seat, surface.as_ptr(), keycodes.as_mut_ptr(), keycodes_length, modifiers) }
+        unsafe {
+            wlr_seat_keyboard_notify_enter(self.seat,
+                                           surface.as_ptr(),
+                                           keycodes.as_mut_ptr(),
+                                           keycodes_length,
+                                           modifiers)
+        }
     }
 
     // TODO Wrapper type for Key and State

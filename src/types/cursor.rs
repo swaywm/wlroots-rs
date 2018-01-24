@@ -1,21 +1,22 @@
 //! Wrapper for wlr_cursor
 
 use std::{mem, ptr, slice};
-use std::cell::RefCell;
-use std::rc::Rc;
-use types::input_device::InputDevice;
-use types::output::OutputLayout;
+
+use wlroots_sys::{wlr_cursor, wlr_cursor_create, wlr_cursor_destroy, wlr_cursor_move,
+                  wlr_cursor_set_image, wlr_cursor_warp, wlr_xcursor, wlr_xcursor_image,
+                  wlr_xcursor_theme, wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load};
+
+use InputDevice;
 use utils::safe_as_cstring;
 
-use wlroots_sys::{wlr_cursor, wlr_cursor_attach_output_layout, wlr_cursor_create,
-                  wlr_cursor_destroy, wlr_cursor_move, wlr_cursor_set_image, wlr_cursor_warp,
-                  wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
-                  wlr_xcursor_theme_load};
+#[derive(Debug)]
+pub struct CursorBuilder {
+    cursor: *mut wlr_cursor
+}
 
 #[derive(Debug)]
 pub struct Cursor {
-    cursor: *mut wlr_cursor,
-    layout: Option<Rc<RefCell<OutputLayout>>>
+    cursor: *mut wlr_cursor
 }
 
 #[derive(Debug)]
@@ -28,19 +29,45 @@ pub struct XCursor {
     xcursor: *mut wlr_xcursor
 }
 
-impl Cursor {
-    pub fn new() -> Option<Cursor> {
+impl CursorBuilder {
+    pub fn new() -> Option<Self> {
         unsafe {
             let cursor = wlr_cursor_create();
             if cursor.is_null() {
                 None
             } else {
-                Some(Cursor { cursor: cursor,
-                              layout: None })
+                Some(CursorBuilder { cursor: cursor })
             }
         }
     }
 
+    /// Sets the image of the cursor to the image from the XCursor.
+    pub fn set_cursor_image(self, image: &XCursorImage) -> Self {
+        unsafe {
+            let scale = 0.0;
+            // NOTE Rationale for why lifetime isn't attached:
+            //
+            // wlr_cursor_set_image uses gl calls internally, which copies
+            // the buffer and so it doesn't matter what happens to the
+            // xcursor image after this call.
+            wlr_cursor_set_image(self.cursor,
+                                 image.buffer.as_ptr(),
+                                 image.width as i32,
+                                 image.width,
+                                 image.height,
+                                 image.hotspot_x as i32,
+                                 image.hotspot_y as i32,
+                                 scale)
+        }
+        self
+    }
+
+    pub(crate) fn build(self) -> Cursor {
+        Cursor { cursor: self.cursor }
+    }
+}
+
+impl Cursor {
     pub fn coords(&self) -> (f64, f64) {
         unsafe { ((*self.cursor).x, (*self.cursor).y) }
     }
@@ -52,23 +79,8 @@ impl Cursor {
         }
     }
 
-    /// Attaches an output layout to the cursor.
-    /// The layout specifies the boundaries of the cursor, i.e where it can go.
-    pub fn attach_output_layout(&mut self, layout: Rc<RefCell<OutputLayout>>) {
-        unsafe {
-            // NOTE Rationale for why the pointer isn't leaked from the refcell:
-            // * A pointer is not stored to the layout, the internal state is just updated.
-            wlr_cursor_attach_output_layout(self.cursor, layout.borrow_mut().as_ptr());
-            self.layout = Some(layout);
-        }
-    }
-
     pub fn move_to(&mut self, dev: &InputDevice, delta_x: f64, delta_y: f64) {
         unsafe { wlr_cursor_move(self.cursor, dev.as_ptr(), delta_x, delta_y) }
-    }
-
-    pub fn output_layout(&self) -> &Option<Rc<RefCell<OutputLayout>>> {
-        &self.layout
     }
 
     /// Sets the image of the cursor to the image from the XCursor.
@@ -89,6 +101,10 @@ impl Cursor {
                                  image.hotspot_y as i32,
                                  scale)
         }
+    }
+
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_cursor {
+        self.cursor
     }
 }
 

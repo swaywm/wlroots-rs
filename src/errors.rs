@@ -11,9 +11,8 @@ pub enum UpgradeHandleErr {
     /// Attempting a handle that already has a mutable borrow to its
     /// backing structure.
     AlreadyBorrowed,
-    /// Trying to do a double upgrade (e.g downgrading and then upgrading
-    /// again).
-    DoubleUpgrade
+    /// Tried to upgrade a handle for a structure that has already been dropped.
+    AlreadyDropped
 }
 
 impl fmt::Display for UpgradeHandleErr {
@@ -21,7 +20,7 @@ impl fmt::Display for UpgradeHandleErr {
         use UpgradeHandleErr::*;
         match *self {
             AlreadyBorrowed => write!(f, "AlreadyBorrowed"),
-            DoubleUpgrade => write!(f, "DoubleUpgrade")
+            AlreadyDropped => write!(f, "AlreadyDropped")
         }
     }
 }
@@ -31,7 +30,7 @@ impl Error for UpgradeHandleErr {
         use UpgradeHandleErr::*;
         match *self {
             AlreadyBorrowed => "Structure is already mutably borrowed",
-            DoubleUpgrade => "Cannot upgrade a downgraded upgrade"
+            AlreadyDropped => "Structure has already been dropped"
         }
     }
 }

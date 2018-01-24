@@ -4,10 +4,10 @@ extern crate wlroots;
 use std::env;
 use std::time::Instant;
 
-use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, KeyboardHandler,
-              OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
+use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, Keyboard,
+              KeyboardHandler, Output, OutputBuilder, OutputBuilderResult, OutputHandler,
+              OutputManagerHandler};
 use wlroots::render::{Texture, TextureFormat};
-use wlroots::types::{Keyboard, Output};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
