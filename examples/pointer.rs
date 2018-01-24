@@ -74,7 +74,7 @@ impl PointerHandler for ExPointer {
     fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
-        state.layout.cursors()[0].move_to(&event.device(), delta_x, delta_y);
+        state.layout.cursors()[0].move_to(event.device(), delta_x, delta_y);
     }
 
     fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &ButtonEvent) {

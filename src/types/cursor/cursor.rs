@@ -72,16 +72,22 @@ impl Cursor {
     /// device mapping constraints will be ignored.
     ///
     /// Returns true when the mouse warp was successful.
-    pub fn warp(&mut self, dev: Option<&InputDevice>, x: f64, y: f64) -> bool {
+    pub fn warp<'this, O>(&'this mut self, dev: O, x: f64, y: f64) -> bool
+        where O: Into<Option<&'this InputDevice>>
+    {
         unsafe {
-            let dev_ptr = dev.map(|input_device| input_device.as_ptr()).unwrap_or(ptr::null_mut());
+            let dev_ptr = dev.into().map(|input_device| input_device.as_ptr())
+                             .unwrap_or(ptr::null_mut());
             wlr_cursor_warp(self.cursor, dev_ptr, x, y)
         }
     }
 
-    pub fn warp_absolute(&mut self, dev: Option<&InputDevice>, x_mm: f64, y_mm: f64) {
+    pub fn warp_absolute<'this, O>(&'this mut self, dev: O, x_mm: f64, y_mm: f64)
+        where O: Into<Option<&'this InputDevice>>
+    {
         unsafe {
-            let dev_ptr = dev.map(|input_device| input_device.as_ptr()).unwrap_or(ptr::null_mut());
+            let dev_ptr = dev.into().map(|input_device| input_device.as_ptr())
+                             .unwrap_or(ptr::null_mut());
             wlr_cursor_warp_absolute(self.cursor, dev_ptr, x_mm, y_mm)
         }
     }
@@ -90,9 +96,12 @@ impl Cursor {
     ///
     /// `dev` may be passed to respect device mapping constraints. If `dev` is None,
     /// device mapping constraints will be ignored.
-    pub fn move_to(&mut self, dev: Option<&InputDevice>, delta_x: f64, delta_y: f64) {
+    pub fn move_to<'this, O>(&'this mut self, dev: O, delta_x: f64, delta_y: f64)
+        where O: Into<Option<&'this InputDevice>>
+    {
         unsafe {
-            let dev_ptr = dev.map(|dev| dev.as_ptr()).unwrap_or(ptr::null_mut());
+            let dev_ptr = dev.into().map(|dev| dev.as_ptr())
+                             .unwrap_or(ptr::null_mut());
             wlr_cursor_move(self.cursor, dev_ptr, delta_x, delta_y)
         }
     }
@@ -124,9 +133,12 @@ impl Cursor {
     /// image. The surface position is substracted from the hotspot.
     ///
     /// A `None` surface commit hides the cursor.
-    pub fn set_surface(&mut self, surface: Option<&Surface>, hotspot_x: i32, hotspot_y: i32) {
+    pub fn set_surface<'this, O>(&'this mut self, surface: O, hotspot_x: i32, hotspot_y: i32)
+        where O: Into<Option<&'this Surface>>
+    {
         unsafe {
-            let surface_ptr = surface.map(|surface| surface.as_ptr())
+            let surface_ptr = surface.into()
+                                     .map(|surface| surface.as_ptr())
                                      .unwrap_or(ptr::null_mut());
             wlr_cursor_set_surface(self.cursor, surface_ptr, hotspot_x, hotspot_y)
         }
