@@ -90,8 +90,11 @@ impl Cursor {
     ///
     /// `dev` may be passed to respect device mapping constraints. If `dev` is None,
     /// device mapping constraints will be ignored.
-    pub fn move_to(&mut self, dev: &InputDevice, delta_x: f64, delta_y: f64) {
-        unsafe { wlr_cursor_move(self.cursor, dev.as_ptr(), delta_x, delta_y) }
+    pub fn move_to(&mut self, dev: Option<&InputDevice>, delta_x: f64, delta_y: f64) {
+        unsafe {
+            let dev_ptr = dev.map(|dev| dev.as_ptr()).unwrap_or(ptr::null_mut());
+            wlr_cursor_move(self.cursor, dev_ptr, delta_x, delta_y)
+        }
     }
 
     // TODO Allow setting cursor images to arbitrary bytes,
