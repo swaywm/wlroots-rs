@@ -1,9 +1,10 @@
 //! TODO Documentation
 
 use std::{mem, ptr, slice};
+use std::marker::PhantomData;
 
-use wlroots_sys::{wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_get_cursor,
-                  wlr_xcursor_theme_load};
+use wlroots_sys::{wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_destroy,
+                  wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load};
 
 use utils::safe_as_cstring;
 
@@ -13,8 +14,9 @@ pub struct XCursorTheme {
 }
 
 #[derive(Debug)]
-pub struct XCursor {
-    xcursor: *mut wlr_xcursor
+pub struct XCursor<'theme> {
+    xcursor: *mut wlr_xcursor,
+    phantom: PhantomData<&'theme XCursorTheme>
 }
 
 #[derive(Debug)]
@@ -42,24 +44,26 @@ impl XCursorTheme {
         }
     }
 
-    pub fn get_cursor(&self, name: String) -> Option<XCursor> {
+    pub fn get_cursor<'theme>(&'theme self, name: String) -> Option<XCursor<'theme>> {
         let name_str = safe_as_cstring(name);
         let xcursor =
             unsafe { wlr_xcursor_theme_get_cursor(self.theme, name_str.as_ptr()) };
         if xcursor.is_null() {
             None
         } else {
-            Some(XCursor { xcursor })
+            Some(XCursor { xcursor,
+                           phantom: PhantomData })
         }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) unsafe fn as_ptr(self) -> *mut wlr_xcursor_theme {
-        self.theme
     }
 }
 
-impl XCursor {
+impl Drop for XCursorTheme {
+    fn drop(&mut self) {
+        unsafe { wlr_xcursor_theme_destroy(self.theme) }
+    }
+}
+
+impl<'theme> XCursor<'theme> {
     #[allow(dead_code)]
     pub(crate) unsafe fn as_ptr(&mut self) -> *mut wlr_xcursor {
         self.xcursor
