@@ -2,11 +2,13 @@
 
 use std::{mem, ptr, slice};
 use std::marker::PhantomData;
+use std::time::Duration;
 
-use wlroots_sys::{wlr_xcursor, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_destroy,
-                  wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load};
+use libc::{c_int, c_uint};
+use wlroots_sys::{wlr_xcursor, wlr_xcursor_frame, wlr_xcursor_image, wlr_xcursor_theme,
+                  wlr_xcursor_theme_destroy, wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load};
 
-use utils::safe_as_cstring;
+use utils::{c_to_rust_string, safe_as_cstring};
 
 #[derive(Debug)]
 pub struct XCursorTheme {
@@ -44,6 +46,25 @@ impl XCursorTheme {
         }
     }
 
+    /// Get the name of this theme.
+    ///
+    /// If the name returned by wlroots was malformed, or non existant,
+    /// then the value will be None.
+    pub fn name(&self) -> Option<String> {
+        unsafe { c_to_rust_string((*self.theme).name) }
+    }
+
+    /// Get the size of the images.
+    pub fn size(&self) -> c_int {
+        unsafe { (*self.theme).size }
+    }
+
+    /// Get the number of cursors in this theme.
+    pub fn cursor_count(&self) -> c_uint {
+        unsafe { (*self.theme).cursor_count }
+    }
+
+    /// Get the cursor with the provided name, if it exists.
     pub fn get_cursor<'theme>(&'theme self, name: String) -> Option<XCursor<'theme>> {
         let name_str = safe_as_cstring(name);
         let xcursor =
@@ -64,9 +85,11 @@ impl Drop for XCursorTheme {
 }
 
 impl<'theme> XCursor<'theme> {
-    #[allow(dead_code)]
-    pub(crate) unsafe fn as_ptr(&mut self) -> *mut wlr_xcursor {
-        self.xcursor
+    pub fn frame(&mut self, duration: Duration) -> c_int {
+        unsafe {
+            // TODO Is the correct unit of time?
+            wlr_xcursor_frame(self.xcursor, duration.subsec_nanos())
+        }
     }
 
     pub fn images<'cursor>(&'cursor self) -> Vec<XCursorImage<'cursor>> {
