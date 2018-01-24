@@ -99,10 +99,8 @@ impl Output {
         }
         // Remove output from previous output layout.
         let mut layout_handle = (*output_data).layout_handle.clone();
-        // NOTE This function will remove the OutputLayout pointer from this
-        // output if it completes successfully.
         match layout_handle.run(|layout| layout.remove(self)) {
-            Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => {}
+            Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => self.clear_user_data(),
             Err(UpgradeHandleErr::AlreadyBorrowed) => {
                 panic!("Could not add OutputLayout to Output user data!")
             }
