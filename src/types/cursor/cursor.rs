@@ -129,10 +129,6 @@ impl Cursor {
         }
     }
 
-    // TODO Ensure the safety of these functions.
-    // It's possible we need more handles floating about with checks...
-    // or a different memory model -_-
-
     /// Attaches this input device to this cursor. The input device must be one of:
     ///
     /// - WLR_INPUT_DEVICE_POINTER
@@ -142,6 +138,11 @@ impl Cursor {
     /// TODO Make this impossible to mess up with using an enum
     /// Note that it's safe to use the wrong type.
     pub fn attach_input_device(&mut self, dev: &InputDevice) {
+        // NOTE Rationale for not storing handle:
+        //
+        // Internally, on the destroy event this will automatically
+        // destroy the internal wlr_cursor_device used to refer to
+        // this InputDevice.
         unsafe { wlr_cursor_attach_input_device(self.cursor, dev.as_ptr()) }
     }
 
