@@ -122,7 +122,7 @@ impl OutputLayout {
     /// then this function will panic.
     pub(crate) fn weak_reference(&self) -> OutputLayoutHandle {
         let arc = self.liveliness.as_ref()
-                      .expect("Cannot dowrgrade a previously upgraded OutputLayoutHandle");
+                      .expect("Cannot downgrade a previously upgraded OutputLayoutHandle");
         OutputLayoutHandle { handle: Rc::downgrade(arc),
                              layout: self.layout }
     }
