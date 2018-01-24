@@ -155,9 +155,10 @@ impl Cursor {
 
     /// Attaches this cursor to the given output, which must be among the outputs in
     /// the current output_layout for this cursor.
-    ///
-    /// This call is invalid for a cursor without an associated output layout.
     pub fn map_to_output(&mut self, output: &Output) {
+        // TODO Check for if this output is in the output layout?
+        // We can store a handle to the output layout, but it needs
+        // to be updated in case we support moving cursors between them.
         unsafe { wlr_cursor_map_to_output(self.cursor, output.as_ptr()) }
     }
 
@@ -166,6 +167,12 @@ impl Cursor {
     /// The input device must be attached to this cursor
     /// and the output must be among the outputs in the attached output layout.
     pub fn map_input_to_output(&mut self, dev: &InputDevice, output: &Output) {
+        // NOTE Rationale for why we don't check input:
+        //
+        // If the input isn't found, then wlroots prints a diagnostic and
+        // returns early (and thus does nothing unsafe).
+
+        // TODO Similar output check to map_to_output
         unsafe { wlr_cursor_map_input_to_output(self.cursor, dev.as_ptr(), output.as_ptr()) }
     }
 
@@ -177,7 +184,13 @@ impl Cursor {
 
     /// Maps inputs from this input device to an arbitrary region on the associated
     /// wlr_output_layout.
+    ///
+    /// The input device must be attached to this cursor.
     pub fn map_input_to_region(&mut self, dev: &InputDevice, mut area: Area) {
+        // NOTE Rationale for why we don't check input:
+        //
+        // If the input isn't found, then wlroots prints a diagnostic and
+        // returns early (and thus does nothing unsafe).
         unsafe { wlr_cursor_map_input_to_region(self.cursor, dev.as_ptr(), &mut area.0) }
     }
 
