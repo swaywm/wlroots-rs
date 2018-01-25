@@ -188,11 +188,11 @@ impl OutputLayoutHandle {
     /// to a short lived scope of an anonymous function,
     /// this function ensures the OutputLayout does not live longer
     /// than it exists (because the lifetime is controlled by the user).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<Option<R>>
+    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
         where F: FnOnce(&mut OutputLayout) -> R
     {
         let mut output_layout = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(&mut output_layout))));
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut output_layout)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.load(Ordering::Acquire) {

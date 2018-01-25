@@ -168,11 +168,11 @@ impl PointerHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<Option<R>>
+    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
         where F: FnOnce(&Pointer) -> R
     {
         let mut pointer = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(&mut pointer))));
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut pointer)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.load(Ordering::Acquire) {
