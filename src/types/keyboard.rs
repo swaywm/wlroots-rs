@@ -342,3 +342,11 @@ impl fmt::Display for KeyboardModifier {
         write!(formatter, "{:?}", mods)
     }
 }
+
+impl PartialEq for KeyboardHandle {
+    fn eq(&self, other: &KeyboardHandle) -> bool {
+        self.keyboard == other.keyboard
+    }
+}
+
+impl Eq for KeyboardHandle {}

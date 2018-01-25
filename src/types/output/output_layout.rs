@@ -254,3 +254,11 @@ impl OutputLayoutOutput {
         }
     }
 }
+
+impl PartialEq for OutputLayoutHandle {
+    fn eq(&self, other: &OutputLayoutHandle) -> bool {
+        self.layout == other.layout
+    }
+}
+
+impl Eq for OutputLayoutHandle {}

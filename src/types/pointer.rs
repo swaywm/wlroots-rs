@@ -200,3 +200,11 @@ impl PointerHandle {
         self.pointer
     }
 }
+
+impl PartialEq for PointerHandle {
+    fn eq(&self, other: &PointerHandle) -> bool {
+        self.pointer == other.pointer
+    }
+}
+
+impl Eq for PointerHandle {}
