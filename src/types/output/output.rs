@@ -341,3 +341,12 @@ impl OutputHandle {
         self.output
     }
 }
+
+
+impl PartialEq for OutputHandle {
+    fn eq(&self, other: &OutputHandle) -> bool {
+        self.output == other.output
+    }
+}
+
+impl Eq for OutputHandle {}

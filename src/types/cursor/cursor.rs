@@ -9,7 +9,8 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_absolute_to_layout_coords,
                   wlr_cursor_map_to_region, wlr_cursor_move, wlr_cursor_set_image,
                   wlr_cursor_set_surface, wlr_cursor_warp, wlr_cursor_warp_absolute};
 
-use {Area, InputDevice, Output, Surface, XCursorImage};
+use {Area, InputDevice, Output, OutputHandle, OutputLayoutHandle, Surface, XCursorImage};
+use errors::UpgradeHandleErr;
 
 #[derive(Debug)]
 pub struct CursorBuilder {
@@ -18,7 +19,8 @@ pub struct CursorBuilder {
 
 #[derive(Debug)]
 pub struct Cursor {
-    cursor: *mut wlr_cursor
+    cursor: *mut wlr_cursor,
+    output_layout: OutputLayoutHandle
 }
 
 impl CursorBuilder {
@@ -54,8 +56,8 @@ impl CursorBuilder {
         self
     }
 
-    pub(crate) fn build(self) -> Cursor {
-        Cursor { cursor: self.cursor }
+    pub(crate) fn build(self, output_layout: OutputLayoutHandle) -> Cursor {
+        Cursor { cursor: self.cursor, output_layout,  }
     }
 }
 
@@ -166,14 +168,13 @@ impl Cursor {
         unsafe { wlr_cursor_detach_input_device(self.cursor, dev.as_ptr()) }
     }
 
-    // TODO Test what it means for the call to be "invalid". Segfault?
-
     /// Attaches this cursor to the given output, which must be among the outputs in
     /// the current output_layout for this cursor.
     pub fn map_to_output(&mut self, output: &Output) {
-        // TODO Check for if this output is in the output layout?
-        // We can store a handle to the output layout, but it needs
-        // to be updated in case we support moving cursors between them.
+        if !self.output_in_output_layout(output.weak_reference()) {
+            wlr_log!(L_ERROR, "Tried to map output not in the OutputLayout");
+            return
+        }
         unsafe { wlr_cursor_map_to_output(self.cursor, output.as_ptr()) }
     }
 
@@ -187,7 +188,10 @@ impl Cursor {
         // If the input isn't found, then wlroots prints a diagnostic and
         // returns early (and thus does nothing unsafe).
 
-        // TODO Similar output check to map_to_output
+        if !self.output_in_output_layout(output.weak_reference()) {
+            wlr_log!(L_ERROR, "Tried to map input to an output not in the OutputLayout");
+            return
+        }
         unsafe { wlr_cursor_map_input_to_output(self.cursor, dev.as_ptr(), output.as_ptr()) }
     }
 
@@ -235,6 +239,26 @@ impl Cursor {
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_cursor {
         self.cursor
+    }
+
+    /// Checks if the output is in the OutputLayout associated with this
+    /// cursor.
+    ///
+    /// If it isn't, or the OutputLayout has been dropped, this returns `false`.
+    /// Otherwise it returns `true`.
+    fn output_in_output_layout(&mut self, output: OutputHandle) -> bool {
+        match self.output_layout.run(|output_layout| {
+            for cur_output in &output_layout.outputs {
+                if *cur_output == output {
+                    return true
+                }
+            }
+            false
+        }) {
+            Ok(res) => res,
+            Err(UpgradeHandleErr::AlreadyDropped) => false,
+            Err(err) => panic!(err)
+        }
     }
 }
 

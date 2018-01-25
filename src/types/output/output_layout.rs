@@ -12,7 +12,7 @@ use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resoluti
 use super::output::OutputState;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
-use {Cursor, CursorBuilder, Origin, Output};
+use {Cursor, CursorBuilder, Origin, Output, OutputHandle};
 
 #[derive(Debug)]
 pub struct OutputLayout {
@@ -28,7 +28,8 @@ pub struct OutputLayout {
     liveliness: Option<Rc<AtomicBool>>,
     /// The output_layout ptr that refers to this `OutputLayout`
     layout: *mut wlr_output_layout,
-    cursors: Vec<Cursor>
+    cursors: Vec<Cursor>,
+    pub(crate) outputs: Vec<OutputHandle>
 }
 
 /// A handle to an `OutputLayout`.
@@ -61,7 +62,8 @@ impl OutputLayout {
             } else {
                 Some(OutputLayout { liveliness: Some(Rc::new(AtomicBool::new(false))),
                                     layout,
-                                    cursors: Vec::new() })
+                                    cursors: Vec::new(),
+                                    outputs: Vec::new() })
             }
         }
     }
@@ -73,7 +75,7 @@ impl OutputLayout {
     /// Attach a cursor to this OutputLayout.
     pub fn attach_cursor(&mut self, cursor: CursorBuilder) {
         unsafe {
-            let cursor = cursor.build();
+            let cursor = cursor.build(self.weak_reference());
             wlr_cursor_attach_output_layout(cursor.as_ptr(), self.layout);
             self.cursors.push(cursor);
         }
@@ -130,7 +132,8 @@ impl OutputLayout {
     unsafe fn from_handle(handle: &OutputLayoutHandle) -> Self {
         OutputLayout { liveliness: None,
                        layout: handle.as_ptr(),
-                       cursors: Vec::new() }
+                       cursors: Vec::new(),
+                       outputs: Vec::new() }
     }
 }
 
