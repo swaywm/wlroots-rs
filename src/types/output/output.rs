@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use libc::c_float;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
+use wlroots_sys::{wl_output_transform, wlr_output, wlr_output_effective_resolution,
                   wlr_output_events, wlr_output_make_current, wlr_output_mode,
                   wlr_output_set_mode, wlr_output_set_transform, wlr_output_swap_buffers};
 
@@ -150,14 +150,15 @@ impl Output {
     /// action in the output destruction callback.
     pub fn choose_best_mode(&mut self) {
         unsafe {
-            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_list_length, self.modes() as _);
+            let modes = (*self.output).modes;
+            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                       wl_list_length,
+                                       &modes as *const _ as _);
             if length > 0 {
                 // TODO Better logging
                 wlr_log!(L_DEBUG, "output added {:?}", self);
                 let first_mode_ptr: *mut wlr_output_mode;
-                first_mode_ptr = container_of!(&mut (*(*self.modes()).prev) as *mut _,
-                                               wlr_output_mode,
-                                               link);
+                first_mode_ptr = container_of!(&mut (*modes.prev) as *mut _, wlr_output_mode, link);
                 wlr_output_set_mode(self.as_ptr(), first_mode_ptr);
             }
         }
@@ -269,9 +270,17 @@ impl Output {
         }
     }
 
-    /// TODO Make safe
-    pub unsafe fn modes(&self) -> *mut wl_list {
-        &mut (*self.output).modes
+    /// Get the modes associated with this output.
+    ///
+    /// Note that some backends may have zero modes.
+    pub fn modes(&self) -> Vec<OutputMode> {
+        unsafe {
+            let mut result = vec![];
+            wl_list_for_each!((*self.output).modes, link, (mode: wlr_output_mode) => {
+                result.push(OutputMode::new(mode))
+            });
+            result
+        }
     }
 
     /// TODO Make safe
