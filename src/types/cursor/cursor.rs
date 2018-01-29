@@ -57,7 +57,8 @@ impl CursorBuilder {
     }
 
     pub(crate) fn build(self, output_layout: OutputLayoutHandle) -> Cursor {
-        Cursor { cursor: self.cursor, output_layout,  }
+        Cursor { cursor: self.cursor,
+                 output_layout }
     }
 }
 
@@ -189,7 +190,8 @@ impl Cursor {
         // returns early (and thus does nothing unsafe).
 
         if !self.output_in_output_layout(output.weak_reference()) {
-            wlr_log!(L_ERROR, "Tried to map input to an output not in the OutputLayout");
+            wlr_log!(L_ERROR,
+                     "Tried to map input to an output not in the OutputLayout");
             return
         }
         unsafe { wlr_cursor_map_input_to_output(self.cursor, dev.as_ptr(), output.as_ptr()) }
@@ -248,13 +250,13 @@ impl Cursor {
     /// Otherwise it returns `true`.
     fn output_in_output_layout(&mut self, output: OutputHandle) -> bool {
         match self.output_layout.run(|output_layout| {
-            for (cur_output, _) in output_layout.outputs() {
-                if cur_output == output {
-                    return true
-                }
-            }
-            false
-        }) {
+                                         for (cur_output, _) in output_layout.outputs() {
+                                             if cur_output == output {
+                                                 return true
+                                             }
+                                         }
+                                         false
+                                     }) {
             Ok(res) => res,
             Err(UpgradeHandleErr::AlreadyDropped) => false,
             Err(err) => panic!(err)

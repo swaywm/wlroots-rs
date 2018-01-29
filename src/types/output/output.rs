@@ -69,9 +69,11 @@ impl Output {
         (*output).data = ptr::null_mut();
         let liveliness = Rc::new(AtomicBool::new(false));
         let handle = Rc::downgrade(&liveliness);
-        let state = Box::new(OutputState {handle, layout_handle: None });
+        let state = Box::new(OutputState { handle,
+                                           layout_handle: None });
         (*output).data = Box::into_raw(state) as *mut _;
-        Output { liveliness: Some(liveliness), output }
+        Output { liveliness: Some(liveliness),
+                 output }
     }
 
     pub(crate) unsafe fn set_output_layout(&mut self, layout_handle: Option<OutputLayoutHandle>) {
@@ -362,7 +364,6 @@ impl OutputHandle {
         self.output
     }
 }
-
 
 impl PartialEq for OutputHandle {
     fn eq(&self, other: &OutputHandle) -> bool {
