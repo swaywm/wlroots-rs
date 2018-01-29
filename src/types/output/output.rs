@@ -12,6 +12,7 @@ use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective
 
 use super::output_layout::OutputLayoutHandle;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use utils::c_to_rust_string;
 
 struct OutputState {
     handle: Weak<AtomicBool>,
@@ -169,16 +170,22 @@ impl Output {
     /// Gets the make of the output in UTF-8.
     pub fn make(&self) -> String {
         unsafe {
-            CStr::from_ptr((*self.output).make.as_ptr()).to_string_lossy()
-                                                        .into_owned()
+            c_to_rust_string((*self.output).make.as_ptr()).expect("Could not parse make as UTF-8")
         }
     }
 
     /// Gets the model of the output in UTF-8.
     pub fn model(&self) -> String {
         unsafe {
-            CStr::from_ptr((*self.output).model.as_ptr()).to_string_lossy()
-                                                         .into_owned()
+            c_to_rust_string((*self.output).model.as_ptr()).expect("Could not parse model as UTF-8")
+        }
+    }
+
+    /// Gets the serial of the output in UTF-8.
+    pub fn serial(&self) -> String {
+        unsafe {
+            c_to_rust_string((*self.output).serial.as_ptr()).expect("Could not parse serial as \
+                                                                     UTF-8")
         }
     }
 
