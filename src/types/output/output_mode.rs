@@ -8,6 +8,10 @@ pub struct OutputMode {
 }
 
 impl OutputMode {
+    pub(crate) unsafe fn new(output_mode: *mut wlr_output_mode) -> Self {
+        OutputMode { output_mode }
+    }
+
     /// Gets the flags set on this OutputMode.
     pub fn flags(&self) -> u32 {
         unsafe { (*self.output_mode).flags }

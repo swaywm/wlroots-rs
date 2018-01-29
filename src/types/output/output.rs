@@ -5,14 +5,18 @@ use std::ffi::CStr;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use libc::c_float;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
                   wlr_output_events, wlr_output_make_current, wlr_output_mode,
                   wlr_output_set_mode, wlr_output_set_transform, wlr_output_swap_buffers};
 
 use super::output_layout::OutputLayoutHandle;
+use super::output_mode::OutputMode;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
+
+use Surface;
 
 struct OutputState {
     handle: Weak<AtomicBool>,
@@ -189,6 +193,46 @@ impl Output {
         }
     }
 
+    /// Determines if the output is enabled or not.
+    pub fn enabled(&self) -> bool {
+        unsafe { (*self.output).enabled }
+    }
+
+    /// Get the scale of the output
+    pub fn scale(&self) -> c_float {
+        unsafe { (*self.output).scale }
+    }
+
+    /// Determines if the output should have its buffers swapped or not.
+    pub fn needs_swap(&self) -> bool {
+        unsafe { (*self.output).needs_swap }
+    }
+
+    pub fn current_mode(&self) -> Option<OutputMode> {
+        unsafe {
+            if (*self.output).current_mode.is_null() {
+                None
+            } else {
+                Some(OutputMode::new((*self.output).current_mode))
+            }
+        }
+    }
+
+    pub fn fullscreen_surface(&self) -> Option<Surface> {
+        unsafe {
+            if (*self.output).fullscreen_surface.is_null() {
+                None
+            } else {
+                Some(Surface::from_ptr((*self.output).fullscreen_surface))
+            }
+        }
+    }
+
+    /// Gets the output position in layout space reported to clients.
+    pub fn layout_space_pos(&self) -> (i32, i32) {
+        unsafe { ((*self.output).lx, (*self.output).ly) }
+    }
+
     pub fn make_current(&mut self) {
         unsafe { wlr_output_make_current(self.output) }
     }
@@ -215,7 +259,7 @@ impl Output {
         }
     }
 
-    pub fn transform_matrix(&self) -> [f32; 16] {
+    pub fn transform_matrix(&self) -> [c_float; 16] {
         unsafe { (*self.output).transform_matrix }
     }
 
