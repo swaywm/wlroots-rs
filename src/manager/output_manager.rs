@@ -100,10 +100,25 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
             let mut output = UserOutput::new((output_clone, output_ptr));
             // Add the output frame event to this manager
             wl_signal_add(&mut (*data).events.frame as *mut _ as _,
-                        output.frame_listener() as _);
-            // Add the output resolution event to this manager
+                          output.frame_listener() as _);
+            // Add the output mode event to this manager
             wl_signal_add(&mut (*data).events.mode as *mut _ as _,
-                        output.mode_listener() as _);
+                          output.mode_listener() as _);
+            // Add the output enable event to this manager
+            wl_signal_add(&mut (*data).events.enable as *mut _ as _,
+                          output.enable_listener() as _);
+            // Add the output scale change event to this manager
+            wl_signal_add(&mut (*data).events.scale as *mut _ as _,
+                          output.scale_listener() as _);
+            // Add the output transform event to this manager
+            wl_signal_add(&mut (*data).events.transform as *mut _ as _,
+                          output.transform_listener() as _);
+            // Add the output buffer swap event to this manager
+            wl_signal_add(&mut (*data).events.swap_buffers as *mut _ as _,
+                          output.swap_buffers_listener() as _);
+            // Add the output destroy event to this manager
+            wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
+                          output.destroy_listener() as _);
             // Store the user UserOutput, free later in remove listener
             outputs.push(output);
         }
