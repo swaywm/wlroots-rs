@@ -248,8 +248,8 @@ impl Cursor {
     /// Otherwise it returns `true`.
     fn output_in_output_layout(&mut self, output: OutputHandle) -> bool {
         match self.output_layout.run(|output_layout| {
-            for cur_output in &output_layout.outputs {
-                if *cur_output == output {
+            for (cur_output, _) in output_layout.outputs() {
+                if cur_output == output {
                     return true
                 }
             }

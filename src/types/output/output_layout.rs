@@ -28,8 +28,7 @@ pub struct OutputLayout {
     liveliness: Option<Rc<AtomicBool>>,
     /// The output_layout ptr that refers to this `OutputLayout`
     layout: *mut wlr_output_layout,
-    cursors: Vec<Cursor>,
-    pub(crate) outputs: Vec<OutputHandle>
+    cursors: Vec<Cursor>
 }
 
 /// A handle to an `OutputLayout`.
@@ -48,6 +47,7 @@ pub(crate) struct OutputLayoutHandle {
 
 /// The coordinate information of an `Output` within an `OutputLayout`.
 #[derive(Debug)]
+// TODO Remove pub?
 pub struct OutputLayoutOutput {
     layout_output: *mut wlr_output_layout_output
 }
@@ -62,8 +62,24 @@ impl OutputLayout {
             } else {
                 Some(OutputLayout { liveliness: Some(Rc::new(AtomicBool::new(false))),
                                     layout,
-                                    cursors: Vec::new(),
-                                    outputs: Vec::new() })
+                                    cursors: Vec::new() })
+            }
+        }
+    }
+
+    pub fn outputs(&mut self) -> Vec<(OutputHandle, Origin)> {
+        unsafe {
+            let mut result = vec![];
+            // TODO Macro for for-each pattern here
+            let mut pos = container_of!((*self.layout).outputs.next, wlr_output_layout_output, link);
+            loop {
+                if &(*pos).link as *const _ == &(*self.layout).outputs as *const _ {
+                    return result;
+                }
+                // TODO Get details from the user data
+                result.push((Output::new((*pos).output).weak_reference(),
+                             Origin::new((*pos).x, (*pos).y)));
+                pos = container_of!((*pos).link.next, wlr_output_layout_output, link);
             }
         }
     }
@@ -132,8 +148,7 @@ impl OutputLayout {
     unsafe fn from_handle(handle: &OutputLayoutHandle) -> Self {
         OutputLayout { liveliness: None,
                        layout: handle.as_ptr(),
-                       cursors: Vec::new(),
-                       outputs: Vec::new() }
+                       cursors: Vec::new() }
     }
 }
 
