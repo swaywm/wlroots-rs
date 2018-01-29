@@ -1,9 +1,9 @@
 //! TODO Documentation
 
+use std::marker::PhantomData;
 use std::panic;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::marker::PhantomData;
 
 use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resolution,
                   wlr_output_layout, wlr_output_layout_add, wlr_output_layout_add_auto,
@@ -246,7 +246,7 @@ impl OutputLayoutHandle {
     }
 }
 
-impl <'output> OutputLayoutOutput<'output> {
+impl<'output> OutputLayoutOutput<'output> {
     /// Get the absolute top left edge coordinate of this output in the output
     /// layout.
     pub fn top_left_edge(&self) -> Origin {
