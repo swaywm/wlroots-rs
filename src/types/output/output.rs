@@ -8,15 +8,17 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use libc::c_float;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_output_transform, wlr_output, wlr_output_effective_resolution,
-                  wlr_output_events, wlr_output_make_current, wlr_output_mode,
-                  wlr_output_set_mode, wlr_output_set_transform, wlr_output_swap_buffers};
+                  wlr_output_enable, wlr_output_get_gamma_size, wlr_output_make_current,
+                  wlr_output_mode, wlr_output_set_custom_mode, wlr_output_set_fullscreen_surface,
+                  wlr_output_set_gamma, wlr_output_set_mode, wlr_output_set_position,
+                  wlr_output_set_scale, wlr_output_set_transform, wlr_output_swap_buffers};
 
 use super::output_layout::OutputLayoutHandle;
 use super::output_mode::OutputMode;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
 
-use Surface;
+use {Origin, Size, Surface};
 
 struct OutputState {
     handle: Weak<AtomicBool>,
@@ -281,6 +283,41 @@ impl Output {
             });
             result
         }
+    }
+
+    /// Enables or disables an output.
+    pub fn enable(&mut self, enable: bool) {
+        unsafe { wlr_output_enable(self.output, enable) }
+    }
+
+    /// Sets the gamma based on the size.
+    pub fn set_gamma(&mut self, size: u32, mut r: u16, mut g: u16, mut b: u16) {
+        unsafe { wlr_output_set_gamma(self.output, size, &mut r, &mut g, &mut b) }
+    }
+
+    /// Get the gamma size.
+    pub fn get_gamma_size(&self) -> u32 {
+        unsafe { wlr_output_get_gamma_size(self.output) }
+    }
+
+    /// Set a custom mode for this output.
+    pub fn set_custom_mode(&mut self, size: Size, refresh: i32) -> bool {
+        unsafe { wlr_output_set_custom_mode(self.output, size.width, size.height, refresh) }
+    }
+
+    /// Set the fullscreen surface for this output.
+    pub fn set_fullscreen_surface(&mut self, surface: Surface) {
+        unsafe { wlr_output_set_fullscreen_surface(self.output, surface.as_ptr()) }
+    }
+
+    /// Sets the position of this output.
+    pub fn set_position(&mut self, origin: Origin) {
+        unsafe { wlr_output_set_position(self.output, origin.x, origin.y) }
+    }
+
+    /// Set the scale applied to this output.
+    pub fn set_scale(&mut self, scale: c_float) {
+        unsafe { wlr_output_set_scale(self.output, scale) }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {
