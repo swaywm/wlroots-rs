@@ -283,11 +283,6 @@ impl Output {
         }
     }
 
-    /// TODO Make safe
-    pub unsafe fn events(&self) -> wlr_output_events {
-        (*self.output).events
-    }
-
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
     }
