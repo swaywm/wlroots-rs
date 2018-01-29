@@ -69,17 +69,12 @@ impl OutputLayout {
     pub fn outputs(&mut self) -> Vec<(OutputHandle, Origin)> {
         unsafe {
             let mut result = vec![];
-            // TODO Macro for for-each pattern here
-            let mut pos = container_of!((*self.layout).outputs.next, wlr_output_layout_output, link);
-            loop {
-                if &(*pos).link as *const _ == &(*self.layout).outputs as *const _ {
-                    return result;
-                }
-                // TODO Get details from the user data
+            let mut pos: *mut wlr_output_layout_output;
+            wl_list_for_each!((*self.layout).outputs, wlr_output_layout_output, link, (pos) => {
                 result.push((OutputHandle::from_ptr((*pos).output),
-                             Origin::new((*pos).x, (*pos).y)));
-                pos = container_of!((*pos).link.next, wlr_output_layout_output, link);
-            }
+                             Origin::new((*pos).x, (*pos).y)))
+            });
+            result
         }
     }
 

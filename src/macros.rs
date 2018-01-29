@@ -14,6 +14,24 @@ macro_rules! container_of (
     }
 );
 
+/// Iterates over a wl_list.
+///
+/// # Safety
+/// It is not safe to delete an element while iterating over the list,
+/// so don't do it!
+macro_rules! wl_list_for_each {
+    ($ptr: expr, $container: ty, $field: ident, ($pos: ident) => $body: block) => {
+        $pos = container_of!($ptr.next, $container, $field);
+        loop {
+            if &(*$pos).$field as *const _ == &$ptr as *const _ {
+                break
+            }
+            { $body }
+            $pos = container_of!((*$pos).$field.next, $container, $field);
+        }
+    }
+}
+
 /// Convert a literal string to a C string.
 /// Note: Does not check for internal nulls, nor does it do any conversions on
 /// the grapheme clustors. Just passes the bytes as is.
