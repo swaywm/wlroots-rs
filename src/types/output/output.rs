@@ -13,8 +13,9 @@ use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective
 use super::output_layout::OutputLayoutHandle;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
-pub(crate) struct OutputState {
-    pub layout_handle: OutputLayoutHandle
+struct OutputState {
+    handle: Weak<AtomicBool>,
+    layout_handle: Option<OutputLayoutHandle>
 }
 
 #[derive(Debug)]
@@ -66,13 +67,22 @@ impl Output {
     /// so only do this once per `wlr_output`!
     pub(crate) unsafe fn new(output: *mut wlr_output) -> Self {
         (*output).data = ptr::null_mut();
-        Output { liveliness: Some(Rc::new(AtomicBool::new(false))),
-                 output }
+        let liveliness = Rc::new(AtomicBool::new(false));
+        let handle = Rc::downgrade(&liveliness);
+        let state = Box::new(OutputState {handle, layout_handle: None });
+        (*output).data = Box::into_raw(state) as *mut _;
+        Output { liveliness: Some(liveliness), output }
     }
 
-    pub(crate) unsafe fn set_user_data(&mut self, data: Box<OutputState>) {
+    pub(crate) unsafe fn set_output_layout(&mut self, layout_handle: Option<OutputLayoutHandle>) {
         self.remove_from_output_layout();
-        (*self.output).data = Box::into_raw(data) as *mut _
+        let user_data = self.user_data();
+        if user_data.is_null() {
+            return
+        }
+        let mut data = Box::from_raw(user_data);
+        data.layout_handle = layout_handle;
+        (*self.output).data = Box::into_raw(data) as *mut _;
     }
 
     unsafe fn user_data(&mut self) -> *mut OutputState {
@@ -81,28 +91,30 @@ impl Output {
 
     /// Used to clear the pointer to an OutputLayout when the OutputLayout
     /// removes this Output from its listing.
-    pub(crate) unsafe fn clear_user_data(&mut self) {
+    pub(crate) unsafe fn clear_output_layout_data(&mut self) {
         let user_data = self.user_data();
         if user_data.is_null() {
             return
         }
-        let _ = Box::from_raw(user_data);
-        (*self.output).data = ptr::null_mut();
+        let mut data = Box::from_raw(user_data);
+        data.layout_handle = None;
+        (*self.output).data = Box::into_raw(data) as *mut _;
     }
 
     /// Remove this Output from an OutputLayout, if it is part of an
     /// OutputLayout.
     pub(crate) unsafe fn remove_from_output_layout(&mut self) {
-        let output_data = (*self.output).data as *mut OutputState;
+        let output_data = self.user_data();
         if output_data.is_null() {
             return
         }
         // Remove output from previous output layout.
-        let mut layout_handle = (*output_data).layout_handle.clone();
-        match layout_handle.run(|layout| layout.remove(self)) {
-            Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => self.clear_user_data(),
-            Err(UpgradeHandleErr::AlreadyBorrowed) => {
-                panic!("Could not add OutputLayout to Output user data!")
+        if let Some(mut layout_handle) = (*output_data).layout_handle.take() {
+            match layout_handle.run(|layout| layout.remove(self)) {
+                Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => self.clear_output_layout_data(),
+                Err(UpgradeHandleErr::AlreadyBorrowed) => {
+                    panic!("Could not add OutputLayout to Output user data!")
+                }
             }
         }
     }
@@ -119,7 +131,7 @@ impl Output {
         if data.is_null() {
             None
         } else {
-            Some((*data).layout_handle.clone())
+            (*data).layout_handle.clone()
         }
     }
 
@@ -277,6 +289,15 @@ impl Drop for Output {
 }
 
 impl OutputHandle {
+    /// Creates an OutputHandle from the raw pointer, using the saved
+    /// user data to recreate the memory model.
+    pub(crate) unsafe fn from_ptr(output: *mut wlr_output) -> Self {
+        let data = Box::from_raw((*output).data as *mut OutputState);
+        let handle = data.handle.clone();
+        (*output).data = Box::into_raw(data) as *mut _;
+        OutputHandle { handle, output }
+    }
+
     /// Upgrades the output handle to a reference to the backing `Output`.
     ///
     /// # Unsafety

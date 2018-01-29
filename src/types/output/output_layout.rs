@@ -9,7 +9,6 @@ use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resoluti
                   wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_move,
                   wlr_output_layout_output, wlr_output_layout_remove};
 
-use super::output::OutputState;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
 use {Cursor, CursorBuilder, Origin, Output, OutputHandle};
@@ -77,7 +76,7 @@ impl OutputLayout {
                     return result;
                 }
                 // TODO Get details from the user data
-                result.push((Output::new((*pos).output).weak_reference(),
+                result.push((OutputHandle::from_ptr((*pos).output),
                              Origin::new((*pos).x, (*pos).y)));
                 pos = container_of!((*pos).link.next, wlr_output_layout_output, link);
             }
@@ -108,7 +107,7 @@ impl OutputLayout {
     pub fn add_auto(&mut self, output: &mut Output) {
         unsafe {
             let layout_handle = self.weak_reference();
-            output.set_user_data(Box::new(OutputState { layout_handle }));
+            output.set_output_layout(Some(layout_handle));
             wlr_output_layout_add_auto(self.layout, output.as_ptr());
             wlr_log!(L_DEBUG, "Added {:?} to {:?}", output, self);
         }
@@ -128,7 +127,7 @@ impl OutputLayout {
     pub fn remove(&mut self, output: &mut Output) {
         wlr_log!(L_DEBUG, "Removing {:?} from {:?}", output, self);
         unsafe {
-            output.clear_user_data();
+            output.clear_output_layout_data();
             wlr_output_layout_remove(self.layout, output.as_ptr());
         };
     }
