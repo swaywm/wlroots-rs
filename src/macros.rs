@@ -20,7 +20,8 @@ macro_rules! container_of (
 /// It is not safe to delete an element while iterating over the list,
 /// so don't do it!
 macro_rules! wl_list_for_each {
-    ($ptr: expr, $container: ty, $field: ident, ($pos: ident) => $body: block) => {
+    ($ptr: expr, $field: ident, ($pos: ident : $container: ty) => $body: block) => {
+        let mut $pos: *mut $container;
         $pos = container_of!($ptr.next, $container, $field);
         loop {
             if &(*$pos).$field as *const _ == &$ptr as *const _ {

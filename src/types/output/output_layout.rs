@@ -69,8 +69,7 @@ impl OutputLayout {
     pub fn outputs(&mut self) -> Vec<(OutputHandle, Origin)> {
         unsafe {
             let mut result = vec![];
-            let mut pos: *mut wlr_output_layout_output;
-            wl_list_for_each!((*self.layout).outputs, wlr_output_layout_output, link, (pos) => {
+            wl_list_for_each!((*self.layout).outputs, link, (pos: wlr_output_layout_output) => {
                 result.push((OutputHandle::from_ptr((*pos).output),
                              Origin::new((*pos).x, (*pos).y)))
             });
