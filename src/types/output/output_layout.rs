@@ -3,6 +3,7 @@
 use std::panic;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::marker::PhantomData;
 
 use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resolution,
                   wlr_output_layout, wlr_output_layout_add, wlr_output_layout_add_auto,
@@ -47,8 +48,9 @@ pub(crate) struct OutputLayoutHandle {
 /// The coordinate information of an `Output` within an `OutputLayout`.
 #[derive(Debug)]
 // TODO Remove pub?
-pub struct OutputLayoutOutput {
-    layout_output: *mut wlr_output_layout_output
+pub struct OutputLayoutOutput<'output> {
+    layout_output: *mut wlr_output_layout_output,
+    phantom: PhantomData<&'output OutputLayout>
 }
 
 impl OutputLayout {
@@ -66,6 +68,9 @@ impl OutputLayout {
         }
     }
 
+    /// Get the outputs associated with this OutputLayout.
+    ///
+    /// Also returns their absolute position within the layout.
     pub fn outputs(&mut self) -> Vec<(OutputHandle, Origin)> {
         unsafe {
             let mut result = vec![];
@@ -73,6 +78,22 @@ impl OutputLayout {
                 result.push((OutputHandle::from_ptr((*pos).output),
                              Origin::new((*pos).x, (*pos).y)))
             });
+            result
+        }
+    }
+
+    /// Get the Outputs in the OutputLayout coupled with their output information.
+    ///
+    /// For a version that isn't bound by lifetimes, see `outputs`.
+    pub fn outputs_layouts<'output>(&'output mut self) -> Vec<OutputLayoutOutput<'output>> {
+        unsafe {
+            let mut result = vec![];
+            wl_list_for_each!((*self.layout).outputs, link,
+                              (layout_output: wlr_output_layout_output) => {
+                                  result.push(OutputLayoutOutput { layout_output,
+                                                                   phantom: PhantomData
+                                  })
+                              });
             result
         }
     }
@@ -226,7 +247,7 @@ impl OutputLayoutHandle {
     }
 }
 
-impl OutputLayoutOutput {
+impl <'output> OutputLayoutOutput<'output> {
     /// Get the absolute top left edge coordinate of this output in the output
     /// layout.
     pub fn top_left_edge(&self) -> Origin {
