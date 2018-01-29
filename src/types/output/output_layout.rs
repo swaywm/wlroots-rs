@@ -47,7 +47,6 @@ pub(crate) struct OutputLayoutHandle {
 
 /// The coordinate information of an `Output` within an `OutputLayout`.
 #[derive(Debug)]
-// TODO Remove pub?
 pub struct OutputLayoutOutput<'output> {
     layout_output: *mut wlr_output_layout_output,
     phantom: PhantomData<&'output OutputLayout>
