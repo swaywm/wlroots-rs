@@ -4,7 +4,7 @@ use wlroots_sys::{wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor
                   wlr_output_cursor_move, wlr_output_cursor_set_image,
                   wlr_output_cursor_set_surface};
 
-use {Output, OutputHandle, Surface};
+use {Output, OutputHandle, Surface, UpgradeHandleErr};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct OutputCursor {
@@ -46,27 +46,53 @@ impl OutputCursor {
                      hotspot_y: i32)
                      -> bool {
         unsafe {
-            // TODO Ensure the buffer is correct?
-            wlr_output_cursor_set_image(self.cursor,
-                                        pixels.as_ptr(),
-                                        stride,
-                                        width,
-                                        height,
-                                        hotspot_x,
-                                        hotspot_y)
+            let cursor = self.cursor;
+            let res = self.output_handle.run(|_| {
+                                                 // TODO Ensure the buffer is correct?
+                                                 wlr_output_cursor_set_image(cursor,
+                                                                             pixels.as_ptr(),
+                                                                             stride,
+                                                                             width,
+                                                                             height,
+                                                                             hotspot_x,
+                                                                             hotspot_y)
+                                             });
+            match res {
+                Ok(res) => res,
+                Err(UpgradeHandleErr::AlreadyDropped) => false,
+                err @ Err(UpgradeHandleErr::AlreadyBorrowed) => panic!(err)
+            }
         }
     }
 
     /// Sets the hardware cursor's surface.
     pub fn set_surface(&mut self, surface: Surface, hotspot_x: i32, hotspot_y: i32) {
         unsafe {
-            wlr_output_cursor_set_surface(self.cursor, surface.as_ptr(), hotspot_x, hotspot_y)
+            let cursor = self.cursor;
+            let res = self.output_handle.run(|_| {
+                                                 wlr_output_cursor_set_surface(cursor,
+                                                                               surface.as_ptr(),
+                                                                               hotspot_x,
+                                                                               hotspot_y)
+                                             });
+            match res {
+                Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => {}
+                err @ Err(UpgradeHandleErr::AlreadyBorrowed) => panic!(err)
+            }
         }
     }
 
     /// Moves the hardware cursor to the desired location
     pub fn move_to(&mut self, x: f64, y: f64) -> bool {
-        unsafe { wlr_output_cursor_move(self.cursor, x, y) }
+        unsafe {
+            let cursor = self.cursor;
+            let res = self.output_handle.run(|_| wlr_output_cursor_move(cursor, x, y));
+            match res {
+                Ok(res) => res,
+                Err(UpgradeHandleErr::AlreadyDropped) => false,
+                err @ Err(UpgradeHandleErr::AlreadyBorrowed) => panic!(err)
+            }
+        }
     }
 }
 
