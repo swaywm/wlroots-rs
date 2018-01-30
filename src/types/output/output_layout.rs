@@ -3,16 +3,16 @@
 use std::panic;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::marker::PhantomData;
 
 use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resolution,
                   wlr_output_layout, wlr_output_layout_add, wlr_output_layout_add_auto,
                   wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_move,
                   wlr_output_layout_output, wlr_output_layout_remove};
 
-use super::output::OutputState;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
-use {Cursor, CursorBuilder, Origin, Output};
+use {Cursor, CursorBuilder, Origin, Output, OutputHandle};
 
 #[derive(Debug)]
 pub struct OutputLayout {
@@ -47,8 +47,9 @@ pub(crate) struct OutputLayoutHandle {
 
 /// The coordinate information of an `Output` within an `OutputLayout`.
 #[derive(Debug)]
-pub struct OutputLayoutOutput {
-    layout_output: *mut wlr_output_layout_output
+pub struct OutputLayoutOutput<'output> {
+    layout_output: *mut wlr_output_layout_output,
+    phantom: PhantomData<&'output OutputLayout>
 }
 
 impl OutputLayout {
@@ -66,6 +67,36 @@ impl OutputLayout {
         }
     }
 
+    /// Get the outputs associated with this OutputLayout.
+    ///
+    /// Also returns their absolute position within the layout.
+    pub fn outputs(&mut self) -> Vec<(OutputHandle, Origin)> {
+        unsafe {
+            let mut result = vec![];
+            wl_list_for_each!((*self.layout).outputs, link, (pos: wlr_output_layout_output) => {
+                result.push((OutputHandle::from_ptr((*pos).output),
+                             Origin::new((*pos).x, (*pos).y)))
+            });
+            result
+        }
+    }
+
+    /// Get the Outputs in the OutputLayout coupled with their output information.
+    ///
+    /// For a version that isn't bound by lifetimes, see `outputs`.
+    pub fn outputs_layouts<'output>(&'output mut self) -> Vec<OutputLayoutOutput<'output>> {
+        unsafe {
+            let mut result = vec![];
+            wl_list_for_each!((*self.layout).outputs, link,
+                              (layout_output: wlr_output_layout_output) => {
+                                  result.push(OutputLayoutOutput { layout_output,
+                                                                   phantom: PhantomData
+                                  })
+                              });
+            result
+        }
+    }
+
     pub fn cursors(&mut self) -> &mut [Cursor] {
         self.cursors.as_mut_slice()
     }
@@ -73,7 +104,7 @@ impl OutputLayout {
     /// Attach a cursor to this OutputLayout.
     pub fn attach_cursor(&mut self, cursor: CursorBuilder) {
         unsafe {
-            let cursor = cursor.build();
+            let cursor = cursor.build(self.weak_reference());
             wlr_cursor_attach_output_layout(cursor.as_ptr(), self.layout);
             self.cursors.push(cursor);
         }
@@ -90,7 +121,7 @@ impl OutputLayout {
     pub fn add_auto(&mut self, output: &mut Output) {
         unsafe {
             let layout_handle = self.weak_reference();
-            output.set_user_data(Box::new(OutputState { layout_handle }));
+            output.set_output_layout(Some(layout_handle));
             wlr_output_layout_add_auto(self.layout, output.as_ptr());
             wlr_log!(L_DEBUG, "Added {:?} to {:?}", output, self);
         }
@@ -110,7 +141,7 @@ impl OutputLayout {
     pub fn remove(&mut self, output: &mut Output) {
         wlr_log!(L_DEBUG, "Removing {:?} from {:?}", output, self);
         unsafe {
-            output.clear_user_data();
+            output.clear_output_layout_data();
             wlr_output_layout_remove(self.layout, output.as_ptr());
         };
     }
@@ -188,11 +219,11 @@ impl OutputLayoutHandle {
     /// to a short lived scope of an anonymous function,
     /// this function ensures the OutputLayout does not live longer
     /// than it exists (because the lifetime is controlled by the user).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<Option<R>>
+    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
         where F: FnOnce(&mut OutputLayout) -> R
     {
         let mut output_layout = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(&mut output_layout))));
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut output_layout)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.load(Ordering::Acquire) {
@@ -215,7 +246,7 @@ impl OutputLayoutHandle {
     }
 }
 
-impl OutputLayoutOutput {
+impl <'output> OutputLayoutOutput<'output> {
     /// Get the absolute top left edge coordinate of this output in the output
     /// layout.
     pub fn top_left_edge(&self) -> Origin {
@@ -251,3 +282,11 @@ impl OutputLayoutOutput {
         }
     }
 }
+
+impl PartialEq for OutputLayoutHandle {
+    fn eq(&self, other: &OutputLayoutHandle) -> bool {
+        self.layout == other.layout
+    }
+}
+
+impl Eq for OutputLayoutHandle {}

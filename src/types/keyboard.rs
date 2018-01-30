@@ -269,11 +269,11 @@ impl KeyboardHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<Option<R>>
+    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
         where F: FnOnce(&mut Keyboard) -> R
     {
         let mut keyboard = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| Some(runner(&mut keyboard))));
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut keyboard)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.load(Ordering::Acquire) {
@@ -342,3 +342,11 @@ impl fmt::Display for KeyboardModifier {
         write!(formatter, "{:?}", mods)
     }
 }
+
+impl PartialEq for KeyboardHandle {
+    fn eq(&self, other: &KeyboardHandle) -> bool {
+        self.keyboard == other.keyboard
+    }
+}
+
+impl Eq for KeyboardHandle {}

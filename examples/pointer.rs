@@ -4,7 +4,7 @@ extern crate wlroots;
 use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, CursorBuilder,
               InputManagerHandler, KeyEvent, Keyboard, KeyboardHandler, MotionEvent, Output,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, Pointer, PointerHandler, XCursor, XCursorTheme};
+              OutputManagerHandler, Pointer, PointerHandler, XCursorTheme};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
@@ -13,15 +13,15 @@ use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 struct State {
     color: [f32; 4],
     default_color: [f32; 4],
-    xcursor: XCursor,
+    xcursor_theme: XCursorTheme,
     layout: OutputLayout
 }
 
 impl State {
-    fn new(xcursor: XCursor, layout: OutputLayout) -> Self {
+    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout) -> Self {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
-                xcursor,
+                xcursor_theme,
                 layout }
     }
 }
@@ -45,7 +45,10 @@ impl OutputManagerHandler for OutputManager {
                              -> Option<OutputBuilderResult<'output>> {
         let result = builder.build_best_mode(ExOutput);
         let state: &mut State = compositor.into();
-        let image = &state.xcursor.images()[0];
+        let xcursor = state.xcursor_theme
+                           .get_cursor("left_ptr".into())
+                           .expect("Could not load left_ptr cursor");
+        let image = &xcursor.images()[0];
         // TODO use output config if present instead of auto
         state.layout.add_auto(result.output);
         let cursor = &mut state.layout.cursors()[0];
@@ -71,7 +74,7 @@ impl PointerHandler for ExPointer {
     fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
-        state.layout.cursors()[0].move_to(&event.device(), delta_x, delta_y);
+        state.layout.cursors()[0].move_to(event.device(), delta_x, delta_y);
     }
 
     fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &ButtonEvent) {
@@ -130,16 +133,11 @@ impl InputManagerHandler for InputManager {
 fn main() {
     init_logging(L_DEBUG, None);
     let cursor = CursorBuilder::new().expect("Could not create cursor");
-    let xcursor;
-    {
-        let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
-        xcursor = xcursor_theme.get_cursor("left_ptr".into())
-                               .expect("Could not load cursor from theme");
-    }
+    let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
     let mut layout = OutputLayout::new().expect("Could not construct an output layout");
 
     layout.attach_cursor(cursor);
-    let compositor = CompositorBuilder::new().build_auto(State::new(xcursor, layout),
+    let compositor = CompositorBuilder::new().build_auto(State::new(xcursor_theme, layout),
                                                          Box::new(InputManager),
                                                          Box::new(OutputManager));
     compositor.run();
