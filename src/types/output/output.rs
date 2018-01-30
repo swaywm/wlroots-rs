@@ -169,6 +169,19 @@ impl Output {
         }
     }
 
+    // TODO Could we pass an output mode from the wrong output here?
+    // What will happen?
+
+    /// Set this to be the current mode for the Output.
+    pub fn set_mode(&mut self, mode: OutputMode) {
+        unsafe { wlr_output_set_mode(self.output, mode.as_ptr()) }
+    }
+
+    /// Set a custom mode for this output.
+    pub fn set_custom_mode(&mut self, size: Size, refresh: i32) -> bool {
+        unsafe { wlr_output_set_custom_mode(self.output, size.width, size.height, refresh) }
+    }
+
     /// Gets the name of the output in UTF-8.
     pub fn name(&self) -> String {
         unsafe {
@@ -316,11 +329,6 @@ impl Output {
     /// Get the gamma size.
     pub fn get_gamma_size(&self) -> u32 {
         unsafe { wlr_output_get_gamma_size(self.output) }
-    }
-
-    /// Set a custom mode for this output.
-    pub fn set_custom_mode(&mut self, size: Size, refresh: i32) -> bool {
-        unsafe { wlr_output_set_custom_mode(self.output, size.width, size.height, refresh) }
     }
 
     /// Set the fullscreen surface for this output.

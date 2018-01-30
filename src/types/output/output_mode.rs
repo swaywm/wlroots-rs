@@ -12,6 +12,10 @@ impl OutputMode {
         OutputMode { output_mode }
     }
 
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output_mode {
+        self.output_mode
+    }
+
     /// Gets the flags set on this OutputMode.
     pub fn flags(&self) -> u32 {
         unsafe { (*self.output_mode).flags }
