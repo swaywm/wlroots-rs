@@ -11,12 +11,15 @@ use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective
                   wlr_output_enable, wlr_output_get_gamma_size, wlr_output_make_current,
                   wlr_output_mode, wlr_output_set_custom_mode, wlr_output_set_fullscreen_surface,
                   wlr_output_set_gamma, wlr_output_set_mode, wlr_output_set_position,
-                  wlr_output_set_scale, wlr_output_set_transform, wlr_output_swap_buffers};
+                  wlr_output_set_scale, wlr_output_set_transform, wlr_output_swap_buffers,
+                  wl_output_subpixel};
 
 use super::output_layout::OutputLayoutHandle;
 use super::output_mode::OutputMode;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
+
+pub type Subpixel = wl_output_subpixel;
 
 use {Origin, Size, Surface};
 
@@ -232,6 +235,11 @@ impl Output {
     /// Gets the output position in layout space reported to clients.
     pub fn layout_space_pos(&self) -> (i32, i32) {
         unsafe { ((*self.output).lx, (*self.output).ly) }
+    }
+
+    /// Get subpixel information about the output.
+    pub fn subpixel(&self) -> Subpixel {
+        unsafe { (*self.output).subpixel }
     }
 
     pub fn make_current(&mut self) {
