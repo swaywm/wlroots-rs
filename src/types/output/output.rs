@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use libc::c_float;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wl_output_transform, wlr_output, wlr_output_effective_resolution,
+use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
                   wlr_output_enable, wlr_output_get_gamma_size, wlr_output_make_current,
                   wlr_output_mode, wlr_output_set_custom_mode, wlr_output_set_fullscreen_surface,
                   wlr_output_set_gamma, wlr_output_set_mode, wlr_output_set_position,
@@ -152,15 +152,13 @@ impl Output {
     /// action in the output destruction callback.
     pub fn choose_best_mode(&mut self) {
         unsafe {
-            let modes = (*self.output).modes;
-            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                       wl_list_length,
-                                       &modes as *const _ as _);
+            let modes = &mut (*self.output).modes as *mut wl_list;
+            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_list_length, modes as _);
             if length > 0 {
                 // TODO Better logging
                 wlr_log!(L_DEBUG, "output added {:?}", self);
                 let first_mode_ptr: *mut wlr_output_mode;
-                first_mode_ptr = container_of!(&mut (*modes.prev) as *mut _, wlr_output_mode, link);
+                first_mode_ptr = container_of!(&mut (*(*modes).prev) as *mut _, wlr_output_mode, link);
                 wlr_output_set_mode(self.as_ptr(), first_mode_ptr);
             }
         }
