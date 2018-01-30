@@ -64,6 +64,18 @@ impl XCursorTheme {
         unsafe { (*self.theme).cursor_count }
     }
 
+    /// Gets all the cursors from this theme.
+    pub fn cursors<'theme>(&'theme mut self) -> Vec<XCursor<'theme>> {
+        unsafe {
+            let cursor_ptr = (*self.theme).cursors as *const *mut wlr_xcursor;
+            let length = self.cursor_count() as usize;
+            let xcursors_slice: &'theme [*mut wlr_xcursor] =
+                slice::from_raw_parts::<'theme, *mut wlr_xcursor>(cursor_ptr, length);
+            xcursors_slice.into_iter().map(|&xcursor|XCursor { xcursor, phantom: PhantomData })
+                .collect()
+        }
+    }
+
     /// Get the cursor with the provided name, if it exists.
     pub fn get_cursor<'theme>(&'theme self, name: String) -> Option<XCursor<'theme>> {
         let name_str = safe_as_cstring(name);
