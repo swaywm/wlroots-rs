@@ -214,6 +214,11 @@ impl Output {
         unsafe { (*self.output).needs_swap }
     }
 
+    /// Get the refresh rate of the output.
+    pub fn refresh_rate(&self) -> i32 {
+        unsafe { (*self.output).refresh }
+    }
+
     pub fn current_mode(&self) -> Option<OutputMode> {
         unsafe {
             if (*self.output).current_mode.is_null() {
