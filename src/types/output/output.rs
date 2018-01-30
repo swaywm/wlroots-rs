@@ -7,12 +7,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use libc::c_float;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
-                  wlr_output_enable, wlr_output_get_gamma_size, wlr_output_make_current,
-                  wlr_output_mode, wlr_output_set_custom_mode, wlr_output_set_fullscreen_surface,
-                  wlr_output_set_gamma, wlr_output_set_mode, wlr_output_set_position,
-                  wlr_output_set_scale, wlr_output_set_transform, wlr_output_swap_buffers,
-                  wl_output_subpixel};
+use wlroots_sys::{wl_list, wl_output_subpixel, wl_output_transform, wlr_output,
+                  wlr_output_effective_resolution, wlr_output_enable, wlr_output_get_gamma_size,
+                  wlr_output_make_current, wlr_output_mode, wlr_output_set_custom_mode,
+                  wlr_output_set_fullscreen_surface, wlr_output_set_gamma, wlr_output_set_mode,
+                  wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
+                  wlr_output_swap_buffers};
 
 use super::output_layout::OutputLayoutHandle;
 use super::output_mode::OutputMode;
@@ -20,6 +20,7 @@ use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
 
 pub type Subpixel = wl_output_subpixel;
+pub type Transform = wl_output_transform;
 
 use {Origin, Size, Surface};
 
@@ -161,7 +162,8 @@ impl Output {
                 // TODO Better logging
                 wlr_log!(L_DEBUG, "output added {:?}", self);
                 let first_mode_ptr: *mut wlr_output_mode;
-                first_mode_ptr = container_of!(&mut (*(*modes).prev) as *mut _, wlr_output_mode, link);
+                first_mode_ptr =
+                    container_of!(&mut (*(*modes).prev) as *mut _, wlr_output_mode, link);
                 wlr_output_set_mode(self.as_ptr(), first_mode_ptr);
             }
         }
@@ -242,6 +244,11 @@ impl Output {
         unsafe { (*self.output).subpixel }
     }
 
+    /// Get the transform information about the output.
+    pub fn get_transform(&self) -> Transform {
+        unsafe { (*self.output).transform }
+    }
+
     pub fn make_current(&mut self) {
         unsafe { wlr_output_make_current(self.output) }
     }
@@ -272,7 +279,7 @@ impl Output {
         unsafe { (*self.output).transform_matrix }
     }
 
-    pub fn transform(&mut self, transform: wl_output_transform) {
+    pub fn transform(&mut self, transform: Transform) {
         unsafe {
             wlr_output_set_transform(self.output, transform);
         }

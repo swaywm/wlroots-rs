@@ -71,8 +71,12 @@ impl XCursorTheme {
             let length = self.cursor_count() as usize;
             let xcursors_slice: &'theme [*mut wlr_xcursor] =
                 slice::from_raw_parts::<'theme, *mut wlr_xcursor>(cursor_ptr, length);
-            xcursors_slice.into_iter().map(|&xcursor|XCursor { xcursor, phantom: PhantomData })
-                .collect()
+            xcursors_slice.into_iter()
+                          .map(|&xcursor| {
+                                   XCursor { xcursor,
+                                             phantom: PhantomData }
+                               })
+                          .collect()
         }
     }
 
