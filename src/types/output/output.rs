@@ -173,7 +173,7 @@ impl Output {
     // What will happen?
 
     /// Set this to be the current mode for the Output.
-    pub fn set_mode(&mut self, mode: OutputMode) {
+    pub fn set_mode(&mut self, mode: OutputMode) -> bool {
         unsafe { wlr_output_set_mode(self.output, mode.as_ptr()) }
     }
 
