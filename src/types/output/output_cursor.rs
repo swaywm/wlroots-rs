@@ -94,6 +94,37 @@ impl OutputCursor {
             }
         }
     }
+
+    /// Get the coordinates of the cursor.
+    ///
+    /// Returned value is in (x, y) format.
+    pub fn coords(&self) -> (f64, f64) {
+        unsafe { ((*self.cursor).x, (*self.cursor).y) }
+    }
+
+    /// Determines if the hardware cursor is enabled or not.
+    pub fn enabled(&self) -> bool {
+        unsafe { (*self.cursor).enabled }
+    }
+
+    /// Determines if the hardware cursor is visible or not.
+    pub fn visible(&self) -> bool {
+        unsafe { (*self.cursor).visible }
+    }
+
+    /// Gets the width and height of the hardware cursor.
+    ///
+    /// Returned value is in (width, height) format.
+    pub fn size(&self) -> (u32, u32) {
+        unsafe { ((*self.cursor).width, (*self.cursor).height) }
+    }
+
+    /// Gets the hotspot coordinates of the hardware cursor.
+    ///
+    /// Returned value is in (x, y) coordinates.
+    pub fn hotspots(&self) -> (i32, i32) {
+        unsafe { ((*self.cursor).hotspot_x, (*self.cursor).hotspot_y) }
+    }
 }
 
 impl Drop for OutputCursor {
