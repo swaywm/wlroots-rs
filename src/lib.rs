@@ -49,7 +49,8 @@ pub use self::compositor::{terminate, Compositor, CompositorBuilder};
 pub use self::events::key_events::*;
 pub use self::events::pointer_events::*;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
-                        OutputHandler, OutputManagerHandler, PointerHandler};
+                        OutputHandler, OutputManagerHandler, PointerHandler, WlShellHandler,
+                        WlShellManagerHandler};
 pub use self::types::area::*;
 pub use self::types::cursor::*;
 pub use self::types::input_device::*;
@@ -58,6 +59,7 @@ pub use self::types::output::output::*;
 pub use self::types::output::output_layout::*;
 pub use self::types::pointer::*;
 pub use self::types::seat::*;
+pub use self::types::shell::*;
 pub use self::types::surface::*;
 
 pub use self::errors::*;

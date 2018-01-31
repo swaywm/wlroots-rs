@@ -1,10 +1,13 @@
 #[macro_use]
 extern crate wlroots;
 
+use std::process::Command;
+
 use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, CursorBuilder,
               InputManagerHandler, KeyEvent, Keyboard, KeyboardHandler, MotionEvent, Output,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, Pointer, PointerHandler, XCursorTheme};
+              OutputManagerHandler, Pointer, PointerHandler, WlShellHandler,
+              WlShellManagerHandler, WlShellSurface, XCursorTheme};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
@@ -27,6 +30,19 @@ impl State {
 }
 
 compositor_data!(State);
+
+struct WlShellHandlerEx;
+struct WlShellManager;
+
+impl WlShellHandler for WlShellHandlerEx {}
+impl WlShellManagerHandler for WlShellManager {
+    fn new_surface(&mut self,
+                   _: &mut Compositor,
+                   _: &mut WlShellSurface)
+                   -> Option<Box<WlShellHandler>> {
+        Some(Box::new(WlShellHandlerEx))
+    }
+}
 
 struct OutputManager;
 
@@ -65,6 +81,10 @@ impl KeyboardHandler for ExKeyboardHandler {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
                 compositor.terminate()
+            }
+            // TODO This is a dumb way to compare these values
+            else if key_event.key_state() as u32 == 1 {
+                Command::new("simple_window").spawn().unwrap();
             }
         }
     }
@@ -137,9 +157,10 @@ fn main() {
     let mut layout = OutputLayout::new().expect("Could not construct an output layout");
 
     layout.attach_cursor(cursor);
-    let compositor = CompositorBuilder::new().build_auto(State::new(xcursor_theme, layout),
+    let compositor = CompositorBuilder::new().gles2(true)
+                                             .build_auto(State::new(xcursor_theme, layout),
                                                          Some(Box::new(InputManager)),
                                                          Some(Box::new(OutputManager)),
-                                                         None);
+                                                         Some(Box::new(WlShellManager)));
     compositor.run();
 }

@@ -162,11 +162,11 @@ fn main() {
         WL_OUTPUT_TRANSFORM_NORMAL
     };
     let compositor_state = CompositorState::new(rotation);
-    let input_manager = Box::new(InputManager);
-    let output_manager = Box::new(OutputManager);
-    let mut compositor =
-        CompositorBuilder::new().gles2(true)
-                                .build_auto(compositor_state, input_manager, output_manager);
+    let mut compositor = CompositorBuilder::new().gles2(true)
+                                                 .build_auto(compositor_state,
+                                                             Some(Box::new(InputManager)),
+                                                             Some(Box::new(OutputManager)),
+                                                             None);
     {
         let gles2 = &mut compositor.gles2.as_mut().unwrap();
         let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
