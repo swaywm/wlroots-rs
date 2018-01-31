@@ -5,13 +5,24 @@ use std::ffi::CStr;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use libc::c_float;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wl_list, wl_output_transform, wlr_output, wlr_output_effective_resolution,
-                  wlr_output_events, wlr_output_make_current, wlr_output_mode,
-                  wlr_output_set_mode, wlr_output_set_transform, wlr_output_swap_buffers};
+use wlroots_sys::{wl_list, wl_output_subpixel, wl_output_transform, wlr_output,
+                  wlr_output_effective_resolution, wlr_output_enable, wlr_output_get_gamma_size,
+                  wlr_output_make_current, wlr_output_mode, wlr_output_set_custom_mode,
+                  wlr_output_set_fullscreen_surface, wlr_output_set_gamma, wlr_output_set_mode,
+                  wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
+                  wlr_output_swap_buffers};
 
 use super::output_layout::OutputLayoutHandle;
+use super::output_mode::OutputMode;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use utils::c_to_rust_string;
+
+pub type Subpixel = wl_output_subpixel;
+pub type Transform = wl_output_transform;
+
+use {Origin, Size, Surface};
 
 struct OutputState {
     handle: Weak<AtomicBool>,
@@ -145,17 +156,30 @@ impl Output {
     /// action in the output destruction callback.
     pub fn choose_best_mode(&mut self) {
         unsafe {
-            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_list_length, self.modes() as _);
+            let modes = &mut (*self.output).modes as *mut wl_list;
+            let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_list_length, modes as _);
             if length > 0 {
                 // TODO Better logging
                 wlr_log!(L_DEBUG, "output added {:?}", self);
                 let first_mode_ptr: *mut wlr_output_mode;
-                first_mode_ptr = container_of!(&mut (*(*self.modes()).prev) as *mut _,
-                                               wlr_output_mode,
-                                               link);
+                first_mode_ptr =
+                    container_of!(&mut (*(*modes).prev) as *mut _, wlr_output_mode, link);
                 wlr_output_set_mode(self.as_ptr(), first_mode_ptr);
             }
         }
+    }
+
+    // TODO Could we pass an output mode from the wrong output here?
+    // What will happen?
+
+    /// Set this to be the current mode for the Output.
+    pub fn set_mode(&mut self, mode: OutputMode) -> bool {
+        unsafe { wlr_output_set_mode(self.output, mode.as_ptr()) }
+    }
+
+    /// Set a custom mode for this output.
+    pub fn set_custom_mode(&mut self, size: Size, refresh: i32) -> bool {
+        unsafe { wlr_output_set_custom_mode(self.output, size.width, size.height, refresh) }
     }
 
     /// Gets the name of the output in UTF-8.
@@ -169,17 +193,78 @@ impl Output {
     /// Gets the make of the output in UTF-8.
     pub fn make(&self) -> String {
         unsafe {
-            CStr::from_ptr((*self.output).make.as_ptr()).to_string_lossy()
-                                                        .into_owned()
+            c_to_rust_string((*self.output).make.as_ptr()).expect("Could not parse make as UTF-8")
         }
     }
 
     /// Gets the model of the output in UTF-8.
     pub fn model(&self) -> String {
         unsafe {
-            CStr::from_ptr((*self.output).model.as_ptr()).to_string_lossy()
-                                                         .into_owned()
+            c_to_rust_string((*self.output).model.as_ptr()).expect("Could not parse model as UTF-8")
         }
+    }
+
+    /// Gets the serial of the output in UTF-8.
+    pub fn serial(&self) -> String {
+        unsafe {
+            c_to_rust_string((*self.output).serial.as_ptr()).expect("Could not parse serial as \
+                                                                     UTF-8")
+        }
+    }
+
+    /// Determines if the output is enabled or not.
+    pub fn enabled(&self) -> bool {
+        unsafe { (*self.output).enabled }
+    }
+
+    /// Get the scale of the output
+    pub fn scale(&self) -> c_float {
+        unsafe { (*self.output).scale }
+    }
+
+    /// Determines if the output should have its buffers swapped or not.
+    pub fn needs_swap(&self) -> bool {
+        unsafe { (*self.output).needs_swap }
+    }
+
+    /// Get the refresh rate of the output.
+    pub fn refresh_rate(&self) -> i32 {
+        unsafe { (*self.output).refresh }
+    }
+
+    pub fn current_mode(&self) -> Option<OutputMode> {
+        unsafe {
+            if (*self.output).current_mode.is_null() {
+                None
+            } else {
+                Some(OutputMode::new((*self.output).current_mode))
+            }
+        }
+    }
+
+    pub fn fullscreen_surface(&self) -> Option<Surface> {
+        unsafe {
+            if (*self.output).fullscreen_surface.is_null() {
+                None
+            } else {
+                Some(Surface::from_ptr((*self.output).fullscreen_surface))
+            }
+        }
+    }
+
+    /// Gets the output position in layout space reported to clients.
+    pub fn layout_space_pos(&self) -> (i32, i32) {
+        unsafe { ((*self.output).lx, (*self.output).ly) }
+    }
+
+    /// Get subpixel information about the output.
+    pub fn subpixel(&self) -> Subpixel {
+        unsafe { (*self.output).subpixel }
+    }
+
+    /// Get the transform information about the output.
+    pub fn get_transform(&self) -> Transform {
+        unsafe { (*self.output).transform }
     }
 
     pub fn make_current(&mut self) {
@@ -208,24 +293,57 @@ impl Output {
         }
     }
 
-    pub fn transform_matrix(&self) -> [f32; 16] {
+    pub fn transform_matrix(&self) -> [c_float; 16] {
         unsafe { (*self.output).transform_matrix }
     }
 
-    pub fn transform(&mut self, transform: wl_output_transform) {
+    pub fn transform(&mut self, transform: Transform) {
         unsafe {
             wlr_output_set_transform(self.output, transform);
         }
     }
 
-    /// TODO Make safe
-    pub unsafe fn modes(&self) -> *mut wl_list {
-        &mut (*self.output).modes
+    /// Get the modes associated with this output.
+    ///
+    /// Note that some backends may have zero modes.
+    pub fn modes(&self) -> Vec<OutputMode> {
+        unsafe {
+            let mut result = vec![];
+            wl_list_for_each!((*self.output).modes, link, (mode: wlr_output_mode) => {
+                result.push(OutputMode::new(mode))
+            });
+            result
+        }
     }
 
-    /// TODO Make safe
-    pub unsafe fn events(&self) -> wlr_output_events {
-        (*self.output).events
+    /// Enables or disables an output.
+    pub fn enable(&mut self, enable: bool) {
+        unsafe { wlr_output_enable(self.output, enable) }
+    }
+
+    /// Sets the gamma based on the size.
+    pub fn set_gamma(&mut self, size: u32, mut r: u16, mut g: u16, mut b: u16) {
+        unsafe { wlr_output_set_gamma(self.output, size, &mut r, &mut g, &mut b) }
+    }
+
+    /// Get the gamma size.
+    pub fn get_gamma_size(&self) -> u32 {
+        unsafe { wlr_output_get_gamma_size(self.output) }
+    }
+
+    /// Set the fullscreen surface for this output.
+    pub fn set_fullscreen_surface(&mut self, surface: Surface) {
+        unsafe { wlr_output_set_fullscreen_surface(self.output, surface.as_ptr()) }
+    }
+
+    /// Sets the position of this output.
+    pub fn set_position(&mut self, origin: Origin) {
+        unsafe { wlr_output_set_position(self.output, origin.x, origin.y) }
+    }
+
+    /// Set the scale applied to this output.
+    pub fn set_scale(&mut self, scale: c_float) {
+        unsafe { wlr_output_set_scale(self.output, scale) }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {

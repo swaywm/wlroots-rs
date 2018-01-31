@@ -62,7 +62,7 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl OutputHandler for ExOutput {
-    fn output_frame(&mut self, _: &mut Compositor, output: &mut Output) {
+    fn on_frame(&mut self, _: &mut Compositor, output: &mut Output) {
         let now = Instant::now();
         let delta = now.duration_since(self.last_frame);
         let seconds_delta = delta.as_secs();

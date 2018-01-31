@@ -103,7 +103,7 @@ impl PointerHandler for ExPointer {
 }
 
 impl OutputHandler for ExOutput {
-    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
+    fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
         let state: &mut State = compositor.into();
         output.make_current();
         unsafe {

@@ -171,12 +171,17 @@ impl Cursor {
 
     /// Attaches this cursor to the given output, which must be among the outputs in
     /// the current output_layout for this cursor.
-    pub fn map_to_output(&mut self, output: &Output) {
-        if !self.output_in_output_layout(output.weak_reference()) {
-            wlr_log!(L_ERROR, "Tried to map output not in the OutputLayout");
-            return
+    pub fn map_to_output(&mut self, output: Option<&Output>) {
+        match output {
+            None => unsafe { wlr_cursor_map_to_output(self.cursor, ptr::null_mut()) },
+            Some(output) => {
+                if !self.output_in_output_layout(output.weak_reference()) {
+                    wlr_log!(L_ERROR, "Tried to map output not in the OutputLayout");
+                    return
+                }
+                unsafe { wlr_cursor_map_to_output(self.cursor, output.as_ptr()) }
+            }
         }
-        unsafe { wlr_cursor_map_to_output(self.cursor, output.as_ptr()) }
     }
 
     /// Maps all input from a specific input device to a given output.

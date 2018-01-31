@@ -78,7 +78,7 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl OutputHandler for ExOutput {
-    fn output_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
+    fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
         let (width, height) = output.effective_resolution();
         let renderer = compositor.gles2
                                  .as_mut()

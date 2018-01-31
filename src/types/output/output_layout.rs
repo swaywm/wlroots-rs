@@ -1,18 +1,21 @@
 //! TODO Documentation
 
-use std::panic;
+use std::marker::PhantomData;
+use std::{ptr, panic};
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::marker::PhantomData;
 
 use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resolution,
                   wlr_output_layout, wlr_output_layout_add, wlr_output_layout_add_auto,
-                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_move,
-                  wlr_output_layout_output, wlr_output_layout_remove};
+                  wlr_output_layout_closest_point, wlr_output_layout_contains_point,
+                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_get_box,
+                  wlr_output_layout_get_center_output, wlr_output_layout_intersects,
+                  wlr_output_layout_move, wlr_output_layout_output,
+                  wlr_output_layout_output_coords, wlr_output_layout_remove};
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
-use {Cursor, CursorBuilder, Origin, Output, OutputHandle};
+use {Area, Cursor, CursorBuilder, Origin, Output, OutputHandle};
 
 #[derive(Debug)]
 pub struct OutputLayout {
@@ -135,6 +138,67 @@ impl OutputLayout {
         unsafe { wlr_output_layout_move(self.layout, output.as_ptr(), x, y) }
     }
 
+    /// Get the closest point on this layout from the given point from the reference
+    /// output.
+    ///
+    /// If reference is None, gets the closest point from the entire layout.
+    ///
+    /// Returns the closest point in the format (x, y)
+    pub fn closest_point<'this, O>(&mut self, reference: O, x: f64, y: f64) -> (f64, f64)
+        where O: Into<Option<&'this mut Output>> {
+        unsafe {
+            let output_ptr = reference.into().map(|output| output.as_ptr()).unwrap_or(ptr::null_mut());
+            let (ref mut out_x, ref mut out_y) = (0.0, 0.0);
+            wlr_output_layout_closest_point(self.layout, output_ptr, x, y, out_x, out_y);
+            (*out_x, *out_y)
+        }
+    }
+
+    /// Determines if the `OutputLayout` contains the `Output` at the given point.
+    pub fn contains_point(&mut self, output: &mut Output, origin: Origin) -> bool {
+        unsafe {
+            wlr_output_layout_contains_point(self.layout, output.as_ptr(), origin.x, origin.y)
+        }
+    }
+
+    /// Get the box of the layout for the given reference output.
+    ///
+    /// If `reference` is None, the box will be for the extents of the entire layout.
+    pub fn get_box<'this, O>(&mut self, reference: O) -> Area where O: Into<Option<&'this mut Output>> {
+        unsafe {
+            let output_ptr = reference.into().map(|output| output.as_ptr()).unwrap_or(ptr::null_mut());
+            Area(*wlr_output_layout_get_box(self.layout, output_ptr))
+        }
+    }
+
+    /// Get the output closest to the center of the layout extents, if one exists.
+    pub fn get_center_output(&mut self) -> Option<OutputHandle> {
+        unsafe {
+            let output = wlr_output_layout_get_center_output(self.layout);
+            if output.is_null() {
+                None
+            } else {
+                Some(OutputHandle::from_ptr(output))
+            }
+        }
+    }
+
+    /// Determines if the `Output` in the `OutputLayout` intersects with
+    /// the provided `Area`.
+    pub fn intersects(&mut self, output: &mut Output, area: Area) -> bool {
+        unsafe {
+            wlr_output_layout_intersects(self.layout, output.as_ptr(), &area.0)
+        }
+    }
+
+    /// Given x and y as pointers to global coordinates, adjusts them to local output
+    /// coordinates relative to the given reference output.
+    pub fn output_coords(&mut self, output: &mut Output, x: &mut f64, y: &mut f64) {
+        unsafe {
+            wlr_output_layout_output_coords(self.layout, output.as_ptr(), x, y)
+        }
+    }
+
     /// Remove an output from this layout.
     ///
     /// If the output was not in the layout, does nothing.
@@ -246,7 +310,7 @@ impl OutputLayoutHandle {
     }
 }
 
-impl <'output> OutputLayoutOutput<'output> {
+impl<'output> OutputLayoutOutput<'output> {
     /// Get the absolute top left edge coordinate of this output in the output
     /// layout.
     pub fn top_left_edge(&self) -> Origin {
