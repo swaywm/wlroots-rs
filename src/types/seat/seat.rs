@@ -80,9 +80,7 @@ impl Seat {
 
     /// Gets the capabilities of this seat.
     pub fn capabilities(&self) -> Capability {
-        unsafe {
-            Capability::from_raw((*self.seat).capabilities).expect("Invalid capabilities")
-        }
+        unsafe { Capability::from_raw((*self.seat).capabilities).expect("Invalid capabilities") }
     }
 
     /// Updates the capabilities available on this seat.
@@ -415,9 +413,7 @@ impl Seat {
     /// Compositors should use `Seat::touch_notify_motion()` to
     /// respect any grabs of the touch device.
     pub fn touch_send_motion(&mut self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
-        unsafe {
-            wlr_seat_touch_send_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy)
-        }
+        unsafe { wlr_seat_touch_send_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy) }
     }
 
     // TODO Should this be returning a u32? Should I wrap whatever that number is?
@@ -454,9 +450,7 @@ impl Seat {
     /// The seat should be notified of touch motion even if the surface is
     /// not the owner of the touch point for processing by grabs.
     pub fn touch_notify_motion(&mut self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
-        unsafe {
-            wlr_seat_touch_notify_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy)
-        }
+        unsafe { wlr_seat_touch_notify_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy) }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_seat {

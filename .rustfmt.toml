@@ -10,7 +10,6 @@ wrap_comments = true
 use_try_shorthand = true
 max_width = 100
 trailing_comma = "Never"
-same_line_attributes = true
 condense_wildcard_suffixes = true
 error_on_line_overflow = true
 force_explicit_abi = true

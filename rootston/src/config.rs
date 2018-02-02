@@ -216,9 +216,8 @@ impl BindingConfig {
             match modifier {
                 0 => {
                     // FIXME Unsafe, though maybe this is such an edge case it shouldn't matter...
-                    let sym = unsafe {
-                        xkb_keysym_from_name(symname.as_ptr(), XKB_KEYSYM_NO_FLAGS)
-                    };
+                    let sym =
+                        unsafe { xkb_keysym_from_name(symname.as_ptr(), XKB_KEYSYM_NO_FLAGS) };
                     if sym == KEY_NoSymbol {
                         return Err(ParseError::BadParse(format!("got unknown key binding \
                                                                  symbol: {:?}",

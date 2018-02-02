@@ -172,9 +172,7 @@ impl Keyboard {
 
     /// Get the modifiers that are currently pressed on the keyboard.
     pub fn get_modifiers(&self) -> KeyboardModifier {
-        unsafe {
-            KeyboardModifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard))
-        }
+        unsafe { KeyboardModifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard)) }
     }
 
     /// Get the modifier masks for each group.

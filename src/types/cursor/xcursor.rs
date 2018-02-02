@@ -83,8 +83,7 @@ impl XCursorTheme {
     /// Get the cursor with the provided name, if it exists.
     pub fn get_cursor<'theme>(&'theme self, name: String) -> Option<XCursor<'theme>> {
         let name_str = safe_as_cstring(name);
-        let xcursor =
-            unsafe { wlr_xcursor_theme_get_cursor(self.theme, name_str.as_ptr()) };
+        let xcursor = unsafe { wlr_xcursor_theme_get_cursor(self.theme, name_str.as_ptr()) };
         if xcursor.is_null() {
             None
         } else {
