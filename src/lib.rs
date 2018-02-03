@@ -46,7 +46,7 @@ pub mod render;
 pub mod utils;
 
 pub use self::compositor::{terminate, Compositor, CompositorBuilder};
-pub use self::events::{key_events, pointer_events};
+pub use self::events::{key_events, pointer_events, wl_shell_events};
 pub use key_events::Key;
 pub use pointer_events::ButtonState;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,

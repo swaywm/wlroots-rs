@@ -5,6 +5,7 @@ use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
 use WlShellSurface;
 use compositor::{Compositor, COMPOSITOR_PTR};
+use wl_shell_events::{MoveEvent, ResizeEvent, FullscreenEvent, MaximizeEvent};
 
 /// Handles events from client Wayland shells.
 pub trait WlShellHandler {
@@ -16,24 +17,24 @@ pub trait WlShellHandler {
     fn ping_timeout(&mut self, &mut Compositor, &mut WlShellSurface) {}
 
     /// Called when there is a request to move the shell surface somewhere else.
-    fn move_request(&mut self, &mut Compositor, &mut WlShellSurface /* TODO Move event */) {}
+    fn move_request(&mut self, &mut Compositor, &mut WlShellSurface, &mut MoveEvent) {}
 
     /// Called when there is a request to resize the shell surface.
     fn resize_request(&mut self,
                       &mut Compositor,
-                      &mut WlShellSurface /* TODO resize event */) {
+                      &mut WlShellSurface, &mut ResizeEvent) {
     }
 
     /// Called when there is a request to make the shell surface fullscreen.
     fn fullscreen_request(&mut self,
                           &mut Compositor,
-                          &mut WlShellSurface /* TODO Fullscreen event */) {
+                          &mut WlShellSurface, &mut FullscreenEvent) {
     }
 
     /// Called when there is a request to make the shell surface maximized.
     fn maximize_request(&mut self,
                         &mut Compositor,
-                        &mut WlShellSurface /* TODO Maximize request */) {
+                        &mut WlShellSurface, &mut MaximizeEvent) {
     }
 
     /// Called when there is a request to change the state of the Wayland shell.
@@ -93,39 +94,43 @@ wayland_listener!(WlShell, (WlShellSurface, Box<WlShellHandler>), [
         manager.ping_timeout(compositor, shell_surface);
         shell_surface.set_lock(false);
     };
-    request_move_listener => request_move_notify: |this: &mut WlShell, _data: *mut libc::c_void,|
+    request_move_listener => request_move_notify: |this: &mut WlShell, data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+        let mut event = MoveEvent::from_ptr(data as _);
         shell_surface.set_lock(true);
-        manager.move_request(compositor, shell_surface);
+        manager.move_request(compositor, shell_surface, &mut event);
         shell_surface.set_lock(false);
     };
     request_resize_listener => request_resize_notify: |this: &mut WlShell,
-                                                       _data: *mut libc::c_void,|
+                                                       data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+        let mut event = ResizeEvent::from_ptr(data as _);
         shell_surface.set_lock(true);
-        manager.resize_request(compositor, shell_surface);
+        manager.resize_request(compositor, shell_surface, &mut event);
         shell_surface.set_lock(false);
     };
     request_fullscreen_listener => request_fullscreen_notify: |this: &mut WlShell,
-                                                               _data: *mut libc::c_void,|
+                                                               data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+        let mut event = FullscreenEvent::from_ptr(data as _);
         shell_surface.set_lock(true);
-        manager.fullscreen_request(compositor, shell_surface);
+        manager.fullscreen_request(compositor, shell_surface, &mut event);
         shell_surface.set_lock(false);
     };
     request_maximize_listener => request_maximize_notify: |this: &mut WlShell,
-                                                           _data: *mut libc::c_void,|
+                                                           data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+        let mut event = MaximizeEvent::from_ptr(data as _);
         shell_surface.set_lock(true);
-        manager.maximize_request(compositor, shell_surface);
+        manager.maximize_request(compositor, shell_surface, &mut event);
         shell_surface.set_lock(false);
     };
     set_state_listener => set_state_notify: |this: &mut WlShell, _data: *mut libc::c_void,|
