@@ -3,11 +3,13 @@ extern crate wlroots;
 
 use std::process::Command;
 
-use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, CursorBuilder,
-              InputManagerHandler, KeyEvent, Keyboard, KeyboardHandler, MotionEvent, Output,
+use wlroots::{Compositor, CompositorBuilder, CursorBuilder,
+              InputManagerHandler, Keyboard, KeyboardHandler, Output,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
               OutputManagerHandler, Pointer, PointerHandler, WlShellHandler,
               WlShellManagerHandler, WlShellSurface, XCursorTheme};
+use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
+use wlroots::key_events::{KeyEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;

@@ -85,6 +85,12 @@ wayland_listener!(WlShell, (WlShellSurface, Box<WlShellHandler>), [
         ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                       wl_list_remove,
                       &mut (*this.set_class_listener()).link as *mut _ as _);
+        let shell_ptr = this as *mut _;
+        drop(this);
+        // Destroy the WlShell data. This is necessary because WlShellManager doesn't
+        // have an event to listen to Wayland shell destruction.
+        // NOTE **DO NOT** use `this` after this line.
+        let _ = Box::from_raw(shell_ptr);
     };
     ping_timeout_listener => ping_timeout_notify: |this: &mut WlShell, _data: *mut libc::c_void,|
     unsafe {

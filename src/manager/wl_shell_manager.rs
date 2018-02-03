@@ -59,7 +59,7 @@ wayland_listener!(WlShellManager, Box<WlShellManagerHandler>, [
             wl_signal_add(&mut (*data).events.set_class as *mut _ as _,
                           shell_surface.set_class_listener() as _);
 
-            // TODO Shouldn't we try to clean this up somehow?
+            // NOTE This is cleaned up in the wl_shell_handler::destroy signal.
             ::std::mem::forget(shell_surface);
         }
     };
