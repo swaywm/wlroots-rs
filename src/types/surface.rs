@@ -126,7 +126,7 @@ impl Surface {
     }
 
     /// Send the frame done event.
-    pub fn send_frame_done<D>(&mut self, duration: Duration) {
+    pub fn send_frame_done(&mut self, duration: Duration) {
         unsafe {
             // FIXME
             // This is converting from a u64 -> i64
