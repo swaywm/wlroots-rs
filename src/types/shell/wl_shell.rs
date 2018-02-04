@@ -9,6 +9,7 @@ use wlroots_sys::{wl_shell_surface_resize, wlr_wl_shell_surface, wlr_wl_shell_su
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
+use SurfaceHandle;
 
 pub type WlShellSurfaceResize = wl_shell_surface_resize;
 
@@ -42,6 +43,14 @@ impl WlShellSurface {
     unsafe fn from_handle(handle: &WlShellSurfaceHandle) -> Self {
         WlShellSurface { liveliness: None,
                          shell_surface: handle.as_ptr() }
+    }
+
+    /// Gets the surface used by this Wayland shell.
+    ///
+    /// Returns `None` if the surface was NULL. This shouldn't happen but...
+    /// hey better a panic then a segfault right?
+    pub fn surface(&mut self) -> Option<SurfaceHandle> {
+        unsafe { SurfaceHandle::from_ptr((*self.shell_surface).surface) }
     }
 
     /// Determines if this Wayland shell surface has been configured or not.

@@ -46,10 +46,8 @@ wayland_listener!(WlShell, (WlShellSurface, Surface, Box<WlShellHandler>), [
             let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
             let compositor = &mut *COMPOSITOR_PTR;
             shell_surface.set_lock(true);
-            surface.set_lock(true);
             manager.destroy(compositor, shell_surface);
             shell_surface.set_lock(false);
-            surface.set_lock(false);
         }
         ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                       wl_list_remove,
@@ -90,10 +88,8 @@ wayland_listener!(WlShell, (WlShellSurface, Surface, Box<WlShellHandler>), [
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         shell_surface.set_lock(true);
-        surface.set_lock(true);
         manager.ping_timeout(compositor, shell_surface);
         shell_surface.set_lock(false);
-        surface.set_lock(false);
     };
     request_move_listener => request_move_notify: |this: &mut WlShell, data: *mut libc::c_void,|
     unsafe {
@@ -101,10 +97,8 @@ wayland_listener!(WlShell, (WlShellSurface, Surface, Box<WlShellHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let mut event = MoveEvent::from_ptr(data as _);
         shell_surface.set_lock(true);
-        surface.set_lock(true);
         manager.move_request(compositor, shell_surface, &mut event);
         shell_surface.set_lock(false);
-        surface.set_lock(false);
     };
     request_resize_listener => request_resize_notify: |this: &mut WlShell,
                                                        data: *mut libc::c_void,|
@@ -113,10 +107,8 @@ wayland_listener!(WlShell, (WlShellSurface, Surface, Box<WlShellHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let mut event = ResizeEvent::from_ptr(data as _);
         shell_surface.set_lock(true);
-        surface.set_lock(true);
         manager.resize_request(compositor, shell_surface, &mut event);
         shell_surface.set_lock(false);
-        surface.set_lock(false);
     };
     request_fullscreen_listener => request_fullscreen_notify: |this: &mut WlShell,
                                                                data: *mut libc::c_void,|
@@ -125,10 +117,8 @@ wayland_listener!(WlShell, (WlShellSurface, Surface, Box<WlShellHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let mut event = FullscreenEvent::from_ptr(data as _);
         shell_surface.set_lock(true);
-        surface.set_lock(true);
         manager.fullscreen_request(compositor, shell_surface, &mut event);
         shell_surface.set_lock(false);
-        surface.set_lock(false);
     };
     request_maximize_listener => request_maximize_notify: |this: &mut WlShell,
                                                            data: *mut libc::c_void,|
@@ -137,39 +127,31 @@ wayland_listener!(WlShell, (WlShellSurface, Surface, Box<WlShellHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let mut event = MaximizeEvent::from_ptr(data as _);
         shell_surface.set_lock(true);
-        surface.set_lock(true);
         manager.maximize_request(compositor, shell_surface, &mut event);
         shell_surface.set_lock(false);
-        surface.set_lock(false);
     };
     set_state_listener => set_state_notify: |this: &mut WlShell, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         shell_surface.set_lock(true);
-        surface.set_lock(true);
         manager.state_change(compositor, shell_surface);
         shell_surface.set_lock(false);
-        surface.set_lock(false);
     };
     set_title_listener => set_title_notify: |this: &mut WlShell, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         shell_surface.set_lock(true);
-        surface.set_lock(true);
         manager.title_change(compositor, shell_surface);
         shell_surface.set_lock(false);
-        surface.set_lock(false);
     };
     set_class_listener => set_class_notify: |this: &mut WlShell, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         shell_surface.set_lock(true);
-        surface.set_lock(true);
         manager.class_change(compositor, shell_surface);
         shell_surface.set_lock(false);
-        surface.set_lock(false);
     };
 ]);
