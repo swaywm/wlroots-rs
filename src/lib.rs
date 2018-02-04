@@ -9,17 +9,10 @@
 //! ```rust,no_run
 //! extern crate wlroots;
 //!
-//! struct InputManager;
-//! struct OutputManager;
-//!
-//! impl wlroots::OutputManagerHandler for OutputManager {}
-//! impl wlroots::InputManagerHandler for InputManager {}
-//!
 //! fn main() {
 //!     wlroots::CompositorBuilder::new()
 //!          .build_auto((), // Dummy state
-//!                      Box::new(InputManager),
-//!                      Box::new(OutputManager))
+//!                      None, None, None)
 //!          .run()
 //! }
 //! ```
