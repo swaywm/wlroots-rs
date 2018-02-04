@@ -19,10 +19,10 @@ wayland_listener!(WlShellManager, Box<WlShellManagerHandler>, [
         let data = data as *mut wlr_wl_shell_surface;
         wlr_log!(L_DEBUG, "New wl_shell_surface request {:p}", data);
         let compositor = &mut *COMPOSITOR_PTR;
+        let surface = Surface::from_ptr((*data).surface);
         let mut shell_surface = WlShellSurface::new(data);
         let new_surface_res = manager.new_surface(compositor, &mut shell_surface);
         if let Some(shell_surface_handler) = new_surface_res {
-            let surface = Surface::from_ptr((*data).surface);
             let mut shell_surface = WlShell::new((shell_surface, surface, shell_surface_handler));
             // Add the destroy event to this handler.
             wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
