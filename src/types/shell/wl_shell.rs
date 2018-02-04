@@ -7,9 +7,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use wlroots_sys::{wl_shell_surface_resize, wlr_wl_shell_surface, wlr_wl_shell_surface_configure,
                   wlr_wl_shell_surface_ping, wlr_wl_shell_surface_popup_at};
 
+use SurfaceHandle;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
-use SurfaceHandle;
 
 pub type WlShellSurfaceResize = wl_shell_surface_resize;
 
@@ -50,7 +50,14 @@ impl WlShellSurface {
     /// Returns `None` if the surface was NULL. This shouldn't happen but...
     /// hey better a panic then a segfault right?
     pub fn surface(&mut self) -> Option<SurfaceHandle> {
-        unsafe { SurfaceHandle::from_ptr((*self.shell_surface).surface) }
+        unsafe {
+            let surface = (*self.shell_surface).surface;
+            if surface.is_null() {
+                None
+            } else {
+                Some(SurfaceHandle::from_ptr(surface))
+            }
+        }
     }
 
     /// Determines if this Wayland shell surface has been configured or not.
