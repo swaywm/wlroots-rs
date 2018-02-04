@@ -3,9 +3,9 @@ extern crate wlroots;
 
 use std::time::Instant;
 
-use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, Keyboard,
-              KeyboardHandler, Output, OutputBuilder, OutputBuilderResult, OutputHandler,
-              OutputManagerHandler};
+use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
+              Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
+use wlroots::key_events::KeyEvent;
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -90,6 +90,9 @@ impl OutputHandler for ExOutput {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    CompositorBuilder::new().build_auto((), Box::new(InputManager), Box::new(OutputManager))
+    CompositorBuilder::new().build_auto((),
+                                        Some(Box::new(InputManager)),
+                                        Some(Box::new(OutputManager)),
+                                        None)
                             .run()
 }

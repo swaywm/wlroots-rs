@@ -1,10 +1,11 @@
 #[macro_use]
 extern crate wlroots;
 
-use wlroots::{AxisEvent, ButtonEvent, Compositor, CompositorBuilder, CursorBuilder,
-              InputManagerHandler, KeyEvent, Keyboard, KeyboardHandler, MotionEvent, Output,
-              OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, Pointer, PointerHandler, XCursorTheme};
+use wlroots::{Compositor, CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard,
+              KeyboardHandler, Output, OutputBuilder, OutputBuilderResult, OutputHandler,
+              OutputLayout, OutputManagerHandler, Pointer, PointerHandler, XCursorTheme};
+use wlroots::key_events::KeyEvent;
+use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
@@ -138,7 +139,8 @@ fn main() {
 
     layout.attach_cursor(cursor);
     let compositor = CompositorBuilder::new().build_auto(State::new(xcursor_theme, layout),
-                                                         Box::new(InputManager),
-                                                         Box::new(OutputManager));
+                                                         Some(Box::new(InputManager)),
+                                                         Some(Box::new(OutputManager)),
+                                                         None);
     compositor.run();
 }

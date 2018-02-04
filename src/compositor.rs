@@ -1,21 +1,57 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
+use std::{env, ptr};
 use std::any::Any;
 use std::cell::UnsafeCell;
-use std::env;
 use std::ffi::CStr;
 
 use extensions::server_decoration::ServerDecorationManager;
-use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler};
+use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
+              WlShellManager, WlShellManagerHandler};
 use render::GLES2;
 
 use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start};
+use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start,
+                  wlr_compositor, wlr_compositor_create, wlr_wl_shell, wlr_wl_shell_create};
+use wlroots_sys::wayland_server::sys::wl_display_init_shm;
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 pub static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
+
+#[allow(dead_code)]
+pub struct Compositor {
+    /// User data.
+    pub data: Box<Any>,
+    /// Manager for the inputs.
+    input_manager: Option<Box<InputManager>>,
+    /// Manager for the outputs.
+    output_manager: Option<Box<OutputManager>>,
+    /// Manager for Wayland shells.
+    wl_shell_manager: Option<Box<WlShellManager>>,
+    /// Pointer to wl_shell global.
+    /// If wl_shell_manager is `None`, this value will be `NULL`
+    wl_shell_global: *mut wlr_wl_shell,
+    /// Pointer to the wlr_compositor
+    compositor: *mut wlr_compositor,
+    /// Pointer to the wlroots backend in use.
+    backend: *mut wlr_backend,
+    /// Pointer to the wayland display.
+    display: *mut wl_display,
+    /// Pointer to the event loop.
+    event_loop: *mut wl_event_loop,
+    /// Shared memory buffer file descriptor.
+    shm_fd: i32,
+    /// Name of the Wayland socket that we are binding to.
+    socket_name: String,
+    /// Optional decoration manager extension.
+    pub server_decoration_manager: Option<ServerDecorationManager>,
+    /// Optional GLES2 extension.
+    pub gles2: Option<GLES2>,
+    /// The error from the panic, if there was one.
+    panic_error: Option<Box<Any + Send>>
+}
 
 pub struct CompositorBuilder {
     gles2: bool,
@@ -43,11 +79,14 @@ impl CompositorBuilder {
     ///
     /// Also automatically opens the socket for clients to communicate to the
     /// compositor with.
-    pub fn build_auto<T: Any + 'static>(self,
-                                        data: T,
-                                        input_manager_handler: Box<InputManagerHandler>,
-                                        output_manager_handler: Box<OutputManagerHandler>)
-                                        -> Compositor {
+    pub fn build_auto<D>(self,
+                         data: D,
+                         input_manager_handler: Option<Box<InputManagerHandler>>,
+                         output_manager_handler: Option<Box<OutputManagerHandler>>,
+                         wl_shell_manager_handler: Option<Box<WlShellManagerHandler>>)
+                         -> Compositor
+        where D: Any + 'static
+    {
         unsafe {
             let display =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
@@ -61,17 +100,9 @@ impl CompositorBuilder {
                 //   if you auto create it's assumed you can't recover.
                 panic!("Could not auto-create backend");
             }
-            let mut input_manager = InputManager::new((vec![], input_manager_handler));
-            let mut output_manager = OutputManager::new((vec![], output_manager_handler));
-            wl_signal_add(&mut (*backend).events.input_add as *mut _ as _,
-                          input_manager.add_listener() as *mut _ as _);
-            wl_signal_add(&mut (*backend).events.input_remove as *mut _ as _,
-                          input_manager.remove_listener() as *mut _ as _);
-            wl_signal_add(&mut (*backend).events.output_add as *mut _ as _,
-                          output_manager.add_listener() as *mut _ as _);
-            wl_signal_add(&mut (*backend).events.output_remove as *mut _ as _,
-                          output_manager.remove_listener() as *mut _ as _);
-
+            // Set up shared memory buffer for Wayland clients.
+            let shm_fd = wl_display_init_shm(display as *mut _);
+            // Create optional extensions.
             let server_decoration_manager = if self.server_decoration_manager {
                 ServerDecorationManager::new(display)
             } else {
@@ -83,6 +114,44 @@ impl CompositorBuilder {
                 None
             };
 
+            // Set up wlr_compositor
+            let gles2_ptr = gles2.as_ref()
+                                 .map(|gles| gles.as_ptr())
+                                 .unwrap_or_else(|| ptr::null_mut());
+            let compositor = wlr_compositor_create(display as *mut _, gles2_ptr);
+
+            // Set up input manager, if the user provided it.
+            let input_manager = input_manager_handler.map(|handler| {
+                let mut input_manager = InputManager::new((vec![], handler));
+                wl_signal_add(&mut (*backend).events.input_add as *mut _ as _,
+                              input_manager.add_listener() as *mut _ as _);
+                wl_signal_add(&mut (*backend).events.input_remove as *mut _ as _,
+                              input_manager.remove_listener() as *mut _ as _);
+                input_manager
+            });
+
+            // Set up output manager, if the user provided it.
+            let output_manager = output_manager_handler.map(|handler| {
+                let mut output_manager = OutputManager::new((vec![], handler));
+                wl_signal_add(&mut (*backend).events.output_add as *mut _ as _,
+                              output_manager.add_listener() as *mut _ as _);
+                wl_signal_add(&mut (*backend).events.output_remove as *mut _ as _,
+                              output_manager.remove_listener() as *mut _ as _);
+                output_manager
+            });
+
+            // Set up wl_shell handler and associated Wayland global,
+            // if user provided a manager for it.
+            let mut wl_shell_global = ptr::null_mut();
+            let wl_shell_manager = wl_shell_manager_handler.map(|handler| {
+                wl_shell_global = wlr_wl_shell_create(display as *mut _);
+                let mut wl_shell_manager = WlShellManager::new(handler);
+                wl_signal_add(&mut (*wl_shell_global).events.new_surface as *mut _ as _,
+                              wl_shell_manager.add_listener() as *mut _ as _);
+                wl_shell_manager
+            });
+
+            // Open the socket to the Wayland server.
             let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
             if socket.is_null() {
                 // NOTE Rationale for panicking:
@@ -95,32 +164,23 @@ impl CompositorBuilder {
             wlr_log!(L_DEBUG,
                      "Running compositor on wayland display {}",
                      socket_name);
-            env::set_var("_WAYLAND_DISPLAY", socket_name);
+            env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
             Compositor { data: Box::new(data),
+                         socket_name,
                          input_manager,
                          output_manager,
+                         wl_shell_manager,
+                         wl_shell_global,
+                         compositor,
                          backend,
                          display,
                          event_loop,
+                         shm_fd,
                          server_decoration_manager,
                          gles2,
                          panic_error: None }
         }
     }
-}
-
-#[allow(dead_code)]
-pub struct Compositor {
-    pub data: Box<Any>,
-    input_manager: Box<InputManager>,
-    output_manager: Box<OutputManager>,
-    backend: *mut wlr_backend,
-    display: *mut wl_display,
-    event_loop: *mut wl_event_loop,
-    pub server_decoration_manager: Option<ServerDecorationManager>,
-    pub gles2: Option<GLES2>,
-    /// The error from the panic, if there was one.
-    panic_error: Option<Box<Any + Send>>
 }
 
 impl Compositor {
@@ -145,6 +205,7 @@ impl Compositor {
                 //   if you auto create it's assumed you can't recover.
                 panic!("Failed to start backend");
             }
+            env::set_var("WAYLAND_DISPLAY", (*COMPOSITOR_PTR).socket_name.clone());
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_display_run,
                           (*compositor.get()).display);

@@ -43,6 +43,10 @@ impl GLES2 {
     pub fn create_texture(&mut self) -> Option<Texture> {
         unsafe { create_texture(self.renderer) }
     }
+
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_renderer {
+        self.renderer
+    }
 }
 
 impl<'output> GLES2Renderer<'output> {

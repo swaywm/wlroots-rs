@@ -4,9 +4,9 @@ extern crate wlroots;
 use std::env;
 use std::time::Instant;
 
-use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, KeyEvent, Keyboard,
-              KeyboardHandler, Output, OutputBuilder, OutputBuilderResult, OutputHandler,
-              OutputManagerHandler};
+use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
+              Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
+use wlroots::key_events::KeyEvent;
 use wlroots::render::{Texture, TextureFormat};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::wl_output_transform;
@@ -162,11 +162,11 @@ fn main() {
         WL_OUTPUT_TRANSFORM_NORMAL
     };
     let compositor_state = CompositorState::new(rotation);
-    let input_manager = Box::new(InputManager);
-    let output_manager = Box::new(OutputManager);
-    let mut compositor =
-        CompositorBuilder::new().gles2(true)
-                                .build_auto(compositor_state, input_manager, output_manager);
+    let mut compositor = CompositorBuilder::new().gles2(true)
+                                                 .build_auto(compositor_state,
+                                                             Some(Box::new(InputManager)),
+                                                             Some(Box::new(OutputManager)),
+                                                             None);
     {
         let gles2 = &mut compositor.gles2.as_mut().unwrap();
         let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();

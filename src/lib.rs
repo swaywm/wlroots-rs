@@ -9,17 +9,10 @@
 //! ```rust,no_run
 //! extern crate wlroots;
 //!
-//! struct InputManager;
-//! struct OutputManager;
-//!
-//! impl wlroots::OutputManagerHandler for OutputManager {}
-//! impl wlroots::InputManagerHandler for InputManager {}
-//!
 //! fn main() {
 //!     wlroots::CompositorBuilder::new()
 //!          .build_auto((), // Dummy state
-//!                      Box::new(InputManager),
-//!                      Box::new(OutputManager))
+//!                      None, None, None)
 //!          .run()
 //! }
 //! ```
@@ -46,10 +39,10 @@ pub mod render;
 pub mod utils;
 
 pub use self::compositor::{terminate, Compositor, CompositorBuilder};
-pub use self::events::key_events::*;
-pub use self::events::pointer_events::*;
+pub use self::events::{key_events, pointer_events, wl_shell_events};
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
-                        OutputHandler, OutputManagerHandler, PointerHandler};
+                        OutputHandler, OutputManagerHandler, PointerHandler, WlShellHandler,
+                        WlShellManagerHandler};
 pub use self::types::area::*;
 pub use self::types::cursor::*;
 pub use self::types::input_device::*;
@@ -58,6 +51,9 @@ pub use self::types::output::output::*;
 pub use self::types::output::output_layout::*;
 pub use self::types::pointer::*;
 pub use self::types::seat::*;
+pub use self::types::shell::*;
 pub use self::types::surface::*;
+pub use key_events::Key;
+pub use pointer_events::ButtonState;
 
 pub use self::errors::*;
