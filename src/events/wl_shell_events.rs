@@ -4,7 +4,7 @@ use wlroots_sys::{wl_shell_surface_fullscreen_method, wl_shell_surface_resize,
                   wlr_wl_shell_surface_maximize_event, wlr_wl_shell_surface_move_event,
                   wlr_wl_shell_surface_resize_event, wlr_wl_shell_surface_set_fullscreen_event};
 
-use {OutputHandle, WlShellSurfaceHandle};
+use {OutputHandle, SeatClient, WlShellSurfaceHandle};
 
 /// Event that triggers when the surface has been moved in coordinate space.
 #[derive(Debug, Eq, PartialEq)]
@@ -31,11 +31,16 @@ pub struct MaximizeEvent {
     event: *mut wlr_wl_shell_surface_maximize_event
 }
 
-// TODO Get seat client
 impl MoveEvent {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_wl_shell_surface_move_event) -> Self {
         MoveEvent { event }
     }
+
+    /// Get the Wayland seat client.
+    pub fn seat_client(&mut self) -> SeatClient {
+        unsafe { SeatClient::from_ptr((*self.event).seat) }
+    }
+
     /// Gets the surface that is being moved.
     pub fn surface(&mut self) -> WlShellSurfaceHandle {
         unsafe { WlShellSurfaceHandle::from_ptr((*self.event).surface) }
@@ -47,10 +52,14 @@ impl MoveEvent {
     }
 }
 
-// TODO Get seat client
 impl ResizeEvent {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_wl_shell_surface_resize_event) -> Self {
         ResizeEvent { event }
+    }
+
+    /// Get the Wayland seat client.
+    pub fn seat_client(&mut self) -> SeatClient {
+        unsafe { SeatClient::from_ptr((*self.event).seat) }
     }
 
     /// Gets the surface that is being resized.
