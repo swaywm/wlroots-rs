@@ -17,6 +17,11 @@ pub struct GLES2Renderer<'output> {
 }
 
 impl GLES2 {
+    #[deprecated]
+    pub unsafe fn renderer(&self) -> *mut wlr_renderer {
+        self.renderer
+    }
+
     pub(crate) unsafe fn new(backend: *mut wlr_backend) -> Option<Self> {
         if backend.is_null() {
             wlr_log!(L_ERROR, "Backend was null");

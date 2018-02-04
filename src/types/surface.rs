@@ -68,6 +68,16 @@ impl Surface {
                   surface }
     }
 
+    #[deprecated]
+    pub unsafe fn current_state(&self) -> *mut ::wlroots_sys::wlr_surface_state {
+        (*self.surface).current
+    }
+
+    #[deprecated]
+    pub unsafe fn texture(&self) -> *mut ::wlroots_sys::wlr_texture {
+        (*self.surface).texture
+    }
+
     /// Get the lifetime bound role (if one exists) for this surface.
     pub fn role(&self) -> Option<String> {
         unsafe { c_to_rust_string((*self.surface).role) }
