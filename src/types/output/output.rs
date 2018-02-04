@@ -22,7 +22,7 @@ use utils::c_to_rust_string;
 pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;
 
-use {Origin, Size, Surface};
+use {Origin, Size, Surface, SurfaceHandle};
 
 struct OutputState {
     handle: Weak<AtomicBool>,
@@ -242,12 +242,12 @@ impl Output {
         }
     }
 
-    pub fn fullscreen_surface(&self) -> Option<Surface> {
+    pub fn fullscreen_surface(&self) -> Option<SurfaceHandle> {
         unsafe {
             if (*self.output).fullscreen_surface.is_null() {
                 None
             } else {
-                Some(Surface::from_ptr((*self.output).fullscreen_surface))
+                Some(SurfaceHandle::from_ptr((*self.output).fullscreen_surface))
             }
         }
     }
@@ -332,7 +332,7 @@ impl Output {
     }
 
     /// Set the fullscreen surface for this output.
-    pub fn set_fullscreen_surface(&mut self, surface: Surface) {
+    pub fn set_fullscreen_surface(&mut self, surface: &mut Surface) {
         unsafe { wlr_output_set_fullscreen_surface(self.output, surface.as_ptr()) }
     }
 

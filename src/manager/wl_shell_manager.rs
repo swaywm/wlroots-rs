@@ -5,7 +5,7 @@ use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_wl_shell_surface;
 
 use super::wl_shell_handler::WlShell;
-use {WlShellHandler, WlShellSurface};
+use {Surface, WlShellHandler, WlShellSurface};
 use compositor::{Compositor, COMPOSITOR_PTR};
 
 /// Handles making new Wayland shells as reported by clients.
@@ -22,7 +22,8 @@ wayland_listener!(WlShellManager, Box<WlShellManagerHandler>, [
         let mut shell_surface = WlShellSurface::new(data);
         let new_surface_res = manager.new_surface(compositor, &mut shell_surface);
         if let Some(shell_surface_handler) = new_surface_res {
-            let mut shell_surface = WlShell::new((shell_surface, shell_surface_handler));
+            let surface = Surface::from_ptr((*data).surface);
+            let mut shell_surface = WlShell::new((shell_surface, surface, shell_surface_handler));
             // Add the destroy event to this handler.
             wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
                           shell_surface.destroy_listener() as _);
