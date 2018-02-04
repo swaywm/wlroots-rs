@@ -47,8 +47,6 @@ pub mod utils;
 
 pub use self::compositor::{terminate, Compositor, CompositorBuilder};
 pub use self::events::{key_events, pointer_events, wl_shell_events};
-pub use key_events::Key;
-pub use pointer_events::ButtonState;
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
                         OutputHandler, OutputManagerHandler, PointerHandler, WlShellHandler,
                         WlShellManagerHandler};
@@ -62,5 +60,7 @@ pub use self::types::pointer::*;
 pub use self::types::seat::*;
 pub use self::types::shell::*;
 pub use self::types::surface::*;
+pub use key_events::Key;
+pub use pointer_events::ButtonState;
 
 pub use self::errors::*;

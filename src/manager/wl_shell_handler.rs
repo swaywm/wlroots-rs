@@ -5,7 +5,7 @@ use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
 use WlShellSurface;
 use compositor::{Compositor, COMPOSITOR_PTR};
-use wl_shell_events::{MoveEvent, ResizeEvent, FullscreenEvent, MaximizeEvent};
+use wl_shell_events::{FullscreenEvent, MaximizeEvent, MoveEvent, ResizeEvent};
 
 /// Handles events from client Wayland shells.
 pub trait WlShellHandler {
@@ -20,22 +20,13 @@ pub trait WlShellHandler {
     fn move_request(&mut self, &mut Compositor, &mut WlShellSurface, &mut MoveEvent) {}
 
     /// Called when there is a request to resize the shell surface.
-    fn resize_request(&mut self,
-                      &mut Compositor,
-                      &mut WlShellSurface, &mut ResizeEvent) {
-    }
+    fn resize_request(&mut self, &mut Compositor, &mut WlShellSurface, &mut ResizeEvent) {}
 
     /// Called when there is a request to make the shell surface fullscreen.
-    fn fullscreen_request(&mut self,
-                          &mut Compositor,
-                          &mut WlShellSurface, &mut FullscreenEvent) {
-    }
+    fn fullscreen_request(&mut self, &mut Compositor, &mut WlShellSurface, &mut FullscreenEvent) {}
 
     /// Called when there is a request to make the shell surface maximized.
-    fn maximize_request(&mut self,
-                        &mut Compositor,
-                        &mut WlShellSurface, &mut MaximizeEvent) {
-    }
+    fn maximize_request(&mut self, &mut Compositor, &mut WlShellSurface, &mut MaximizeEvent) {}
 
     /// Called when there is a request to change the state of the Wayland shell.
     fn state_change(&mut self, &mut Compositor, &mut WlShellSurface) {}
