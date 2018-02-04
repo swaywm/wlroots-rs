@@ -1,12 +1,17 @@
 //! TODO Documentation
 
-use std::panic;
+use std::{panic, ptr};
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
-use wlroots_sys::wlr_surface;
+use wlroots_sys::{timespec, wlr_surface, wlr_surface_get_main_surface, wlr_surface_get_matrix,
+                  wlr_surface_has_buffer, wlr_surface_send_enter, wlr_surface_send_frame_done,
+                  wlr_surface_send_leave};
 
+use Output;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use utils::c_to_rust_string;
 
 /// The state stored in the wlr_surface user data.
 struct SurfaceState {
@@ -61,6 +66,87 @@ impl Surface {
         let liveliness = Some(liveliness);
         Surface { liveliness,
                   surface }
+    }
+
+    /// Get the lifetime bound role (if one exists) for this surface.
+    pub fn role(&self) -> Option<String> {
+        unsafe { c_to_rust_string((*self.surface).role) }
+    }
+
+    /// Gets a matrix you can pass into wlr_render_with_matrix to display this
+    /// surface.
+    ///
+    /// `matrix` is the output matrix, `projection` is the wlr_output
+    /// projection matrix, and `transform` is any additional transformations you want
+    /// to perform on the surface (or None/the identity matrix if you don't).
+    ///
+    /// `transform` is used before the surface is scaled, so its geometry extends
+    /// from 0 to 1 in both dimensions.
+    pub fn get_matrix<'a, T>(&mut self,
+                             matrix: &mut [f32; 16],
+                             projection: &[f32; 16],
+                             transform: T)
+        where T: Into<Option<&'a [f32; 16]>>
+    {
+        let transform = transform.into()
+                                 .map(|transform| transform as *const _)
+                                 .unwrap_or_else(|| ptr::null());
+        unsafe { wlr_surface_get_matrix(self.surface, matrix, projection, transform) }
+    }
+
+    /// Whether or not this surface currently has an attached buffer.
+    ///
+    /// A surface has an attached buffer when it commits with a non-null buffer in its pending
+    /// state.
+    ///
+    /// A surface will not have a buffer if it has never committed one, has
+    /// committed a null buffer, or something went wrong with uploading the buffer.
+    pub fn has_buffer(&self) -> bool {
+        unsafe { wlr_surface_has_buffer(self.surface) }
+    }
+
+    /// Get the top of the subsurface tree for this surface.
+    pub fn get_main_surface(&self) -> Option<SurfaceHandle> {
+        unsafe {
+            let surface = wlr_surface_get_main_surface(self.surface);
+            if surface.is_null() {
+                None
+            } else {
+                Some(SurfaceHandle::from_ptr(surface))
+            }
+        }
+    }
+
+    pub fn send_enter(&mut self, output: &mut Output) {
+        unsafe { wlr_surface_send_enter(self.surface, output.as_ptr()) }
+    }
+
+    pub fn send_leave(&mut self, output: &mut Output) {
+        unsafe { wlr_surface_send_leave(self.surface, output.as_ptr()) }
+    }
+
+    /// Send the frame done event.
+    pub fn send_frame_done<D>(&mut self, duration: Duration) {
+        unsafe {
+            // FIXME
+            // This is converting from a u64 -> i64
+            // Something bad could happen!
+            let when = timespec { tv_sec: duration.as_secs() as i64,
+                                  tv_nsec: duration.subsec_nanos() as i64 };
+            wlr_surface_send_frame_done(self.surface, &when);
+        }
+    }
+
+    /// Get the matrix used to convert the internal byte buffer to use in the
+    /// surface.
+    pub fn buffer_to_surface_matrix(&self) -> [f32; 16] {
+        unsafe { (*self.surface).buffer_to_surface_matrix }
+    }
+
+    /// Get the matrix used to convert the surface back to the internal byte
+    /// buffer.
+    pub fn surface_to_buffer_matrix(&self) -> [f32; 16] {
+        unsafe { (*self.surface).surface_to_buffer_matrix }
     }
 
     unsafe fn from_handle(handle: &SurfaceHandle) -> Self {
