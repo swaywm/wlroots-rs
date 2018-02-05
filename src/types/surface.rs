@@ -77,6 +77,7 @@ impl Surface {
                   surface }
     }
 
+    /// Get the surface state.
     pub fn current_state<'surface>(&'surface mut self) -> SurfaceState<'surface> {
         unsafe {
             SurfaceState { state: (*self.surface).current,
