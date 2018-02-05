@@ -22,6 +22,10 @@ struct InternalSurfaceState {
     handle: Weak<AtomicBool>
 }
 
+// TODO Move
+pub struct Subsurface;
+pub struct SubsurfaceHandle;
+
 /// Surface state as reported by wlroots.
 pub struct SurfaceState<'surface> {
     state: *mut wlr_surface_state,
@@ -93,6 +97,11 @@ impl Surface {
         }
     }
 
+    /// Get the subsurface.
+    pub fn subsurface(&self) -> Subsurface {
+        Subsurface
+    }
+
     /// Get the texture of this surface.
     pub fn texture(&self) -> Texture {
         unsafe { Texture::from_ptr((*self.surface).texture) }
@@ -133,6 +142,19 @@ impl Surface {
     /// committed a null buffer, or something went wrong with uploading the buffer.
     pub fn has_buffer(&self) -> bool {
         unsafe { wlr_surface_has_buffer(self.surface) }
+    }
+
+    /// Find a subsurface within this surface at the surface-local coordinates.
+    ///
+    /// Returns the surface and coordinates in the topmost surface coordinate system
+    /// or None if no subsurface is found at that location.
+    pub fn subsurface_at(&mut self,
+                         sx: f32,
+                         sy: f32,
+                         sub_x: &mut f32,
+                         sub_y: &mut f32)
+                         -> Option<SubsurfaceHandle> {
+        None
     }
 
     /// Get the top of the subsurface tree for this surface.
