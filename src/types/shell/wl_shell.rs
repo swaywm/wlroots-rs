@@ -11,8 +11,6 @@ use SurfaceHandle;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
 
-pub type WlShellSurfaceResize = wl_shell_surface_resize;
-
 struct WlShellSurfaceState {
     handle: Weak<AtomicBool>
 }
@@ -93,7 +91,7 @@ impl WlShellSurface {
         }
     }
     /// Request that the surface configure itself to be the given size.
-    pub fn configure(&mut self, edges: WlShellSurfaceResize, width: i32, height: i32) {
+    pub fn configure(&mut self, edges: wl_shell_surface_resize, width: i32, height: i32) {
         unsafe {
             wlr_wl_shell_surface_configure(self.shell_surface, edges, width, height);
         }
