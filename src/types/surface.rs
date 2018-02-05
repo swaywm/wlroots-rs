@@ -170,6 +170,17 @@ impl Surface {
         unsafe { (*self.surface).surface_to_buffer_matrix }
     }
 
+    /// Manually set the lock used to determine if a double-borrow is
+    /// occuring on this structure.
+    ///
+    /// # Panics
+    /// Panics when trying to set the lock on an upgraded handle.
+    pub(crate) unsafe fn set_lock(&self, val: bool) {
+        self.liveliness.as_ref()
+            .expect("Tried to set lock on borrowed Surface")
+            .store(val, Ordering::Release);
+    }
+
     unsafe fn from_handle(handle: &SurfaceHandle) -> Self {
         Surface { liveliness: None,
                   surface: handle.surface }
