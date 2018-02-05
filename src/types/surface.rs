@@ -4,10 +4,12 @@ use std::{panic, ptr};
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
+use std::marker::PhantomData;
 
+use libc;
 use wlroots_sys::{timespec, wlr_surface, wlr_surface_get_main_surface, wlr_surface_get_matrix,
                   wlr_surface_has_buffer, wlr_surface_send_enter, wlr_surface_send_frame_done,
-                  wlr_surface_send_leave};
+                  wlr_surface_send_leave, wlr_surface_state};
 
 use Output;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
@@ -15,9 +17,15 @@ use render::Texture;
 use utils::c_to_rust_string;
 
 /// The state stored in the wlr_surface user data.
-struct SurfaceState {
+struct InternalSurfaceState {
     /// Used to reconstruct a SurfaceHandle from just an *mut wlr_surface.
     handle: Weak<AtomicBool>
+}
+
+/// Surface state as reported by wlroots.
+pub struct SurfaceState<'surface> {
+    state: *mut wlr_surface_state,
+    phantom: PhantomData<&'surface Surface>
 }
 
 /// A Wayland object that represents the data that we display on the screen.
@@ -63,15 +71,16 @@ impl Surface {
         }
         let liveliness = Rc::new(AtomicBool::new(false));
         let handle = Rc::downgrade(&liveliness);
-        (*surface).data = Box::into_raw(Box::new(SurfaceState { handle })) as _;
+        (*surface).data = Box::into_raw(Box::new(InternalSurfaceState { handle })) as _;
         let liveliness = Some(liveliness);
         Surface { liveliness,
                   surface }
     }
 
-    #[deprecated]
-    pub unsafe fn current_state(&self) -> *mut ::wlroots_sys::wlr_surface_state {
-        (*self.surface).current
+    pub fn current_state<'surface>(&'surface mut self) -> SurfaceState<'surface> {
+        unsafe {
+            SurfaceState { state: (*self.surface).current, phantom: PhantomData }
+        }
     }
 
     /// Get the texture of this surface.
@@ -170,7 +179,7 @@ impl SurfaceHandle {
     /// Creates an SurfaceHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(surface: *mut wlr_surface) -> Self {
-        let data = (*surface).data as *mut SurfaceState;
+        let data = (*surface).data as *mut InternalSurfaceState;
         let handle = (*data).handle.clone();
         SurfaceHandle { handle, surface }
     }
@@ -232,5 +241,15 @@ impl SurfaceHandle {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)
         }
+    }
+}
+
+impl <'surface> SurfaceState<'surface> {
+    pub fn width(&self) -> libc::c_int {
+        unsafe { (*self.state).width }
+    }
+
+    pub fn height(&self) -> libc::c_int {
+        unsafe { (*self.state).height }
     }
 }

@@ -74,12 +74,14 @@ impl <'output> Renderer<'output> {
     ///
     /// TODO FIXME Show how the typical rendering goes in Rust.
     ///
-    /// 	struct wlr_renderer *renderer;
-    /// 	struct wlr_texture *texture;
-    /// 	float projection[16];
-    /// 	float matrix[16];
-    /// 	wlr_texture_get_matrix(texture, &matrix, &projection, 123, 321);
-    /// 	wlr_render_with_matrix(renderer, texture, &matrix);
+    /// ```c
+    /// struct wlr_renderer *renderer;
+    /// struct wlr_texture *texture;
+    /// float projection[16];
+    /// float matrix[16];
+    /// wlr_texture_get_matrix(texture, &matrix, &projection, 123, 321);
+    /// wlr_render_with_matrix(renderer, texture, &matrix);
+    /// ```
     ///
     /// This will render the texture at <123, 321>.
     pub fn render_with_matrix(&mut self, texture: &Texture, matrix: &[f32; 16]) -> bool {

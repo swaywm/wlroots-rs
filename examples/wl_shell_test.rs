@@ -26,8 +26,10 @@ fn render_shells(state: &mut State, output: &mut Output,
     let shells = state.shells.clone();
     for mut shell in shells {
         shell.run(|shell| shell.surface().as_mut().unwrap().run(|surface| {
-            let current_state = unsafe {&mut *surface.current_state()};
-            let (width, height) = (current_state.width as i32, current_state.height as i32);
+            let (width, height) = {
+                let current_state = surface.current_state();
+                (current_state.width() as i32, current_state.height() as i32)
+            };
             let (render_width, render_height) = (width * output.scale() as i32,
                                                  height * output.scale() as i32);
             // TODO Some value from something else?
@@ -160,7 +162,7 @@ impl KeyboardHandler for ExKeyboardHandler {
                     use std::io::Write;
                     use std::os::unix::io::AsRawFd;
                     use wayland_client::EnvHandler;
-                    use wayland_client::protocol::{wl_compositor, wl_pointer, wl_shell,
+                    use wayland_client::protocol::{wl_compositor, wl_shell,
                                                    wl_shell_surface, wl_shm};
 
                     wayland_env!(WaylandEnv,
@@ -179,38 +181,6 @@ impl KeyboardHandler for ExKeyboardHandler {
                                                            popup_done: |_, _, _| {
                                                                /* not used in this example */
                                                            } }
-                    }
-
-                    fn pointer_impl() -> wl_pointer::Implementation<()> {
-                        wl_pointer::Implementation {
-                            enter: |_, _, _pointer, _serial, _surface, x, y| {
-                                println!("Pointer entered surface at ({},{}).", x, y);
-                            },
-                            leave: |_, _, _pointer, _serial, _surface| {
-                                println!("Pointer left surface.");
-                            },
-                            motion: |_, _, _pointer, _time, x, y| {
-                                println!("Pointer moved to ({},{}).", x, y);
-                            },
-                            button: |_, _, _pointer, _serial, _time, button, state| {
-                                println!(
-                                    "Button {} ({}) was {:?}.",
-                                    match button {
-                                        272 => "Left",
-                                        273 => "Right",
-                                        274 => "Middle",
-                                        _ => "Unknown",
-                                    },
-                                    button,
-                                    state
-                                );
-                            },
-                            axis: |_, _, _, _, _, _| { /* not used in this example */ },
-                            frame: |_, _, _| { /* not used in this example */ },
-                            axis_source: |_, _, _, _| { /* not used in this example */ },
-                            axis_discrete: |_, _, _, _, _| { /* not used in this example */ },
-                            axis_stop: |_, _, _, _, _| { /* not used in this example */ },
-                        }
                     }
 
                     let (display, mut event_queue) = match wayland_client::default_connect() {
