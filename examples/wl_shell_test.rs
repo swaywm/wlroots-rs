@@ -19,77 +19,6 @@ use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
-/// Render the shells in the current compositor state on the given output.
-fn render_shells(state: &mut State, renderer: &mut Renderer) {
-    let shells = state.shells.clone();
-    for mut shell in shells {
-        shell.run(|shell| {
-                      shell.surface()
-                           .run(|surface| {
-                                    let (width, height) = {
-                                        let current_state = surface.current_state();
-                                        (current_state.width() as i32,
-                                        current_state.height() as i32)
-                                    };
-                                    let (render_width, render_height) =
-                                        (width * renderer.output.scale() as i32,
-                                        height * renderer.output.scale() as i32);
-                                    // TODO Some value from something else?
-                                    let (lx, ly) = (0.0, 0.0);
-                                    let (mut ox, mut oy) = (lx, ly);
-                                    state.layout
-                                         .output_coords(renderer.output, &mut ox, &mut oy);
-                                    ox *= renderer.output.scale() as f64;
-                                    oy *= renderer.output.scale() as f64;
-                                    let render_box = Area::new(Origin::new(lx as i32, ly as i32),
-                                                               Size::new(render_width,
-                                                                         render_height));
-                                    if state.layout.intersects(renderer.output, render_box) {
-                                        let mut matrix = [0.0; 16];
-                                        let mut translate_center = [0.0; 16];
-                                        matrix_translate(&mut translate_center,
-                                                         (ox as i32 + render_width / 2) as f32,
-                                                         (oy as i32 + render_height / 2) as f32,
-                                                         0.0);
-                                        let mut rotate = [0.0; 16];
-                                        // TODO what is rotation
-                                        let rotation = 0.0;
-                                        matrix_rotate(&mut rotate, rotation);
-
-                                        let mut translate_origin = [0.0; 16];
-                                        matrix_translate(&mut translate_origin,
-                                                         (-render_width / 2) as f32,
-                                                         (-render_height / 2) as f32,
-                                                         0.0);
-
-                                        let mut scale = [0.0; 16];
-                                        matrix_scale(&mut scale,
-                                                     render_width as f32,
-                                                     render_height as f32,
-                                                     1.0);
-
-                                        let mut transform = [0.0; 16];
-                                        matrix_mul(&translate_center, &mut rotate, &mut transform);
-                                        matrix_mul(&transform.clone(),
-                                                   &mut translate_origin,
-                                                   &mut transform);
-                                        matrix_mul(&transform.clone(), &mut scale, &mut transform);
-
-                                        // TODO Handle non transform normal on the output
-                                        // if ... {}
-                                        matrix_mul(&renderer.output.transform_matrix(),
-                                                   &mut transform,
-                                                   &mut matrix);
-                                        renderer.render_with_matrix(&surface.texture(), &matrix);
-                                        surface.send_frame_done(Duration::from_secs(1));
-                                    }
-                                })
-                           .unwrap()
-                  })
-             .unwrap();
-    }
-}
-
 struct State {
     color: [f32; 4],
     default_color: [f32; 4],
@@ -335,4 +264,75 @@ fn main() {
                                                          Some(Box::new(OutputManager)),
                                                          Some(Box::new(WlShellManager)));
     compositor.run();
+}
+
+/// Render the shells in the current compositor state on the given output.
+fn render_shells(state: &mut State, renderer: &mut Renderer) {
+    let shells = state.shells.clone();
+    for mut shell in shells {
+        shell.run(|shell| {
+                      shell.surface()
+                           .run(|surface| {
+                                    let (width, height) = {
+                                        let current_state = surface.current_state();
+                                        (current_state.width() as i32,
+                                        current_state.height() as i32)
+                                    };
+                                    let (render_width, render_height) =
+                                        (width * renderer.output.scale() as i32,
+                                        height * renderer.output.scale() as i32);
+                                    // TODO Some value from something else?
+                                    let (lx, ly) = (0.0, 0.0);
+                                    let (mut ox, mut oy) = (lx, ly);
+                                    state.layout
+                                         .output_coords(renderer.output, &mut ox, &mut oy);
+                                    ox *= renderer.output.scale() as f64;
+                                    oy *= renderer.output.scale() as f64;
+                                    let render_box = Area::new(Origin::new(lx as i32, ly as i32),
+                                                               Size::new(render_width,
+                                                                         render_height));
+                                    if state.layout.intersects(renderer.output, render_box) {
+                                        let mut matrix = [0.0; 16];
+                                        let mut translate_center = [0.0; 16];
+                                        matrix_translate(&mut translate_center,
+                                                         (ox as i32 + render_width / 2) as f32,
+                                                         (oy as i32 + render_height / 2) as f32,
+                                                         0.0);
+                                        let mut rotate = [0.0; 16];
+                                        // TODO what is rotation
+                                        let rotation = 0.0;
+                                        matrix_rotate(&mut rotate, rotation);
+
+                                        let mut translate_origin = [0.0; 16];
+                                        matrix_translate(&mut translate_origin,
+                                                         (-render_width / 2) as f32,
+                                                         (-render_height / 2) as f32,
+                                                         0.0);
+
+                                        let mut scale = [0.0; 16];
+                                        matrix_scale(&mut scale,
+                                                     render_width as f32,
+                                                     render_height as f32,
+                                                     1.0);
+
+                                        let mut transform = [0.0; 16];
+                                        matrix_mul(&translate_center, &mut rotate, &mut transform);
+                                        matrix_mul(&transform.clone(),
+                                                   &mut translate_origin,
+                                                   &mut transform);
+                                        matrix_mul(&transform.clone(), &mut scale, &mut transform);
+
+                                        // TODO Handle non transform normal on the output
+                                        // if ... {}
+                                        matrix_mul(&renderer.output.transform_matrix(),
+                                                   &mut transform,
+                                                   &mut matrix);
+                                        renderer.render_with_matrix(&surface.texture(), &matrix);
+                                        surface.send_frame_done(Duration::from_secs(1));
+                                    }
+                                })
+                           .unwrap()
+                  })
+             .unwrap();
+    }
 }

@@ -17,16 +17,32 @@ pub trait WlShellHandler {
     fn ping_timeout(&mut self, &mut Compositor, &mut Surface, &mut WlShellSurface) {}
 
     /// Called when there is a request to move the shell surface somewhere else.
-    fn move_request(&mut self, &mut Compositor, &mut Surface, &mut WlShellSurface, &mut MoveEvent) {}
+    fn move_request(&mut self, &mut Compositor, &mut Surface, &mut WlShellSurface, &mut MoveEvent) {
+    }
 
     /// Called when there is a request to resize the shell surface.
-    fn resize_request(&mut self, &mut Compositor, &mut Surface, &mut WlShellSurface, &mut ResizeEvent) {}
+    fn resize_request(&mut self,
+                      &mut Compositor,
+                      &mut Surface,
+                      &mut WlShellSurface,
+                      &mut ResizeEvent) {
+    }
 
     /// Called when there is a request to make the shell surface fullscreen.
-    fn fullscreen_request(&mut self, &mut Compositor, &mut Surface, &mut WlShellSurface, &mut FullscreenEvent) {}
+    fn fullscreen_request(&mut self,
+                          &mut Compositor,
+                          &mut Surface,
+                          &mut WlShellSurface,
+                          &mut FullscreenEvent) {
+    }
 
     /// Called when there is a request to make the shell surface maximized.
-    fn maximize_request(&mut self, &mut Compositor, &mut Surface, &mut WlShellSurface, &mut MaximizeEvent) {}
+    fn maximize_request(&mut self,
+                        &mut Compositor,
+                        &mut Surface,
+                        &mut WlShellSurface,
+                        &mut MaximizeEvent) {
+    }
 
     /// Called when there is a request to change the state of the Wayland shell.
     fn state_change(&mut self, &mut Compositor, &mut Surface, &mut WlShellSurface) {}
