@@ -11,6 +11,7 @@ use wlroots_sys::{timespec, wlr_surface, wlr_surface_get_main_surface, wlr_surfa
 
 use Output;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use render::Texture;
 use utils::c_to_rust_string;
 
 /// The state stored in the wlr_surface user data.
@@ -73,9 +74,9 @@ impl Surface {
         (*self.surface).current
     }
 
-    #[deprecated]
-    pub unsafe fn texture(&self) -> *mut ::wlroots_sys::wlr_texture {
-        (*self.surface).texture
+    /// Get the texture of this surface.
+    pub fn texture(&self) -> Texture {
+        unsafe { Texture::from_ptr((*self.surface).texture) }
     }
 
     /// Get the lifetime bound role (if one exists) for this surface.

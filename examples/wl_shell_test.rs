@@ -8,7 +8,7 @@ extern crate wlroots;
 use std::thread;
 use std::time::Duration;
 
-use wlroots::{Area, Origin, Size,
+use wlroots::{Area, Origin, Size, GenericRenderer,
               Compositor, CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard,
               KeyboardHandler, Output, OutputBuilder, OutputBuilderResult, OutputHandler,
               OutputLayout, OutputManagerHandler, Pointer, PointerHandler, WlShellHandler,
@@ -23,7 +23,7 @@ use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 /// Render the shells in the current compositor state on the given output.
 unsafe fn render_shells(state: &mut State, output: &mut Output,
-                        renderer: *mut wlroots::wlroots_sys::wlr_renderer) {
+                        renderer: &mut GenericRenderer) {
     let shells = state.shells.clone();
     for mut shell in shells {
         shell.run(|mut shell| shell.surface().as_mut().unwrap().run(|mut surface| {
@@ -40,6 +40,7 @@ unsafe fn render_shells(state: &mut State, output: &mut Output,
             let render_box = Area::new(Origin::new(lx as i32, ly as i32),
                                        Size::new(render_width, render_height));
             if state.layout.intersects(output, render_box) {
+                let mut renderer = renderer.render(output);
                 let mut matrix = [0.0; 16];
                 let mut translate_center = [0.0; 16];
                 wlr_matrix_translate(&mut translate_center,
@@ -70,9 +71,8 @@ unsafe fn render_shells(state: &mut State, output: &mut Output,
 
                 // TODO Handle non transform normal on the output
                 // if ... {}
-                wlr_matrix_mul(&mut output.transform_matrix(), &mut transform, &mut matrix);
-                // shiiiiit
-                wlr_render_with_matrix(renderer, surface.texture(), &matrix);
+                wlr_matrix_mul(&renderer.output.transform_matrix(), &mut transform, &mut matrix);
+                renderer.render_with_matrix(&surface.texture(), &matrix);
                 surface.send_frame_done(Duration::from_secs(1));
             }
         }).unwrap()).unwrap();
@@ -320,8 +320,9 @@ impl PointerHandler for ExPointer {
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
-        let renderer = unsafe {compositor.gles2.as_ref().unwrap().renderer()};
-        let state: &mut State = compositor.into();
+        let renderer = compositor.renderer.as_mut()
+            .expect("Compositor was not loaded with a renderer");
+        let state: &mut State = compositor.data.downcast_mut().unwrap();
         // TODO Make the flashing go away by doing better buffer management
         output.make_current();
         unsafe {render_shells(state, output, renderer)};

@@ -9,7 +9,7 @@ use std::ffi::CStr;
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler};
-use render::GLES2;
+use render::GenericRenderer;
 
 use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wayland_sys::server::signal::wl_signal_add;
@@ -47,8 +47,8 @@ pub struct Compositor {
     socket_name: String,
     /// Optional decoration manager extension.
     pub server_decoration_manager: Option<ServerDecorationManager>,
-    /// Optional GLES2 extension.
-    pub gles2: Option<GLES2>,
+    /// The renderer used to draw things to the screen.
+    pub renderer: Option<GenericRenderer>,
     /// The error from the panic, if there was one.
     panic_error: Option<Box<Any + Send>>
 }
@@ -108,17 +108,18 @@ impl CompositorBuilder {
             } else {
                 None
             };
-            let gles2 = if self.gles2 {
-                GLES2::new(backend)
+            let compositor;
+            let renderer = if self.gles2 {
+                let gles2 = GenericRenderer::gles2_renderer(backend);
+                // Set up wlr_compositor
+                let gles2_ptr = gles2.as_ptr();
+                compositor = wlr_compositor_create(display as *mut _, gles2_ptr);
+                Some(gles2)
             } else {
+                compositor = wlr_compositor_create(display as *mut _, ptr::null_mut());
                 None
             };
 
-            // Set up wlr_compositor
-            let gles2_ptr = gles2.as_ref()
-                                 .map(|gles| gles.as_ptr())
-                                 .unwrap_or_else(|| ptr::null_mut());
-            let compositor = wlr_compositor_create(display as *mut _, gles2_ptr);
 
             // Set up input manager, if the user provided it.
             let input_manager = input_manager_handler.map(|handler| {
@@ -177,7 +178,7 @@ impl CompositorBuilder {
                          event_loop,
                          shm_fd,
                          server_decoration_manager,
-                         gles2,
+                         renderer,
                          panic_error: None }
         }
     }
