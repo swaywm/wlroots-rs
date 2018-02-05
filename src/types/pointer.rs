@@ -201,6 +201,18 @@ impl PointerHandle {
     }
 }
 
+impl Clone for PointerHandle {
+    fn clone(&self) -> Self {
+        PointerHandle { pointer: self.pointer,
+                        handle: self.handle.clone(),
+                        /// NOTE Rationale for unsafe clone:
+                        ///
+                        /// You can only access it after a call to `upgrade`,
+                        /// and that implicitly checks that it is valid.
+                        device: unsafe { self.device.clone() } }
+    }
+}
+
 impl PartialEq for PointerHandle {
     fn eq(&self, other: &PointerHandle) -> bool {
         self.pointer == other.pointer
