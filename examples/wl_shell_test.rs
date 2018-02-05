@@ -11,8 +11,9 @@ use std::time::Duration;
 use wlroots::{matrix_mul, matrix_rotate, matrix_scale, matrix_translate, Area, Compositor,
               CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
               Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, Pointer, PointerHandler, Renderer, Size, WlShellHandler,
-              WlShellManagerHandler, WlShellSurface, WlShellSurfaceHandle, XCursorTheme};
+              OutputManagerHandler, Pointer, PointerHandler, Renderer, Size, Surface,
+              WlShellHandler, WlShellManagerHandler, WlShellSurface, WlShellSurfaceHandle,
+              XCursorTheme};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -46,7 +47,8 @@ impl WlShellHandler for WlShellHandlerEx {}
 impl WlShellManagerHandler for WlShellManager {
     fn new_surface(&mut self,
                    compositor: &mut Compositor,
-                   shell: &mut WlShellSurface)
+                   shell: &mut WlShellSurface,
+                   _: &mut Surface)
                    -> Option<Box<WlShellHandler>> {
         let state: &mut State = compositor.into();
         state.shells.push(shell.weak_reference());
