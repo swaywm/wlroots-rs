@@ -56,6 +56,8 @@ pub use self::types::surface::*;
 pub use key_events::Key;
 pub use pointer_events::ButtonState;
 
-pub use self::render::{Renderer, GenericRenderer, Texture, TextureFormat};
+pub use self::render::{Renderer, GenericRenderer, Texture, TextureFormat, matrix_identity,
+                       matrix_translate, matrix_scale, matrix_rotate, matrix_mul,
+                       matrix_transform, matrix_texture};
 
 pub use self::errors::*;

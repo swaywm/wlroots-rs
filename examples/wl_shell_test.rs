@@ -12,9 +12,8 @@ use wlroots::{Area, Origin, Size, GenericRenderer,
               Compositor, CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard,
               KeyboardHandler, Output, OutputBuilder, OutputBuilderResult, OutputHandler,
               OutputLayout, OutputManagerHandler, Pointer, PointerHandler, WlShellHandler,
-              WlShellManagerHandler, WlShellSurface, XCursorTheme, WlShellSurfaceHandle};
-use wlroots::wlroots_sys::{wlr_matrix_mul, wlr_matrix_translate, wlr_matrix_scale,
-                           wlr_matrix_rotate, wlr_render_with_matrix};
+              WlShellManagerHandler, WlShellSurface, XCursorTheme, WlShellSurfaceHandle,
+              matrix_translate, matrix_scale, matrix_rotate, matrix_mul};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -22,12 +21,12 @@ use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 /// Render the shells in the current compositor state on the given output.
-unsafe fn render_shells(state: &mut State, output: &mut Output,
+fn render_shells(state: &mut State, output: &mut Output,
                         renderer: &mut GenericRenderer) {
     let shells = state.shells.clone();
     for mut shell in shells {
-        shell.run(|mut shell| shell.surface().as_mut().unwrap().run(|mut surface| {
-            let current_state = &mut *surface.current_state();
+        shell.run(|shell| shell.surface().as_mut().unwrap().run(|surface| {
+            let current_state = unsafe {&mut *surface.current_state()};
             let (width, height) = (current_state.width as i32, current_state.height as i32);
             let (render_width, render_height) = (width * output.scale() as i32,
                                                  height * output.scale() as i32);
@@ -43,35 +42,35 @@ unsafe fn render_shells(state: &mut State, output: &mut Output,
                 let mut renderer = renderer.render(output);
                 let mut matrix = [0.0; 16];
                 let mut translate_center = [0.0; 16];
-                wlr_matrix_translate(&mut translate_center,
+                matrix_translate(&mut translate_center,
                                  (ox as i32 + render_width / 2) as f32,
                                  (oy as i32 + render_height / 2) as f32,
                                  0.0);
                 let mut rotate = [0.0; 16];
                 // TODO what is rotation
                 let rotation = 0.0;
-                wlr_matrix_rotate(&mut rotate, rotation);
+                matrix_rotate(&mut rotate, rotation);
 
                 let mut translate_origin = [0.0; 16];
-                wlr_matrix_translate(&mut translate_origin,
+                matrix_translate(&mut translate_origin,
                                      (-render_width / 2) as f32,
                                      (-render_height / 2) as f32,
                                      0.0);
 
                 let mut scale = [0.0; 16];
-                wlr_matrix_scale(&mut scale,
+                matrix_scale(&mut scale,
                                  render_width as f32,
                                  render_height as f32,
                                  1.0);
 
                 let mut transform = [0.0; 16];
-                wlr_matrix_mul(&mut translate_center, &mut rotate, &mut transform);
-                wlr_matrix_mul(&mut transform, &mut translate_origin, &mut transform);
-                wlr_matrix_mul(&mut transform, &mut scale, &mut transform);
+                matrix_mul(&translate_center, &mut rotate, &mut transform);
+                matrix_mul(&transform.clone(), &mut translate_origin, &mut transform);
+                matrix_mul(&transform.clone(), &mut scale, &mut transform);
 
                 // TODO Handle non transform normal on the output
                 // if ... {}
-                wlr_matrix_mul(&renderer.output.transform_matrix(), &mut transform, &mut matrix);
+                matrix_mul(&renderer.output.transform_matrix(), &mut transform, &mut matrix);
                 renderer.render_with_matrix(&surface.texture(), &matrix);
                 surface.send_frame_done(Duration::from_secs(1));
             }
@@ -325,7 +324,7 @@ impl OutputHandler for ExOutput {
         let state: &mut State = compositor.data.downcast_mut().unwrap();
         // TODO Make the flashing go away by doing better buffer management
         output.make_current();
-        unsafe {render_shells(state, output, renderer)};
+        render_shells(state, output, renderer);
         output.swap_buffers();
     }
 }
