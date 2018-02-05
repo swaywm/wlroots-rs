@@ -41,12 +41,12 @@ impl GenericRenderer {
     ///
     /// This automatically makes the given output the current output.
     pub fn render<'output>(&mut self, output: &'output mut Output) -> Renderer<'output> {
-        output.make_current();
         unsafe {
+            output.make_current();
             wlr_renderer_begin(self.renderer, output.as_ptr());
+            Renderer { renderer: self.renderer,
+                       output }
         }
-        Renderer { renderer: self.renderer,
-                   output }
     }
 
     /// Create a texture using this renderer.
@@ -103,8 +103,10 @@ impl<'output> Renderer<'output> {
 
 impl<'output> Drop for Renderer<'output> {
     fn drop(&mut self) {
-        unsafe { wlr_renderer_end(self.renderer) }
-        self.output.swap_buffers();
+        unsafe {
+            wlr_renderer_end(self.renderer);
+            self.output.swap_buffers();
+        }
     }
 }
 
