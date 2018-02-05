@@ -9,9 +9,9 @@ use std::thread;
 use std::time::Duration;
 
 use wlroots::{matrix_mul, matrix_rotate, matrix_scale, matrix_translate, Area, Compositor,
-              CompositorBuilder, CursorBuilder, GenericRenderer, InputManagerHandler, Keyboard,
-              KeyboardHandler, Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler,
-              OutputLayout, OutputManagerHandler, Pointer, PointerHandler, Size, WlShellHandler,
+              CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
+              Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
+              OutputManagerHandler, Pointer, PointerHandler, Renderer, Size, WlShellHandler,
               WlShellManagerHandler, WlShellSurface, WlShellSurfaceHandle, XCursorTheme};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
@@ -20,7 +20,7 @@ use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 /// Render the shells in the current compositor state on the given output.
-fn render_shells(state: &mut State, output: &mut Output, renderer: &mut GenericRenderer) {
+fn render_shells(state: &mut State, renderer: &mut Renderer) {
     let shells = state.shells.clone();
     for mut shell in shells {
         shell.run(|shell| {
@@ -32,19 +32,19 @@ fn render_shells(state: &mut State, output: &mut Output, renderer: &mut GenericR
                                         current_state.height() as i32)
                                     };
                                     let (render_width, render_height) =
-                                        (width * output.scale() as i32,
-                                        height * output.scale() as i32);
+                                        (width * renderer.output.scale() as i32,
+                                        height * renderer.output.scale() as i32);
                                     // TODO Some value from something else?
                                     let (lx, ly) = (0.0, 0.0);
                                     let (mut ox, mut oy) = (lx, ly);
-                                    state.layout.output_coords(output, &mut ox, &mut oy);
-                                    ox *= output.scale() as f64;
-                                    oy *= output.scale() as f64;
+                                    state.layout
+                                         .output_coords(renderer.output, &mut ox, &mut oy);
+                                    ox *= renderer.output.scale() as f64;
+                                    oy *= renderer.output.scale() as f64;
                                     let render_box = Area::new(Origin::new(lx as i32, ly as i32),
                                                                Size::new(render_width,
                                                                          render_height));
-                                    if state.layout.intersects(output, render_box) {
-                                        let mut renderer = renderer.render(output);
+                                    if state.layout.intersects(renderer.output, render_box) {
                                         let mut matrix = [0.0; 16];
                                         let mut translate_center = [0.0; 16];
                                         matrix_translate(&mut translate_center,
@@ -302,10 +302,7 @@ impl OutputHandler for ExOutput {
                                  .as_mut()
                                  .expect("Compositor was not loaded with a renderer");
         let state: &mut State = compositor.data.downcast_mut().unwrap();
-        // TODO Make the flashing go away by doing better buffer management
-        output.make_current();
-        render_shells(state, output, renderer);
-        output.swap_buffers();
+        render_shells(state, &mut renderer.render(output));
     }
 }
 
