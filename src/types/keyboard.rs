@@ -42,7 +42,7 @@ pub struct Keyboard {
     keyboard: *mut wlr_keyboard
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct KeyboardHandle {
     /// The Rc that ensures that this handle is still alive.
     ///

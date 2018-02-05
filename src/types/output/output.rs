@@ -46,7 +46,7 @@ pub struct Output {
 }
 
 /// A wrapper around a wlr_output.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OutputHandle {
     /// The Rc that ensures that this handle is still alive.
     ///
