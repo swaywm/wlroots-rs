@@ -85,6 +85,14 @@ impl Surface {
         }
     }
 
+    /// Get the pending surface state.
+    pub fn pending_state<'surface>(&'surface mut self) -> SurfaceState<'surface> {
+        unsafe {
+            SurfaceState { state: (*self.surface).pending,
+                           phantom: PhantomData }
+        }
+    }
+
     /// Get the texture of this surface.
     pub fn texture(&self) -> Texture {
         unsafe { Texture::from_ptr((*self.surface).texture) }
