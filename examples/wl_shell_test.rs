@@ -25,8 +25,6 @@ fn render_shells(state: &mut State, output: &mut Output, renderer: &mut GenericR
     for mut shell in shells {
         shell.run(|shell| {
                       shell.surface()
-                           .as_mut()
-                           .unwrap()
                            .run(|surface| {
                                     let (width, height) = {
                                         let current_state = surface.current_state();

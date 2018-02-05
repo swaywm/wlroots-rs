@@ -46,17 +46,13 @@ impl WlShellSurface {
     }
 
     /// Gets the surface used by this Wayland shell.
-    ///
-    /// Returns `None` if the surface was NULL. This shouldn't happen but...
-    /// hey better a panic then a segfault right?
-    pub fn surface(&mut self) -> Option<SurfaceHandle> {
+    pub fn surface(&mut self) -> SurfaceHandle {
         unsafe {
             let surface = (*self.shell_surface).surface;
             if surface.is_null() {
-                None
-            } else {
-                Some(SurfaceHandle::from_ptr(surface))
+                panic!("wl_shell had a null surface!")
             }
+            SurfaceHandle::from_ptr(surface)
         }
     }
 
