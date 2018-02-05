@@ -8,8 +8,8 @@ use std::time::Duration;
 
 use libc;
 use wlroots_sys::{timespec, wlr_surface, wlr_surface_get_main_surface, wlr_surface_get_matrix,
-                  wlr_surface_has_buffer, wlr_surface_send_enter, wlr_surface_send_frame_done,
-                  wlr_surface_send_leave, wlr_surface_state};
+                  wlr_surface_has_buffer, wlr_surface_make_subsurface, wlr_surface_send_enter,
+                  wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_state};
 
 use Output;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
@@ -155,6 +155,11 @@ impl Surface {
                          sub_y: &mut f32)
                          -> Option<SubsurfaceHandle> {
         None
+    }
+
+    /// Create the subsurface implementation for this surface.
+    pub fn make_subsurface(&mut self, parent: &mut Surface, id: u32) {
+        unsafe { wlr_surface_make_subsurface(self.surface, parent.as_ptr(), id) }
     }
 
     /// Get the top of the subsurface tree for this surface.
