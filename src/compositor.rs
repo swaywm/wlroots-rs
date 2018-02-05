@@ -120,7 +120,6 @@ impl CompositorBuilder {
                 None
             };
 
-
             // Set up input manager, if the user provided it.
             let input_manager = input_manager_handler.map(|handler| {
                 let mut input_manager = InputManager::new((vec![], handler));

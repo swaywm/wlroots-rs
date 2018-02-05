@@ -1,8 +1,7 @@
 //! TODO Documentation
 
-use wlroots_sys::{wlr_matrix_identity, wlr_matrix_translate, wlr_matrix_scale, wlr_matrix_rotate,
-                  wlr_matrix_mul, wlr_matrix_transform, wlr_matrix_texture, wl_output_transform};
-
+use wlroots_sys::{wl_output_transform, wlr_matrix_identity, wlr_matrix_mul, wlr_matrix_rotate,
+                  wlr_matrix_scale, wlr_matrix_texture, wlr_matrix_transform, wlr_matrix_translate};
 
 /// Modifies the matrix to become the identity matrix.
 pub fn matrix_identity(output: &mut [f32; 16]) {
@@ -36,6 +35,9 @@ pub fn matrix_transform(mat: &mut [f32; 16], transform: wl_output_transform) {
 
 /// Transform the matrix based on the given Wayland output transform mode and
 /// the width and height of a texture.
-pub fn matrix_texture(mat: &mut [f32; 16], width: i32, height: i32, transform: wl_output_transform) {
+pub fn matrix_texture(mat: &mut [f32; 16],
+                      width: i32,
+                      height: i32,
+                      transform: wl_output_transform) {
     unsafe { wlr_matrix_texture(mat.as_mut_ptr(), width, height, transform) }
 }

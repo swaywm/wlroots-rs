@@ -1,10 +1,10 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
+use std::marker::PhantomData;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use std::marker::PhantomData;
 
 use libc;
 use wlroots_sys::{timespec, wlr_surface, wlr_surface_get_main_surface, wlr_surface_get_matrix,
@@ -79,7 +79,8 @@ impl Surface {
 
     pub fn current_state<'surface>(&'surface mut self) -> SurfaceState<'surface> {
         unsafe {
-            SurfaceState { state: (*self.surface).current, phantom: PhantomData }
+            SurfaceState { state: (*self.surface).current,
+                           phantom: PhantomData }
         }
     }
 
@@ -244,7 +245,7 @@ impl SurfaceHandle {
     }
 }
 
-impl <'surface> SurfaceState<'surface> {
+impl<'surface> SurfaceState<'surface> {
     pub fn width(&self) -> libc::c_int {
         unsafe { (*self.state).width }
     }

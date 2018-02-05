@@ -1,10 +1,11 @@
 //! TODO Documentation
 
-use wlroots_sys::{wlr_backend, wlr_render_texture_create, wlr_render_with_matrix, wlr_renderer,
-                  wlr_renderer_begin, wlr_renderer_destroy, wlr_renderer_end,
-                  wlr_gles2_renderer_create, wlr_render_colored_quad, wlr_render_colored_ellipse};
-use render::Texture;
 use Output;
+use render::Texture;
+use wlroots_sys::{wlr_backend, wlr_render_colored_ellipse, wlr_render_colored_quad,
+                  wlr_render_texture_create, wlr_render_with_matrix, wlr_renderer,
+                  wlr_renderer_begin, wlr_renderer_destroy, wlr_renderer_end,
+                  wlr_gles2_renderer_create};
 
 /// A generic interface for rendering to the screen.
 ///
@@ -30,7 +31,7 @@ impl GenericRenderer {
     /// Make a gles2 renderer.
     pub(crate) unsafe fn gles2_renderer(backend: *mut wlr_backend) -> Self {
         let renderer = wlr_gles2_renderer_create(backend);
-        if renderer.is_null(){
+        if renderer.is_null() {
             panic!("Could not construct GLES2 renderer");
         }
         GenericRenderer { renderer }
@@ -44,7 +45,8 @@ impl GenericRenderer {
         unsafe {
             wlr_renderer_begin(self.renderer, output.as_ptr());
         }
-        Renderer { renderer: self.renderer, output }
+        Renderer { renderer: self.renderer,
+                   output }
     }
 
     /// Create a texture using this renderer.
@@ -63,7 +65,7 @@ impl Drop for GenericRenderer {
     }
 }
 
-impl <'output> Renderer<'output> {
+impl<'output> Renderer<'output> {
     /// Create a texture using this renderer
     pub fn create_texture(&mut self) -> Option<Texture> {
         unsafe { create_texture(self.renderer) }
@@ -99,7 +101,7 @@ impl <'output> Renderer<'output> {
     }
 }
 
-impl <'output> Drop for Renderer<'output> {
+impl<'output> Drop for Renderer<'output> {
     fn drop(&mut self) {
         unsafe { wlr_renderer_end(self.renderer) }
         self.output.swap_buffers();
