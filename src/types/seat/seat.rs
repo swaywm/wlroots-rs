@@ -77,6 +77,10 @@ pub struct SeatInner {
     seat: *mut wlr_seat
 }
 
+// TODO FIXME This memory model is totally broken...
+// you can't even borrow the Seat properly in the callback,
+// so that's bogus
+
 wayland_listener!(Seat, RefCell<SeatInner>, [
     pointer_grab_begin_listener => pointer_grab_begin_notify: |this: &mut Seat,
                                                                event: *mut libc::c_void,|
