@@ -3,7 +3,7 @@
 //!
 //! TODO This module could really use some examples, as the API surface is huge.
 
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::time::Duration;
 
 use libc;
@@ -38,123 +38,118 @@ use utils::ToMS;
 
 pub trait SeatHandler {
     /// Callback triggered when a client has grabbed a pointer.
-    fn pointer_grabbed(&mut self, &mut Compositor, &Seat, &mut PointerGrab) {}
+    fn pointer_grabbed(&mut self, &mut Compositor, &mut SeatInner, &mut PointerGrab) {}
 
     /// Callback triggered when a client has ended a pointer grab.
-    fn pointer_released(&mut self, &mut Compositor, &Seat, &mut PointerGrab) {}
+    fn pointer_released(&mut self, &mut Compositor, &mut SeatInner, &mut PointerGrab) {}
 
     /// Callback triggered when a client has grabbed a keyboard.
-    fn keyboard_grabbed(&mut self, &mut Compositor, &Seat, &mut KeyboardGrab) {}
+    fn keyboard_grabbed(&mut self, &mut Compositor, &mut SeatInner, &mut KeyboardGrab) {}
 
     /// Callback triggered when a client has ended a keyboard grab.
-    fn keyboard_released(&mut self, &mut Compositor, &Seat, &mut KeyboardGrab) {}
+    fn keyboard_released(&mut self, &mut Compositor, &mut SeatInner, &mut KeyboardGrab) {}
 
     /// Callback triggered when a client has grabbed a touch.
-    fn touch_grabbed(&mut self, &mut Compositor, &Seat, &mut TouchGrab) {}
+    fn touch_grabbed(&mut self, &mut Compositor, &mut SeatInner, &mut TouchGrab) {}
 
     /// Callback triggered when a client has ended a touch grab.
-    fn touch_released(&mut self, &mut Compositor, &Seat, &mut TouchGrab) {}
+    fn touch_released(&mut self, &mut Compositor, &mut SeatInner, &mut TouchGrab) {}
 
     /* TODO FIXME wlr_seat_pointer_request_set_cursor_event */
-    fn cursor_set(&mut self, &mut Compositor, &Seat) {}
+    fn cursor_set(&mut self, &mut Compositor, &mut SeatInner) {}
 
     /// The seat was provided with a selection by the client.
-    fn received_selection(&mut self, &mut Compositor, &Seat) {}
+    fn received_selection(&mut self, &mut Compositor, &mut SeatInner) {}
 
     /// The seat was provided with a selection from the primary buffer
     /// by the client.
-    fn primary_selection(&mut self, &mut Compositor, &Seat) {}
+    fn primary_selection(&mut self, &mut Compositor, &mut SeatInner) {}
 
     /// The seat is being destroyed.
-    fn destroy(&mut self, &mut Compositor, &Seat) {}
+    fn destroy(&mut self, &mut Compositor, &mut SeatInner) {}
 }
 
-/// The structure that contains all actual seat pointers.
+/// The structure that contains the actual seat pointer.
 ///
 /// This is here so that we can ensure unique access.
 pub struct SeatInner {
-    handler: Box<SeatHandler>,
     seat: *mut wlr_seat
 }
 
-// TODO FIXME This memory model is totally broken...
-// you can't even borrow the Seat properly in the callback,
-// so that's bogus
-
-wayland_listener!(Seat, RefCell<SeatInner>, [
+wayland_listener!(Seat, (RefCell<SeatInner>, Box<SeatHandler>), [
     pointer_grab_begin_listener => pointer_grab_begin_notify: |this: &mut Seat,
                                                                event: *mut libc::c_void,|
     unsafe {
-        let mut inner = this.data.borrow_mut();
+        let handler = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
         let pointer_grab = &mut *(event as *mut PointerGrab);
-        inner.handler.pointer_grabbed(compositor, &*this, pointer_grab);
+        handler.pointer_grabbed(compositor, &mut *this.data.0.borrow_mut(), pointer_grab);
     };
     pointer_grab_end_listener => pointer_grab_end_notify: |this: &mut Seat,
     event: *mut libc::c_void,|
     unsafe {
-        let mut inner = this.data.borrow_mut();
+        let handler = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
         let pointer_grab = &mut *(event as *mut PointerGrab);
-        inner.handler.pointer_released(compositor, &*this, pointer_grab);
+        handler.pointer_released(compositor, &mut *this.data.0.borrow_mut(), pointer_grab);
     };
     keyboard_grab_begin_listener => keyboard_grab_begin_notify: |this: &mut Seat,
     event: *mut libc::c_void,|
     unsafe {
-        let mut inner = this.data.borrow_mut();
+        let handler = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
         let keyboard_grab = &mut *(event as *mut KeyboardGrab);
-        inner.handler.keyboard_grabbed(compositor, &*this, keyboard_grab);
+        handler.keyboard_grabbed(compositor, &mut *this.data.0.borrow_mut(), keyboard_grab);
     };
     keyboard_grab_end_listener => keyboard_grab_end_notify: |this: &mut Seat,
     event: *mut libc::c_void,|
     unsafe {
-        let mut inner = this.data.borrow_mut();
+        let handler = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
         let keyboard_grab = &mut *(event as *mut KeyboardGrab);
-        inner.handler.keyboard_released(compositor, &*this, keyboard_grab);
+        handler.keyboard_released(compositor, &mut *this.data.0.borrow_mut(), keyboard_grab);
     };
     touch_grab_begin_listener => touch_grab_begin_notify: |this: &mut Seat,
     event: *mut libc::c_void,|
     unsafe {
-        let mut inner = this.data.borrow_mut();
+        let handler = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
         let touch_grab = &mut *(event as *mut TouchGrab);
-        inner.handler.touch_grabbed(compositor, &*this, touch_grab);
+        handler.touch_grabbed(compositor, &mut *this.data.0.borrow_mut(), touch_grab);
     };
     touch_grab_end_listener => touch_grab_end_notify: |this: &mut Seat,
     event: *mut libc::c_void,|
     unsafe {
-        let mut inner = this.data.borrow_mut();
+        let handler = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
         let touch_grab = &mut *(event as *mut TouchGrab);
-        inner.handler.touch_released(compositor, &*this, touch_grab);
+        handler.touch_released(compositor, &mut *this.data.0.borrow_mut(), touch_grab);
     };
     request_set_cursor_listener => request_set_cursor_notify: |this: &mut Seat,
     _event: *mut libc::c_void,|
     unsafe {
-        let mut inner = this.data.borrow_mut();
+        let handler = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
-        inner.handler.cursor_set(compositor, &*this);
+        handler.cursor_set(compositor, &mut *this.data.0.borrow_mut());
     };
     selection_listener => selection_notify: |this: &mut Seat, _event: *mut libc::c_void,|
     unsafe {
-        let mut inner = this.data.borrow_mut();
+        let handler = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
-        inner.handler.received_selection(compositor, &*this);
+        handler.received_selection(compositor, &mut *this.data.0.borrow_mut());
     };
     primary_selection_listener => primary_selection_notify: |this: &mut Seat,
     _event: *mut libc::c_void,|
     unsafe {
-        let mut inner = this.data.borrow_mut();
+        let handler = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
-        inner.handler.primary_selection(compositor, &*this);
+        handler.primary_selection(compositor, &mut *this.data.0.borrow_mut());
     };
     destroy_listener => destroy_notify: |this: &mut Seat, _event: *mut libc::c_void,|
     unsafe {
-        let mut inner = this.data.borrow_mut();
+        let handler = &mut this.data.1;
         let compositor = &mut *COMPOSITOR_PTR;
-        inner.handler.destroy(compositor, &*this);
+        handler.destroy(compositor, &mut *this.data.0.borrow_mut());
     };
 ]);
 
@@ -176,7 +171,7 @@ impl Seat {
             if seat.is_null() {
                 None
             } else {
-                let mut res = Seat::new(RefCell::new(SeatInner { seat, handler }));
+                let mut res = Seat::new((RefCell::new(SeatInner { seat }), handler));
                 wl_signal_add(&mut (*seat).events.pointer_grab_begin as *mut _ as _,
                               res.pointer_grab_begin_listener() as *mut _ as _);
                 wl_signal_add(&mut (*seat).events.pointer_grab_end as *mut _ as _,
@@ -202,11 +197,20 @@ impl Seat {
         }
     }
 
+    /// Gets the inner seat that is usable.
+    ///
+    /// This struct is behind a `RefCell`, don't call this multiple times
+    /// unless you want to panic!
+    pub fn inner(&self) -> RefMut<SeatInner> {
+        self.data.0.borrow_mut()
+    }
+}
+
+impl SeatInner {
     /// Get the name of the seat.
     pub fn name(&self) -> Option<String> {
-        let seat = self.data.borrow();
         unsafe {
-            let name_ptr = (*seat.seat).name;
+            let name_ptr = (*self.seat).name;
             if name_ptr.is_null() {
                 return None
             }
@@ -216,31 +220,27 @@ impl Seat {
 
     /// Updates the name of this seat.
     /// Will automatically send it to all clients.
-    pub fn set_name(&self, name: String) {
-        let seat = self.data.borrow();
+    pub fn set_name(&mut self, name: String) {
         let name = safe_as_cstring(name);
         unsafe {
-            wlr_seat_set_name(seat.seat, name.as_ptr());
+            wlr_seat_set_name(self.seat, name.as_ptr());
         }
     }
 
     /// Gets the capabilities of this seat.
     pub fn capabilities(&self) -> Capability {
-        let seat = self.data.borrow();
-        unsafe { Capability::from_raw((*seat.seat).capabilities).expect("Invalid capabilities") }
+        unsafe { Capability::from_raw((*self.seat).capabilities).expect("Invalid capabilities") }
     }
 
     /// Updates the capabilities available on this seat.
     /// Will automatically send it to all clients.
     pub fn set_capabilities(&self, capabilities: Capability) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_set_capabilities(seat.seat, capabilities.bits()) }
+        unsafe { wlr_seat_set_capabilities(self.seat, capabilities.bits()) }
     }
 
     /// Determines if the surface has pointer focus.
     pub fn pointer_surface_has_focus(&self, surface: &mut Surface) -> bool {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_surface_has_focus(seat.seat, surface.as_ptr()) }
+        unsafe { wlr_seat_pointer_surface_has_focus(self.seat, surface.as_ptr()) }
     }
 
     // Sends a pointer enter event to the given surface and considers it to be
@@ -253,17 +253,15 @@ impl Seat {
     // Compositor should use `Seat::pointer_notify_enter` to
     // change pointer focus to respect pointer grabs.
     pub fn pointer_enter(&self, surface: &mut Surface, sx: f64, sy: f64) {
-        let seat = self.data.borrow();
         unsafe {
-            wlr_seat_pointer_enter(seat.seat, surface.as_ptr(), sx, sy);
+            wlr_seat_pointer_enter(self.seat, surface.as_ptr(), sx, sy);
         }
     }
 
     /// Clears the focused surface for the pointer and leaves all entered
     /// surfaces.
     pub fn clear_focus(&self) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_clear_focus(seat.seat) }
+        unsafe { wlr_seat_pointer_clear_focus(self.seat) }
     }
 
     /// Sends a motion event to the surface with pointer focus.
@@ -273,8 +271,7 @@ impl Seat {
     /// Compositors should use `Seat::notify_motion` to
     /// send motion events to the respect pointer grabs.
     pub fn send_motion(&self, time: Duration, sx: f64, sy: f64) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_send_motion(seat.seat, time.to_ms(), sx, sy) }
+        unsafe { wlr_seat_pointer_send_motion(self.seat, time.to_ms(), sx, sy) }
     }
 
     // TODO Button and State should probably be wrapped in some sort of type...
@@ -288,8 +285,7 @@ impl Seat {
     /// Compositors should use `Seat::notify_button` to
     /// send button events to respect pointer grabs.
     pub fn send_button(&self, time: Duration, button: u32, state: u32) -> u32 {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_send_button(seat.seat, time.to_ms(), button, state) }
+        unsafe { wlr_seat_pointer_send_button(self.seat, time.to_ms(), button, state) }
     }
 
     /// Send an axis event to the surface with pointer focus.
@@ -297,37 +293,32 @@ impl Seat {
     /// Compositors should use `Seat::notify_axis` to
     /// send axis events to respect pointer grabs.
     pub fn send_axis(&self, time: Duration, orientation: wlr_axis_orientation, value: f64) {
-        let seat = self.data.borrow();
         unsafe {
-            wlr_seat_pointer_send_axis(seat.seat, time.to_ms(), orientation, value);
+            wlr_seat_pointer_send_axis(self.seat, time.to_ms(), orientation, value);
         }
     }
 
     /// Start a grab of the pointer of this seat. The grabber is responsible for
     /// handling all pointer events until the grab ends.
     pub fn pointer_start_grab(&self, grab: PointerGrab) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_start_grab(seat.seat, grab.as_ptr()) }
+        unsafe { wlr_seat_pointer_start_grab(self.seat, grab.as_ptr()) }
     }
 
     /// End the grab of the pointer of this seat. This reverts the grab back to the
     /// default grab for the pointer.
     pub fn pointer_end_grab(&self) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_end_grab(seat.seat) }
+        unsafe { wlr_seat_pointer_end_grab(self.seat) }
     }
 
     /// Whether or not the pointer has a grab other than the default grab.
     pub fn pointer_has_grab(&self) -> bool {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_has_grab(seat.seat) }
+        unsafe { wlr_seat_pointer_has_grab(self.seat) }
     }
 
     /// Clear the focused surface for the pointer and leave all entered
     /// surfaces.
     pub fn pointer_clear_focus(&self) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_clear_focus(seat.seat) }
+        unsafe { wlr_seat_pointer_clear_focus(self.seat) }
     }
 
     /// Notify the seat of a pointer enter event to the given surface and request it
@@ -335,16 +326,14 @@ impl Seat {
     ///
     /// Pass surface-local coordinates where the enter occurred.
     pub fn pointer_notify_enter(&self, surface: &mut Surface, sx: f64, sy: f64) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_notify_enter(seat.seat, surface.as_ptr(), sx, sy) }
+        unsafe { wlr_seat_pointer_notify_enter(self.seat, surface.as_ptr(), sx, sy) }
     }
 
     /// Notify the seat of motion over the given surface.
     ///
     /// Pass surface-local coordinates where the pointer motion occurred.
     pub fn pointer_notify_motion(&self, time: Duration, sx: f64, sy: f64) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_notify_motion(seat.seat, time.to_ms(), sx, sy) }
+        unsafe { wlr_seat_pointer_notify_motion(self.seat, time.to_ms(), sx, sy) }
     }
 
     // TODO Wrapper type around Button and State
@@ -353,8 +342,7 @@ impl Seat {
     ///
     /// Returns the serial of the button press or zero if no button press was sent.
     pub fn pointer_notify_button(&self, time: Duration, button: u32, state: u32) -> u32 {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_notify_button(seat.seat, time.to_ms(), button, state) }
+        unsafe { wlr_seat_pointer_notify_button(self.seat, time.to_ms(), button, state) }
     }
 
     /// Notify the seat of an axis event.
@@ -362,14 +350,12 @@ impl Seat {
                                time: Duration,
                                orientation: wlr_axis_orientation,
                                value: f64) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_pointer_notify_axis(seat.seat, time.to_ms(), orientation, value) }
+        unsafe { wlr_seat_pointer_notify_axis(self.seat, time.to_ms(), orientation, value) }
     }
 
     /// Set this keyboard as the active keyboard for the seat.
     pub fn set_keyboard(&self, dev: InputDevice) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_set_keyboard(seat.seat, dev.as_ptr()) }
+        unsafe { wlr_seat_set_keyboard(self.seat, dev.as_ptr()) }
     }
 
     // TODO Point to the correct function name in this documentation.
@@ -378,16 +364,14 @@ impl Seat {
     ///
     /// Compositors should use `wlr_seat_notify_key()` to respect keyboard grabs.
     pub fn keyboard_send_key(&self, time: Duration, key: u32, state: u32) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_keyboard_send_key(seat.seat, time.to_ms(), key, state) }
+        unsafe { wlr_seat_keyboard_send_key(self.seat, time.to_ms(), key, state) }
     }
 
     /// Send the modifier state to focused keyboard resources.
     ///
     /// Compositors should use `Seat::keyboard_notify_modifiers()` to respect any keyboard grabs.
     pub fn keyboard_send_modifiers(&self, modifiers: &mut KeyboardModifiers) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_keyboard_send_modifiers(seat.seat, modifiers) }
+        unsafe { wlr_seat_keyboard_send_modifiers(self.seat, modifiers) }
     }
 
     /// Send a keyboard enter event to the given surface and consider it to be the
@@ -401,10 +385,9 @@ impl Seat {
                           surface: &mut Surface,
                           keycodes: &mut [Keycode],
                           modifiers: &mut KeyboardModifiers) {
-        let seat = self.data.borrow();
         let keycodes_length = keycodes.len();
         unsafe {
-            wlr_seat_keyboard_enter(seat.seat,
+            wlr_seat_keyboard_enter(self.seat,
                                     surface.as_ptr(),
                                     keycodes.as_mut_ptr(),
                                     keycodes_length,
@@ -415,36 +398,31 @@ impl Seat {
     /// Start a grab of the keyboard of this seat. The grabber is responsible for
     /// handling all keyboard events until the grab ends.
     pub fn keyboard_start_grab(&self, grab: KeyboardGrab) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_keyboard_start_grab(seat.seat, grab.as_ptr()) }
+        unsafe { wlr_seat_keyboard_start_grab(self.seat, grab.as_ptr()) }
     }
 
     /// End the grab of the keyboard of this seat. This reverts the grab back to the
     /// default grab for the keyboard.
     pub fn keyboard_end_grab(&self) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_keyboard_end_grab(seat.seat) }
+        unsafe { wlr_seat_keyboard_end_grab(self.seat) }
     }
 
     /// Whether or not the keyboard has a grab other than the default grab
     pub fn keyboard_has_grab(&self) -> bool {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_keyboard_has_grab(seat.seat) }
+        unsafe { wlr_seat_keyboard_has_grab(self.seat) }
     }
 
     /// Clear the focused surface for the keyboard and leave all entered
     /// surfaces.
     pub fn keyboard_clear_focus(&self) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_keyboard_clear_focus(seat.seat) }
+        unsafe { wlr_seat_keyboard_clear_focus(self.seat) }
     }
 
     /// Notify the seat that the modifiers for the keyboard have changed.
     ///
     /// Defers to any keyboard grabs.
     pub fn keyboard_notify_modifiers(&self, modifiers: &mut KeyboardModifiers) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_keyboard_notify_modifiers(seat.seat, modifiers) }
+        unsafe { wlr_seat_keyboard_notify_modifiers(self.seat, modifiers) }
     }
 
     /// Notify the seat that the keyboard focus has changed and request it to be the
@@ -455,10 +433,9 @@ impl Seat {
                                  surface: &mut Surface,
                                  keycodes: &mut [Keycode],
                                  modifiers: &mut KeyboardModifiers) {
-        let seat = self.data.borrow();
         let keycodes_length = keycodes.len();
         unsafe {
-            wlr_seat_keyboard_notify_enter(seat.seat,
+            wlr_seat_keyboard_notify_enter(self.seat,
                                            surface.as_ptr(),
                                            keycodes.as_mut_ptr(),
                                            keycodes_length,
@@ -472,42 +449,36 @@ impl Seat {
     ///
     /// Defers to any keyboard grabs.
     pub fn keyboard_notify_key(&self, time: Duration, key: u32, state: u32) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_keyboard_notify_key(seat.seat, time.to_ms(), key, state) }
+        unsafe { wlr_seat_keyboard_notify_key(self.seat, time.to_ms(), key, state) }
     }
 
     /// How many touch ponits are currently down for the seat.
     pub fn touch_num_points(&self) -> i32 {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_touch_num_points(seat.seat) }
+        unsafe { wlr_seat_touch_num_points(self.seat) }
     }
 
     /// Start a grab of the touch device of this seat. The grabber is responsible for
     /// handling all touch events until the grab ends.
     pub fn touch_start_grab(&self, grab: TouchGrab) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_touch_start_grab(seat.seat, grab.as_ptr()) }
+        unsafe { wlr_seat_touch_start_grab(self.seat, grab.as_ptr()) }
     }
 
     /// End the grab of the touch device of this seat. This reverts the grab back to
     /// the default grab for the touch device.
     pub fn touch_end_grab(&self) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_touch_end_grab(seat.seat) }
+        unsafe { wlr_seat_touch_end_grab(self.seat) }
     }
 
     /// Whether or not the seat has a touch grab other than the default grab.
     pub fn touch_has_grab(&self) -> bool {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_touch_has_grab(seat.seat) }
+        unsafe { wlr_seat_touch_has_grab(self.seat) }
     }
 
     // Get the active touch point with the given `touch_id`. If the touch point does
     // not exist or is no longer active, returns None.
     pub fn get_touch_point(&self, touch_id: TouchId) -> Option<TouchPoint> {
-        let seat = self.data.borrow();
         unsafe {
-            let touch_point = wlr_seat_touch_get_point(seat.seat, touch_id.into());
+            let touch_point = wlr_seat_touch_get_point(self.seat, touch_id.into());
             if touch_point.is_null() {
                 return None
             } else {
@@ -526,9 +497,8 @@ impl Seat {
                              touch_id: TouchId,
                              sx: f64,
                              sy: f64) {
-        let seat = self.data.borrow();
         unsafe {
-            wlr_seat_touch_point_focus(seat.seat,
+            wlr_seat_touch_point_focus(self.seat,
                                        surface.as_ptr(),
                                        time.to_ms(),
                                        touch_id.into(),
@@ -539,8 +509,7 @@ impl Seat {
 
     //// Clear the focused surface for the touch point given by `touch_id`.
     pub fn touch_point_clear_focus(&self, time: Duration, touch_id: TouchId) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_touch_point_clear_focus(seat.seat, time.to_ms(), touch_id.into()) }
+        unsafe { wlr_seat_touch_point_clear_focus(self.seat, time.to_ms(), touch_id.into()) }
     }
 
     /// Send a touch down event to the client of the given surface.
@@ -562,9 +531,8 @@ impl Seat {
                            sx: f64,
                            sy: f64)
                            -> u32 {
-        let seat = self.data.borrow();
         unsafe {
-            wlr_seat_touch_send_down(seat.seat,
+            wlr_seat_touch_send_down(self.seat,
                                      surface.as_ptr(),
                                      time.to_ms(),
                                      touch_id.into(),
@@ -583,8 +551,7 @@ impl Seat {
     /// Compositors should use `Seat::touch_notify_up()` to
     /// respect any grabs of the touch device.
     pub fn touch_send_up(&self, time: Duration, touch_id: TouchId) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_touch_send_up(seat.seat, time.to_ms(), touch_id.into()) }
+        unsafe { wlr_seat_touch_send_up(self.seat, time.to_ms(), touch_id.into()) }
     }
 
     /// Send a touch motion event for the touch point given by the `touch_id`.
@@ -595,8 +562,7 @@ impl Seat {
     /// Compositors should use `Seat::touch_notify_motion()` to
     /// respect any grabs of the touch device.
     pub fn touch_send_motion(&self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_touch_send_motion(seat.seat, time.to_ms(), touch_id.into(), sx, sy) }
+        unsafe { wlr_seat_touch_send_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy) }
     }
 
     // TODO Should this be returning a u32? Should I wrap whatever that number is?
@@ -610,9 +576,8 @@ impl Seat {
                              sx: f64,
                              sy: f64)
                              -> u32 {
-        let seat = self.data.borrow();
         unsafe {
-            wlr_seat_touch_notify_down(seat.seat,
+            wlr_seat_touch_notify_down(self.seat,
                                        surface.as_ptr(),
                                        time.to_ms(),
                                        touch_id.into(),
@@ -624,8 +589,7 @@ impl Seat {
     /// Notify the seat that the touch point given by `touch_id` is up. Defers to any
     /// grab of the touch device.
     pub fn touch_notify_up(&self, time: Duration, touch_id: TouchId) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_touch_notify_up(seat.seat, time.to_ms(), touch_id.into()) }
+        unsafe { wlr_seat_touch_notify_up(self.seat, time.to_ms(), touch_id.into()) }
     }
 
     /// Notify the seat that the touch point given by `touch_id` has moved.
@@ -635,19 +599,17 @@ impl Seat {
     /// The seat should be notified of touch motion even if the surface is
     /// not the owner of the touch point for processing by grabs.
     pub fn touch_notify_motion(&self, time: Duration, touch_id: TouchId, sx: f64, sy: f64) {
-        let seat = self.data.borrow();
-        unsafe { wlr_seat_touch_notify_motion(seat.seat, time.to_ms(), touch_id.into(), sx, sy) }
+        unsafe { wlr_seat_touch_notify_motion(self.seat, time.to_ms(), touch_id.into(), sx, sy) }
     }
 
     pub(crate) unsafe fn as_ptr(&mut self) -> *mut wlr_seat {
-        let inner = self.data.get_mut();
-        inner.seat
+        self.seat
     }
 }
 
 impl Drop for Seat {
     fn drop(&mut self) {
-        let inner = self.data.get_mut();
+        let inner = self.data.0.get_mut();
         unsafe { wlr_seat_destroy(inner.seat) }
     }
 }
