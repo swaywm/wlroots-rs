@@ -151,7 +151,7 @@ macro_rules! wayland_listener {
         }
 
         impl $struct_name {
-            pub fn new(data: $data) -> Box<$struct_name> {
+            pub(crate) fn new(data: $data) -> Box<$struct_name> {
                 use $crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
                 Box::new($struct_name {
                     data,
