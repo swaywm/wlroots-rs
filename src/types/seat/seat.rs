@@ -212,7 +212,7 @@ impl Seat {
     }
 
     /// Determines if the surface has pointer focus.
-    pub fn pointer_surface_has_focus(&self, surface: Surface) -> bool {
+    pub fn pointer_surface_has_focus(&self, surface: &mut Surface) -> bool {
         let seat = self.data.borrow();
         unsafe { wlr_seat_pointer_surface_has_focus(seat.seat, surface.as_ptr()) }
     }
@@ -226,7 +226,7 @@ impl Seat {
     //
     // Compositor should use `Seat::pointer_notify_enter` to
     // change pointer focus to respect pointer grabs.
-    pub fn pointer_enter(&self, surface: Surface, sx: f64, sy: f64) {
+    pub fn pointer_enter(&self, surface: &mut Surface, sx: f64, sy: f64) {
         let seat = self.data.borrow();
         unsafe {
             wlr_seat_pointer_enter(seat.seat, surface.as_ptr(), sx, sy);
@@ -308,7 +308,7 @@ impl Seat {
     /// to be the focused surface for the pointer.
     ///
     /// Pass surface-local coordinates where the enter occurred.
-    pub fn pointer_notify_enter(&self, surface: Surface, sx: f64, sy: f64) {
+    pub fn pointer_notify_enter(&self, surface: &mut Surface, sx: f64, sy: f64) {
         let seat = self.data.borrow();
         unsafe { wlr_seat_pointer_notify_enter(seat.seat, surface.as_ptr(), sx, sy) }
     }
@@ -372,7 +372,7 @@ impl Seat {
     /// Compositors should use `Seat::keyboard_notify_enter()` to
     /// change keyboard focus to respect keyboard grabs.
     pub fn keyboard_enter(&self,
-                          surface: Surface,
+                          surface: &mut Surface,
                           keycodes: &mut [Keycode],
                           modifiers: &mut KeyboardModifiers) {
         let seat = self.data.borrow();
@@ -426,7 +426,7 @@ impl Seat {
     ///
     /// Defers to any current grab of the seat's keyboard.
     pub fn keyboard_notify_enter(&self,
-                                 surface: Surface,
+                                 surface: &mut Surface,
                                  keycodes: &mut [Keycode],
                                  modifiers: &mut KeyboardModifiers) {
         let seat = self.data.borrow();
@@ -495,7 +495,7 @@ impl Seat {
     ///
     /// The surface is required. To clear focus, use `Seat::touch_point_clear_focus()`.
     pub fn touch_point_focus(&self,
-                             surface: Surface,
+                             surface: &mut Surface,
                              time: Duration,
                              touch_id: TouchId,
                              sx: f64,
@@ -530,7 +530,7 @@ impl Seat {
     /// Compositors should use `Seat::touch_notify_down()` to
     /// respect any grabs of the touch device.
     pub fn touch_send_down(&self,
-                           surface: Surface,
+                           surface: &mut Surface,
                            time: Duration,
                            touch_id: TouchId,
                            sx: f64,
@@ -578,7 +578,7 @@ impl Seat {
     /// Notify the seat of a touch down on the given surface. Defers to any grab of
     /// the touch device.
     pub fn touch_notify_down(&self,
-                             surface: Surface,
+                             surface: &mut Surface,
                              time: Duration,
                              touch_id: TouchId,
                              sx: f64,
