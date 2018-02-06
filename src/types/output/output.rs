@@ -22,7 +22,7 @@ use utils::c_to_rust_string;
 pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;
 
-use {Origin, Size, Surface};
+use {Origin, Size, Surface, SurfaceHandle};
 
 struct OutputState {
     handle: Weak<AtomicBool>,
@@ -46,7 +46,7 @@ pub struct Output {
 }
 
 /// A wrapper around a wlr_output.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OutputHandle {
     /// The Rc that ensures that this handle is still alive.
     ///
@@ -242,12 +242,12 @@ impl Output {
         }
     }
 
-    pub fn fullscreen_surface(&self) -> Option<Surface> {
+    pub fn fullscreen_surface(&self) -> Option<SurfaceHandle> {
         unsafe {
             if (*self.output).fullscreen_surface.is_null() {
                 None
             } else {
-                Some(Surface::from_ptr((*self.output).fullscreen_surface))
+                Some(SurfaceHandle::from_ptr((*self.output).fullscreen_surface))
             }
         }
     }
@@ -267,12 +267,29 @@ impl Output {
         unsafe { (*self.output).transform }
     }
 
-    pub fn make_current(&mut self) {
-        unsafe { wlr_output_make_current(self.output) }
+    /// Make this output the current output.
+    ///
+    /// # Unsafety
+    /// This is done for rendering purposes, and you should really use
+    /// a `GenericRenderer` instead in order to do this.
+    ///
+    /// Sometimes however you need to do e.g opengl rendering and we haven't
+    /// wrapped that. If that's the case, call this first and then swap the buffers.
+    pub unsafe fn make_current(&mut self) {
+        wlr_output_make_current(self.output)
     }
 
-    pub fn swap_buffers(&mut self) {
-        unsafe { wlr_output_swap_buffers(self.output) }
+    /// Swaps the buffers and draws whatever is in the back buffer on the screen.
+    ///
+    /// # Unsafety
+    /// This is done for rendering purposes, but if called multiple times then
+    /// you could cause a deadlock.
+    ///
+    /// You should try to use a `GenericRenderer`, but sometimes it's necessary to
+    /// do your own manual rendering in a compositor. In that case, call `make_current`,
+    /// do your rendering, and then call this function.
+    pub unsafe fn swap_buffers(&mut self) {
+        wlr_output_swap_buffers(self.output)
     }
 
     /// Get the dimensions of the output as (width, height).
@@ -332,7 +349,7 @@ impl Output {
     }
 
     /// Set the fullscreen surface for this output.
-    pub fn set_fullscreen_surface(&mut self, surface: Surface) {
+    pub fn set_fullscreen_surface(&mut self, surface: &mut Surface) {
         unsafe { wlr_output_set_fullscreen_surface(self.output, surface.as_ptr()) }
     }
 

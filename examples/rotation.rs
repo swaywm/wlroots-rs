@@ -80,7 +80,7 @@ impl OutputManagerHandler for OutputManager {
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
         let (width, height) = output.effective_resolution();
-        let renderer = compositor.gles2
+        let renderer = compositor.renderer
                                  .as_mut()
                                  .expect("Compositor was not loaded with gles2 renderer");
         let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
@@ -168,7 +168,7 @@ fn main() {
                                                              Some(Box::new(OutputManager)),
                                                              None);
     {
-        let gles2 = &mut compositor.gles2.as_mut().unwrap();
+        let gles2 = &mut compositor.renderer.as_mut().unwrap();
         let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
         compositor_data.cat_texture = gles2.create_texture().map(|mut cat_texture| {
             cat_texture.upload_pixels(TextureFormat::ABGR8888,

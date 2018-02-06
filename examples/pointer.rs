@@ -106,12 +106,13 @@ impl PointerHandler for ExPointer {
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
         let state: &mut State = compositor.into();
-        output.make_current();
+        // NOTE gl functions will probably always be unsafe.
         unsafe {
+            output.make_current();
             gl::ClearColor(state.color[0], state.color[1], state.color[2], 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
+            output.swap_buffers();
         }
-        output.swap_buffers();
     }
 }
 

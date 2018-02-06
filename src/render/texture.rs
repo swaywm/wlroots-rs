@@ -72,6 +72,7 @@ impl Into<wl_shm_format> for TextureFormat {
     }
 }
 
+#[derive(Debug)]
 pub struct Texture {
     texture: *mut wlr_texture
 }

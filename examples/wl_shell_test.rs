@@ -6,15 +6,17 @@ extern crate wayland_client;
 extern crate wlroots;
 
 use std::thread;
+use std::time::Duration;
 
-use wlroots::{Compositor, CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard,
-              KeyboardHandler, Output, OutputBuilder, OutputBuilderResult, OutputHandler,
-              OutputLayout, OutputManagerHandler, Pointer, PointerHandler, WlShellHandler,
-              WlShellManagerHandler, WlShellSurface, XCursorTheme};
+use wlroots::{matrix_mul, matrix_rotate, matrix_scale, matrix_translate, Area, Compositor,
+              CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
+              Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
+              OutputManagerHandler, Pointer, PointerHandler, Renderer, Size, Surface,
+              WlShellHandler, WlShellManagerHandler, WlShellSurface, WlShellSurfaceHandle,
+              XCursorTheme};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
-use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
@@ -22,7 +24,8 @@ struct State {
     color: [f32; 4],
     default_color: [f32; 4],
     xcursor_theme: XCursorTheme,
-    layout: OutputLayout
+    layout: OutputLayout,
+    shells: Vec<WlShellSurfaceHandle>
 }
 
 impl State {
@@ -30,7 +33,8 @@ impl State {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
                 xcursor_theme,
-                layout }
+                layout,
+                shells: vec![] }
     }
 }
 
@@ -42,9 +46,12 @@ struct WlShellManager;
 impl WlShellHandler for WlShellHandlerEx {}
 impl WlShellManagerHandler for WlShellManager {
     fn new_surface(&mut self,
-                   _: &mut Compositor,
-                   _: &mut WlShellSurface)
+                   compositor: &mut Compositor,
+                   shell: &mut WlShellSurface,
+                   _: &mut Surface)
                    -> Option<Box<WlShellHandler>> {
+        let state: &mut State = compositor.into();
+        state.shells.push(shell.weak_reference());
         Some(Box::new(WlShellHandlerEx))
     }
 }
@@ -95,8 +102,8 @@ impl KeyboardHandler for ExKeyboardHandler {
                     use std::io::Write;
                     use std::os::unix::io::AsRawFd;
                     use wayland_client::EnvHandler;
-                    use wayland_client::protocol::{wl_compositor, wl_pointer, wl_seat, wl_shell,
-                                                   wl_shell_surface, wl_shm};
+                    use wayland_client::protocol::{wl_compositor, wl_shell, wl_shell_surface,
+                                                   wl_shm};
 
                     wayland_env!(WaylandEnv,
                                  compositor: wl_compositor::WlCompositor,
@@ -114,38 +121,6 @@ impl KeyboardHandler for ExKeyboardHandler {
                                                            popup_done: |_, _, _| {
                                                                /* not used in this example */
                                                            } }
-                    }
-
-                    fn pointer_impl() -> wl_pointer::Implementation<()> {
-                        wl_pointer::Implementation {
-                            enter: |_, _, _pointer, _serial, _surface, x, y| {
-                                println!("Pointer entered surface at ({},{}).", x, y);
-                            },
-                            leave: |_, _, _pointer, _serial, _surface| {
-                                println!("Pointer left surface.");
-                            },
-                            motion: |_, _, _pointer, _time, x, y| {
-                                println!("Pointer moved to ({},{}).", x, y);
-                            },
-                            button: |_, _, _pointer, _serial, _time, button, state| {
-                                println!(
-                                    "Button {} ({}) was {:?}.",
-                                    match button {
-                                        272 => "Left",
-                                        273 => "Right",
-                                        274 => "Middle",
-                                        _ => "Unknown",
-                                    },
-                                    button,
-                                    state
-                                );
-                            },
-                            axis: |_, _, _, _, _, _| { /* not used in this example */ },
-                            frame: |_, _, _| { /* not used in this example */ },
-                            axis_source: |_, _, _, _| { /* not used in this example */ },
-                            axis_discrete: |_, _, _, _, _| { /* not used in this example */ },
-                            axis_stop: |_, _, _, _, _| { /* not used in this example */ },
-                        }
                     }
 
                     let (display, mut event_queue) = match wayland_client::default_connect() {
@@ -254,13 +229,11 @@ impl PointerHandler for ExPointer {
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
-        let state: &mut State = compositor.into();
-        output.make_current();
-        unsafe {
-            gl::ClearColor(state.color[0], state.color[1], state.color[2], 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-        }
-        output.swap_buffers();
+        let renderer = compositor.renderer
+                                 .as_mut()
+                                 .expect("Compositor was not loaded with a renderer");
+        let state: &mut State = compositor.data.downcast_mut().unwrap();
+        render_shells(state, &mut renderer.render(output));
     }
 }
 
@@ -293,4 +266,75 @@ fn main() {
                                                          Some(Box::new(OutputManager)),
                                                          Some(Box::new(WlShellManager)));
     compositor.run();
+}
+
+/// Render the shells in the current compositor state on the given output.
+fn render_shells(state: &mut State, renderer: &mut Renderer) {
+    let shells = state.shells.clone();
+    for mut shell in shells {
+        shell.run(|shell| {
+                      shell.surface()
+                           .run(|surface| {
+                                    let (width, height) = {
+                                        let current_state = surface.current_state();
+                                        (current_state.width() as i32,
+                                        current_state.height() as i32)
+                                    };
+                                    let (render_width, render_height) =
+                                        (width * renderer.output.scale() as i32,
+                                        height * renderer.output.scale() as i32);
+                                    // TODO Some value from something else?
+                                    let (lx, ly) = (0.0, 0.0);
+                                    let (mut ox, mut oy) = (lx, ly);
+                                    state.layout
+                                         .output_coords(renderer.output, &mut ox, &mut oy);
+                                    ox *= renderer.output.scale() as f64;
+                                    oy *= renderer.output.scale() as f64;
+                                    let render_box = Area::new(Origin::new(lx as i32, ly as i32),
+                                                               Size::new(render_width,
+                                                                         render_height));
+                                    if state.layout.intersects(renderer.output, render_box) {
+                                        let mut matrix = [0.0; 16];
+                                        let mut translate_center = [0.0; 16];
+                                        matrix_translate(&mut translate_center,
+                                                         (ox as i32 + render_width / 2) as f32,
+                                                         (oy as i32 + render_height / 2) as f32,
+                                                         0.0);
+                                        let mut rotate = [0.0; 16];
+                                        // TODO what is rotation
+                                        let rotation = 0.0;
+                                        matrix_rotate(&mut rotate, rotation);
+
+                                        let mut translate_origin = [0.0; 16];
+                                        matrix_translate(&mut translate_origin,
+                                                         (-render_width / 2) as f32,
+                                                         (-render_height / 2) as f32,
+                                                         0.0);
+
+                                        let mut scale = [0.0; 16];
+                                        matrix_scale(&mut scale,
+                                                     render_width as f32,
+                                                     render_height as f32,
+                                                     1.0);
+
+                                        let mut transform = [0.0; 16];
+                                        matrix_mul(&translate_center, &mut rotate, &mut transform);
+                                        matrix_mul(&transform.clone(),
+                                                   &mut translate_origin,
+                                                   &mut transform);
+                                        matrix_mul(&transform.clone(), &mut scale, &mut transform);
+
+                                        // TODO Handle non transform normal on the output
+                                        // if ... {}
+                                        matrix_mul(&renderer.output.transform_matrix(),
+                                                   &mut transform,
+                                                   &mut matrix);
+                                        renderer.render_with_matrix(&surface.texture(), &matrix);
+                                        surface.send_frame_done(Duration::from_secs(1));
+                                    }
+                                })
+                           .unwrap()
+                  })
+             .unwrap();
+    }
 }

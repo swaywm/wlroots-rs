@@ -300,6 +300,18 @@ impl KeyboardHandle {
     }
 }
 
+impl Clone for KeyboardHandle {
+    fn clone(&self) -> Self {
+        KeyboardHandle { keyboard: self.keyboard,
+                         handle: self.handle.clone(),
+                         /// NOTE Rationale for unsafe clone:
+                         ///
+                         /// You can only access it after a call to `upgrade`,
+                         /// and that implicitly checks that it is valid.
+                         device: unsafe { self.device.clone() } }
+    }
+}
+
 bitflags! {
     pub struct KeyboardLed: u32 {
         const WLR_LED_NUM_LOCK = wlr_keyboard_led::WLR_LED_NUM_LOCK as u32;

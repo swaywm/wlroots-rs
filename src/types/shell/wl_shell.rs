@@ -7,10 +7,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use wlroots_sys::{wl_shell_surface_resize, wlr_wl_shell_surface, wlr_wl_shell_surface_configure,
                   wlr_wl_shell_surface_ping, wlr_wl_shell_surface_popup_at};
 
+use SurfaceHandle;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
-
-pub type WlShellSurfaceResize = wl_shell_surface_resize;
 
 struct WlShellSurfaceState {
     handle: Weak<AtomicBool>
@@ -42,6 +41,17 @@ impl WlShellSurface {
     unsafe fn from_handle(handle: &WlShellSurfaceHandle) -> Self {
         WlShellSurface { liveliness: None,
                          shell_surface: handle.as_ptr() }
+    }
+
+    /// Gets the surface used by this Wayland shell.
+    pub fn surface(&mut self) -> SurfaceHandle {
+        unsafe {
+            let surface = (*self.shell_surface).surface;
+            if surface.is_null() {
+                panic!("wl_shell had a null surface!")
+            }
+            SurfaceHandle::from_ptr(surface)
+        }
     }
 
     /// Determines if this Wayland shell surface has been configured or not.
@@ -81,7 +91,7 @@ impl WlShellSurface {
         }
     }
     /// Request that the surface configure itself to be the given size.
-    pub fn configure(&mut self, edges: WlShellSurfaceResize, width: i32, height: i32) {
+    pub fn configure(&mut self, edges: wl_shell_surface_resize, width: i32, height: i32) {
         unsafe {
             wlr_wl_shell_surface_configure(self.shell_surface, edges, width, height);
         }
