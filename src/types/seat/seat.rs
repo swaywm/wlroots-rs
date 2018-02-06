@@ -55,7 +55,7 @@ impl Seat {
     ///
     /// Puts the seat in a `RefCell` so that it's safe to use both in your
     /// state wherever and in the callback provided by the handler.
-    pub fn create(compositor: &mut Compositor,
+    pub fn new(compositor: &mut Compositor,
                   name: String,
                   handler: Box<SeatHandler>)
                   -> Option<RefCell<Self>> {
