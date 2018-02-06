@@ -11,9 +11,9 @@ use std::time::Duration;
 use wlroots::{matrix_mul, matrix_rotate, matrix_scale, matrix_translate, Area, Compositor,
               CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
               Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, Pointer, PointerHandler, Renderer, Size, Surface,
-              WlShellHandler, WlShellManagerHandler, WlShellSurface, WlShellSurfaceHandle,
-              XCursorTheme};
+              OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat, SeatHandler, Size,
+              Surface, WlShellHandler, WlShellManagerHandler, WlShellSurface,
+              WlShellSurfaceHandle, XCursorTheme};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -25,7 +25,8 @@ struct State {
     default_color: [f32; 4],
     xcursor_theme: XCursorTheme,
     layout: OutputLayout,
-    shells: Vec<WlShellSurfaceHandle>
+    shells: Vec<WlShellSurfaceHandle>,
+    seat: Option<Seat>
 }
 
 impl State {
@@ -34,11 +35,18 @@ impl State {
                 default_color: [0.25, 0.25, 0.25, 1.0],
                 xcursor_theme,
                 layout,
-                shells: vec![] }
+                shells: vec![],
+                seat: None }
     }
 }
 
 compositor_data!(State);
+
+struct SeatHandlerEx;
+
+impl SeatHandler for SeatHandlerEx {
+    // TODO
+}
 
 struct WlShellHandlerEx;
 struct WlShellManager;
@@ -291,11 +299,17 @@ fn main() {
     let mut layout = OutputLayout::new().expect("Could not construct an output layout");
 
     layout.attach_cursor(cursor);
-    let compositor = CompositorBuilder::new().gles2(true)
-                                             .build_auto(State::new(xcursor_theme, layout),
-                                                         Some(Box::new(InputManager)),
-                                                         Some(Box::new(OutputManager)),
-                                                         Some(Box::new(WlShellManager)));
+    let mut compositor = CompositorBuilder::new().gles2(true)
+                                                 .build_auto(State::new(xcursor_theme, layout),
+                                                             Some(Box::new(InputManager)),
+                                                             Some(Box::new(OutputManager)),
+                                                             Some(Box::new(WlShellManager)));
+    let seat = Seat::new(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
+        .expect("Could not allocate the global seat");
+    {
+        let state: &mut State = (&mut compositor).into();
+        state.seat = Some(seat);
+    }
     compositor.run();
 }
 
