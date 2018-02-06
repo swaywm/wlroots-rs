@@ -102,14 +102,46 @@ impl KeyboardHandler for ExKeyboardHandler {
                     use std::io::Write;
                     use std::os::unix::io::AsRawFd;
                     use wayland_client::EnvHandler;
-                    use wayland_client::protocol::{wl_compositor, wl_shell, wl_shell_surface,
-                                                   wl_shm};
+                    use wayland_client::protocol::{wl_compositor, wl_pointer, wl_seat, wl_shell,
+                                                   wl_shell_surface, wl_shm};
 
                     wayland_env!(WaylandEnv,
                                  compositor: wl_compositor::WlCompositor,
-                                 //seat: wl_seat::WlSeat,
+                                 seat: wl_seat::WlSeat,
                                  shell: wl_shell::WlShell,
                                  shm: wl_shm::WlShm);
+
+                    fn pointer_impl() -> wl_pointer::Implementation<()> {
+                        wl_pointer::Implementation {
+                            enter: |_, _, _pointer, _serial, _surface, x, y| {
+                                println!("Pointer entered surface at ({},{}).", x, y);
+                            },
+                            leave: |_, _, _pointer, _serial, _surface| {
+                                println!("Pointer left surface.");
+                            },
+                            motion: |_, _, _pointer, _time, x, y| {
+                                println!("Pointer moved to ({},{}).", x, y);
+                            },
+                            button: |_, _, _pointer, _serial, _time, button, state| {
+                                println!(
+                                    "Button {} ({}) was {:?}.",
+                                    match button {
+                                        272 => "Left",
+                                        273 => "Right",
+                                        274 => "Middle",
+                                        _ => "Unknown",
+                                    },
+                                    button,
+                                    state
+                                );
+                            },
+                            axis: |_, _, _, _, _, _| { /* not used in this example */ },
+                            frame: |_, _, _| { /* not used in this example */ },
+                            axis_source: |_, _, _, _| { /* not used in this example */ },
+                            axis_discrete: |_, _, _, _, _| { /* not used in this example */ },
+                            axis_stop: |_, _, _, _, _| { /* not used in this example */ },
+                        }
+                    }
 
                     fn shell_surface_impl() -> wl_shell_surface::Implementation<()> {
                         wl_shell_surface::Implementation { ping: |_, _, shell_surface, serial| {
@@ -178,12 +210,11 @@ impl KeyboardHandler for ExKeyboardHandler {
                     // commit
                     surface.commit();
 
-                    //let pointer = env.seat
-                    //    .get_pointer()
-                    //    .expect("Seat cannot be already destroyed.");
+                    let pointer = env.seat.get_pointer()
+                                     .expect("Seat cannot be already destroyed.");
 
                     event_queue.register(&shell_surface, shell_surface_impl(), ());
-                    //event_queue.register(&pointer, pointer_impl(), ());
+                    event_queue.register(&pointer, pointer_impl(), ());
 
                     loop {
                         display.flush().unwrap();
