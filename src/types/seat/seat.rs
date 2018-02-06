@@ -6,8 +6,8 @@
 use std::cell::RefCell;
 use std::time::Duration;
 
-use xkbcommon::xkb::Keycode;
 use libc;
+use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_destroy,
                   wlr_seat_keyboard_clear_focus, wlr_seat_keyboard_end_grab,
                   wlr_seat_keyboard_enter, wlr_seat_keyboard_has_grab,
@@ -27,13 +27,14 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_dest
                   wlr_seat_touch_point_clear_focus, wlr_seat_touch_point_focus,
                   wlr_seat_touch_send_down, wlr_seat_touch_send_motion, wlr_seat_touch_send_up,
                   wlr_seat_touch_start_grab};
-use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
+pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
+use xkbcommon::xkb::Keycode;
 
+use {Compositor, InputDevice, KeyboardGrab, KeyboardModifiers, PointerGrab, Surface, TouchGrab,
+     TouchId, TouchPoint};
 use compositor::COMPOSITOR_PTR;
 use utils::{c_to_rust_string, safe_as_cstring};
 use utils::ToMS;
-use {Compositor, InputDevice, KeyboardGrab, KeyboardModifiers, PointerGrab, Surface, TouchGrab,
-     TouchId, TouchPoint};
 
 pub trait SeatHandler {
     /// Callback triggered when a client has grabbed a pointer.
@@ -73,7 +74,7 @@ pub trait SeatHandler {
 /// This is here so that we can ensure unique access.
 pub struct SeatInner {
     handler: Box<SeatHandler>,
-    seat: *mut wlr_seat,
+    seat: *mut wlr_seat
 }
 
 wayland_listener!(Seat, RefCell<SeatInner>, [
@@ -162,16 +163,37 @@ impl Seat {
     /// Puts the seat in an `Rc` so that the address is static for internal
     /// purposes.
     pub fn create(compositor: &mut Compositor,
-               name: String,
-               handler: Box<SeatHandler>)
-               -> Option<Box<Self>> {
+                  name: String,
+                  handler: Box<SeatHandler>)
+                  -> Option<Box<Self>> {
         unsafe {
             let name = safe_as_cstring(name);
             let seat = wlr_seat_create(compositor.display() as _, name.as_ptr());
             if seat.is_null() {
                 None
             } else {
-                Some(Seat::new(RefCell::new(SeatInner { seat, handler })))
+                let mut res = Seat::new(RefCell::new(SeatInner { seat, handler }));
+                wl_signal_add(&mut (*seat).events.pointer_grab_begin as *mut _ as _,
+                              res.pointer_grab_begin_listener() as *mut _ as _);
+                wl_signal_add(&mut (*seat).events.pointer_grab_end as *mut _ as _,
+                              res.pointer_grab_end_listener() as *mut _ as _);
+                wl_signal_add(&mut (*seat).events.keyboard_grab_begin as *mut _ as _,
+                              res.keyboard_grab_begin_listener() as *mut _ as _);
+                wl_signal_add(&mut (*seat).events.keyboard_grab_end as *mut _ as _,
+                              res.keyboard_grab_end_listener() as *mut _ as _);
+                wl_signal_add(&mut (*seat).events.touch_grab_begin as *mut _ as _,
+                              res.touch_grab_begin_listener() as *mut _ as _);
+                wl_signal_add(&mut (*seat).events.touch_grab_end as *mut _ as _,
+                              res.touch_grab_end_listener() as *mut _ as _);
+                wl_signal_add(&mut (*seat).events.request_set_cursor as *mut _ as _,
+                              res.request_set_cursor_listener() as *mut _ as _);
+                wl_signal_add(&mut (*seat).events.selection as *mut _ as _,
+                              res.selection_listener() as *mut _ as _);
+                wl_signal_add(&mut (*seat).events.primary_selection as *mut _ as _,
+                              res.primary_selection_listener() as *mut _ as _);
+                wl_signal_add(&mut (*seat).events.destroy as *mut _ as _,
+                              res.destroy_listener() as *mut _ as _);
+                Some(res)
             }
         }
     }
