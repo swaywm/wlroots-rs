@@ -3,6 +3,7 @@
 //!
 //! TODO This module could really use some examples, as the API surface is huge.
 
+use std::cell::RefCell;
 use std::time::Duration;
 
 use xkbcommon::xkb::Keycode;
@@ -39,21 +40,32 @@ use utils::ToMS;
 
 use KeyboardModifiers;
 
+pub trait SeatHandler {
+    // TODO
+}
+
 /// A wrapper around `wlr_seat`.
 pub struct Seat {
+    handler: Box<SeatHandler>,
     seat: *mut wlr_seat
 }
 
 impl Seat {
     /// Allocates a new `wlr_seat` and adds a wl_seat global to the display.
-    pub fn create(compositor: &mut Compositor, name: String) -> Option<Self> {
+    ///
+    /// Puts the seat in a `RefCell` so that it's safe to use both in your
+    /// state wherever and in the callback provided by the handler.
+    pub fn create(compositor: &mut Compositor,
+                  name: String,
+                  handler: Box<SeatHandler>)
+                  -> Option<RefCell<Self>> {
         unsafe {
             let name = safe_as_cstring(name);
             let seat = wlr_seat_create(compositor.display() as _, name.as_ptr());
             if seat.is_null() {
                 None
             } else {
-                Some(Seat { seat })
+                Some(RefCell::new(Seat { seat, handler }))
             }
         }
     }
