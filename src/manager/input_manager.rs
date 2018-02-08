@@ -145,6 +145,10 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
     remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         let data = data as *mut wlr_input_device;
         let (ref mut inputs, ref mut manager) = this.data;
+        if COMPOSITOR_PTR.is_null() {
+            // We are shutting down, do nothing.
+            return;
+        }
         let compositor = &mut *COMPOSITOR_PTR;
         manager.input_removed(compositor, &mut InputDevice::from_ptr(data));
         // Remove user output data

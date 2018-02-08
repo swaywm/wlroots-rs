@@ -60,6 +60,10 @@ wayland_listener!(WlShell, (WlShellSurface, Surface, Box<WlShellHandler>), [
         // TODO NLL
         {
             let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
+            if COMPOSITOR_PTR.is_null() {
+                // We are shutting down, do nothing.
+                return;
+            }
             let compositor = &mut *COMPOSITOR_PTR;
             shell_surface.set_lock(true);
             surface.set_lock(true);

@@ -127,12 +127,16 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
     remove_listener => remove_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
         let (ref mut outputs, ref mut manager) = this.data;
         let data = data as *mut wlr_output;
+        if COMPOSITOR_PTR.is_null() {
+            // We are shutting down, do nothing.
+            return;
+        }
+        let compositor = &mut *COMPOSITOR_PTR;
         // NOTE
         // We get it from the list so that we can get the Rc'd `Output`, because there's
         // no way to re-construct that using just the raw pointer.
         if let Some(output) = outputs.iter_mut().find(|output| output.output_ptr() == data) {
             let output = output.output_mut();
-            let compositor = &mut *COMPOSITOR_PTR;
             output.set_lock(true);
             manager.output_removed(compositor, OutputDestruction(output));
             // NOTE We don't remove the lock because we are removing it
