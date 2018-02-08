@@ -1,7 +1,7 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
-use std::{env, ptr};
+use std::{env, ptr, mem};
 use std::any::Any;
 use std::cell::UnsafeCell;
 use std::ffi::CStr;
@@ -10,6 +10,7 @@ use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler};
 use render::GenericRenderer;
+use types::seat::{Seat, SeatId, MaybeSeat};
 
 use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wayland_sys::server::signal::wl_signal_add;
@@ -24,6 +25,12 @@ pub static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 pub struct Compositor {
     /// User data.
     pub data: Box<Any>,
+    /// The list of seats.
+    ///
+    /// This is stored here due to their complicated memory model.
+    ///
+    /// Please refer to the `Seat` documentation to learn how to use this.
+    seats: Vec<MaybeSeat>,
     /// Manager for the inputs.
     input_manager: Option<Box<InputManager>>,
     /// Manager for the outputs.
@@ -162,6 +169,7 @@ impl CompositorBuilder {
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
             Compositor { data: Box::new(data),
+                         seats: Vec::new(),
                          socket_name,
                          input_manager,
                          output_manager,
@@ -215,8 +223,85 @@ impl Compositor {
         }
     }
 
+    /// Returns a list of the seats.
+    pub fn seats(&mut self) -> &mut [MaybeSeat] {
+        &mut self.seats
+    }
+
+    /// Drops the seat associated with the provided id.
+    // TODO FIXME Better result types
+    pub fn drop_seat(&mut self, seat_id: SeatId) -> Result<(), ()> {
+        let mut index = None;
+        for (i, seat) in self.seats.iter().enumerate() {
+            match *seat {
+                MaybeSeat::Seat(ref seat) => {
+                    if unsafe { seat.as_ptr() } == seat_id.0 {
+                        index = Some(i);
+                        break;
+                    }
+                },
+                MaybeSeat::Borrowed(seat_ptr) => {
+                    if seat_ptr == seat_id.0 {
+                        return Err(())
+                    }
+                }
+            }
+        }
+        match index {
+            None => Err(()),
+            Some(index) => {
+                self.seats.remove(index);
+                Ok(())
+            }
+        }
+    }
+
+    /// Takes the seat from the list and returns it.
+    ///
+    /// In its place it places a borrow, so that we can return it afterwards
+    /// using `replace_seat`.
+    ///
+    /// # Panics
+    /// Panics if the `SeatId` is invalid or already borrowed.
+    pub(crate) fn take_seat(&mut self, id: SeatId) -> Seat {
+        {
+            let seat = self.seats.iter_mut().find(|seat| match **seat {
+                MaybeSeat::Borrowed(_) => false,
+                MaybeSeat::Seat(ref seat) => unsafe { seat.as_ptr() == id.0 },
+            });
+            if let Some(seat) = seat {
+                match mem::replace(seat, MaybeSeat::Borrowed(id.0)) {
+                    MaybeSeat::Seat(seat) => return seat,
+                    MaybeSeat::Borrowed(_) => unreachable!()
+                }
+            }
+        }
+        wlr_log!(L_ERROR, "Could not find {:?} in {:?}", id.0, self.seats);
+        panic!("Could not find seat id in seat list");
+    }
+
+    /// Replaces the Borrowed in the list with the seat.
+    ///
+    /// This will always replace it in the same place.
+    pub(crate) fn replace_seat(&mut self, seat: Seat) {
+        {
+            let borrowed = self.seats.iter_mut().find(|cur_seat| match **cur_seat {
+                MaybeSeat::Seat(_) => false,
+                MaybeSeat::Borrowed(ptr) => unsafe { ptr == seat.as_ptr() }
+            });
+            if let Some(borrow) = borrowed {
+                mem::replace(borrow, MaybeSeat::Seat(seat));
+                return
+            }
+        }
+        wlr_log!(L_ERROR, "Could not find the borrow in {:?} for {:?}",
+                 self.seats, seat.as_ptr());
+        panic!("Could not replace seat after borrowing it!");
+    }
+
     pub fn terminate(&mut self) {
         unsafe {
+            COMPOSITOR_PTR = 0 as _;
             ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
         }
     }
