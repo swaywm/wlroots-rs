@@ -177,8 +177,6 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     };
     destroy_listener => destroy_notify: |this: &mut Seat, _event: *mut libc::c_void,|
     unsafe {
-        // TODO FIXME
-        // Should we just pass `Seat` here and destroy it that way?
         let (seat_ptr, ref mut handler) = this.data;
         if COMPOSITOR_PTR.is_null() {
             // We are shutting down, don't try to grab the pointer.
