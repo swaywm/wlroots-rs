@@ -105,7 +105,8 @@ impl<'output> Drop for Renderer<'output> {
     fn drop(&mut self) {
         unsafe {
             wlr_renderer_end(self.renderer);
-            self.output.swap_buffers();
+            // TODO What about damage tracking?
+            self.output.swap_buffers(None, None);
         }
     }
 }

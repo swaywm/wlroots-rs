@@ -1,18 +1,19 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
+use std::time::Duration;
 use std::ffi::CStr;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use libc::c_float;
+use libc::{c_float, c_int};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wl_list, wl_output_subpixel, wl_output_transform, wlr_output,
                   wlr_output_effective_resolution, wlr_output_enable, wlr_output_get_gamma_size,
                   wlr_output_make_current, wlr_output_mode, wlr_output_set_custom_mode,
                   wlr_output_set_fullscreen_surface, wlr_output_set_gamma, wlr_output_set_mode,
                   wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
-                  wlr_output_swap_buffers};
+                  wlr_output_swap_buffers, pixman_region32_t, timespec};
 
 use super::output_layout::OutputLayoutHandle;
 use super::output_mode::OutputMode;
@@ -275,11 +276,25 @@ impl Output {
     ///
     /// Sometimes however you need to do e.g opengl rendering and we haven't
     /// wrapped that. If that's the case, call this first and then swap the buffers.
-    pub unsafe fn make_current(&mut self) {
-        wlr_output_make_current(self.output)
+    ///
+    /// Returns the drawing buffer age in number of frames in number of frames,
+    /// or None if unknown. This is useful for damage tracking.
+    pub unsafe fn make_current(&mut self) -> (bool, Option<c_int>) {
+        let mut buffer_age = -1;
+        let res = wlr_output_make_current(self.output, &mut buffer_age);
+        let buffer_age = if buffer_age == -1 {
+            None
+        } else {
+            Some(buffer_age)
+        };
+        (res, buffer_age)
     }
 
     /// Swaps the buffers and draws whatever is in the back buffer on the screen.
+    ///
+    /// If the time of the frame is not known, set `when` to None.
+    ///
+    /// If the compositor does not support damage tracking, set `damage` to `None`
     ///
     /// # Unsafety
     /// This is done for rendering purposes, but if called multiple times then
@@ -288,8 +303,15 @@ impl Output {
     /// You should try to use a `GenericRenderer`, but sometimes it's necessary to
     /// do your own manual rendering in a compositor. In that case, call `make_current`,
     /// do your rendering, and then call this function.
-    pub unsafe fn swap_buffers(&mut self) {
-        wlr_output_swap_buffers(self.output)
+    pub unsafe fn swap_buffers(&mut self, when: Option<Duration>, damage: Option<*mut pixman_region32_t>) -> bool {
+        let when = when.map(|duration|
+                            timespec { tv_sec: duration.as_secs() as i64,
+                                       tv_nsec: duration.subsec_nanos() as i64
+                            });
+        let when_ptr = when.map(|mut duration| &mut duration as *mut _)
+            .unwrap_or_else(|| ptr::null_mut());
+        let damage = damage.unwrap_or_else(|| ptr::null_mut());
+        wlr_output_swap_buffers(self.output, when_ptr, damage)
     }
 
     /// Get the dimensions of the output as (width, height).
