@@ -1,19 +1,19 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
-use std::time::Duration;
 use std::ffi::CStr;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
 use libc::{c_float, c_int};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wl_list, wl_output_subpixel, wl_output_transform, wlr_output,
+use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wlr_output,
                   wlr_output_effective_resolution, wlr_output_enable, wlr_output_get_gamma_size,
                   wlr_output_make_current, wlr_output_mode, wlr_output_set_custom_mode,
                   wlr_output_set_fullscreen_surface, wlr_output_set_gamma, wlr_output_set_mode,
                   wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
-                  wlr_output_swap_buffers, pixman_region32_t, timespec};
+                  wlr_output_swap_buffers, pixman_region32_t};
 
 use super::output_layout::OutputLayoutHandle;
 use super::output_mode::OutputMode;
@@ -303,13 +303,16 @@ impl Output {
     /// You should try to use a `GenericRenderer`, but sometimes it's necessary to
     /// do your own manual rendering in a compositor. In that case, call `make_current`,
     /// do your rendering, and then call this function.
-    pub unsafe fn swap_buffers(&mut self, when: Option<Duration>, damage: Option<*mut pixman_region32_t>) -> bool {
-        let when = when.map(|duration|
-                            timespec { tv_sec: duration.as_secs() as i64,
-                                       tv_nsec: duration.subsec_nanos() as i64
+    pub unsafe fn swap_buffers(&mut self,
+                               when: Option<Duration>,
+                               damage: Option<*mut pixman_region32_t>)
+                               -> bool {
+        let when = when.map(|duration| {
+                                timespec { tv_sec: duration.as_secs() as i64,
+                                           tv_nsec: duration.subsec_nanos() as i64 }
                             });
-        let when_ptr = when.map(|mut duration| &mut duration as *mut _)
-            .unwrap_or_else(|| ptr::null_mut());
+        let when_ptr =
+            when.map(|mut duration| &mut duration as *mut _).unwrap_or_else(|| ptr::null_mut());
         let damage = damage.unwrap_or_else(|| ptr::null_mut());
         wlr_output_swap_buffers(self.output, when_ptr, damage)
     }
