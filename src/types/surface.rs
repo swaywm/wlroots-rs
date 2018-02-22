@@ -149,12 +149,12 @@ impl Surface {
     /// Returns the surface and coordinates in the topmost surface coordinate system
     /// or None if no subsurface is found at that location.
     pub fn subsurface_at(&mut self,
-                         sx: f32,
-                         sy: f32,
-                         sub_x: &mut f32,
-                         sub_y: &mut f32)
+                         _sx: f32,
+                         _sy: f32,
+                         _sub_x: &mut f32,
+                         _sub_y: &mut f32)
                          -> Option<SubsurfaceHandle> {
-        None
+        unimplemented!()
     }
 
     /// Create the subsurface implementation for this surface.

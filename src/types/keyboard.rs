@@ -9,6 +9,7 @@ use wlroots_sys::{wlr_input_device, wlr_key_state, wlr_keyboard, wlr_keyboard_ge
                   wlr_keyboard_modifiers, wlr_keyboard_set_keymap};
 
 use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex};
+use xkbcommon::xkb::ffi::{xkb_keymap, xkb_state};
 
 use InputDevice;
 
@@ -104,7 +105,7 @@ impl Keyboard {
     /// Get the XKB keymap associated with this Keyboard.
     pub fn get_keymap(&mut self) -> Option<Keymap> {
         unsafe {
-            let keymap_ptr = (*self.keyboard).keymap as *mut _;
+            let keymap_ptr = (*self.keyboard).keymap as *mut xkb_keymap;
             if keymap_ptr.is_null() {
                 None
             } else {
@@ -144,7 +145,7 @@ impl Keyboard {
     /// Get the XKB state associated with this `Keyboard`.
     pub fn get_xkb_state(&mut self) -> Option<xkb::State> {
         unsafe {
-            let xkb_state_ptr = (*self.keyboard).xkb_state as *mut _;
+            let xkb_state_ptr = (*self.keyboard).xkb_state as *mut xkb_state;
             if xkb_state_ptr.is_null() {
                 None
             } else {
