@@ -66,6 +66,7 @@ impl<'output> OutputDestruction<'output> {
 
 wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler>), [
     add_listener => add_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
+        let remove_listener = this.remove_listener()  as *mut _ as _;
         let (ref mut outputs, ref mut manager) = this.data;
         let data = data as *mut wlr_output;
         let mut output = Output::new(data as *mut wlr_output);
@@ -118,7 +119,7 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
                           output.swap_buffers_listener() as _);
             // Add the output destroy event to this manager
             wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
-                          output.destroy_listener() as _);
+                          remove_listener);
             // Store the user UserOutput, free later in remove listener
             outputs.push(output);
         }

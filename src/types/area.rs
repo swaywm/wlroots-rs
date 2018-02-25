@@ -128,10 +128,14 @@ impl Area {
     /// output transformation.
     ///
     /// e.g: If it's `WL_OUTPUT_TRANSFORM_90` then it will flip the Area 90° clockwise.
-    pub fn transform(&mut self, transform: wl_output_transform) -> Area {
+    pub fn transform(&mut self,
+                     transform: wl_output_transform,
+                     width: c_int,
+                     height: c_int)
+                     -> Area {
         unsafe {
             let mut res = Area::default();
-            wlr_box_transform(&mut self.0, transform, &mut res.0);
+            wlr_box_transform(&mut self.0, transform, width, height, &mut res.0);
             res
         }
     }

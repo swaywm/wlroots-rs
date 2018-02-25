@@ -68,6 +68,7 @@ pub trait InputManagerHandler {
 wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
     add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         let data = data as *mut wlr_input_device;
+        let remove_listener = this.remove_listener()  as *mut _ as _;
         let (ref mut inputs, ref mut manager) = this.data;
         use self::wlr_input_device_type::*;
         let mut dev = InputDevice::from_ptr(data);
@@ -127,6 +128,8 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
             }
             manager.input_added(compositor, &mut dev)
         }));
+        wl_signal_add(&mut (*dev.as_ptr()).events.destroy as *mut _ as _,
+                      remove_listener);
         match res {
             Ok(_) => {},
             // NOTE

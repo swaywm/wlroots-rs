@@ -111,7 +111,7 @@ impl OutputHandler for ExOutput {
             output.make_current();
             gl::ClearColor(state.color[0], state.color[1], state.color[2], 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
-            output.swap_buffers();
+            output.swap_buffers(None, None);
         }
     }
 }

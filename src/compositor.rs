@@ -123,20 +123,16 @@ impl CompositorBuilder {
             // Set up input manager, if the user provided it.
             let input_manager = input_manager_handler.map(|handler| {
                 let mut input_manager = InputManager::new((vec![], handler));
-                wl_signal_add(&mut (*backend).events.input_add as *mut _ as _,
+                wl_signal_add(&mut (*backend).events.new_input as *mut _ as _,
                               input_manager.add_listener() as *mut _ as _);
-                wl_signal_add(&mut (*backend).events.input_remove as *mut _ as _,
-                              input_manager.remove_listener() as *mut _ as _);
                 input_manager
             });
 
             // Set up output manager, if the user provided it.
             let output_manager = output_manager_handler.map(|handler| {
                 let mut output_manager = OutputManager::new((vec![], handler));
-                wl_signal_add(&mut (*backend).events.output_add as *mut _ as _,
+                wl_signal_add(&mut (*backend).events.new_output as *mut _ as _,
                               output_manager.add_listener() as *mut _ as _);
-                wl_signal_add(&mut (*backend).events.output_remove as *mut _ as _,
-                              output_manager.remove_listener() as *mut _ as _);
                 output_manager
             });
 
