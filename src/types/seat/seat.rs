@@ -36,24 +36,6 @@ use compositor::COMPOSITOR_PTR;
 use utils::{c_to_rust_string, safe_as_cstring};
 use utils::ToMS;
 
-/// The different states a seat can be in globally.
-///
-/// Either we are not in a seat callback, and you can safely use
-/// the seat how you wish (including dropping it),
-/// or we are in a seat callback and it's currently borrowed.
-#[derive(Debug)]
-pub enum MaybeSeat {
-    /// The seat is available for use or for dropping.
-    Seat(Seat),
-    /// The seat has been borrowed and cannot be dropped.
-    Borrowed(*mut wlr_seat)
-}
-
-/// A unique identifier (really just the pointer) to the seat.
-///
-/// Used to drop it from the list, if it is not currently borrowed.
-pub struct SeatId(pub(crate) *mut wlr_seat);
-
 pub trait SeatHandler {
     /// Callback triggered when a client has grabbed a pointer.
     fn pointer_grabbed(&mut self, &mut Compositor, &mut Seat, &mut PointerGrab) {}
@@ -93,7 +75,9 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut seat = compositor.take_seat(SeatId(seat_ptr));
+        let seat_name = c_to_rust_string((*seat_ptr).name)
+            .expect("Bad name for seat");
+        let mut seat = compositor.take_seat(seat_name.as_str());
         let pointer_grab = &mut *(event as *mut PointerGrab);
         handler.pointer_grabbed(compositor, &mut seat, pointer_grab);
         compositor.replace_seat(seat);
@@ -104,7 +88,9 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut seat = compositor.take_seat(SeatId(seat_ptr));
+        let seat_name = c_to_rust_string((*seat_ptr).name)
+            .expect("Bad name for seat");
+        let mut seat = compositor.take_seat(seat_name.as_str());
         let pointer_grab = &mut *(event as *mut PointerGrab);
         handler.pointer_released(compositor, &mut seat, pointer_grab);
         compositor.replace_seat(seat);
@@ -114,7 +100,9 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut seat = compositor.take_seat(SeatId(seat_ptr));
+        let seat_name = c_to_rust_string((*seat_ptr).name)
+            .expect("Bad name for seat");
+        let mut seat = compositor.take_seat(seat_name.as_str());
         let keyboard_grab = &mut *(event as *mut KeyboardGrab);
         handler.keyboard_grabbed(compositor, &mut seat, keyboard_grab);
         compositor.replace_seat(seat);
@@ -124,7 +112,9 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut seat = compositor.take_seat(SeatId(seat_ptr));
+        let seat_name = c_to_rust_string((*seat_ptr).name)
+            .expect("Bad name for seat");
+        let mut seat = compositor.take_seat(seat_name.as_str());
         let keyboard_grab = &mut *(event as *mut KeyboardGrab);
         handler.keyboard_released(compositor, &mut seat, keyboard_grab);
         compositor.replace_seat(seat);
@@ -134,7 +124,9 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut seat = compositor.take_seat(SeatId(seat_ptr));
+        let seat_name = c_to_rust_string((*seat_ptr).name)
+            .expect("Bad name for seat");
+        let mut seat = compositor.take_seat(seat_name.as_str());
         let touch_grab = &mut *(event as *mut TouchGrab);
         handler.touch_grabbed(compositor, &mut seat, touch_grab);
         compositor.replace_seat(seat);
@@ -144,7 +136,9 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut seat = compositor.take_seat(SeatId(seat_ptr));
+        let seat_name = c_to_rust_string((*seat_ptr).name)
+            .expect("Bad name for seat");
+        let mut seat = compositor.take_seat(seat_name.as_str());
         let touch_grab = &mut *(event as *mut TouchGrab);
         handler.touch_released(compositor, &mut seat, touch_grab);
         compositor.replace_seat(seat);
@@ -154,7 +148,9 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut seat = compositor.take_seat(SeatId(seat_ptr));
+        let seat_name = c_to_rust_string((*seat_ptr).name)
+            .expect("Bad name for seat");
+        let mut seat = compositor.take_seat(seat_name.as_str());
         handler.cursor_set(compositor, &mut seat);
         compositor.replace_seat(seat);
     };
@@ -162,7 +158,9 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut seat = compositor.take_seat(SeatId(seat_ptr));
+        let seat_name = c_to_rust_string((*seat_ptr).name)
+            .expect("Bad name for seat");
+        let mut seat = compositor.take_seat(seat_name.as_str());
         handler.received_selection(compositor, &mut seat);
         compositor.replace_seat(seat);
     };
@@ -171,7 +169,9 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut seat = compositor.take_seat(SeatId(seat_ptr));
+        let seat_name = c_to_rust_string((*seat_ptr).name)
+            .expect("Bad name for seat");
+        let mut seat = compositor.take_seat(seat_name.as_str());
         handler.primary_selection(compositor, &mut seat);
         compositor.replace_seat(seat);
     };
@@ -183,7 +183,9 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
             return
         }
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut seat = compositor.take_seat(SeatId(seat_ptr));
+        let seat_name = c_to_rust_string((*seat_ptr).name)
+            .expect("Bad name for seat");
+        let mut seat = compositor.take_seat(seat_name.as_str());
         handler.destroy(compositor, &mut seat);
         compositor.replace_seat(seat);
     };
@@ -200,7 +202,7 @@ impl Seat {
     pub fn create(compositor: &mut Compositor,
                   name: String,
                   handler: Box<SeatHandler>)
-                  -> Option<Box<Self>> {
+                  -> Option<&mut Box<Self>> {
         unsafe {
             let name = safe_as_cstring(name);
             let seat = wlr_seat_create(compositor.display() as _, name.as_ptr());
@@ -228,7 +230,7 @@ impl Seat {
                               res.primary_selection_listener() as *mut _ as _);
                 wl_signal_add(&mut (*seat).events.destroy as *mut _ as _,
                               res.destroy_listener() as *mut _ as _);
-                Some(res)
+                Some(compositor.add_seat(res))
             }
         }
     }
@@ -246,6 +248,7 @@ impl Seat {
 
     /// Updates the name of this seat.
     /// Will automatically send it to all clients.
+    // TODO FIXME Setting this could de-sync it with what's in the hashmap...
     pub fn set_name(&mut self, name: String) {
         let name = safe_as_cstring(name);
         unsafe {

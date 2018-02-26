@@ -25,8 +25,7 @@ struct State {
     default_color: [f32; 4],
     xcursor_theme: XCursorTheme,
     layout: OutputLayout,
-    shells: Vec<WlShellSurfaceHandle>,
-    seat: Option<Box<Seat>>
+    shells: Vec<WlShellSurfaceHandle>
 }
 
 impl State {
@@ -35,8 +34,7 @@ impl State {
                 default_color: [0.25, 0.25, 0.25, 1.0],
                 xcursor_theme,
                 layout,
-                shells: vec![],
-                seat: None }
+                shells: vec![] }
     }
 }
 
@@ -304,12 +302,8 @@ fn main() {
                                                              Some(Box::new(InputManager)),
                                                              Some(Box::new(OutputManager)),
                                                              Some(Box::new(WlShellManager)));
-    let seat = Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
+    Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
         .expect("Could not allocate the global seat");
-    {
-        let state: &mut State = (&mut compositor).into();
-        state.seat = Some(seat);
-    }
     compositor.run();
 }
 

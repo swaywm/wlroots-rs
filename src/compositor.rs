@@ -1,16 +1,17 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
-use std::{env, ptr, mem};
+use std::{env, ptr};
 use std::any::Any;
 use std::cell::UnsafeCell;
 use std::ffi::CStr;
+use std::collections::HashMap;
 
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler};
 use render::GenericRenderer;
-use types::seat::{Seat, SeatId, MaybeSeat};
+use types::seat::Seat;
 
 use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wayland_sys::server::signal::wl_signal_add;
@@ -30,7 +31,7 @@ pub struct Compositor {
     /// This is stored here due to their complicated memory model.
     ///
     /// Please refer to the `Seat` documentation to learn how to use this.
-    seats: Vec<MaybeSeat>,
+    seats: HashMap<String, Box<Seat>>,
     /// Manager for the inputs.
     input_manager: Option<Box<InputManager>>,
     /// Manager for the outputs.
@@ -169,7 +170,7 @@ impl CompositorBuilder {
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
             Compositor { data: Box::new(data),
-                         seats: Vec::new(),
+                         seats: HashMap::new(),
                          socket_name,
                          input_manager,
                          output_manager,
@@ -224,35 +225,23 @@ impl Compositor {
     }
 
     /// Returns a list of the seats.
-    pub fn seats(&mut self) -> &mut [MaybeSeat] {
-        &mut self.seats
+    pub fn seat(&mut self, name: &str) -> Option<&mut Box<Seat>> {
+        self.seats.get_mut(name)
     }
 
-    /// Drops the seat associated with the provided id.
+    /// Adds a seat to the list and then returns a reference to it.
+    pub(crate) fn add_seat(&mut self, seat: Box<Seat>) -> &mut Box<Seat> {
+        let name = seat.name().expect("Could not get seat name");
+        self.seats.insert(name.clone(), seat);
+        self.seats.get_mut(name.as_str()).unwrap()
+    }
+
+    /// Drops the seat associated with the provided name.
     // TODO FIXME Better result types
-    pub fn drop_seat(&mut self, seat_id: SeatId) -> Result<(), ()> {
-        let mut index = None;
-        for (i, seat) in self.seats.iter().enumerate() {
-            match *seat {
-                MaybeSeat::Seat(ref seat) => {
-                    if unsafe { seat.as_ptr() } == seat_id.0 {
-                        index = Some(i);
-                        break;
-                    }
-                },
-                MaybeSeat::Borrowed(seat_ptr) => {
-                    if seat_ptr == seat_id.0 {
-                        return Err(())
-                    }
-                }
-            }
-        }
-        match index {
-            None => Err(()),
-            Some(index) => {
-                self.seats.remove(index);
-                Ok(())
-            }
+    pub fn drop_seat(&mut self, name: &str) -> Result<(), ()> {
+        match self.seats.remove(name) {
+            None => return Err(()), // TODO Better error here
+            Some(_seat) => Ok(())
         }
     }
 
@@ -263,40 +252,15 @@ impl Compositor {
     ///
     /// # Panics
     /// Panics if the `SeatId` is invalid or already borrowed.
-    pub(crate) fn take_seat(&mut self, id: SeatId) -> Seat {
-        {
-            let seat = self.seats.iter_mut().find(|seat| match **seat {
-                MaybeSeat::Borrowed(_) => false,
-                MaybeSeat::Seat(ref seat) => unsafe { seat.as_ptr() == id.0 },
-            });
-            if let Some(seat) = seat {
-                match mem::replace(seat, MaybeSeat::Borrowed(id.0)) {
-                    MaybeSeat::Seat(seat) => return seat,
-                    MaybeSeat::Borrowed(_) => unreachable!()
-                }
-            }
-        }
-        wlr_log!(L_ERROR, "Could not find {:?} in {:?}", id.0, self.seats);
-        panic!("Could not find seat id in seat list");
+    // TODO Better errors, don't panic on these things
+    pub(crate) fn take_seat(&mut self, name: &str) -> Box<Seat> {
+        self.seats.remove(name).expect("Seat did not exist, or was already borrowed")
     }
 
     /// Replaces the Borrowed in the list with the seat.
-    ///
-    /// This will always replace it in the same place.
-    pub(crate) fn replace_seat(&mut self, seat: Seat) {
-        {
-            let borrowed = self.seats.iter_mut().find(|cur_seat| match **cur_seat {
-                MaybeSeat::Seat(_) => false,
-                MaybeSeat::Borrowed(ptr) => unsafe { ptr == seat.as_ptr() }
-            });
-            if let Some(borrow) = borrowed {
-                mem::replace(borrow, MaybeSeat::Seat(seat));
-                return
-            }
-        }
-        wlr_log!(L_ERROR, "Could not find the borrow in {:?} for {:?}",
-                 self.seats, seat.as_ptr());
-        panic!("Could not replace seat after borrowing it!");
+    pub(crate) fn replace_seat(&mut self, seat: Box<Seat>) {
+        let name = seat.name().expect("Seat had no name");
+        self.seats.insert(name, seat);
     }
 
     pub fn terminate(&mut self) {
