@@ -13,7 +13,7 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
                   wlr_output_make_current, wlr_output_mode, wlr_output_set_custom_mode,
                   wlr_output_set_fullscreen_surface, wlr_output_set_gamma, wlr_output_set_mode,
                   wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
-                  wlr_output_swap_buffers, pixman_region32_t};
+                  wlr_output_swap_buffers, pixman_region32_t, wlr_output_schedule_frame};
 
 use super::output_layout::OutputLayoutHandle;
 use super::output_mode::OutputMode;
@@ -266,6 +266,13 @@ impl Output {
     /// Get the transform information about the output.
     pub fn get_transform(&self) -> Transform {
         unsafe { (*self.output).transform }
+    }
+
+    /// Manually schedules a `frame` event.
+    ///
+    /// If a `frame` event is already pending, it is a no-op.
+    pub fn schedule_frame(&mut self) {
+        unsafe { wlr_output_schedule_frame(self.output) }
     }
 
     /// Make this output the current output.
