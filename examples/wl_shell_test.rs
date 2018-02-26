@@ -58,6 +58,9 @@ impl WlShellManagerHandler for WlShellManager {
                    -> Option<Box<WlShellHandler>> {
         let state: &mut State = compositor.into();
         state.shells.push(shell.weak_reference());
+        for (mut output, _) in state.layout.outputs() {
+            output.run(|output| output.schedule_frame()).unwrap();
+        }
         Some(Box::new(WlShellHandlerEx))
     }
 }
@@ -266,10 +269,13 @@ impl PointerHandler for ExPointer {
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
-        let renderer = compositor.renderer
-                                 .as_mut()
-                                 .expect("Compositor was not loaded with a renderer");
         let state: &mut State = compositor.data.downcast_mut().unwrap();
+        if state.shells.len() < 1 {
+            return
+        }
+        let renderer = compositor.renderer
+            .as_mut()
+            .expect("Compositor was not loaded with a renderer");
         render_shells(state, &mut renderer.render(output));
     }
 }
