@@ -4,8 +4,8 @@
 use std::{env, ptr};
 use std::any::Any;
 use std::cell::UnsafeCell;
-use std::ffi::CStr;
 use std::collections::HashMap;
+use std::ffi::CStr;
 
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
@@ -254,7 +254,8 @@ impl Compositor {
     /// Panics if the `SeatId` is invalid or already borrowed.
     // TODO Better errors, don't panic on these things
     pub(crate) fn take_seat(&mut self, name: &str) -> Box<Seat> {
-        self.seats.remove(name).expect("Seat did not exist, or was already borrowed")
+        self.seats.remove(name)
+            .expect("Seat did not exist, or was already borrowed")
     }
 
     /// Replaces the Borrowed in the list with the seat.
