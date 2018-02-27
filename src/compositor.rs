@@ -10,6 +10,7 @@ use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler};
 use render::GenericRenderer;
+use types::seat::Seats;
 
 use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wayland_sys::server::signal::wl_signal_add;
@@ -24,6 +25,12 @@ pub static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 pub struct Compositor {
     /// User data.
     pub data: Box<Any>,
+    /// The list of seats.
+    ///
+    /// This is stored here due to their complicated memory model.
+    ///
+    /// Please refer to the `Seat` and `Seats` documentation to learn how to use this.
+    pub seats: Seats,
     /// Manager for the inputs.
     input_manager: Option<Box<InputManager>>,
     /// Manager for the outputs.
@@ -162,6 +169,7 @@ impl CompositorBuilder {
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
             Compositor { data: Box::new(data),
+                         seats: Seats::default(),
                          socket_name,
                          input_manager,
                          output_manager,
@@ -217,6 +225,7 @@ impl Compositor {
 
     pub fn terminate(&mut self) {
         unsafe {
+            COMPOSITOR_PTR = 0 as _;
             ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
         }
     }

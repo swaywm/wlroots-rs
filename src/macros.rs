@@ -151,7 +151,7 @@ macro_rules! wayland_listener {
         }
 
         impl $struct_name {
-            pub fn new(data: $data) -> Box<$struct_name> {
+            pub(crate) fn new(data: $data) -> Box<$struct_name> {
                 use $crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
                 Box::new($struct_name {
                     data,
@@ -170,12 +170,12 @@ macro_rules! wayland_listener {
                 })
             }
 
-            $($(pub unsafe extern "C" fn $listener(&mut self)
+            $($(pub(crate) unsafe extern "C" fn $listener(&mut self)
                                                    -> *mut $crate::wlroots_sys::wl_listener {
                 &mut self.$listener as *mut _
             })*)*
 
-            $($(pub unsafe extern "C" fn $listener_func(listener:
+            $($(pub(crate) unsafe extern "C" fn $listener_func(listener:
                                                         *mut $crate::wlroots_sys::wl_listener,
                                                         data: *mut libc::c_void) {
                 let manager: &mut $struct_name = &mut (*container_of!(listener,

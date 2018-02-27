@@ -148,6 +148,7 @@ impl Surface {
     ///
     /// Returns the surface and coordinates in the topmost surface coordinate system
     /// or None if no subsurface is found at that location.
+    #[allow(unused_variables)]
     pub fn subsurface_at(&mut self,
                          _sx: f32,
                          _sy: f32,

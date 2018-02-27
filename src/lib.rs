@@ -7,14 +7,6 @@
 //!
 //! # Example
 //! ```rust,no_run
-//! extern crate wlroots;
-//!
-//! fn main() {
-//!     wlroots::CompositorBuilder::new()
-//!          .build_auto((), // Dummy state
-//!                      None, None, None)
-//!          .run()
-//! }
 //! ```
 
 #![allow(unused_unsafe)]

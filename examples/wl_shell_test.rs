@@ -11,9 +11,9 @@ use std::time::Duration;
 use wlroots::{matrix_mul, matrix_rotate, matrix_scale, matrix_translate, Area, Compositor,
               CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
               Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, Pointer, PointerHandler, Renderer, Size, Surface,
-              WlShellHandler, WlShellManagerHandler, WlShellSurface, WlShellSurfaceHandle,
-              XCursorTheme};
+              OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat, SeatHandler, Size,
+              Surface, WlShellHandler, WlShellManagerHandler, WlShellSurface,
+              WlShellSurfaceHandle, XCursorTheme};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -40,6 +40,12 @@ impl State {
 
 compositor_data!(State);
 
+struct SeatHandlerEx;
+
+impl SeatHandler for SeatHandlerEx {
+    // TODO
+}
+
 struct WlShellHandlerEx;
 struct WlShellManager;
 
@@ -52,6 +58,9 @@ impl WlShellManagerHandler for WlShellManager {
                    -> Option<Box<WlShellHandler>> {
         let state: &mut State = compositor.into();
         state.shells.push(shell.weak_reference());
+        for (mut output, _) in state.layout.outputs() {
+            output.run(|output| output.schedule_frame()).unwrap();
+        }
         Some(Box::new(WlShellHandlerEx))
     }
 }
@@ -102,14 +111,46 @@ impl KeyboardHandler for ExKeyboardHandler {
                     use std::io::Write;
                     use std::os::unix::io::AsRawFd;
                     use wayland_client::EnvHandler;
-                    use wayland_client::protocol::{wl_compositor, wl_shell, wl_shell_surface,
-                                                   wl_shm};
+                    use wayland_client::protocol::{wl_compositor, wl_pointer, wl_seat, wl_shell,
+                                                   wl_shell_surface, wl_shm};
 
                     wayland_env!(WaylandEnv,
                                  compositor: wl_compositor::WlCompositor,
-                                 //seat: wl_seat::WlSeat,
+                                 seat: wl_seat::WlSeat,
                                  shell: wl_shell::WlShell,
                                  shm: wl_shm::WlShm);
+
+                    fn pointer_impl() -> wl_pointer::Implementation<()> {
+                        wl_pointer::Implementation {
+                            enter: |_, _, _pointer, _serial, _surface, x, y| {
+                                println!("Pointer entered surface at ({},{}).", x, y);
+                            },
+                            leave: |_, _, _pointer, _serial, _surface| {
+                                println!("Pointer left surface.");
+                            },
+                            motion: |_, _, _pointer, _time, x, y| {
+                                println!("Pointer moved to ({},{}).", x, y);
+                            },
+                            button: |_, _, _pointer, _serial, _time, button, state| {
+                                println!(
+                                    "Button {} ({}) was {:?}.",
+                                    match button {
+                                        272 => "Left",
+                                        273 => "Right",
+                                        274 => "Middle",
+                                        _ => "Unknown",
+                                    },
+                                    button,
+                                    state
+                                );
+                            },
+                            axis: |_, _, _, _, _, _| { /* not used in this example */ },
+                            frame: |_, _, _| { /* not used in this example */ },
+                            axis_source: |_, _, _, _| { /* not used in this example */ },
+                            axis_discrete: |_, _, _, _, _| { /* not used in this example */ },
+                            axis_stop: |_, _, _, _, _| { /* not used in this example */ },
+                        }
+                    }
 
                     fn shell_surface_impl() -> wl_shell_surface::Implementation<()> {
                         wl_shell_surface::Implementation { ping: |_, _, shell_surface, serial| {
@@ -178,12 +219,11 @@ impl KeyboardHandler for ExKeyboardHandler {
                     // commit
                     surface.commit();
 
-                    //let pointer = env.seat
-                    //    .get_pointer()
-                    //    .expect("Seat cannot be already destroyed.");
+                    let pointer = env.seat.get_pointer()
+                                     .expect("Seat cannot be already destroyed.");
 
                     event_queue.register(&shell_surface, shell_surface_impl(), ());
-                    //event_queue.register(&pointer, pointer_impl(), ());
+                    event_queue.register(&pointer, pointer_impl(), ());
 
                     loop {
                         display.flush().unwrap();
@@ -229,10 +269,13 @@ impl PointerHandler for ExPointer {
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
+        let state: &mut State = compositor.data.downcast_mut().unwrap();
+        if state.shells.len() < 1 {
+            return
+        }
         let renderer = compositor.renderer
                                  .as_mut()
                                  .expect("Compositor was not loaded with a renderer");
-        let state: &mut State = compositor.data.downcast_mut().unwrap();
         render_shells(state, &mut renderer.render(output));
     }
 }
@@ -260,11 +303,13 @@ fn main() {
     let mut layout = OutputLayout::new().expect("Could not construct an output layout");
 
     layout.attach_cursor(cursor);
-    let compositor = CompositorBuilder::new().gles2(true)
-                                             .build_auto(State::new(xcursor_theme, layout),
-                                                         Some(Box::new(InputManager)),
-                                                         Some(Box::new(OutputManager)),
-                                                         Some(Box::new(WlShellManager)));
+    let mut compositor = CompositorBuilder::new().gles2(true)
+                                                 .build_auto(State::new(xcursor_theme, layout),
+                                                             Some(Box::new(InputManager)),
+                                                             Some(Box::new(OutputManager)),
+                                                             Some(Box::new(WlShellManager)));
+    Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
+        .expect("Could not allocate the global seat");
     compositor.run();
 }
 
