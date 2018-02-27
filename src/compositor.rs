@@ -31,7 +31,7 @@ pub struct Compositor {
     /// This is stored here due to their complicated memory model.
     ///
     /// Please refer to the `Seat` documentation to learn how to use this.
-    seats: HashMap<String, Box<Seat>>,
+    pub seats: HashMap<String, Box<Seat>>,
     /// Manager for the inputs.
     input_manager: Option<Box<InputManager>>,
     /// Manager for the outputs.
@@ -224,11 +224,6 @@ impl Compositor {
         }
     }
 
-    /// Returns a list of the seats.
-    pub fn seat(&mut self, name: &str) -> Option<&mut Box<Seat>> {
-        self.seats.get_mut(name)
-    }
-
     /// Adds a seat to the list and then returns a reference to it.
     pub(crate) fn add_seat(&mut self, seat: Box<Seat>) -> &mut Box<Seat> {
         let name = seat.name().expect("Could not get seat name");
@@ -236,26 +231,12 @@ impl Compositor {
         self.seats.get_mut(name.as_str()).unwrap()
     }
 
-    /// Drops the seat associated with the provided name.
-    // TODO FIXME Better result types
-    pub fn drop_seat(&mut self, name: &str) -> Result<(), ()> {
-        match self.seats.remove(name) {
-            None => return Err(()), // TODO Better error here
-            Some(_seat) => Ok(())
-        }
-    }
-
     /// Takes the seat from the list and returns it.
     ///
     /// In its place it places a borrow, so that we can return it afterwards
     /// using `replace_seat`.
-    ///
-    /// # Panics
-    /// Panics if the `SeatId` is invalid or already borrowed.
-    // TODO Better errors, don't panic on these things
-    pub(crate) fn take_seat(&mut self, name: &str) -> Box<Seat> {
+    pub(crate) fn take_seat(&mut self, name: &str) -> Option<Box<Seat>> {
         self.seats.remove(name)
-            .expect("Seat did not exist, or was already borrowed")
     }
 
     /// Replaces the Borrowed in the list with the seat.
