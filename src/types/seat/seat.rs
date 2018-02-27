@@ -252,17 +252,7 @@ impl Seat {
             if name_ptr.is_null() {
                 return None
             }
-            c_to_rust_string(name_ptr)
-        }
-    }
-
-    /// Updates the name of this seat.
-    /// Will automatically send it to all clients.
-    // TODO FIXME Setting this could de-sync it with what's in the hashmap...
-    pub fn set_name(&mut self, name: String) {
-        let name = safe_as_cstring(name);
-        unsafe {
-            wlr_seat_set_name(self.data.0, name.as_ptr());
+                c_to_rust_string(name_ptr)
         }
     }
 
