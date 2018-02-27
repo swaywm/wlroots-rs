@@ -15,7 +15,7 @@ use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resoluti
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
-use {Area, Cursor, CursorBuilder, Origin, Output, OutputHandle};
+use {Area, Cursor, CursorBuilder, CursorWrapper, Origin, Output, OutputHandle};
 
 #[derive(Debug)]
 pub struct OutputLayout {
@@ -31,7 +31,7 @@ pub struct OutputLayout {
     liveliness: Option<Rc<AtomicBool>>,
     /// The output_layout ptr that refers to this `OutputLayout`
     layout: *mut wlr_output_layout,
-    cursors: Vec<Cursor>
+    cursors: Vec<Box<CursorWrapper>>
 }
 
 /// A handle to an `OutputLayout`.
@@ -100,8 +100,10 @@ impl OutputLayout {
         }
     }
 
-    pub fn cursors(&mut self) -> &mut [Cursor] {
-        self.cursors.as_mut_slice()
+    pub fn cursors(&mut self) -> Vec<&mut Cursor> {
+        self.cursors.iter_mut()
+            .map(|boxed| boxed.cursor())
+            .collect()
     }
 
     /// Attach a cursor to this OutputLayout.

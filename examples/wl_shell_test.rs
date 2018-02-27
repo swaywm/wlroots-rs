@@ -9,7 +9,7 @@ use std::thread;
 use std::time::Duration;
 
 use wlroots::{matrix_mul, matrix_rotate, matrix_scale, matrix_translate, Area, Compositor,
-              CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
+              CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard, KeyboardHandler, CursorHandler,
               Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
               OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat, SeatHandler, Size,
               Surface, WlShellHandler, WlShellManagerHandler, WlShellSurface,
@@ -41,6 +41,10 @@ impl State {
 compositor_data!(State);
 
 struct SeatHandlerEx;
+
+struct CursorEx;
+
+impl CursorHandler for CursorEx {}
 
 impl SeatHandler for SeatHandlerEx {
     // TODO
@@ -298,7 +302,7 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let cursor = CursorBuilder::new().expect("Could not create cursor");
+    let cursor = CursorBuilder::new(Box::new(CursorEx)).expect("Could not create cursor");
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
     let mut layout = OutputLayout::new().expect("Could not construct an output layout");
 
