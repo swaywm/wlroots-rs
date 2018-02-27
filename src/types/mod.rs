@@ -8,8 +8,8 @@ pub mod shell;
 
 pub use self::area::*;
 pub use self::cursor::*;
+pub use self::input::*;
 pub use self::output::*;
 pub use self::seat::*;
 pub use self::shell::*;
 pub use self::surface::*;
-pub use self::input::*;
