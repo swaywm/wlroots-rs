@@ -10,18 +10,28 @@ pub use self::touch_point::*;
 
 pub use seat::Seat;
 use std::collections::HashMap;
+use wlroots_sys::wlr_seat;
 
-/// A wrapper around the mapping of name -> `Seat`.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct SeatId(*mut wlr_seat);
+
+impl SeatId {
+    pub(crate) fn new(ptr: *mut wlr_seat) -> Self {
+        SeatId(ptr)
+    }
+}
+
+/// A wrapper around the mapping of id -> `Seat`.
 ///
 /// This is to ensure you can't move the Seat out of the box,
 /// or do other weird things to it.
 ///
 /// To add a `Seat` to this, please use `Seat::create`
 #[derive(Debug, Default)]
-pub struct Seats(HashMap<String, Box<Seat>>);
+pub struct Seats(HashMap<SeatId, Box<Seat>>);
 
 impl Seats {
-    /// Gets a mutable reference to a seat by name.
+    /// Gets a mutable reference to a seat by id.
     ///
     /// To add a Seat, please use `Seat::create`.
     ///
@@ -29,15 +39,15 @@ impl Seats {
     /// you should instead use the Seat value that's passed in the callback.
     ///
     /// Returns `None` if the seat has been removed or the name is incorrect.
-    pub fn get(&mut self, name: &str) -> Option<&mut Box<Seat>> {
-        self.0.get_mut(name)
+    pub fn get(&mut self, id: SeatId) -> Option<&mut Box<Seat>> {
+        self.0.get_mut(&id)
     }
 
     /// Add a new seat to the mapping.
     pub(crate) fn insert(&mut self, seat: Box<Seat>) -> &mut Box<Seat> {
-        let name = seat.name().expect("Could not get seat name");
-        self.0.insert(name.clone(), seat);
-        self.0.get_mut(name.as_str()).unwrap()
+        let id = unsafe { SeatId::new(seat.as_ptr()) };
+        self.0.insert(id, seat);
+        self.0.get_mut(&id).unwrap()
     }
 
     /// Take the seat from the mapping.
@@ -46,7 +56,7 @@ impl Seats {
     /// or to borrow it uniquely for a time (e.g in all other Seat callbacks).
     ///
     /// If the seat does not exist, then `None` is returned.
-    pub(crate) fn remove(&mut self, name: &str) -> Option<Box<Seat>> {
-        self.0.remove(name)
+    pub(crate) fn remove(&mut self, id: SeatId) -> Option<Box<Seat>> {
+        self.0.remove(&id)
     }
 }
