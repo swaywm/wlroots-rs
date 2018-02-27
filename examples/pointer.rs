@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate wlroots;
 
-use wlroots::{Compositor, CompositorBuilder, Cursor, CursorBuilder, CursorHandler,
+use wlroots::{Compositor, CompositorBuilder, Cursor, CursorBuilder, CursorHandler, CursorId,
               InputManagerHandler, Keyboard, KeyboardHandler, Output, OutputBuilder,
               OutputBuilderResult, OutputHandler, OutputLayout, OutputManagerHandler, Pointer,
               PointerHandler, XCursorTheme};
@@ -16,14 +16,16 @@ struct State {
     color: [f32; 4],
     default_color: [f32; 4],
     xcursor_theme: XCursorTheme,
+    cursor_id: CursorId,
     layout: OutputLayout
 }
 
 impl State {
-    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout) -> Self {
+    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout, cursor_id: CursorId) -> Self {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
                 xcursor_theme,
+                cursor_id,
                 layout }
     }
 }
@@ -61,7 +63,7 @@ impl OutputManagerHandler for OutputManager {
         let image = &xcursor.images()[0];
         // TODO use output config if present instead of auto
         state.layout.add_auto(result.output);
-        let cursor = &mut state.layout.cursors()[0];
+        let mut cursor = state.layout.cursor(state.cursor_id).unwrap();
         cursor.set_cursor_image(image);
         let (x, y) = cursor.coords();
         // https://en.wikipedia.org/wiki/Mouse_warping
@@ -84,7 +86,7 @@ impl PointerHandler for ExPointer {
     fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
-        let cursor = &mut state.layout.cursors()[0];
+        let mut cursor = state.layout.cursor(state.cursor_id).unwrap();
         cursor.move_to(None, delta_x, delta_y);
     }
 
@@ -132,7 +134,7 @@ impl InputManagerHandler for InputManager {
                      pointer: &mut Pointer)
                      -> Option<Box<PointerHandler>> {
         let state: &mut State = compositor.into();
-        let cursor = &mut state.layout.cursors()[0];
+        let cursor = &mut state.layout.cursor(state.cursor_id).unwrap();
         cursor.attach_input_device(pointer.input_device());
         Some(Box::new(ExPointer))
     }
@@ -151,10 +153,11 @@ fn main() {
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
     let mut layout = OutputLayout::new().expect("Could not construct an output layout");
 
-    layout.attach_cursor(cursor);
-    let compositor = CompositorBuilder::new().build_auto(State::new(xcursor_theme, layout),
-                                                         Some(Box::new(InputManager)),
-                                                         Some(Box::new(OutputManager)),
-                                                         None);
+    let cursor_id = layout.attach_cursor(cursor);
+    let compositor =
+        CompositorBuilder::new().build_auto(State::new(xcursor_theme, layout, cursor_id),
+                                            Some(Box::new(InputManager)),
+                                            Some(Box::new(OutputManager)),
+                                            None);
     compositor.run();
 }

@@ -22,6 +22,16 @@ pub struct CursorBuilder {
     cursor_handler: Box<CursorHandler>
 }
 
+/// A way to refer to cursors that you want to remove.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct CursorId(*mut wlr_cursor);
+
+impl CursorId {
+    pub(crate) fn new(ptr: *mut wlr_cursor) -> Self {
+        CursorId(ptr)
+    }
+}
+
 pub trait CursorHandler {
     /// Callback that is triggered when the cursor moves.
     fn on_pointer_motion(&mut self,
@@ -83,9 +93,17 @@ wayland_listener!(CursorWrapper, (Cursor, Box<CursorHandler>), [
     |this: &mut CursorWrapper, event: *mut libc::c_void,|
     unsafe {
         let (ref mut cursor, ref mut cursor_handler) = this.data;
+        let cursor_id = cursor.id();
+        let boxed_cursor = cursor.output_layout.run(|output_layout| {
+            output_layout.cursors.borrow_mut().remove(&cursor_id)
+                .expect("Cursor already borrowed")})
+            .expect("Could not remove cursor from OutputLayout");
         let mut event = pointer_events::MotionEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
-        cursor_handler.on_pointer_motion(compositor, cursor, &mut event)
+        cursor_handler.on_pointer_motion(compositor, cursor, &mut event);
+        cursor.output_layout.run(|output_layout|
+                                 output_layout.cursors.borrow_mut().insert(cursor_id, boxed_cursor))
+            .expect("Could not re-insert cursor to the OutputLayout");
     };
     pointer_motion_absolute_listener => pointer_motion_absolute_notify:
     |this: &mut CursorWrapper, event: *mut libc::c_void,|
@@ -261,6 +279,12 @@ impl CursorBuilder {
 }
 
 impl Cursor {
+    /// Gets a unique id for this Cursor. This id is used to remove it from the
+    /// `OutputLayout`.
+    pub fn id(&self) -> CursorId {
+        CursorId(unsafe { self.as_ptr() })
+    }
+
     /// Get the coordinates the cursor is located at.
     pub fn coords(&self) -> (f64, f64) {
         unsafe { ((*self.cursor).x, (*self.cursor).y) }

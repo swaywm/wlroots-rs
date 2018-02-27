@@ -1,6 +1,8 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
+use std::cell::{RefCell, RefMut};
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -15,7 +17,7 @@ use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resoluti
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
-use {Area, Cursor, CursorBuilder, CursorWrapper, Origin, Output, OutputHandle};
+use {Area, Cursor, CursorBuilder, CursorId, CursorWrapper, Origin, Output, OutputHandle};
 
 #[derive(Debug)]
 pub struct OutputLayout {
@@ -31,7 +33,8 @@ pub struct OutputLayout {
     liveliness: Option<Rc<AtomicBool>>,
     /// The output_layout ptr that refers to this `OutputLayout`
     layout: *mut wlr_output_layout,
-    cursors: Vec<Box<CursorWrapper>>
+    /// The cursors attached to this output layout.
+    pub(crate) cursors: Rc<RefCell<HashMap<CursorId, Box<CursorWrapper>>>>
 }
 
 /// A handle to an `OutputLayout`.
@@ -45,7 +48,9 @@ pub(crate) struct OutputLayoutHandle {
     /// this can no longer be used.
     handle: Weak<AtomicBool>,
     /// The output_layout ptr that refers to this `OutputLayout`
-    layout: *mut wlr_output_layout
+    layout: *mut wlr_output_layout,
+    /// The cursors attached to this output layout.
+    cursors: Weak<RefCell<HashMap<CursorId, Box<CursorWrapper>>>>
 }
 
 /// The coordinate information of an `Output` within an `OutputLayout`.
@@ -65,7 +70,7 @@ impl OutputLayout {
             } else {
                 Some(OutputLayout { liveliness: Some(Rc::new(AtomicBool::new(false))),
                                     layout,
-                                    cursors: Vec::new() })
+                                    cursors: Rc::new(RefCell::new(HashMap::new())) })
             }
         }
     }
@@ -100,18 +105,47 @@ impl OutputLayout {
         }
     }
 
-    pub fn cursors(&mut self) -> Vec<&mut Cursor> {
-        self.cursors.iter_mut()
-            .map(|boxed| boxed.cursor())
-            .collect()
+    /// Gets a cursor by its id.
+    ///
+    /// If the cursor has been dropped, or is currently being borrowed, `None` is returned.
+    pub fn cursor(&mut self, id: CursorId) -> Option<RefMut<Cursor>> {
+        let borrow = self.cursors.borrow_mut();
+        if borrow.get(&id).is_none() {
+            return None
+        }
+        Some(RefMut::map(borrow, |borrow| {
+                 borrow.get_mut(&id).map(|boxed| boxed.cursor()).unwrap()
+             }))
+    }
+
+    /// Drops the cursor associated with the id.
+    ///
+    /// **Note that if the Cursor is being borrowed in a callback, it will not be dropped**.
+    pub fn drop_cursor(&mut self, id: CursorId) {
+        self.cursors.borrow_mut().remove(&id);
+    }
+
+    /// Apply some operations to all cursors.
+    pub fn apply_to_cursors<F>(&mut self, mut f: F)
+        where F: FnMut(&mut Cursor) -> ()
+    {
+        let mut borrow = self.cursors.borrow_mut();
+        for cursor in borrow.values_mut().map(|boxed| boxed.cursor()) {
+            f(cursor)
+        }
     }
 
     /// Attach a cursor to this OutputLayout.
-    pub fn attach_cursor(&mut self, cursor: CursorBuilder) {
+    ///
+    /// Returns the id of the cursor so it
+    /// can be accessed later.
+    pub fn attach_cursor(&mut self, cursor: CursorBuilder) -> CursorId {
         unsafe {
             let cursor = cursor.build(self.weak_reference());
             wlr_cursor_attach_output_layout(cursor.as_ptr(), self.layout);
-            self.cursors.push(cursor);
+            let id = CursorId::new(cursor.as_ptr());
+            self.cursors.borrow_mut().insert(id, cursor);
+            id
         }
     }
 
@@ -226,13 +260,16 @@ impl OutputLayout {
         let arc = self.liveliness.as_ref()
                       .expect("Cannot downgrade a previously upgraded OutputLayoutHandle");
         OutputLayoutHandle { handle: Rc::downgrade(arc),
-                             layout: self.layout }
+                             layout: self.layout,
+                             cursors: Rc::downgrade(&self.cursors) }
     }
 
     unsafe fn from_handle(handle: &OutputLayoutHandle) -> Self {
         OutputLayout { liveliness: None,
                        layout: handle.as_ptr(),
-                       cursors: Vec::new() }
+                       cursors: handle.cursors
+                                      .upgrade()
+                                      .expect("Could not upgrade cursors Rc") }
     }
 }
 
