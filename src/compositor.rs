@@ -4,14 +4,13 @@
 use std::{env, ptr};
 use std::any::Any;
 use std::cell::UnsafeCell;
-use std::collections::HashMap;
 use std::ffi::CStr;
 
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler};
 use render::GenericRenderer;
-use types::seat::Seat;
+use types::seat::Seats;
 
 use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wayland_sys::server::signal::wl_signal_add;
@@ -30,8 +29,8 @@ pub struct Compositor {
     ///
     /// This is stored here due to their complicated memory model.
     ///
-    /// Please refer to the `Seat` documentation to learn how to use this.
-    pub seats: HashMap<String, Box<Seat>>,
+    /// Please refer to the `Seat` and `Seats` documentation to learn how to use this.
+    pub seats: Seats,
     /// Manager for the inputs.
     input_manager: Option<Box<InputManager>>,
     /// Manager for the outputs.
@@ -170,7 +169,7 @@ impl CompositorBuilder {
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
             Compositor { data: Box::new(data),
-                         seats: HashMap::new(),
+                         seats: Seats::default(),
                          socket_name,
                          input_manager,
                          output_manager,
@@ -222,27 +221,6 @@ impl Compositor {
                 }
             }
         }
-    }
-
-    /// Adds a seat to the list and then returns a reference to it.
-    pub(crate) fn add_seat(&mut self, seat: Box<Seat>) -> &mut Box<Seat> {
-        let name = seat.name().expect("Could not get seat name");
-        self.seats.insert(name.clone(), seat);
-        self.seats.get_mut(name.as_str()).unwrap()
-    }
-
-    /// Takes the seat from the list and returns it.
-    ///
-    /// In its place it places a borrow, so that we can return it afterwards
-    /// using `replace_seat`.
-    pub(crate) fn take_seat(&mut self, name: &str) -> Option<Box<Seat>> {
-        self.seats.remove(name)
-    }
-
-    /// Replaces the Borrowed in the list with the seat.
-    pub(crate) fn replace_seat(&mut self, seat: Box<Seat>) {
-        let name = seat.name().expect("Seat had no name");
-        self.seats.insert(name, seat);
     }
 
     pub fn terminate(&mut self) {
