@@ -20,12 +20,13 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_dest
                   wlr_seat_pointer_notify_motion, wlr_seat_pointer_send_axis,
                   wlr_seat_pointer_send_button, wlr_seat_pointer_send_motion,
                   wlr_seat_pointer_start_grab, wlr_seat_pointer_surface_has_focus,
-                  wlr_seat_set_capabilities, wlr_seat_set_keyboard, wlr_seat_touch_end_grab,
-                  wlr_seat_touch_get_point, wlr_seat_touch_has_grab, wlr_seat_touch_notify_down,
-                  wlr_seat_touch_notify_motion, wlr_seat_touch_notify_up,
-                  wlr_seat_touch_num_points, wlr_seat_touch_point_clear_focus,
-                  wlr_seat_touch_point_focus, wlr_seat_touch_send_down,
-                  wlr_seat_touch_send_motion, wlr_seat_touch_send_up, wlr_seat_touch_start_grab};
+                  wlr_seat_set_capabilities, wlr_seat_set_keyboard, wlr_seat_set_name,
+                  wlr_seat_touch_end_grab, wlr_seat_touch_get_point, wlr_seat_touch_has_grab,
+                  wlr_seat_touch_notify_down, wlr_seat_touch_notify_motion,
+                  wlr_seat_touch_notify_up, wlr_seat_touch_num_points,
+                  wlr_seat_touch_point_clear_focus, wlr_seat_touch_point_focus,
+                  wlr_seat_touch_send_down, wlr_seat_touch_send_motion, wlr_seat_touch_send_up,
+                  wlr_seat_touch_start_grab};
 pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
@@ -239,6 +240,15 @@ impl Seat {
                 return None
             }
             c_to_rust_string(name_ptr)
+        }
+    }
+
+    /// Updates the name of this seat.
+    /// Will automatically send it to all clients.
+    pub fn set_name(&mut self, name: String) {
+        let name = safe_as_cstring(name);
+        unsafe {
+            wlr_seat_set_name(self.data.0, name.as_ptr());
         }
     }
 
