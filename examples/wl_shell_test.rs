@@ -9,11 +9,11 @@ use std::thread;
 use std::time::Duration;
 
 use wlroots::{matrix_mul, matrix_rotate, matrix_scale, matrix_translate, Area, Compositor,
-              CompositorBuilder, CursorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
-              Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat, SeatHandler, Size,
-              Surface, WlShellHandler, WlShellManagerHandler, WlShellSurface,
-              WlShellSurfaceHandle, XCursorTheme};
+              CompositorBuilder, CursorBuilder, CursorHandler, CursorId, InputManagerHandler,
+              Keyboard, KeyboardHandler, Origin, Output, OutputBuilder, OutputBuilderResult,
+              OutputHandler, OutputLayout, OutputManagerHandler, Pointer, PointerHandler,
+              Renderer, Seat, SeatHandler, Size, Surface, WlShellHandler, WlShellManagerHandler,
+              WlShellSurface, WlShellSurfaceHandle, XCursorTheme};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -25,15 +25,17 @@ struct State {
     default_color: [f32; 4],
     xcursor_theme: XCursorTheme,
     layout: OutputLayout,
+    cursor_id: CursorId,
     shells: Vec<WlShellSurfaceHandle>
 }
 
 impl State {
-    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout) -> Self {
+    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout, cursor_id: CursorId) -> Self {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
                 xcursor_theme,
                 layout,
+                cursor_id,
                 shells: vec![] }
     }
 }
@@ -41,6 +43,10 @@ impl State {
 compositor_data!(State);
 
 struct SeatHandlerEx;
+
+struct CursorEx;
+
+impl CursorHandler for CursorEx {}
 
 impl SeatHandler for SeatHandlerEx {
     // TODO
@@ -88,7 +94,7 @@ impl OutputManagerHandler for OutputManager {
         let image = &xcursor.images()[0];
         // TODO use output config if present instead of auto
         state.layout.add_auto(result.output);
-        let cursor = &mut state.layout.cursors()[0];
+        let mut cursor = state.layout.cursor(state.cursor_id).unwrap();
         cursor.set_cursor_image(image);
         let (x, y) = cursor.coords();
         // https://en.wikipedia.org/wiki/Mouse_warping
@@ -239,7 +245,10 @@ impl PointerHandler for ExPointer {
     fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
-        state.layout.cursors()[0].move_to(event.device(), delta_x, delta_y);
+        state.layout
+             .cursor(state.cursor_id)
+             .unwrap()
+             .move_to(event.device(), delta_x, delta_y);
     }
 
     fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &ButtonEvent) {
@@ -298,16 +307,17 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let cursor = CursorBuilder::new().expect("Could not create cursor");
+    let cursor = CursorBuilder::new(Box::new(CursorEx)).expect("Could not create cursor");
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
     let mut layout = OutputLayout::new().expect("Could not construct an output layout");
 
-    layout.attach_cursor(cursor);
-    let mut compositor = CompositorBuilder::new().gles2(true)
-                                                 .build_auto(State::new(xcursor_theme, layout),
-                                                             Some(Box::new(InputManager)),
-                                                             Some(Box::new(OutputManager)),
-                                                             Some(Box::new(WlShellManager)));
+    let cursor_id = layout.attach_cursor(cursor);
+    let mut compositor =
+        CompositorBuilder::new().gles2(true)
+                                .build_auto(State::new(xcursor_theme, layout, cursor_id),
+                                            Some(Box::new(InputManager)),
+                                            Some(Box::new(OutputManager)),
+                                            Some(Box::new(WlShellManager)));
     Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
         .expect("Could not allocate the global seat");
     compositor.run();
