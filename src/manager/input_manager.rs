@@ -7,9 +7,10 @@ use libc;
 use std::{env, panic};
 use std::process::abort;
 
-use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper};
+use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper, TouchHandler,
+            TouchWrapper};
 use compositor::{Compositor, COMPOSITOR_PTR};
-use types::{InputDevice, Keyboard, Pointer};
+use types::input::{InputDevice, Keyboard, Pointer, Touch};
 use utils::safe_as_cstring;
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -22,7 +23,8 @@ use wlroots_sys::xkb_keymap_compile_flags::*;
 /// Different type of inputs that can be acquired.
 pub enum Input {
     Keyboard(Box<KeyboardWrapper>),
-    Pointer(Box<PointerWrapper>)
+    Pointer(Box<PointerWrapper>),
+    Touch(Box<TouchWrapper>)
 }
 
 impl Input {
@@ -30,7 +32,8 @@ impl Input {
         use self::Input::*;
         match *self {
             Keyboard(ref keyboard) => keyboard.input_device().as_ptr(),
-            Pointer(ref pointer) => pointer.input_device().as_ptr()
+            Pointer(ref pointer) => pointer.input_device().as_ptr(),
+            Touch(ref touch) => touch.input_device().as_ptr()
         }
     }
 }
@@ -63,6 +66,14 @@ pub trait InputManagerHandler {
     fn pointer_added(&mut self, &mut Compositor, &mut Pointer) -> Option<Box<PointerHandler>> {
         None
     }
+
+    /// Callback triggered when a touch device is added.
+    ///
+    /// # Panics
+    /// Any panic in this functino will cause the process to abort.
+    fn touch_added(&mut self, &mut Compositor, &mut Touch) -> Option<Box<TouchHandler>> {
+        None
+    }
 }
 
 wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
@@ -78,7 +89,6 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                 WLR_INPUT_DEVICE_KEYBOARD => {
                     // Boring setup that we won't make the user do
                     add_keyboard(&mut dev);
-                    // Get the optional user keyboard struct, add the on_key signal
                     let mut keyboard_handle = match Keyboard::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
@@ -99,7 +109,6 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     }
                 },
                 WLR_INPUT_DEVICE_POINTER => {
-                    // Get the optional user pointer struct, add the signals
                     let mut pointer_handle = match Pointer::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
@@ -124,6 +133,30 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                         inputs.push(Input::Pointer(pointer))
                     }
                 },
+                WLR_INPUT_DEVICE_TOUCH => {
+                    let mut touch_handle = match Touch::new_from_input_device(data) {
+                        Some(dev) => dev,
+                        None => {
+                            wlr_log!(L_ERROR, "Device {:#?} was not a touch", dev);
+                            abort()
+                        }
+                    };
+                    touch_handle.set_lock(true);
+                    if let Some(touch) = manager.touch_added(compositor, &mut touch_handle) {
+                        touch_handle.set_lock(false);
+                        let mut touch = TouchWrapper::new((touch_handle, touch));
+                        wl_signal_add(&mut (*dev.dev_union().touch).events.down as *mut _ as _,
+                                      touch.down_listener() as *mut _ as _);
+                        wl_signal_add(&mut (*dev.dev_union().touch).events.up as *mut _ as _,
+                                      touch.up_listener() as *mut _ as _);
+                        wl_signal_add(&mut (*dev.dev_union().touch).events.motion as *mut _ as _,
+                                      touch.motion_listener() as *mut _ as _);
+                        wl_signal_add(&mut (*dev.dev_union().touch).events.cancel as *mut _ as _,
+                                      touch.cancel_listener() as *mut _ as _);
+                        // Forget until we need to drop it in the destroy callback
+                        inputs.push(Input::Touch(touch))
+                    }
+                }
                 _ => unimplemented!(),
             }
             manager.input_added(compositor, &mut dev)
@@ -175,6 +208,20 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                   wl_list_remove,
                                   &mut (*pointer.axis_listener()).link as *mut _ as _);
+                },
+                Input::Touch(mut touch) => {
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*touch.down_listener()).link as *mut _ as _);
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*touch.up_listener()).link as *mut _ as _);
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*touch.motion_listener()).link as *mut _ as _);
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*touch.cancel_listener()).link as *mut _ as _);
                 }
             }
         }
