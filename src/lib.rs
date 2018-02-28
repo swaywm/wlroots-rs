@@ -39,6 +39,7 @@ pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, Out
                         XdgV6ShellManagerHandler};
 pub use self::types::area::*;
 pub use self::types::cursor::*;
+pub use self::types::data_device::*;
 pub use self::types::input_device::*;
 pub use self::types::keyboard::*;
 pub use self::types::output::output::*;

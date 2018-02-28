@@ -6,6 +6,7 @@ use std::any::Any;
 use std::cell::UnsafeCell;
 use std::ffi::CStr;
 
+use DataDeviceManager;
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
@@ -62,6 +63,8 @@ pub struct Compositor {
     pub server_decoration_manager: Option<ServerDecorationManager>,
     /// The renderer used to draw things to the screen.
     pub renderer: Option<GenericRenderer>,
+    /// The DnD manager
+    data_device_manager: Option<DataDeviceManager>,
     /// The error from the panic, if there was one.
     panic_error: Option<Box<Any + Send>>
 }
@@ -72,7 +75,8 @@ pub struct CompositorBuilder {
     wl_shell_manager_handler: Option<Box<WlShellManagerHandler>>,
     xdg_v6_shell_manager_handler: Option<Box<XdgV6ShellManagerHandler>>,
     gles2: bool,
-    server_decoration_manager: bool
+    server_decoration_manager: bool,
+    data_device_manager: bool
 }
 
 impl CompositorBuilder {
@@ -82,6 +86,7 @@ impl CompositorBuilder {
     pub fn new() -> Self {
         CompositorBuilder { gles2: false,
                             server_decoration_manager: false,
+                            data_device_manager: false,
                             input_manager_handler: None,
                             output_manager_handler: None,
                             wl_shell_manager_handler: None,
@@ -113,6 +118,14 @@ impl CompositorBuilder {
                                 xdg_v6_shell_manager_handler: Box<XdgV6ShellManagerHandler>)
                                 -> Self {
         self.xdg_v6_shell_manager_handler = Some(xdg_v6_shell_manager_handler);
+        self
+    }
+
+    /// Decide whether or not to enable the data device manager.
+    ///
+    /// This is used to do DnD, or "drag 'n drop" copy paste.
+    pub fn data_device(mut self, data_device_manager: bool) -> Self {
+        self.data_device_manager = data_device_manager;
         self
     }
 
@@ -155,6 +168,11 @@ impl CompositorBuilder {
             // Create optional extensions.
             let server_decoration_manager = if self.server_decoration_manager {
                 ServerDecorationManager::new(display)
+            } else {
+                None
+            };
+            let data_device_manager = if self.data_device_manager {
+                DataDeviceManager::new(display as _)
             } else {
                 None
             };
@@ -231,6 +249,7 @@ impl CompositorBuilder {
                          wl_shell_global,
                          xdg_v6_shell_manager,
                          xdg_v6_shell_global,
+                         data_device_manager,
                          compositor,
                          backend,
                          display,
