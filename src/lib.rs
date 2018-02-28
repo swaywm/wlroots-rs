@@ -31,7 +31,8 @@ pub mod render;
 pub mod utils;
 
 pub use self::compositor::{terminate, Compositor, CompositorBuilder};
-pub use self::events::{key_events, pointer_events, touch_events, wl_shell_events};
+pub use self::events::{key_events, pointer_events, touch_events, wl_shell_events,
+                       xdg_shell_v6_events};
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
                         OutputHandler, OutputManagerHandler, PointerHandler, TouchHandler,
                         WlShellHandler, WlShellManagerHandler};
