@@ -1,17 +1,16 @@
-#[macro_use] extern crate wlroots;
+#[macro_use]
+extern crate wlroots;
 
-use std::time::Duration;
 use std::process::Command;
 use std::thread;
+use std::time::Duration;
 
 use wlroots::{matrix_mul, matrix_rotate, matrix_scale, matrix_translate, Area, Compositor,
               CompositorBuilder, CursorBuilder, CursorHandler, CursorId, InputManagerHandler,
               Keyboard, KeyboardHandler, Origin, Output, OutputBuilder, OutputBuilderResult,
               OutputHandler, OutputLayout, OutputManagerHandler, Pointer, PointerHandler,
-              Renderer, Seat, SeatHandler, Size, Surface, XdgV6ShellSurface,
-              XdgV6ShellSurfaceHandle,
-              XdgV6ShellManagerHandler, XdgV6ShellHandler,
-              XCursorTheme};
+              Renderer, Seat, SeatHandler, Size, Surface, XCursorTheme, XdgV6ShellHandler,
+              XdgV6ShellManagerHandler, XdgV6ShellSurface, XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -68,7 +67,9 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
         Some(Box::new(XdgV6ShellHandlerEx))
     }
 
-    fn surface_destroyed(&mut self, compositor: &mut Compositor, shell: &mut XdgV6ShellSurface,
+    fn surface_destroyed(&mut self,
+                         compositor: &mut Compositor,
+                         shell: &mut XdgV6ShellSurface,
                          _: &mut Surface) {
         let state: &mut State = compositor.into();
         let weak = shell.weak_reference();
@@ -117,8 +118,8 @@ impl KeyboardHandler for ExKeyboardHandler {
                 compositor.terminate()
             } else {
                 thread::spawn(move || {
-                    Command::new("weston-terminal").output().unwrap();
-                });
+                                  Command::new("weston-terminal").output().unwrap();
+                              });
             }
         }
     }
