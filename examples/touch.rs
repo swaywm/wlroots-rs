@@ -49,7 +49,7 @@ struct ExKeyboardHandler;
 
 impl OutputManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
-                             compositor: &mut Compositor,
+                             _compositor: &mut Compositor,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
         Some(builder.build_best_mode(ExOutput))
@@ -90,7 +90,7 @@ impl OutputHandler for ExOutput {
 }
 
 impl TouchHandler for TouchHandlerEx {
-    fn on_down(&mut self, compositor: &mut Compositor, touch: &mut Touch, event: &DownEvent) {
+    fn on_down(&mut self, compositor: &mut Compositor, _touch: &mut Touch, event: &DownEvent) {
         let state: &mut State = compositor.into();
         let (width, height) = event.size();
         let (x, y) = event.location();
@@ -101,7 +101,7 @@ impl TouchHandler for TouchHandlerEx {
         state.touch_points.push(point)
     }
 
-    fn on_up(&mut self, compositor: &mut Compositor, touch: &mut Touch, event: &UpEvent) {
+    fn on_up(&mut self, compositor: &mut Compositor, _touch: &mut Touch, event: &UpEvent) {
         let state: &mut State = compositor.into();
         wlr_log!(L_ERROR,
                  "Removing {:?} from {:#?}",
@@ -115,7 +115,7 @@ impl TouchHandler for TouchHandlerEx {
         }
     }
 
-    fn on_motion(&mut self, compositor: &mut Compositor, touch: &mut Touch, event: &MotionEvent) {
+    fn on_motion(&mut self, compositor: &mut Compositor, _touch: &mut Touch, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (width, height) = event.size();
         let (x, y) = event.location();
