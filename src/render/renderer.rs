@@ -4,7 +4,7 @@ use Output;
 use render::Texture;
 use wlroots_sys::{wlr_backend, wlr_render_colored_ellipse, wlr_render_colored_quad,
                   wlr_render_texture_create, wlr_render_with_matrix, wlr_renderer,
-                  wlr_renderer_begin, wlr_renderer_destroy, wlr_renderer_end,
+                  wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
                   wlr_gles2_renderer_create};
 
 /// A generic interface for rendering to the screen.
@@ -69,6 +69,10 @@ impl<'output> Renderer<'output> {
     /// Create a texture using this renderer
     pub fn create_texture(&mut self) -> Option<Texture> {
         unsafe { create_texture(self.renderer) }
+    }
+
+    pub fn clear(&mut self, float: [f32; 4]) {
+        unsafe { wlr_renderer_clear(self.renderer, &float) }
     }
 
     /// Renders the requested texture using the provided matrix. A typical texture
