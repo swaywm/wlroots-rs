@@ -2,7 +2,7 @@
 name = "wlroots-sys"
 version = "0.0.0"
 authors = ["Timidger <APragmaticPlace@gmail.com>"]
-description = "Bindgen generated low-level wlc wrapper"
+description = "Bindgen generated low-level wlroots wrapper"
 keywords = ["wayland", "compositor", "bindings"]
 categories = ["external-ffi-bindings"]
 license = "MIT"
