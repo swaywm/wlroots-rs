@@ -198,11 +198,10 @@ fn main() {
     let cursor_id = layout.attach_cursor(cursor);
     let mut compositor =
         CompositorBuilder::new().gles2(true)
-                                .build_auto(State::new(xcursor_theme, layout, cursor_id),
-                                            Some(Box::new(InputManager)),
-                                            Some(Box::new(OutputManager)),
-                                            None,
-                                            Some(Box::new(XdgV6ShellManager)));
+                                .input_manager(Box::new(InputManager))
+                                .output_manager(Box::new(OutputManager))
+                                .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
+                                .build_auto(State::new(xcursor_theme, layout, cursor_id));
     Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
         .expect("Could not allocate the global seat");
     compositor.run();
