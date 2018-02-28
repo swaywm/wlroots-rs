@@ -6,7 +6,7 @@ description = "Bindgen generated low-level wlroots wrapper"
 keywords = ["wayland", "compositor", "bindings"]
 categories = ["external-ffi-bindings"]
 license = "MIT"
-exclude = [".travis.yml"]
+exclude = ["wlroots/.travis.yml"]
 
 build = "build.rs"
 
