@@ -2,8 +2,8 @@
 extern crate wlroots;
 
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
-              Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, PointerHandler, Texture, TextureFormat, Touch, TouchHandler};
+              Output, OutputBuilder, OutputBuilderResult, OutputHandler,
+              OutputManagerHandler, Texture, TextureFormat, Touch, TouchHandler};
 use wlroots::key_events::KeyEvent;
 use wlroots::touch_events::{DownEvent, MotionEvent, UpEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -43,13 +43,11 @@ struct ExOutput;
 
 struct InputManager;
 
-struct ExPointer;
-
 struct ExKeyboardHandler;
 
 impl OutputManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
-                             compositor: &mut Compositor,
+                             _compositor: &mut Compositor,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
         Some(builder.build_best_mode(ExOutput))
@@ -65,8 +63,6 @@ impl KeyboardHandler for ExKeyboardHandler {
         }
     }
 }
-
-impl PointerHandler for ExPointer {}
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
@@ -90,7 +86,7 @@ impl OutputHandler for ExOutput {
 }
 
 impl TouchHandler for TouchHandlerEx {
-    fn on_down(&mut self, compositor: &mut Compositor, touch: &mut Touch, event: &DownEvent) {
+    fn on_down(&mut self, compositor: &mut Compositor, _touch: &mut Touch, event: &DownEvent) {
         let state: &mut State = compositor.into();
         let (width, height) = event.size();
         let (x, y) = event.location();
@@ -101,7 +97,7 @@ impl TouchHandler for TouchHandlerEx {
         state.touch_points.push(point)
     }
 
-    fn on_up(&mut self, compositor: &mut Compositor, touch: &mut Touch, event: &UpEvent) {
+    fn on_up(&mut self, compositor: &mut Compositor, _touch: &mut Touch, event: &UpEvent) {
         let state: &mut State = compositor.into();
         wlr_log!(L_ERROR,
                  "Removing {:?} from {:#?}",
@@ -115,7 +111,7 @@ impl TouchHandler for TouchHandlerEx {
         }
     }
 
-    fn on_motion(&mut self, compositor: &mut Compositor, touch: &mut Touch, event: &MotionEvent) {
+    fn on_motion(&mut self, compositor: &mut Compositor, _touch: &mut Touch, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (width, height) = event.size();
         let (x, y) = event.location();
@@ -143,7 +139,6 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let mut layout = OutputLayout::new().expect("Could not construct an output layout");
     let mut compositor = CompositorBuilder::new().gles2(true)
                                                  .build_auto(State::new(),
                                                              Some(Box::new(InputManager)),
