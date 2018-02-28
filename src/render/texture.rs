@@ -1,3 +1,4 @@
+use libc::c_int;
 use wlroots_sys::{wl_shm_format, wlr_texture, wlr_texture_get_matrix, wlr_texture_upload_pixels};
 
 /// Wrapper around wl_shm_format, to make it easier and nicer to type.
@@ -84,6 +85,13 @@ impl Texture {
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_texture {
         self.texture
+    }
+
+    /// Gets the size of the texture.
+    ///
+    /// Return value is in (width, height) format.
+    pub fn size(&self) -> (c_int, c_int) {
+        unsafe { ((*self.texture).width, (*self.texture).height) }
     }
 
     pub fn upload_pixels(&mut self,
