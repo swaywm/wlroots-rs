@@ -2,8 +2,8 @@
 extern crate wlroots;
 
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
-              Output, OutputBuilder, OutputBuilderResult, OutputHandler,
-              OutputManagerHandler, Texture, TextureFormat, Touch, TouchHandler};
+              Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler,
+              Texture, TextureFormat, Touch, TouchHandler};
 use wlroots::key_events::KeyEvent;
 use wlroots::touch_events::{DownEvent, MotionEvent, UpEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -140,10 +140,9 @@ impl InputManagerHandler for InputManager {
 fn main() {
     init_logging(L_DEBUG, None);
     let mut compositor = CompositorBuilder::new().gles2(true)
-                                                 .build_auto(State::new(),
-                                                             Some(Box::new(InputManager)),
-                                                             Some(Box::new(OutputManager)),
-                                                             None);
+                                                 .input_manager(Box::new(InputManager))
+                                                 .output_manager(Box::new(OutputManager))
+                                                 .build_auto(State::new());
     {
         let gles2 = &mut compositor.renderer.as_mut().unwrap();
         let compositor_data: &mut State = (&mut compositor.data).downcast_mut().unwrap();

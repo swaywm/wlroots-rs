@@ -90,9 +90,8 @@ impl OutputHandler for ExOutput {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    CompositorBuilder::new().build_auto((),
-                                        Some(Box::new(InputManager)),
-                                        Some(Box::new(OutputManager)),
-                                        None)
+    CompositorBuilder::new().input_manager(Box::new(InputManager))
+                            .output_manager(Box::new(OutputManager))
+                            .build_auto(())
                             .run()
 }

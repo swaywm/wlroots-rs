@@ -155,9 +155,8 @@ fn main() {
 
     let cursor_id = layout.attach_cursor(cursor);
     let compositor =
-        CompositorBuilder::new().build_auto(State::new(xcursor_theme, layout, cursor_id),
-                                            Some(Box::new(InputManager)),
-                                            Some(Box::new(OutputManager)),
-                                            None);
+        CompositorBuilder::new().input_manager(Box::new(InputManager))
+                                .output_manager(Box::new(OutputManager))
+                                .build_auto(State::new(xcursor_theme, layout, cursor_id));
     compositor.run();
 }

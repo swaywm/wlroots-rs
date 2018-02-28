@@ -163,10 +163,9 @@ fn main() {
     };
     let compositor_state = CompositorState::new(rotation);
     let mut compositor = CompositorBuilder::new().gles2(true)
-                                                 .build_auto(compositor_state,
-                                                             Some(Box::new(InputManager)),
-                                                             Some(Box::new(OutputManager)),
-                                                             None);
+                                                 .input_manager(Box::new(InputManager))
+                                                 .output_manager(Box::new(OutputManager))
+                                                 .build_auto(compositor_state);
     {
         let gles2 = &mut compositor.renderer.as_mut().unwrap();
         let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
