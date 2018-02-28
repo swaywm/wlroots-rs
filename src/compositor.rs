@@ -61,21 +61,53 @@ pub struct Compositor {
 }
 
 pub struct CompositorBuilder {
+    input_manager_handler: Option<Box<InputManagerHandler>>,
+    output_manager_handler: Option<Box<OutputManagerHandler>>,
+    wl_shell_manager_handler: Option<Box<WlShellManagerHandler>>,
     gles2: bool,
     server_decoration_manager: bool
 }
 
 impl CompositorBuilder {
+    /// Make a new compositor builder.
+    ///
+    /// Unless otherwise noted, each option is `false`/`None`.
     pub fn new() -> Self {
         CompositorBuilder { gles2: false,
-                            server_decoration_manager: false }
+                            server_decoration_manager: false,
+                            input_manager_handler: None,
+                            output_manager_handler: None,
+                            wl_shell_manager_handler: None }
     }
 
+    /// Set the handler for inputs.
+    pub fn input_manager(mut self, input_manager_handler: Box<InputManagerHandler>) -> Self {
+        self.input_manager_handler = Some(input_manager_handler);
+        self
+    }
+
+    /// Set the handler for outputs.
+    pub fn output_manager(mut self, output_manager_handler: Box<OutputManagerHandler>) -> Self {
+        self.output_manager_handler = Some(output_manager_handler);
+        self
+    }
+
+    /// Set the handler for Wayland shells.
+    pub fn wl_shell_manager(mut self,
+                            wl_shell_manager_handler: Box<WlShellManagerHandler>)
+                            -> Self {
+        self.wl_shell_manager_handler = Some(wl_shell_manager_handler);
+        self
+    }
+
+    /// Decide whether or not to enable the GLES2 extension.
     pub fn gles2(mut self, gles2_renderer: bool) -> Self {
         self.gles2 = gles2_renderer;
         self
     }
 
+    /// Decide whether or not to enable the server decoration manager protocol
+    /// extension.
     pub fn server_decoration_manager(mut self, server_decoration_manager: bool) -> Self {
         self.server_decoration_manager = server_decoration_manager;
         self
@@ -86,12 +118,7 @@ impl CompositorBuilder {
     ///
     /// Also automatically opens the socket for clients to communicate to the
     /// compositor with.
-    pub fn build_auto<D>(self,
-                         data: D,
-                         input_manager_handler: Option<Box<InputManagerHandler>>,
-                         output_manager_handler: Option<Box<OutputManagerHandler>>,
-                         wl_shell_manager_handler: Option<Box<WlShellManagerHandler>>)
-                         -> Compositor
+    pub fn build_auto<D>(self, data: D) -> Compositor
         where D: Any + 'static
     {
         unsafe {
@@ -128,7 +155,7 @@ impl CompositorBuilder {
             };
 
             // Set up input manager, if the user provided it.
-            let input_manager = input_manager_handler.map(|handler| {
+            let input_manager = self.input_manager_handler.map(|handler| {
                 let mut input_manager = InputManager::new((vec![], handler));
                 wl_signal_add(&mut (*backend).events.new_input as *mut _ as _,
                               input_manager.add_listener() as *mut _ as _);
@@ -136,7 +163,7 @@ impl CompositorBuilder {
             });
 
             // Set up output manager, if the user provided it.
-            let output_manager = output_manager_handler.map(|handler| {
+            let output_manager = self.output_manager_handler.map(|handler| {
                 let mut output_manager = OutputManager::new((vec![], handler));
                 wl_signal_add(&mut (*backend).events.new_output as *mut _ as _,
                               output_manager.add_listener() as *mut _ as _);
@@ -146,7 +173,7 @@ impl CompositorBuilder {
             // Set up wl_shell handler and associated Wayland global,
             // if user provided a manager for it.
             let mut wl_shell_global = ptr::null_mut();
-            let wl_shell_manager = wl_shell_manager_handler.map(|handler| {
+            let wl_shell_manager = self.wl_shell_manager_handler.map(|handler| {
                 wl_shell_global = wlr_wl_shell_create(display as *mut _);
                 let mut wl_shell_manager = WlShellManager::new(handler);
                 wl_signal_add(&mut (*wl_shell_global).events.new_surface as *mut _ as _,
