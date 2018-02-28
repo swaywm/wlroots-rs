@@ -62,6 +62,10 @@ impl XdgV6ShellSurface {
                             shell_surface }
     }
 
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_xdg_surface_v6 {
+        self.shell_surface
+    }
+
     unsafe fn from_handle(handle: &XdgV6ShellSurfaceHandle) -> Self {
         XdgV6ShellSurface { liveliness: None,
                             shell_surface: handle.as_ptr() }
@@ -91,11 +95,11 @@ impl XdgV6ShellSurface {
                 WLR_XDG_SURFACE_V6_ROLE_NONE => None,
                 WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL => {
                     let toplevel = (*self.shell_surface).__bindgen_anon_1.toplevel_state;
-                    Some(TopLevel(XdgV6TopLevel::new(toplevel)))
+                    Some(TopLevel(XdgV6TopLevel::from_ptr(toplevel)))
                 }
                 WLR_XDG_SURFACE_V6_ROLE_POPUP => {
                     let popup = (*self.shell_surface).__bindgen_anon_1.popup_state;
-                    Some(Popup(XdgV6Popup::new(popup)))
+                    Some(Popup(XdgV6Popup::from_ptr(popup)))
                 }
             }
         }
@@ -358,7 +362,7 @@ impl PartialEq for XdgV6ShellSurfaceHandle {
 impl Eq for XdgV6ShellSurfaceHandle {}
 
 impl<'surface> XdgV6TopLevel<'surface> {
-    fn new(toplevel: *mut wlr_xdg_toplevel_v6) -> XdgV6TopLevel<'surface> {
+    pub(crate) unsafe fn from_ptr(toplevel: *mut wlr_xdg_toplevel_v6) -> XdgV6TopLevel<'surface> {
         XdgV6TopLevel { toplevel,
                         phantom: PhantomData }
     }
@@ -393,7 +397,7 @@ impl<'surface> XdgV6TopLevel<'surface> {
 }
 
 impl<'surface> XdgV6Popup<'surface> {
-    fn new(popup: *mut wlr_xdg_popup_v6) -> XdgV6Popup<'surface> {
+    pub(crate) unsafe fn from_ptr(popup: *mut wlr_xdg_popup_v6) -> XdgV6Popup<'surface> {
         XdgV6Popup { popup,
                      phantom: PhantomData }
     }

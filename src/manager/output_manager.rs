@@ -158,7 +158,7 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
                           &mut (*removed_output.mode_listener()).link as *mut _ as _);
-
+            // TODO Remove the rest of them
         }
     };
 ]);

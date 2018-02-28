@@ -35,7 +35,8 @@ pub use self::events::{key_events, pointer_events, touch_events, wl_shell_events
                        xdg_shell_v6_events};
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
                         OutputHandler, OutputManagerHandler, PointerHandler, TouchHandler,
-                        WlShellHandler, WlShellManagerHandler};
+                        WlShellHandler, WlShellManagerHandler, XdgV6ShellHandler,
+                        XdgV6ShellManagerHandler};
 pub use self::types::area::*;
 pub use self::types::cursor::*;
 pub use self::types::input_device::*;

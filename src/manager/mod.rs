@@ -6,6 +6,8 @@ mod touch_handler;
 mod output_handler;
 mod wl_shell_manager;
 mod wl_shell_handler;
+mod xdg_shell_v6_manager;
+mod xdg_shell_v6_handler;
 
 pub use self::input_manager::{InputManager, InputManagerHandler};
 pub use self::keyboard_handler::{KeyboardHandler, KeyboardWrapper};
@@ -16,3 +18,5 @@ pub use self::pointer_handler::{PointerHandler, PointerWrapper};
 pub use self::touch_handler::{TouchHandler, TouchWrapper};
 pub use self::wl_shell_handler::*;
 pub use self::wl_shell_manager::*;
+pub use self::xdg_shell_v6_handler::*;
+pub use self::xdg_shell_v6_manager::*;
