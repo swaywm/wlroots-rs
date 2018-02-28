@@ -2,8 +2,8 @@
 extern crate wlroots;
 
 use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
-              Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, PointerHandler, Texture, TextureFormat, Touch, TouchHandler};
+              Output, OutputBuilder, OutputBuilderResult, OutputHandler,
+              OutputManagerHandler, Texture, TextureFormat, Touch, TouchHandler};
 use wlroots::key_events::KeyEvent;
 use wlroots::touch_events::{DownEvent, MotionEvent, UpEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -43,8 +43,6 @@ struct ExOutput;
 
 struct InputManager;
 
-struct ExPointer;
-
 struct ExKeyboardHandler;
 
 impl OutputManagerHandler for OutputManager {
@@ -65,8 +63,6 @@ impl KeyboardHandler for ExKeyboardHandler {
         }
     }
 }
-
-impl PointerHandler for ExPointer {}
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
@@ -143,7 +139,6 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let mut layout = OutputLayout::new().expect("Could not construct an output layout");
     let mut compositor = CompositorBuilder::new().gles2(true)
                                                  .build_auto(State::new(),
                                                              Some(Box::new(InputManager)),
