@@ -10,6 +10,7 @@ use compositor::{Compositor, COMPOSITOR_PTR};
 
 /// Handles making new Wayland shells as reported by clients.
 pub trait WlShellManagerHandler {
+    /// Callback that is triggerde when a new wayland shell surface appears.
     fn new_surface(&mut self,
                    &mut Compositor,
                    &mut WlShellSurface,
