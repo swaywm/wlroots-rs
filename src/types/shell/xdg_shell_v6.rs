@@ -169,8 +169,7 @@ impl XdgV6ShellSurface {
     }
 
     // TODO FIXME If it's not a toplevel, assert is thrown.
-    // Lets control this either with a sexy enum (best option)
-    // or with our own error reporting (worst option).
+    // Lets control this by moving these functions to the enum variant XdgV6TopLevel
 
     /// Request that this toplevel surface be the given size.
     ///
