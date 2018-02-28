@@ -20,17 +20,18 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_dest
                   wlr_seat_pointer_notify_motion, wlr_seat_pointer_send_axis,
                   wlr_seat_pointer_send_button, wlr_seat_pointer_send_motion,
                   wlr_seat_pointer_start_grab, wlr_seat_pointer_surface_has_focus,
-                  wlr_seat_set_capabilities, wlr_seat_set_keyboard, wlr_seat_touch_end_grab,
-                  wlr_seat_touch_get_point, wlr_seat_touch_has_grab, wlr_seat_touch_notify_down,
-                  wlr_seat_touch_notify_motion, wlr_seat_touch_notify_up,
-                  wlr_seat_touch_num_points, wlr_seat_touch_point_clear_focus,
-                  wlr_seat_touch_point_focus, wlr_seat_touch_send_down,
-                  wlr_seat_touch_send_motion, wlr_seat_touch_send_up, wlr_seat_touch_start_grab};
+                  wlr_seat_set_capabilities, wlr_seat_set_keyboard, wlr_seat_set_name,
+                  wlr_seat_touch_end_grab, wlr_seat_touch_get_point, wlr_seat_touch_has_grab,
+                  wlr_seat_touch_notify_down, wlr_seat_touch_notify_motion,
+                  wlr_seat_touch_notify_up, wlr_seat_touch_num_points,
+                  wlr_seat_touch_point_clear_focus, wlr_seat_touch_point_focus,
+                  wlr_seat_touch_send_down, wlr_seat_touch_send_motion, wlr_seat_touch_send_up,
+                  wlr_seat_touch_start_grab};
 pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
-use {Compositor, InputDevice, KeyboardGrab, KeyboardModifiers, PointerGrab, Surface, TouchGrab,
-     TouchId, TouchPoint};
+use {Compositor, InputDevice, KeyboardGrab, KeyboardModifiers, PointerGrab, SeatId, Surface,
+     TouchGrab, TouchId, TouchPoint};
 use compositor::COMPOSITOR_PTR;
 use utils::{c_to_rust_string, safe_as_cstring};
 use utils::ToMS;
@@ -74,9 +75,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let seat_name = c_to_rust_string((*seat_ptr).name)
-            .expect("Bad name for seat");
-        if let Some(mut seat) = compositor.seats.remove(seat_name.as_str()) {
+        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
             let pointer_grab = &mut *(event as *mut PointerGrab);
             handler.pointer_grabbed(compositor, &mut seat, pointer_grab);
             compositor.seats.insert(seat);
@@ -88,9 +87,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let seat_name = c_to_rust_string((*seat_ptr).name)
-            .expect("Bad name for seat");
-        if let Some(mut seat) = compositor.seats.remove(seat_name.as_str()) {
+        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
             let pointer_grab = &mut *(event as *mut PointerGrab);
             handler.pointer_released(compositor, &mut seat, pointer_grab);
             compositor.seats.insert(seat);
@@ -101,9 +98,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let seat_name = c_to_rust_string((*seat_ptr).name)
-            .expect("Bad name for seat");
-        if let Some(mut seat) = compositor.seats.remove(seat_name.as_str()) {
+        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
             let keyboard_grab = &mut *(event as *mut KeyboardGrab);
             handler.keyboard_grabbed(compositor, &mut seat, keyboard_grab);
             compositor.seats.insert(seat);
@@ -114,9 +109,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let seat_name = c_to_rust_string((*seat_ptr).name)
-            .expect("Bad name for seat");
-        if let Some(mut seat) = compositor.seats.remove(seat_name.as_str()) {
+        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
             let keyboard_grab = &mut *(event as *mut KeyboardGrab);
             handler.keyboard_released(compositor, &mut seat, keyboard_grab);
             compositor.seats.insert(seat);
@@ -127,9 +120,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let seat_name = c_to_rust_string((*seat_ptr).name)
-            .expect("Bad name for seat");
-        if let Some(mut seat) = compositor.seats.remove(seat_name.as_str()) {
+        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
             let touch_grab = &mut *(event as *mut TouchGrab);
             handler.touch_grabbed(compositor, &mut seat, touch_grab);
             compositor.seats.insert(seat);
@@ -140,9 +131,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let seat_name = c_to_rust_string((*seat_ptr).name)
-            .expect("Bad name for seat");
-        if let Some(mut seat) = compositor.seats.remove(seat_name.as_str()) {
+        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
             let touch_grab = &mut *(event as *mut TouchGrab);
             handler.touch_released(compositor, &mut seat, touch_grab);
             compositor.seats.insert(seat);
@@ -153,9 +142,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let seat_name = c_to_rust_string((*seat_ptr).name)
-            .expect("Bad name for seat");
-        if let Some(mut seat) = compositor.seats.remove(seat_name.as_str()) {
+        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
             handler.cursor_set(compositor, &mut seat);
             compositor.seats.insert(seat);
         }
@@ -164,9 +151,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let seat_name = c_to_rust_string((*seat_ptr).name)
-            .expect("Bad name for seat");
-        if let Some(mut seat) = compositor.seats.remove(seat_name.as_str()) {
+        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
             handler.received_selection(compositor, &mut seat);
             compositor.seats.insert(seat);
         }
@@ -176,9 +161,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let seat_name = c_to_rust_string((*seat_ptr).name)
-            .expect("Bad name for seat");
-        if let Some(mut seat) = compositor.seats.remove(seat_name.as_str()) {
+        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
             handler.primary_selection(compositor, &mut seat);
             compositor.seats.insert(seat);
         }
@@ -191,9 +174,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
             return
         }
         let compositor = &mut *COMPOSITOR_PTR;
-        let seat_name = c_to_rust_string((*seat_ptr).name)
-            .expect("Bad name for seat");
-        if let Some(mut seat) = compositor.seats.remove(seat_name.as_str()) {
+        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
             handler.destroy(compositor, &mut seat);
             compositor.seats.insert(seat);
         }
@@ -244,6 +225,13 @@ impl Seat {
         }
     }
 
+    /// Get a unique id for this seat.
+    ///
+    /// This id is used to drop it later.
+    pub fn id(&self) -> SeatId {
+        SeatId::new(self.data.0)
+    }
+
     /// Get the name of the seat.
     pub fn name(&self) -> Option<String> {
         unsafe {
@@ -252,6 +240,15 @@ impl Seat {
                 return None
             }
             c_to_rust_string(name_ptr)
+        }
+    }
+
+    /// Updates the name of this seat.
+    /// Will automatically send it to all clients.
+    pub fn set_name(&mut self, name: String) {
+        let name = safe_as_cstring(name);
+        unsafe {
+            wlr_seat_set_name(self.data.0, name.as_ptr());
         }
     }
 
