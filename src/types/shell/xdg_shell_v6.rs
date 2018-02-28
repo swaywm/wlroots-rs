@@ -22,6 +22,7 @@ struct XdgV6ShellSurfaceState {
 }
 
 pub struct XdgV6TopLevel<'surface> {
+    shell_surface: *mut wlr_xdg_surface_v6,
     toplevel: *mut wlr_xdg_toplevel_v6,
     phantom: PhantomData<&'surface XdgV6ShellSurface>
 }
@@ -95,7 +96,7 @@ impl XdgV6ShellSurface {
                 WLR_XDG_SURFACE_V6_ROLE_NONE => None,
                 WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL => {
                     let toplevel = (*self.shell_surface).__bindgen_anon_1.toplevel_state;
-                    Some(TopLevel(XdgV6TopLevel::from_ptr(toplevel)))
+                    Some(TopLevel(XdgV6TopLevel::from_shell(self, toplevel)))
                 }
                 WLR_XDG_SURFACE_V6_ROLE_POPUP => {
                     let popup = (*self.shell_surface).__bindgen_anon_1.popup_state;
@@ -170,53 +171,6 @@ impl XdgV6ShellSurface {
         unsafe {
             wlr_xdg_surface_v6_ping(self.shell_surface);
         }
-    }
-
-    // TODO FIXME If it's not a toplevel, assert is thrown.
-    // Lets control this by moving these functions to the enum variant XdgV6TopLevel
-
-    /// Request that this toplevel surface be the given size.
-    ///
-    /// Returns the associated configure serial.
-    pub fn set_size(&mut self, width: u32, height: u32) -> u32 {
-        unsafe { wlr_xdg_toplevel_v6_set_size(self.shell_surface, width, height) }
-    }
-
-    /// Request that this toplevel surface show itself in an activated or deactivated
-    /// state.
-    ///
-    /// Returns the associated configure serial.
-    pub fn set_activated(&mut self, activated: bool) -> u32 {
-        unsafe { wlr_xdg_toplevel_v6_set_activated(self.shell_surface, activated) }
-    }
-
-    /// Request that this toplevel surface consider itself maximized or not
-    /// maximized.
-    ///
-    /// Returns the associated configure serial.
-    pub fn set_maximized(&mut self, maximized: bool) -> u32 {
-        unsafe { wlr_xdg_toplevel_v6_set_maximized(self.shell_surface, maximized) }
-    }
-
-    /// Request that this toplevel surface consider itself fullscreen or not
-    /// fullscreen.
-    ///
-    /// Returns the associated configure serial.
-    pub fn set_fullscreen(&mut self, fullscreen: bool) -> u32 {
-        unsafe { wlr_xdg_toplevel_v6_set_fullscreen(self.shell_surface, fullscreen) }
-    }
-
-    /// Request that this toplevel surface consider itself to be resizing or not
-    /// resizing.
-    ///
-    /// Returns the associated configure serial.
-    pub fn set_resizing(&mut self, resizing: bool) -> u32 {
-        unsafe { wlr_xdg_toplevel_v6_set_resizing(self.shell_surface, resizing) }
-    }
-
-    /// Request that this toplevel surface closes.
-    pub fn close(&mut self) {
-        unsafe { wlr_xdg_toplevel_v6_send_close(self.shell_surface) }
     }
 
     /// Compute the popup position in surface-local coordinates.
@@ -362,8 +316,11 @@ impl PartialEq for XdgV6ShellSurfaceHandle {
 impl Eq for XdgV6ShellSurfaceHandle {}
 
 impl<'surface> XdgV6TopLevel<'surface> {
-    pub(crate) unsafe fn from_ptr(toplevel: *mut wlr_xdg_toplevel_v6) -> XdgV6TopLevel<'surface> {
-        XdgV6TopLevel { toplevel,
+    unsafe fn from_shell(shell_surface: &'surface mut XdgV6ShellSurface,
+                         toplevel: *mut wlr_xdg_toplevel_v6)
+                         -> XdgV6TopLevel<'surface> {
+        XdgV6TopLevel { shell_surface: shell_surface.as_ptr(),
+                        toplevel,
                         phantom: PhantomData }
     }
 
@@ -391,8 +348,53 @@ impl<'surface> XdgV6TopLevel<'surface> {
         unsafe { (*self.toplevel).pending }
     }
 
+    /// Get the current configure state.
     pub fn current_state(&self) -> wlr_xdg_toplevel_v6_state {
         unsafe { (*self.toplevel).current }
+    }
+
+    /// Request that this toplevel surface be the given size.
+    ///
+    /// Returns the associated configure serial.
+    pub fn set_size(&mut self, width: u32, height: u32) -> u32 {
+        unsafe { wlr_xdg_toplevel_v6_set_size(self.shell_surface, width, height) }
+    }
+
+    /// Request that this toplevel surface show itself in an activated or deactivated
+    /// state.
+    ///
+    /// Returns the associated configure serial.
+    pub fn set_activated(&mut self, activated: bool) -> u32 {
+        unsafe { wlr_xdg_toplevel_v6_set_activated(self.shell_surface, activated) }
+    }
+
+    /// Request that this toplevel surface consider itself maximized or not
+    /// maximized.
+    ///
+    /// Returns the associated configure serial.
+    pub fn set_maximized(&mut self, maximized: bool) -> u32 {
+        unsafe { wlr_xdg_toplevel_v6_set_maximized(self.shell_surface, maximized) }
+    }
+
+    /// Request that this toplevel surface consider itself fullscreen or not
+    /// fullscreen.
+    ///
+    /// Returns the associated configure serial.
+    pub fn set_fullscreen(&mut self, fullscreen: bool) -> u32 {
+        unsafe { wlr_xdg_toplevel_v6_set_fullscreen(self.shell_surface, fullscreen) }
+    }
+
+    /// Request that this toplevel surface consider itself to be resizing or not
+    /// resizing.
+    ///
+    /// Returns the associated configure serial.
+    pub fn set_resizing(&mut self, resizing: bool) -> u32 {
+        unsafe { wlr_xdg_toplevel_v6_set_resizing(self.shell_surface, resizing) }
+    }
+
+    /// Request that this toplevel surface closes.
+    pub fn close(&mut self) {
+        unsafe { wlr_xdg_toplevel_v6_send_close(self.shell_surface) }
     }
 }
 

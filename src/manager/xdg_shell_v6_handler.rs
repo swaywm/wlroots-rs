@@ -81,9 +81,9 @@ wayland_listener!(XdgV6Shell, (XdgV6ShellSurface, Surface, Box<XdgV6ShellHandler
     unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut popup = XdgV6Popup::from_ptr(popup as _);
         shell_surface.set_lock(true);
         surface.set_lock(true);
+        let mut popup = XdgV6Popup::from_ptr(popup as _);
         manager.new_popup(compositor, surface, shell_surface, &mut popup);
         shell_surface.set_lock(false);
         surface.set_lock(false);
