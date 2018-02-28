@@ -1,21 +1,42 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
+use std::marker::PhantomData;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use wlroots_sys::{wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping, wlr_xdg_surface_v6_popup_at,
-                  wlr_xdg_surface_v6_popup_get_position, wlr_xdg_surface_v6_role,
-                  wlr_xdg_toplevel_v6_send_close, wlr_xdg_toplevel_v6_set_activated,
-                  wlr_xdg_toplevel_v6_set_fullscreen, wlr_xdg_toplevel_v6_set_maximized,
-                  wlr_xdg_toplevel_v6_set_resizing, wlr_xdg_toplevel_v6_set_size};
+use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
+                  wlr_xdg_surface_v6_popup_at, wlr_xdg_surface_v6_popup_get_position,
+                  wlr_xdg_surface_v6_role, wlr_xdg_toplevel_v6, wlr_xdg_toplevel_v6_send_close,
+                  wlr_xdg_toplevel_v6_set_activated, wlr_xdg_toplevel_v6_set_fullscreen,
+                  wlr_xdg_toplevel_v6_set_maximized, wlr_xdg_toplevel_v6_set_resizing,
+                  wlr_xdg_toplevel_v6_set_size, wlr_xdg_toplevel_v6_state};
 
-use {Area, SurfaceHandle};
+use {Area, SeatId, SurfaceHandle};
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
 
+/// Used internally to reclaim a handle from just a *mut wlr_xdg_surface_v6.
 struct XdgV6ShellSurfaceState {
     handle: Weak<AtomicBool>
+}
+
+pub struct XdgV6TopLevel<'surface> {
+    toplevel: *mut wlr_xdg_toplevel_v6,
+    phantom: PhantomData<&'surface XdgV6ShellSurface>
+}
+
+pub struct XdgV6Popup<'surface> {
+    popup: *mut wlr_xdg_popup_v6,
+    phantom: PhantomData<&'surface XdgV6ShellSurface>
+}
+
+/// A tagged enum of the different roles used by the xdg shell.
+///
+/// Uses the tag to disambiguate the union in `wlr_xdg_surface_v6`.
+pub enum XdgV6ShellState<'surface> {
+    TopLevel(XdgV6TopLevel<'surface>),
+    Popup(XdgV6Popup<'surface>)
 }
 
 #[derive(Debug)]
@@ -60,6 +81,24 @@ impl XdgV6ShellSurface {
     /// Get the role of this XDG surface.
     pub fn role(&self) -> wlr_xdg_surface_v6_role {
         unsafe { (*self.shell_surface).role }
+    }
+
+    pub fn state<'surface>(&'surface mut self) -> Option<XdgV6ShellState<'surface>> {
+        use self::wlr_xdg_surface_v6_role::*;
+        use XdgV6ShellState::*;
+        unsafe {
+            match (*self.shell_surface).role {
+                WLR_XDG_SURFACE_V6_ROLE_NONE => None,
+                WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL => {
+                    let toplevel = (*self.shell_surface).__bindgen_anon_1.toplevel_state;
+                    Some(TopLevel(XdgV6TopLevel::new(toplevel)))
+                }
+                WLR_XDG_SURFACE_V6_ROLE_POPUP => {
+                    let popup = (*self.shell_surface).__bindgen_anon_1.popup_state;
+                    Some(Popup(XdgV6Popup::new(popup)))
+                }
+            }
+        }
     }
 
     /// Determines if this XDG shell surface has been configured or not.
@@ -129,8 +168,9 @@ impl XdgV6ShellSurface {
         }
     }
 
-    // TODO FIXME What if it's not the top level?
-    // Internally it has a union... should we be using an enum?
+    // TODO FIXME If it's not a toplevel, assert is thrown.
+    // Lets control this either with a sexy enum (best option)
+    // or with our own error reporting (worst option).
 
     /// Request that this toplevel surface be the given size.
     ///
@@ -317,3 +357,68 @@ impl PartialEq for XdgV6ShellSurfaceHandle {
 }
 
 impl Eq for XdgV6ShellSurfaceHandle {}
+
+impl<'surface> XdgV6TopLevel<'surface> {
+    fn new(toplevel: *mut wlr_xdg_toplevel_v6) -> XdgV6TopLevel<'surface> {
+        XdgV6TopLevel { toplevel,
+                        phantom: PhantomData }
+    }
+
+    /// Get a handle to the base surface of the xdg tree.
+    pub fn base(&self) -> XdgV6ShellSurfaceHandle {
+        unsafe { XdgV6ShellSurfaceHandle::from_ptr((*self.toplevel).base) }
+    }
+
+    /// Get a handle to the parent surface of the xdg tree.
+    pub fn parent(&self) -> XdgV6ShellSurfaceHandle {
+        unsafe { XdgV6ShellSurfaceHandle::from_ptr((*self.toplevel).parent) }
+    }
+
+    pub fn added(&self) -> bool {
+        unsafe { (*self.toplevel).added }
+    }
+
+    /// Get the client protocol request state.
+    pub fn next_state(&self) -> wlr_xdg_toplevel_v6_state {
+        unsafe { (*self.toplevel).next }
+    }
+
+    /// Get the pending user configure request state.
+    pub fn pending_state(&self) -> wlr_xdg_toplevel_v6_state {
+        unsafe { (*self.toplevel).pending }
+    }
+
+    pub fn current_state(&self) -> wlr_xdg_toplevel_v6_state {
+        unsafe { (*self.toplevel).current }
+    }
+}
+
+impl<'surface> XdgV6Popup<'surface> {
+    fn new(popup: *mut wlr_xdg_popup_v6) -> XdgV6Popup<'surface> {
+        XdgV6Popup { popup,
+                     phantom: PhantomData }
+    }
+
+    /// Get a handle to the base surface of the xdg tree.
+    pub fn base(&self) -> XdgV6ShellSurfaceHandle {
+        unsafe { XdgV6ShellSurfaceHandle::from_ptr((*self.popup).base) }
+    }
+
+    /// Get a handle to the parent surface of the xdg tree.
+    pub fn parent(&self) -> XdgV6ShellSurfaceHandle {
+        unsafe { XdgV6ShellSurfaceHandle::from_ptr((*self.popup).parent) }
+    }
+
+    pub fn committed(&self) -> bool {
+        unsafe { (*self.popup).committed }
+    }
+
+    /// Get the id of the seat associated with this popup.
+    pub fn seat_id(&self) -> SeatId {
+        unsafe { SeatId::new((*self.popup).seat) }
+    }
+
+    pub fn geometry(&self) -> Area {
+        unsafe { Area((*self.popup).geometry) }
+    }
+}
