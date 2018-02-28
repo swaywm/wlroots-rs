@@ -27,7 +27,6 @@ pub struct Pointer {
     pointer: *mut wlr_pointer
 }
 
-/// A wlr_input_device that is guaranteed to be a pointer.
 #[derive(Debug)]
 pub struct PointerHandle {
     /// The Rc that ensures that this handle is still alive.
