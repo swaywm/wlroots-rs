@@ -24,7 +24,7 @@ wayland_listener!(WlShellManager, Box<WlShellManagerHandler>, [
         let data = data as *mut wlr_wl_shell_surface;
         wlr_log!(L_DEBUG, "New wl_shell_surface request {:p}", data);
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut surface = Surface::from_ptr((*data).surface);
+        let mut surface = Surface::new((*data).surface);
         let mut shell_surface = WlShellSurface::new(data);
         surface.set_lock(true);
         shell_surface.set_lock(true);

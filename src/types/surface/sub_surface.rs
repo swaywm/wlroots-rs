@@ -40,7 +40,8 @@ pub struct SubsurfaceHandle {
 impl Subsurface {
     pub(crate) unsafe fn new(subsurface: *mut wlr_subsurface) -> Self {
         let liveliness = Some(Rc::new(AtomicBool::new(false)));
-        Subsurface { subsurface, liveliness }
+        Subsurface { subsurface,
+                     liveliness }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_subsurface {
@@ -81,6 +82,18 @@ impl Subsurface {
         unsafe { (*self.subsurface).reordered }
     }
 
+    /// Creates a weak reference to a `Subsurface`.
+    ///
+    /// # Panics
+    /// If this `Subsurface` is a previously upgraded `SubsurfaceHandle`
+    /// then this function will panic.
+    pub fn weak_reference(&self) -> SubsurfaceHandle {
+        let arc = self.liveliness.as_ref()
+                      .expect("Cannot downgrade a previously upgraded OutputHandle");
+        SubsurfaceHandle { handle: Rc::downgrade(arc),
+                           subsurface: self.subsurface }
+    }
+
     /// Manually set the lock used to determine if a double-borrow is
     /// occuring on this structure.
     ///
@@ -99,6 +112,10 @@ impl Subsurface {
 }
 
 impl SubsurfaceHandle {
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_subsurface {
+        self.subsurface
+    }
+
     /// Upgrades the surface handle to a reference to the backing `Surface`.
     ///
     /// # Unsafety
