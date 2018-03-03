@@ -27,12 +27,14 @@ arch:
     - clang
   script:
     - rustup install stable
+    - export CC=clang
     # For rustfmt
     - rustup default stable
     - export RUST_BACKTRACE=full
     - git submodule update --init --recursive
 
     # Build wlroots
+    - echo $CC
     - cd wlroots-sys; cd wlroots; meson build; ninja -C build
 
     # Build wlroots-sys
