@@ -1,13 +1,14 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
+use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use wlroots_sys::{timespec, wlr_surface, wlr_surface_get_main_surface, wlr_surface_get_matrix,
-                  wlr_surface_has_buffer, wlr_surface_make_subsurface, wlr_surface_send_enter,
-                  wlr_surface_send_frame_done, wlr_surface_send_leave};
+use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_main_surface,
+                  wlr_surface_get_matrix, wlr_surface_has_buffer, wlr_surface_make_subsurface,
+                  wlr_surface_send_enter, wlr_surface_send_frame_done, wlr_surface_send_leave};
 
 use super::{Subsurface, SubsurfaceHandle, SurfaceState};
 use Output;
@@ -17,11 +18,11 @@ use utils::c_to_rust_string;
 
 /// The state stored in the wlr_surface user data.
 struct InternalSurfaceState {
-    // TODO FIXME Add subsurface list here,
-    // make it increase on surface create and then bind to the destructor
-    // and delete it from the list.
     /// Used to reconstruct a SurfaceHandle from just an *mut wlr_surface.
-    handle: Weak<AtomicBool>
+    handle: Weak<AtomicBool>,
+    /// Weak reference to the list of subsurfaces so that we can reconstruct
+    /// the Surface from a SurfaceHandle.
+    subsurfaces: Weak<RefCell<Vec<Subsurface>>>
 }
 
 /// A Wayland object that represents the data that we display on the screen.
@@ -40,6 +41,16 @@ pub struct Surface {
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `SurfaceHandle`.
     liveliness: Option<Rc<AtomicBool>>,
+    /// List of subsurfaces for this list.
+    ///
+    /// *This is where the Rc = 1 struct lives*
+    ///
+    /// When the subsurface destruction event fires this will remove it from
+    /// the list.
+    ///
+    /// When you have a reference to the Surface you can access its children
+    /// through the getter for this list.
+    subsurfaces: Rc<RefCell<Vec<Subsurface>>>,
     /// The pointer to the wlroots object that wraps a wl_surface.
     surface: *mut wlr_surface
 }
@@ -52,6 +63,10 @@ pub struct SurfaceHandle {
     /// When wlroots deallocates the pointer associated with this handle,
     /// this can no longer be used.
     handle: Weak<AtomicBool>,
+    /// List of subsurfaces for this list.
+    ///
+    /// Used to reconstruct the Surface.
+    subsurfaces: Weak<RefCell<Vec<Subsurface>>>,
     /// The pointer to the wlroots object that wraps a wl_surface.
     surface: *mut wlr_surface
 }
@@ -67,9 +82,19 @@ impl Surface {
         }
         let liveliness = Rc::new(AtomicBool::new(false));
         let handle = Rc::downgrade(&liveliness);
-        (*surface).data = Box::into_raw(Box::new(InternalSurfaceState { handle })) as _;
+        let mut subsurfaces = vec![];
+        wl_list_for_each!((*surface).subsurface_list, parent_link, (subsurface: wlr_subsurface) => {
+            subsurfaces.push(Subsurface::new(subsurface))
+        });
+        let subsurfaces = Rc::new(RefCell::new(subsurfaces));
+        (*surface).data =
+            Box::into_raw(Box::new(InternalSurfaceState { handle,
+                                                          subsurfaces:
+                                                              Rc::downgrade(&subsurfaces) }))
+            as _;
         let liveliness = Some(liveliness);
         Surface { liveliness,
+                  subsurfaces,
                   surface }
     }
 
@@ -211,7 +236,13 @@ impl Surface {
     }
 
     unsafe fn from_handle(handle: &SurfaceHandle) -> Self {
+        let data = (*handle.surface).data as *mut InternalSurfaceState;
+        let subsurfaces = (*data).subsurfaces
+                                 .clone()
+                                 .upgrade()
+                                 .expect("Could not upgrade subsurfaces list");
         Surface { liveliness: None,
+                  subsurfaces,
                   surface: handle.surface }
     }
 }
@@ -222,7 +253,10 @@ impl SurfaceHandle {
     pub(crate) unsafe fn from_ptr(surface: *mut wlr_surface) -> Self {
         let data = (*surface).data as *mut InternalSurfaceState;
         let handle = (*data).handle.clone();
-        SurfaceHandle { handle, surface }
+        let subsurfaces = (*data).subsurfaces.clone();
+        SurfaceHandle { handle,
+                        surface,
+                        subsurfaces }
     }
 
     /// Upgrades the surface handle to a reference to the backing `Surface`.

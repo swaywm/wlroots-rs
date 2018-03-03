@@ -38,6 +38,11 @@ pub struct SubsurfaceHandle {
 }
 
 impl Subsurface {
+    pub(crate) unsafe fn new(subsurface: *mut wlr_subsurface) -> Self {
+        let liveliness = Some(Rc::new(AtomicBool::new(false)));
+        Subsurface { subsurface, liveliness }
+    }
+
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_subsurface {
         self.subsurface
     }
