@@ -34,7 +34,6 @@ arch:
     - git submodule update --init --recursive
 
     # Build wlroots
-    - echo $CC
     - cd wlroots-sys; cd wlroots; meson build; ninja -C build
 
     # Build wlroots-sys
