@@ -9,7 +9,6 @@ use wlroots_sys::wlr_subsurface;
 use super::{SurfaceHandle, SurfaceState};
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
-// TODO Move
 #[derive(Debug)]
 pub struct Subsurface {
     /// The structe that ensures weak handles to this structure are still alive.

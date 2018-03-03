@@ -9,7 +9,8 @@ use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_main_surface,
                   wlr_surface_get_matrix, wlr_surface_has_buffer, wlr_surface_make_subsurface,
-                  wlr_surface_send_enter, wlr_surface_send_frame_done, wlr_surface_send_leave};
+                  wlr_surface_send_enter, wlr_surface_send_frame_done, wlr_surface_send_leave,
+                  wlr_surface_subsurface_at};
 
 use super::{Subsurface, SubsurfaceHandle, SubsurfaceManager, SurfaceState};
 use Output;
@@ -130,11 +131,6 @@ impl Surface {
         }
     }
 
-    /// Get the subsurface.
-    pub fn subsurface(&self) -> Subsurface {
-        unimplemented!()
-    }
-
     /// Gets a list of handles to the `Subsurface`s of this `Surface`.
     pub fn subsurfaces(&self) -> Vec<SubsurfaceHandle> {
         self.subsurfaces_manager.subsurfaces()
@@ -188,12 +184,23 @@ impl Surface {
     /// or None if no subsurface is found at that location.
     #[allow(unused_variables)]
     pub fn subsurface_at(&mut self,
-                         _sx: f32,
-                         _sy: f32,
-                         _sub_x: &mut f32,
-                         _sub_y: &mut f32)
+                         sx: f64,
+                         sy: f64,
+                         sub_x: &mut f64,
+                         sub_y: &mut f64)
                          -> Option<SubsurfaceHandle> {
-        unimplemented!()
+        unsafe {
+            let surface = wlr_surface_subsurface_at(self.surface, sx, sy, sub_x, sub_y);
+            if surface.is_null() {
+                return None
+            }
+            for subsurface in self.subsurfaces() {
+                if subsurface.as_ptr() == surface {
+                    return Some(subsurface)
+                }
+            }
+            return None
+        }
     }
 
     /// Create the subsurface implementation for this surface.
