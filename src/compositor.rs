@@ -8,14 +8,15 @@ use std::ffi::CStr;
 
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
-              WlShellManager, WlShellManagerHandler};
+              WlShellManager, WlShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
 use render::GenericRenderer;
 use types::seat::Seats;
 
 use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start,
-                  wlr_compositor, wlr_compositor_create, wlr_wl_shell, wlr_wl_shell_create};
+                  wlr_compositor, wlr_compositor_create, wlr_wl_shell, wlr_wl_shell_create,
+                  wlr_xdg_shell_v6, wlr_xdg_shell_v6_create};
 use wlroots_sys::wayland_server::sys::wl_display_init_shm;
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
@@ -37,10 +38,15 @@ pub struct Compositor {
     output_manager: Option<Box<OutputManager>>,
     /// Manager for Wayland shells.
     wl_shell_manager: Option<Box<WlShellManager>>,
+    /// Manager for XDG shells v6.
+    xdg_v6_shell_manager: Option<Box<XdgV6ShellManager>>,
     /// Pointer to wl_shell global.
-    /// If wl_shell_manager is `None`, this value will be `NULL`
+    /// If wl_shell_manager is `None`, this value will be `NULL`.
     wl_shell_global: *mut wlr_wl_shell,
-    /// Pointer to the wlr_compositor
+    /// Pointer to the xdg_shell_v6 global.
+    /// If xdg_v6_shell_manager is `None`, this value will be `NULL`.
+    xdg_v6_shell_global: *mut wlr_xdg_shell_v6,
+    /// Pointer to the wlr_compositor.
     compositor: *mut wlr_compositor,
     /// Pointer to the wlroots backend in use.
     backend: *mut wlr_backend,
@@ -64,6 +70,7 @@ pub struct CompositorBuilder {
     input_manager_handler: Option<Box<InputManagerHandler>>,
     output_manager_handler: Option<Box<OutputManagerHandler>>,
     wl_shell_manager_handler: Option<Box<WlShellManagerHandler>>,
+    xdg_v6_shell_manager_handler: Option<Box<XdgV6ShellManagerHandler>>,
     gles2: bool,
     server_decoration_manager: bool
 }
@@ -77,7 +84,8 @@ impl CompositorBuilder {
                             server_decoration_manager: false,
                             input_manager_handler: None,
                             output_manager_handler: None,
-                            wl_shell_manager_handler: None }
+                            wl_shell_manager_handler: None,
+                            xdg_v6_shell_manager_handler: None }
     }
 
     /// Set the handler for inputs.
@@ -97,6 +105,14 @@ impl CompositorBuilder {
                             wl_shell_manager_handler: Box<WlShellManagerHandler>)
                             -> Self {
         self.wl_shell_manager_handler = Some(wl_shell_manager_handler);
+        self
+    }
+
+    /// Set the handler for xdg v6 shells.
+    pub fn xdg_shell_v6_manager(mut self,
+                                xdg_v6_shell_manager_handler: Box<XdgV6ShellManagerHandler>)
+                                -> Self {
+        self.xdg_v6_shell_manager_handler = Some(xdg_v6_shell_manager_handler);
         self
     }
 
@@ -181,6 +197,17 @@ impl CompositorBuilder {
                 wl_shell_manager
             });
 
+            // Set up the xdg_shell_v6 handler and associated Wayland global,
+            // if user provided a manager for it.
+            let mut xdg_v6_shell_global = ptr::null_mut();
+            let xdg_v6_shell_manager = self.xdg_v6_shell_manager_handler.map(|handler| {
+                xdg_v6_shell_global = wlr_xdg_shell_v6_create(display as *mut _);
+                let mut xdg_v6_shell_manager = XdgV6ShellManager::new((vec![], handler));
+                wl_signal_add(&mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
+                              xdg_v6_shell_manager.add_listener() as *mut _ as _);
+                xdg_v6_shell_manager
+            });
+
             // Open the socket to the Wayland server.
             let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
             if socket.is_null() {
@@ -202,6 +229,8 @@ impl CompositorBuilder {
                          output_manager,
                          wl_shell_manager,
                          wl_shell_global,
+                         xdg_v6_shell_manager,
+                         xdg_v6_shell_global,
                          compositor,
                          backend,
                          display,

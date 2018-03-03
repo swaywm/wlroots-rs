@@ -12,8 +12,9 @@ pub trait WlShellHandler {
     /// Called when the Wayland shell is destroyed (e.g by the user)
     fn destroy(&mut self, &mut Compositor, &mut Surface, &mut WlShellSurface) {}
 
-    /// Called when the ping request timed out. This usually indicates something
-    /// is wrong with the client
+    /// Called when the ping request timed out.
+    ///
+    /// This usually indicates something is wrong with the client
     fn ping_timeout(&mut self, &mut Compositor, &mut Surface, &mut WlShellSurface) {}
 
     /// Called when there is a request to move the shell surface somewhere else.

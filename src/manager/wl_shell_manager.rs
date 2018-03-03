@@ -10,6 +10,7 @@ use compositor::{Compositor, COMPOSITOR_PTR};
 
 /// Handles making new Wayland shells as reported by clients.
 pub trait WlShellManagerHandler {
+    /// Callback that is triggerde when a new wayland shell surface appears.
     fn new_surface(&mut self,
                    &mut Compositor,
                    &mut WlShellSurface,
@@ -25,7 +26,11 @@ wayland_listener!(WlShellManager, Box<WlShellManagerHandler>, [
         let compositor = &mut *COMPOSITOR_PTR;
         let mut surface = Surface::from_ptr((*data).surface);
         let mut shell_surface = WlShellSurface::new(data);
+        surface.set_lock(true);
+        shell_surface.set_lock(true);
         let new_surface_res = manager.new_surface(compositor, &mut shell_surface, &mut surface);
+        surface.set_lock(false);
+        shell_surface.set_lock(false);
         if let Some(shell_surface_handler) = new_surface_res {
             let mut shell_surface = WlShell::new((shell_surface, surface, shell_surface_handler));
             // Add the destroy event to this handler.
@@ -64,6 +69,7 @@ wayland_listener!(WlShellManager, Box<WlShellManagerHandler>, [
             wl_signal_add(&mut (*data).events.set_class as *mut _ as _,
                           shell_surface.set_class_listener() as _);
 
+            // TODO FIXME This is wrong, should be the same as input/output!
             // NOTE This is cleaned up in the wl_shell_handler::destroy signal.
             ::std::mem::forget(shell_surface);
         }
