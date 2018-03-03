@@ -9,7 +9,7 @@ use wlroots_sys::{timespec, wlr_surface, wlr_surface_get_main_surface, wlr_surfa
                   wlr_surface_has_buffer, wlr_surface_make_subsurface, wlr_surface_send_enter,
                   wlr_surface_send_frame_done, wlr_surface_send_leave};
 
-use super::SurfaceState;
+use super::{Subsurface, SubsurfaceHandle, SurfaceState};
 use Output;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use render::Texture;
@@ -17,13 +17,12 @@ use utils::c_to_rust_string;
 
 /// The state stored in the wlr_surface user data.
 struct InternalSurfaceState {
+    // TODO FIXME Add subsurface list here,
+    // make it increase on surface create and then bind to the destructor
+    // and delete it from the list.
     /// Used to reconstruct a SurfaceHandle from just an *mut wlr_surface.
     handle: Weak<AtomicBool>
 }
-
-// TODO Move
-pub struct Subsurface;
-pub struct SubsurfaceHandle;
 
 /// A Wayland object that represents the data that we display on the screen.
 ///
@@ -92,7 +91,7 @@ impl Surface {
 
     /// Get the subsurface.
     pub fn subsurface(&self) -> Subsurface {
-        Subsurface
+        unimplemented!()
     }
 
     /// Get the texture of this surface.
