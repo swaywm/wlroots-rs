@@ -29,11 +29,10 @@ impl<'surface> SurfaceState<'surface> {
                        phantom: PhantomData }
     }
 
-    pub fn width(&self) -> c_int {
-        unsafe { (*self.state).width }
-    }
-
-    pub fn height(&self) -> c_int {
-        unsafe { (*self.state).height }
+    /// Get the size of the sub surface.
+    ///
+    /// Return value is in (width, height) format.
+    pub fn size(&self) -> (c_int, c_int) {
+        unsafe { ((*self.state).width, (*self.state).height) }
     }
 }
