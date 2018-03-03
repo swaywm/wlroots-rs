@@ -5,6 +5,7 @@ use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_main_surface,
                   wlr_surface_get_matrix, wlr_surface_has_buffer, wlr_surface_make_subsurface,
@@ -348,6 +349,20 @@ impl SurfaceHandle {
         match res {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)
+        }
+    }
+}
+
+impl Drop for Surface {
+    fn drop(&mut self) {
+        unsafe {
+            let manager = Rc::into_raw(self.subsurfaces_manager.clone()) as *mut SubsurfaceManager;
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*(*manager).subsurface_created_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*(*manager).subsurface_destroyed_listener()).link as *mut _ as _);
         }
     }
 }
