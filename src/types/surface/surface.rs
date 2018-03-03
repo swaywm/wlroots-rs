@@ -1,16 +1,15 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
-use std::marker::PhantomData;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use libc;
 use wlroots_sys::{timespec, wlr_surface, wlr_surface_get_main_surface, wlr_surface_get_matrix,
                   wlr_surface_has_buffer, wlr_surface_make_subsurface, wlr_surface_send_enter,
-                  wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_state};
+                  wlr_surface_send_frame_done, wlr_surface_send_leave};
 
+use super::SurfaceState;
 use Output;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use render::Texture;
@@ -25,12 +24,6 @@ struct InternalSurfaceState {
 // TODO Move
 pub struct Subsurface;
 pub struct SubsurfaceHandle;
-
-/// Surface state as reported by wlroots.
-pub struct SurfaceState<'surface> {
-    state: *mut wlr_surface_state,
-    phantom: PhantomData<&'surface Surface>
-}
 
 /// A Wayland object that represents the data that we display on the screen.
 ///
@@ -84,16 +77,16 @@ impl Surface {
     /// Get the surface state.
     pub fn current_state<'surface>(&'surface mut self) -> SurfaceState<'surface> {
         unsafe {
-            SurfaceState { state: (*self.surface).current,
-                           phantom: PhantomData }
+            let state = (*self.surface).current;
+            SurfaceState::new(self, state)
         }
     }
 
     /// Get the pending surface state.
     pub fn pending_state<'surface>(&'surface mut self) -> SurfaceState<'surface> {
         unsafe {
-            SurfaceState { state: (*self.surface).pending,
-                           phantom: PhantomData }
+            let state = (*self.surface).current;
+            SurfaceState::new(self, state)
         }
     }
 
@@ -290,15 +283,5 @@ impl SurfaceHandle {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)
         }
-    }
-}
-
-impl<'surface> SurfaceState<'surface> {
-    pub fn width(&self) -> libc::c_int {
-        unsafe { (*self.state).width }
-    }
-
-    pub fn height(&self) -> libc::c_int {
-        unsafe { (*self.state).height }
     }
 }
