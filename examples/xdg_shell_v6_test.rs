@@ -214,11 +214,7 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
         shell.run(|shell| {
                       shell.surface()
                            .run(|surface| {
-                                    let (width, height) = {
-                                        let current_state = surface.current_state();
-                                        (current_state.width() as i32,
-                                        current_state.height() as i32)
-                                    };
+                                    let (width, height) = surface.current_state().size();
                                     let (render_width, render_height) =
                                         (width * renderer.output.scale() as i32,
                                         height * renderer.output.scale() as i32);
