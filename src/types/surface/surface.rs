@@ -78,7 +78,7 @@ impl Surface {
     pub fn current_state<'surface>(&'surface mut self) -> SurfaceState<'surface> {
         unsafe {
             let state = (*self.surface).current;
-            SurfaceState::new(self, state)
+            SurfaceState::new(state)
         }
     }
 
@@ -86,7 +86,7 @@ impl Surface {
     pub fn pending_state<'surface>(&'surface mut self) -> SurfaceState<'surface> {
         unsafe {
             let state = (*self.surface).current;
-            SurfaceState::new(self, state)
+            SurfaceState::new(state)
         }
     }
 

@@ -45,10 +45,7 @@ impl<'surface> SurfaceState<'surface> {
     /// # Safety
     /// Since we rely on the surface providing a valid surface state,
     /// this function is marked unsafe.
-    ///
-    /// However, the lifetimes should pose no problems.
-    pub(crate) unsafe fn new(_surface: &'surface mut Surface,
-                             state: *mut wlr_surface_state)
+    pub(crate) unsafe fn new(state: *mut wlr_surface_state)
                              -> SurfaceState<'surface> {
         SurfaceState { state,
                        phantom: PhantomData }
