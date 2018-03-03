@@ -91,7 +91,8 @@ impl<'output> Renderer<'output> {
     ///
     /// This will render the texture at <123, 321>.
     pub fn render_with_matrix(&mut self, texture: &Texture, matrix: &[f32; 16]) -> bool {
-        unsafe { wlr_render_with_matrix(self.renderer, texture.as_ptr(), matrix) }
+        // TODO FIXME Add alpha as param
+        unsafe { wlr_render_with_matrix(self.renderer, texture.as_ptr(), matrix, 1.0) }
     }
 
     /// Renders a solid quad in the specified color.
