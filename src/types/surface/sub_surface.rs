@@ -93,17 +93,6 @@ impl Subsurface {
                            subsurface: self.subsurface }
     }
 
-    /// Manually set the lock used to determine if a double-borrow is
-    /// occuring on this structure.
-    ///
-    /// # Panics
-    /// Panics when trying to set the lock on an upgraded handle.
-    pub(crate) unsafe fn set_lock(&self, val: bool) {
-        self.liveliness.as_ref()
-            .expect("Tried to set lock on borrowed Subsurface")
-            .store(val, Ordering::Release);
-    }
-
     unsafe fn from_handle(handle: &SubsurfaceHandle) -> Self {
         Subsurface { liveliness: None,
                      subsurface: handle.subsurface }
