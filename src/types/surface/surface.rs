@@ -379,6 +379,7 @@ impl Drop for Surface {
             }
         }
         unsafe {
+            let _ = Box::from_raw((*self.surface).data as *mut InternalSurfaceState);
             let manager = Rc::into_raw(self.subsurfaces_manager.clone()) as *mut SubsurfaceManager;
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
