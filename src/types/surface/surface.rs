@@ -362,6 +362,22 @@ impl SurfaceHandle {
 
 impl Drop for Surface {
     fn drop(&mut self) {
+        match self.liveliness {
+            None => return,
+            Some(ref liveliness) => {
+                if Rc::strong_count(liveliness) != 1 {
+                    return
+                }
+                wlr_log!(L_DEBUG, "Dropped surface {:p}", self.surface);
+                let weak_count = Rc::weak_count(liveliness);
+                if weak_count > 0 {
+                    wlr_log!(L_DEBUG,
+                             "Still {} weak pointers to Surface {:p}",
+                             weak_count,
+                             self.surface);
+                }
+            }
+        }
         unsafe {
             let manager = Rc::into_raw(self.subsurfaces_manager.clone()) as *mut SubsurfaceManager;
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
