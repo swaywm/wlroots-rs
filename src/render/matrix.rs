@@ -5,22 +5,22 @@ use wlroots_sys::{wl_output_transform, wlr_matrix_identity, wlr_matrix_mul, wlr_
 
 /// Modifies the matrix to become the identity matrix.
 pub fn matrix_identity(output: &mut [f32; 16]) {
-    unsafe { wlr_matrix_identity(output) }
+    unsafe { wlr_matrix_identity(output.as_mut_ptr()) }
 }
 
-/// Translate the matrix in the x, y, and z directions.
-pub fn matrix_translate(output: &mut [f32; 16], x: f32, y: f32, z: f32) {
-    unsafe { wlr_matrix_translate(output, x, y, z) }
+/// Translate the matrix in the x, and y.
+pub fn matrix_translate(output: &mut [f32; 16], x: f32, y: f32) {
+    unsafe { wlr_matrix_translate(output.as_mut_ptr(), x, y) }
 }
 
-/// Scale the output in the x, y, and z directions some amount.
-pub fn matrix_scale(output: &mut [f32; 16], x: f32, y: f32, z: f32) {
-    unsafe { wlr_matrix_scale(output, x, y, z) }
+/// Scale the output in the x, and y.
+pub fn matrix_scale(output: &mut [f32; 16], x: f32, y: f32) {
+    unsafe { wlr_matrix_scale(output.as_mut_ptr(), x, y) }
 }
 
 /// Rotate the matrix by some amount of radians.
 pub fn matrix_rotate(output: &mut [f32; 16], radians: f32) {
-    unsafe { wlr_matrix_rotate(output, radians) }
+    unsafe { wlr_matrix_rotate(output.as_mut_ptr(), radians) }
 }
 
 /// TODO Document
