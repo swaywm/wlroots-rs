@@ -91,18 +91,20 @@ impl<'output> Renderer<'output> {
     /// ```
     ///
     /// This will render the texture at <123, 321>.
-    pub fn render_with_matrix(&mut self, texture: &Texture, matrix: &[f32; 16]) -> bool {
+    pub fn render_with_matrix(&mut self, texture: &Texture, matrix: &[f32; 9]) -> bool {
         // TODO FIXME Add alpha as param
-        unsafe { wlr_render_texture_with_matrix(self.renderer, texture.as_ptr(), matrix.as_ptr(), 1.0) }
+        unsafe {
+            wlr_render_texture_with_matrix(self.renderer, texture.as_ptr(), matrix.as_ptr(), 1.0)
+        }
     }
 
     /// Renders a solid quad in the specified color.
-    pub fn render_colored_quad(&mut self, color: &[f32; 4], matrix: &[f32; 16]) {
+    pub fn render_colored_quad(&mut self, color: &[f32; 4], matrix: &[f32; 9]) {
         unsafe { wlr_render_colored_quad(self.renderer, color.as_ptr(), matrix.as_ptr()) }
     }
 
     /// Renders a solid ellipse in the specified color.
-    pub fn render_colored_ellipse(&mut self, color: &[f32; 4], matrix: &[f32; 16]) {
+    pub fn render_colored_ellipse(&mut self, color: &[f32; 4], matrix: &[f32; 9]) {
         unsafe { wlr_render_colored_ellipse(self.renderer, color.as_ptr(), matrix.as_ptr()) }
     }
 }
