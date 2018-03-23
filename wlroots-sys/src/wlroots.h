@@ -10,13 +10,15 @@
 #include <wlr/backend/session/interface.h>
 
 /// Render includes
-#include <wlr/render.h>
+#include <wlr/render/wlr_renderer.h>
+#include <wlr/render/egl.h>
 #include <wlr/render/gles2.h>
 #include <wlr/render/interface.h>
-#include <wlr/render/matrix.h>
+#include <wlr/render/wlr_texture.h>
 
 /// Type includes
 #include <wlr/types/wlr_box.h>
+#include <wlr/types/wlr_matrix.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_data_device.h>
