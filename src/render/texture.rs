@@ -1,5 +1,5 @@
 use libc::c_int;
-use wlroots_sys::{wl_shm_format, wlr_texture, wlr_texture_get_matrix, wlr_texture_upload_pixels};
+use wlroots_sys::{wl_shm_format, wlr_texture, wlr_texture_upload_pixels};
 
 /// Wrapper around wl_shm_format, to make it easier and nicer to type.
 #[repr(u32)]
@@ -108,14 +108,6 @@ impl Texture {
                                       width,
                                       height,
                                       bytes.as_ptr())
-        }
-    }
-
-    pub fn get_matrix(&self, projection: &[f32; 16], x: i32, y: i32) -> [f32; 16] {
-        unsafe {
-            let mut matrix: [f32; 16] = [0.0; 16];
-            wlr_texture_get_matrix(self.texture, &mut matrix, projection, x, y);
-            matrix
         }
     }
 }

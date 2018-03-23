@@ -3,7 +3,7 @@
 use Output;
 use render::Texture;
 use wlroots_sys::{wlr_backend, wlr_render_colored_ellipse, wlr_render_colored_quad,
-                  wlr_render_texture_create, wlr_render_with_matrix, wlr_renderer,
+                  wlr_render_texture_create, wlr_render_texture_with_matrix, wlr_renderer,
                   wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
                   wlr_gles2_renderer_create};
 
@@ -87,13 +87,13 @@ impl<'output> Renderer<'output> {
     /// float projection[16];
     /// float matrix[16];
     /// wlr_texture_get_matrix(texture, &matrix, &projection, 123, 321);
-    /// wlr_render_with_matrix(renderer, texture, &matrix);
+    /// wlr_render_texture_with_matrix(renderer, texture, &matrix);
     /// ```
     ///
     /// This will render the texture at <123, 321>.
     pub fn render_with_matrix(&mut self, texture: &Texture, matrix: &[f32; 16]) -> bool {
         // TODO FIXME Add alpha as param
-        unsafe { wlr_render_with_matrix(self.renderer, texture.as_ptr(), matrix.as_ptr(), 1.0) }
+        unsafe { wlr_render_texture_with_matrix(self.renderer, texture.as_ptr(), matrix.as_ptr(), 1.0) }
     }
 
     /// Renders a solid quad in the specified color.
