@@ -42,8 +42,6 @@ pub type wlr_input_device_pointer = self::generated::wlr_input_device__bindgen_t
 impl wl_output_transform {
     /// Invert the transform.
     pub fn invert(self) -> Self {
-        unsafe {
-            wlr_output_transform_invert(self)
-        }
+        unsafe { wlr_output_transform_invert(self) }
     }
 }

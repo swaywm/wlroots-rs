@@ -1,8 +1,9 @@
 //! TODO Documentation
 
+use Area;
 use wlroots_sys::{wl_output_transform, wlr_matrix_identity, wlr_matrix_multiply,
-                  wlr_matrix_projection, wlr_matrix_rotate, wlr_matrix_scale,
-                  wlr_matrix_transform, wlr_matrix_translate};
+                  wlr_matrix_project_box, wlr_matrix_projection, wlr_matrix_rotate,
+                  wlr_matrix_scale, wlr_matrix_transform, wlr_matrix_translate};
 
 /// Modifies the matrix to become the identity matrix.
 pub fn matrix_identity(output: &mut [f32; 9]) {
@@ -24,8 +25,8 @@ pub fn matrix_rotate(output: &mut [f32; 9], radians: f32) {
     unsafe { wlr_matrix_rotate(output.as_mut_ptr(), radians) }
 }
 
-/// TODO Document
-pub fn matrix_mul(mat: &mut [f32; 9], x: [f32; 9], y: [f32; 9]) {
+/// Multiply two matrices together, storing the result in `mat`.
+pub fn matrix_multiply(x: [f32; 9], y: [f32; 9], mat: &mut [f32; 9]) {
     unsafe { wlr_matrix_multiply(mat.as_mut_ptr(), x.as_ptr(), y.as_ptr()) }
 }
 
@@ -38,4 +39,18 @@ pub fn matrix_transform(mat: &mut [f32; 9], transform: wl_output_transform) {
 /// the width and height of a texture.
 pub fn matrix_texture(mat: &mut [f32; 9], width: i32, height: i32, transform: wl_output_transform) {
     unsafe { wlr_matrix_projection(mat.as_mut_ptr(), width, height, transform) }
+}
+
+pub fn project_box(mat: &mut [f32; 9],
+                   area: Area,
+                   transform: wl_output_transform,
+                   rotation: f32,
+                   projection: [f32; 9]) {
+    unsafe {
+        wlr_matrix_project_box(mat.as_mut_ptr(),
+                               &*area,
+                               transform,
+                               rotation,
+                               projection.as_ptr())
+    }
 }

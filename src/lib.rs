@@ -52,8 +52,8 @@ pub use self::types::touch::*;
 pub use key_events::Key;
 pub use pointer_events::ButtonState;
 
-pub use self::render::{matrix_identity, matrix_mul, matrix_rotate, matrix_scale, matrix_texture,
-                       matrix_transform, matrix_translate, GenericRenderer, Renderer, Texture,
-                       TextureFormat};
+pub use self::render::{matrix_identity, matrix_multiply, matrix_rotate, matrix_scale,
+                       matrix_texture, matrix_transform, matrix_translate, project_box,
+                       GenericRenderer, Renderer, Texture, TextureFormat};
 
 pub use self::errors::*;
