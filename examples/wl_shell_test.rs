@@ -345,13 +345,12 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                                                                Size::new(render_width,
                                                                          render_height));
                                     if state.layout.intersects(renderer.output, render_box) {
-                                        let mut matrix = [0.0; 9];
                                         let transform = renderer.output.get_transform().invert();
-                                        project_box(&mut matrix,
-                                                    render_box,
-                                                    transform,
-                                                    0.0,
-                                                    renderer.output.transform_matrix());
+                                        let matrix = project_box(render_box,
+                                                                 transform,
+                                                                 0.0,
+                                                                 renderer.output
+                                                                         .transform_matrix());
                                         renderer.render_texture_with_matrix(&surface.texture(),
                                                                             matrix);
                                         surface.send_frame_done(Duration::from_secs(1));
