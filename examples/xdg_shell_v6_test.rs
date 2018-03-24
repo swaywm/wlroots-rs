@@ -5,13 +5,12 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
-use wlroots::{matrix_multiply, matrix_rotate, matrix_scale, matrix_translate, project_box, Area,
-              Compositor, CompositorBuilder, CursorBuilder, CursorHandler, CursorId,
-              InputManagerHandler, Keyboard, KeyboardHandler, Origin, Output, OutputBuilder,
-              OutputBuilderResult, OutputHandler, OutputLayout, OutputManagerHandler, Pointer,
-              PointerHandler, Renderer, Seat, SeatHandler, Size, Surface, XCursorTheme,
-              XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellSurface,
-              XdgV6ShellSurfaceHandle};
+use wlroots::{project_box, Area, Compositor, CompositorBuilder, CursorBuilder, CursorHandler,
+              CursorId, InputManagerHandler, Keyboard, KeyboardHandler, Origin, Output,
+              OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
+              OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat, SeatHandler, Size,
+              Surface, XCursorTheme, XdgV6ShellHandler, XdgV6ShellManagerHandler,
+              XdgV6ShellSurface, XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -219,13 +218,7 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                                     let (render_width, render_height) =
                                         (width * renderer.output.scale() as i32,
                                         height * renderer.output.scale() as i32);
-                                    // TODO Some value from something else?
                                     let (lx, ly) = (0.0, 0.0);
-                                    let (mut ox, mut oy) = (lx, ly);
-                                    state.layout
-                                         .output_coords(renderer.output, &mut ox, &mut oy);
-                                    ox *= renderer.output.scale() as f64;
-                                    oy *= renderer.output.scale() as f64;
                                     let render_box = Area::new(Origin::new(lx as i32, ly as i32),
                                                                Size::new(render_width,
                                                                          render_height));
