@@ -95,11 +95,11 @@ impl XdgV6ShellSurface {
             match (*self.shell_surface).role {
                 WLR_XDG_SURFACE_V6_ROLE_NONE => None,
                 WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL => {
-                    let toplevel = (*self.shell_surface).__bindgen_anon_1.toplevel_state;
+                    let toplevel = (*self.shell_surface).__bindgen_anon_1.toplevel;
                     Some(TopLevel(XdgV6TopLevel::from_shell(self, toplevel)))
                 }
                 WLR_XDG_SURFACE_V6_ROLE_POPUP => {
-                    let popup = (*self.shell_surface).__bindgen_anon_1.popup_state;
+                    let popup = (*self.shell_surface).__bindgen_anon_1.popup;
                     Some(Popup(XdgV6Popup::from_ptr(popup)))
                 }
             }
@@ -141,26 +141,12 @@ impl XdgV6ShellSurface {
         unsafe { (*self.shell_surface).has_next_geometry }
     }
 
-    pub fn next_geometry(&self) -> Option<Area> {
-        unsafe {
-            let next_geometry = (*self.shell_surface).next_geometry;
-            if next_geometry.is_null() {
-                None
-            } else {
-                Some(Area(*next_geometry))
-            }
-        }
+    pub fn next_geometry(&self) -> Area {
+        unsafe { Area((*self.shell_surface).next_geometry) }
     }
 
-    pub fn geometry(&self) -> Option<Area> {
-        unsafe {
-            let geometry = (*self.shell_surface).geometry;
-            if geometry.is_null() {
-                None
-            } else {
-                Some(Area(*geometry))
-            }
-        }
+    pub fn geometry(&self) -> Area {
+        unsafe { Area((*self.shell_surface).geometry) }
     }
 
     /// Send a ping to the surface.

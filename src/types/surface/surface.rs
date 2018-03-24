@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use std::{panic, ptr};
+use std::panic;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -8,9 +8,8 @@ use std::time::Duration;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_main_surface,
-                  wlr_surface_get_matrix, wlr_surface_has_buffer, wlr_surface_make_subsurface,
-                  wlr_surface_send_enter, wlr_surface_send_frame_done, wlr_surface_send_leave,
-                  wlr_surface_subsurface_at};
+                  wlr_surface_has_buffer, wlr_surface_make_subsurface, wlr_surface_send_enter,
+                  wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_subsurface_at};
 
 use super::{Subsurface, SubsurfaceHandle, SubsurfaceManager, SurfaceState};
 use Output;
@@ -146,27 +145,6 @@ impl Surface {
         unsafe { c_to_rust_string((*self.surface).role) }
     }
 
-    /// Gets a matrix you can pass into wlr_render_with_matrix to display this
-    /// surface.
-    ///
-    /// `matrix` is the output matrix, `projection` is the wlr_output
-    /// projection matrix, and `transform` is any additional transformations you want
-    /// to perform on the surface (or None/the identity matrix if you don't).
-    ///
-    /// `transform` is used before the surface is scaled, so its geometry extends
-    /// from 0 to 1 in both dimensions.
-    pub fn get_matrix<'a, T>(&mut self,
-                             matrix: &mut [f32; 16],
-                             projection: &[f32; 16],
-                             transform: T)
-        where T: Into<Option<&'a [f32; 16]>>
-    {
-        let transform = transform.into()
-                                 .map(|transform| transform as *const _)
-                                 .unwrap_or_else(|| ptr::null());
-        unsafe { wlr_surface_get_matrix(self.surface, matrix, projection, transform) }
-    }
-
     /// Whether or not this surface currently has an attached buffer.
     ///
     /// A surface has an attached buffer when it commits with a non-null buffer in its pending
@@ -241,13 +219,13 @@ impl Surface {
 
     /// Get the matrix used to convert the internal byte buffer to use in the
     /// surface.
-    pub fn buffer_to_surface_matrix(&self) -> [f32; 16] {
+    pub fn buffer_to_surface_matrix(&self) -> [f32; 9] {
         unsafe { (*self.surface).buffer_to_surface_matrix }
     }
 
     /// Get the matrix used to convert the surface back to the internal byte
     /// buffer.
-    pub fn surface_to_buffer_matrix(&self) -> [f32; 16] {
+    pub fn surface_to_buffer_matrix(&self) -> [f32; 9] {
         unsafe { (*self.surface).surface_to_buffer_matrix }
     }
 

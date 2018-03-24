@@ -5,12 +5,12 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
-use wlroots::{matrix_mul, matrix_rotate, matrix_scale, matrix_translate, Area, Compositor,
-              CompositorBuilder, CursorBuilder, CursorHandler, CursorId, InputManagerHandler,
-              Keyboard, KeyboardHandler, Origin, Output, OutputBuilder, OutputBuilderResult,
-              OutputHandler, OutputLayout, OutputManagerHandler, Pointer, PointerHandler,
-              Renderer, Seat, SeatHandler, Size, Surface, XCursorTheme, XdgV6ShellHandler,
-              XdgV6ShellManagerHandler, XdgV6ShellSurface, XdgV6ShellSurfaceHandle};
+use wlroots::{project_box, Area, Compositor, CompositorBuilder, CursorBuilder, CursorHandler,
+              CursorId, InputManagerHandler, Keyboard, KeyboardHandler, Origin, Output,
+              OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
+              OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat, SeatHandler, Size,
+              Surface, XCursorTheme, XdgV6ShellHandler, XdgV6ShellManagerHandler,
+              XdgV6ShellSurface, XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -218,53 +218,19 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                                     let (render_width, render_height) =
                                         (width * renderer.output.scale() as i32,
                                         height * renderer.output.scale() as i32);
-                                    // TODO Some value from something else?
                                     let (lx, ly) = (0.0, 0.0);
-                                    let (mut ox, mut oy) = (lx, ly);
-                                    state.layout
-                                         .output_coords(renderer.output, &mut ox, &mut oy);
-                                    ox *= renderer.output.scale() as f64;
-                                    oy *= renderer.output.scale() as f64;
                                     let render_box = Area::new(Origin::new(lx as i32, ly as i32),
                                                                Size::new(render_width,
                                                                          render_height));
                                     if state.layout.intersects(renderer.output, render_box) {
-                                        let mut matrix = [0.0; 16];
-                                        let mut translate_center = [0.0; 16];
-                                        matrix_translate(&mut translate_center,
-                                                         (ox as i32 + render_width / 2) as f32,
-                                                         (oy as i32 + render_height / 2) as f32,
-                                                         0.0);
-                                        let mut rotate = [0.0; 16];
-                                        // TODO what is rotation
-                                        let rotation = 0.0;
-                                        matrix_rotate(&mut rotate, rotation);
-
-                                        let mut translate_origin = [0.0; 16];
-                                        matrix_translate(&mut translate_origin,
-                                                         (-render_width / 2) as f32,
-                                                         (-render_height / 2) as f32,
-                                                         0.0);
-
-                                        let mut scale = [0.0; 16];
-                                        matrix_scale(&mut scale,
-                                                     render_width as f32,
-                                                     render_height as f32,
-                                                     1.0);
-
-                                        let mut transform = [0.0; 16];
-                                        matrix_mul(&translate_center, &mut rotate, &mut transform);
-                                        matrix_mul(&transform.clone(),
-                                                   &mut translate_origin,
-                                                   &mut transform);
-                                        matrix_mul(&transform.clone(), &mut scale, &mut transform);
-
-                                        // TODO Handle non transform normal on the output
-                                        // if ... {}
-                                        matrix_mul(&renderer.output.transform_matrix(),
-                                                   &mut transform,
-                                                   &mut matrix);
-                                        renderer.render_with_matrix(&surface.texture(), &matrix);
+                                        let transform = renderer.output.get_transform().invert();
+                                        let matrix = project_box(render_box,
+                                                                 transform,
+                                                                 0.0,
+                                                                 renderer.output
+                                                                         .transform_matrix());
+                                        renderer.render_texture_with_matrix(&surface.texture(),
+                                                                            matrix);
                                         surface.send_frame_done(Duration::from_secs(1));
                                     }
                                 })

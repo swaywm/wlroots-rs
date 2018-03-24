@@ -95,8 +95,7 @@ impl OutputHandler for ExOutput {
         let cat_texture = compositor_data.cat_texture.as_ref().unwrap();
         for y in StepRange(-128 + compositor_data.y_offs as i32, height, 128) {
             for x in StepRange(-128 + compositor_data.x_offs as i32, width, 128) {
-                let matrix = cat_texture.get_matrix(&transform_matrix, x, y);
-                renderer.render_with_matrix(&cat_texture, &matrix);
+                renderer.render_texture(&cat_texture, transform_matrix, x, y, 1.0);
             }
         }
         compositor_data.x_offs += compositor_data.x_vel * seconds;

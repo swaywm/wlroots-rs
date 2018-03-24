@@ -76,11 +76,9 @@ impl OutputHandler for ExOutput {
         let cat_texture = state.cat_texture.as_mut().unwrap();
         let (cat_width, cat_height) = cat_texture.size();
         for touch_point in &mut state.touch_points {
-            let matrix =
-                cat_texture.get_matrix(&transform_matrix,
-                                       (touch_point.x * width as f64) as i32 - (cat_width / 2),
-                                       (touch_point.y * height as f64) as i32 - (cat_height / 2));
-            renderer.render_with_matrix(cat_texture, &matrix);
+            let x = (touch_point.x * width as f64) as i32 - (cat_width / 2);
+            let y = (touch_point.y * height as f64) as i32 - (cat_height / 2);
+            renderer.render_texture(cat_texture, transform_matrix, x, y, 1.0);
         }
     }
 }

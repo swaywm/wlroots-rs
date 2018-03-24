@@ -1,11 +1,13 @@
 //! TODO Documentation
 
+use libc::{c_float, c_int};
+
 use Output;
 use render::Texture;
 use wlroots_sys::{wlr_backend, wlr_render_colored_ellipse, wlr_render_colored_quad,
-                  wlr_render_texture_create, wlr_render_with_matrix, wlr_renderer,
-                  wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
-                  wlr_gles2_renderer_create};
+                  wlr_render_texture, wlr_render_texture_create, wlr_render_texture_with_matrix,
+                  wlr_renderer, wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy,
+                  wlr_renderer_end, wlr_gles2_renderer_create};
 
 /// A generic interface for rendering to the screen.
 ///
@@ -43,7 +45,8 @@ impl GenericRenderer {
     pub fn render<'output>(&mut self, output: &'output mut Output) -> Renderer<'output> {
         unsafe {
             output.make_current();
-            wlr_renderer_begin(self.renderer, output.as_ptr());
+            let (width, height) = output.dimensions();
+            wlr_renderer_begin(self.renderer, width, height);
             Renderer { renderer: self.renderer,
                        output }
         }
@@ -72,7 +75,25 @@ impl<'output> Renderer<'output> {
     }
 
     pub fn clear(&mut self, float: [f32; 4]) {
-        unsafe { wlr_renderer_clear(self.renderer, &float) }
+        unsafe { wlr_renderer_clear(self.renderer, float.as_ptr()) }
+    }
+
+    /// Renders the requseted texture.
+    pub fn render_texture(&mut self,
+                          texture: &Texture,
+                          projection: [f32; 9],
+                          x: c_int,
+                          y: c_int,
+                          alpha: c_float)
+                          -> bool {
+        unsafe {
+            wlr_render_texture(self.renderer,
+                               texture.as_ptr(),
+                               projection.as_ptr(),
+                               x,
+                               y,
+                               alpha)
+        }
     }
 
     /// Renders the requested texture using the provided matrix. A typical texture
@@ -86,23 +107,25 @@ impl<'output> Renderer<'output> {
     /// float projection[16];
     /// float matrix[16];
     /// wlr_texture_get_matrix(texture, &matrix, &projection, 123, 321);
-    /// wlr_render_with_matrix(renderer, texture, &matrix);
+    /// wlr_render_texture_with_matrix(renderer, texture, &matrix);
     /// ```
     ///
     /// This will render the texture at <123, 321>.
-    pub fn render_with_matrix(&mut self, texture: &Texture, matrix: &[f32; 16]) -> bool {
+    pub fn render_texture_with_matrix(&mut self, texture: &Texture, matrix: [f32; 9]) -> bool {
         // TODO FIXME Add alpha as param
-        unsafe { wlr_render_with_matrix(self.renderer, texture.as_ptr(), matrix, 1.0) }
+        unsafe {
+            wlr_render_texture_with_matrix(self.renderer, texture.as_ptr(), matrix.as_ptr(), 1.0)
+        }
     }
 
     /// Renders a solid quad in the specified color.
-    pub fn render_colored_quad(&mut self, color: &[f32; 4], matrix: &[f32; 16]) {
-        unsafe { wlr_render_colored_quad(self.renderer, color, matrix) }
+    pub fn render_colored_quad(&mut self, color: [f32; 4], matrix: [f32; 9]) {
+        unsafe { wlr_render_colored_quad(self.renderer, color.as_ptr(), matrix.as_ptr()) }
     }
 
     /// Renders a solid ellipse in the specified color.
-    pub fn render_colored_ellipse(&mut self, color: &[f32; 4], matrix: &[f32; 16]) {
-        unsafe { wlr_render_colored_ellipse(self.renderer, color, matrix) }
+    pub fn render_colored_ellipse(&mut self, color: [f32; 4], matrix: [f32; 9]) {
+        unsafe { wlr_render_colored_ellipse(self.renderer, color.as_ptr(), matrix.as_ptr()) }
     }
 }
 

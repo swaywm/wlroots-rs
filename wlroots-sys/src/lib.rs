@@ -38,3 +38,10 @@ pub use self::generated::*;
 
 pub type wlr_output_events = self::generated::wlr_output__bindgen_ty_1;
 pub type wlr_input_device_pointer = self::generated::wlr_input_device__bindgen_ty_1;
+
+impl wl_output_transform {
+    /// Invert the transform.
+    pub fn invert(self) -> Self {
+        unsafe { wlr_output_transform_invert(self) }
+    }
+}

@@ -1,43 +1,83 @@
 //! TODO Documentation
 
-use wlroots_sys::{wl_output_transform, wlr_matrix_identity, wlr_matrix_mul, wlr_matrix_rotate,
-                  wlr_matrix_scale, wlr_matrix_texture, wlr_matrix_transform, wlr_matrix_translate};
+use Area;
+use wlroots_sys::{wl_output_transform, wlr_matrix_identity, wlr_matrix_multiply,
+                  wlr_matrix_project_box, wlr_matrix_projection, wlr_matrix_rotate,
+                  wlr_matrix_scale, wlr_matrix_transform, wlr_matrix_translate};
 
 /// Modifies the matrix to become the identity matrix.
-pub fn matrix_identity(output: &mut [f32; 16]) {
-    unsafe { wlr_matrix_identity(output) }
+pub fn matrix_identity(output: &mut [f32; 9]) {
+    unsafe { wlr_matrix_identity(output.as_mut_ptr()) }
 }
 
-/// Translate the matrix in the x, y, and z directions.
-pub fn matrix_translate(output: &mut [f32; 16], x: f32, y: f32, z: f32) {
-    unsafe { wlr_matrix_translate(output, x, y, z) }
+/// Translate the matrix in x, and y.
+pub fn matrix_translate(x: f32, y: f32) -> [f32; 9] {
+    let mut output = [0.0; 9];
+    unsafe {
+        wlr_matrix_translate(output.as_mut_ptr(), x, y);
+    }
+    output
 }
 
-/// Scale the output in the x, y, and z directions some amount.
-pub fn matrix_scale(output: &mut [f32; 16], x: f32, y: f32, z: f32) {
-    unsafe { wlr_matrix_scale(output, x, y, z) }
+/// Scale the output in the x, and y.
+pub fn matrix_scale(x: f32, y: f32) -> [f32; 9] {
+    let mut output = [0.0; 9];
+    unsafe {
+        wlr_matrix_scale(output.as_mut_ptr(), x, y);
+    }
+    output
 }
 
 /// Rotate the matrix by some amount of radians.
-pub fn matrix_rotate(output: &mut [f32; 16], radians: f32) {
-    unsafe { wlr_matrix_rotate(output, radians) }
+pub fn matrix_rotate(mut matrix: [f32; 9], radians: f32) -> [f32; 9] {
+    unsafe {
+        wlr_matrix_rotate(matrix.as_mut_ptr(), radians);
+    }
+    matrix
 }
 
-/// TODO Document
-pub fn matrix_mul(x: &[f32; 16], y: &[f32; 16], product: &mut [f32; 16]) {
-    unsafe { wlr_matrix_mul(x, y, product) }
+/// Multiply two matrices together.
+pub fn matrix_multiply(x: [f32; 9], y: [f32; 9]) -> [f32; 9] {
+    let mut output = [0.0; 9];
+    unsafe {
+        wlr_matrix_multiply(output.as_mut_ptr(), x.as_ptr(), y.as_ptr());
+    }
+    output
 }
 
 /// Transform the matrix based on the given Wayland output transform mode.
-pub fn matrix_transform(mat: &mut [f32; 16], transform: wl_output_transform) {
-    unsafe { wlr_matrix_transform(mat.as_mut_ptr(), transform) }
+pub fn matrix_transform(mut matrix: [f32; 9], transform: wl_output_transform) -> [f32; 9] {
+    unsafe {
+        wlr_matrix_transform(matrix.as_mut_ptr(), transform);
+    }
+    matrix
 }
 
 /// Transform the matrix based on the given Wayland output transform mode and
 /// the width and height of a texture.
-pub fn matrix_texture(mat: &mut [f32; 16],
+pub fn matrix_texture(mut matrix: [f32; 9],
                       width: i32,
                       height: i32,
-                      transform: wl_output_transform) {
-    unsafe { wlr_matrix_texture(mat.as_mut_ptr(), width, height, transform) }
+                      transform: wl_output_transform)
+                      -> [f32; 9] {
+    unsafe {
+        wlr_matrix_projection(matrix.as_mut_ptr(), width, height, transform);
+    }
+    matrix
+}
+
+pub fn project_box(area: Area,
+                   transform: wl_output_transform,
+                   rotation: f32,
+                   projection: [f32; 9])
+                   -> [f32; 9] {
+    unsafe {
+        let mut output = [0.0; 9];
+        wlr_matrix_project_box(output.as_mut_ptr(),
+                               &*area,
+                               transform,
+                               rotation,
+                               projection.as_ptr());
+        output
+    }
 }

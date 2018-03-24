@@ -343,7 +343,7 @@ impl Output {
         }
     }
 
-    pub fn transform_matrix(&self) -> [c_float; 16] {
+    pub fn transform_matrix(&self) -> [c_float; 9] {
         unsafe { (*self.output).transform_matrix }
     }
 
