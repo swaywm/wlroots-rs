@@ -31,6 +31,8 @@ fn main() {
         // pragma information on what features are available in a header file
         // titled "config.h"
         .clang_arg(format!("-I{}{}", target_dir, "/include/"))
+        // NOTE Necessary because the xdg-shell-v6 headers generate here
+        .clang_arg(format!("-I{}{}", target_dir, "/protocol/wl_protos@sta"))
         .clang_arg("-Iwlroots/include/xcursor")
         .clang_arg("-I/usr/include/pixman-1")
         // Work around bug https://github.com/rust-lang-nursery/rust-bindgen/issues/687
@@ -45,6 +47,13 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=X11-xcb");
     println!("cargo:rustc-link-lib=dylib=xkbcommon");
     println!("cargo:rustc-link-lib=dylib=xcb");
+    println!("cargo:rustc-link-lib=dylib=xcb-composite");
+    println!("cargo:rustc-link-lib=dylib=xcb-xfixes");
+    println!("cargo:rustc-link-lib=dylib=xcb-image");
+    println!("cargo:rustc-link-lib=dylib=xcb-render");
+    println!("cargo:rustc-link-lib=dylib=xcb-shm");
+    println!("cargo:rustc-link-lib=dylib=xcb-icccm");
+    println!("cargo:rustc-link-lib=dylib=xcb-xkb");
     println!("cargo:rustc-link-lib=dylib=cap");
     println!("cargo:rustc-link-lib=dylib=wayland-egl");
     println!("cargo:rustc-link-lib=dylib=wayland-client");

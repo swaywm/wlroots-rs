@@ -9,9 +9,8 @@ use wlroots::touch_events::{DownEvent, MotionEvent, UpEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
-const CAT_STRIDE: i32 = 128;
-const CAT_WIDTH: i32 = 128;
-const CAT_HEIGHT: i32 = 128;
+const CAT_WIDTH: u32 = 128;
+const CAT_HEIGHT: u32 = 128;
 const CAT_DATA: &'static [u8] = include_bytes!("cat.data");
 
 #[derive(Debug, Clone)]
@@ -86,11 +85,10 @@ impl OutputHandler for ExOutput {
 impl TouchHandler for TouchHandlerEx {
     fn on_down(&mut self, compositor: &mut Compositor, _touch: &mut Touch, event: &DownEvent) {
         let state: &mut State = compositor.into();
-        let (width, height) = event.size();
         let (x, y) = event.location();
         let point = TouchPoint { touch_id: event.touch_id(),
-                                 x: x / width,
-                                 y: y / height };
+                                 x: x,
+                                 y: y };
         wlr_log!(L_ERROR, "New touch point at {:?}", point);
         state.touch_points.push(point)
     }
@@ -111,13 +109,12 @@ impl TouchHandler for TouchHandlerEx {
 
     fn on_motion(&mut self, compositor: &mut Compositor, _touch: &mut Touch, event: &MotionEvent) {
         let state: &mut State = compositor.into();
-        let (width, height) = event.size();
         let (x, y) = event.location();
         wlr_log!(L_ERROR, "New location: {:?}", (x, y));
         for touch_point in &mut state.touch_points {
             if touch_point.touch_id == event.touch_id() {
-                touch_point.x = x / width;
-                touch_point.y = y / height;
+                touch_point.x = x;
+                touch_point.y = y;
             }
         }
     }
@@ -144,14 +141,12 @@ fn main() {
     {
         let gles2 = &mut compositor.renderer.as_mut().unwrap();
         let compositor_data: &mut State = (&mut compositor.data).downcast_mut().unwrap();
-        compositor_data.cat_texture = gles2.create_texture().map(|mut cat_texture| {
-            cat_texture.upload_pixels(TextureFormat::ABGR8888,
-                                      CAT_STRIDE,
-                                      CAT_WIDTH,
-                                      CAT_HEIGHT,
-                                      CAT_DATA);
-            cat_texture
-        });
+        compositor_data.cat_texture =
+            gles2.create_texture_from_pixels(TextureFormat::ABGR8888.into(),
+                                             CAT_WIDTH * 4,
+                                             CAT_WIDTH,
+                                             CAT_HEIGHT,
+                                             CAT_DATA);
     }
     compositor.run();
 }

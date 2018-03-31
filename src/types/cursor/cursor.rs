@@ -448,9 +448,7 @@ impl Cursor {
     pub fn absolute_to_layout_coords(&mut self,
                                      dev: &InputDevice,
                                      x_mm: f64,
-                                     y_mm: f64,
-                                     width_mm: f64,
-                                     height_mm: f64)
+                                     y_mm: f64)
                                      -> (f64, f64) {
         unsafe {
             let (mut lx, mut ly) = (0.0, 0.0);
@@ -458,8 +456,6 @@ impl Cursor {
                                                  dev.as_ptr(),
                                                  x_mm,
                                                  y_mm,
-                                                 width_mm,
-                                                 height_mm,
                                                  &mut lx,
                                                  &mut ly);
             (lx, ly)

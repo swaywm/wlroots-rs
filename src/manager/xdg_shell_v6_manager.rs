@@ -3,10 +3,11 @@
 use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::wlr_xdg_surface_v6;
+use wlroots_sys::{wlr_xdg_surface_v6, wlr_xdg_surface_v6_role::*};
 
 use super::xdg_shell_v6_handler::XdgV6Shell;
-use {Surface, SurfaceHandle, XdgV6ShellHandler, XdgV6ShellSurface};
+use {Surface, SurfaceHandle, XdgV6Popup, XdgV6ShellHandler, XdgV6ShellState::*, XdgV6ShellSurface,
+     XdgV6TopLevel};
 use compositor::{Compositor, COMPOSITOR_PTR};
 
 pub trait XdgV6ShellManagerHandler {
@@ -30,16 +31,31 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
         wlr_log!(L_DEBUG, "New xdg_shell_v6_surface request {:p}", data);
         let compositor = &mut *COMPOSITOR_PTR;
         let mut surface = Surface::new((*data).surface);
-        let mut shell_surface = XdgV6ShellSurface::new(data);
+        let state = unsafe {
+            match (*data).role {
+                WLR_XDG_SURFACE_V6_ROLE_NONE => None,
+                WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL => {
+                    let toplevel = (*data).__bindgen_anon_1.toplevel;
+                    Some(TopLevel(XdgV6TopLevel::from_shell(data, toplevel)))
+                }
+                WLR_XDG_SURFACE_V6_ROLE_POPUP => {
+                    let popup = (*data).__bindgen_anon_1.popup;
+                    Some(Popup(XdgV6Popup::from_ptr(popup)))
+                }
+            }
+        };
+        let mut shell_surface = XdgV6ShellSurface::new(data, state);
         surface.set_lock(true);
         shell_surface.set_lock(true);
         let new_surface_res = manager.new_surface(compositor, &mut shell_surface, &mut surface);
         surface.set_lock(false);
         shell_surface.set_lock(false);
         if let Some(shell_surface_handler) = new_surface_res {
+
             let mut shell_surface = XdgV6Shell::new((shell_surface,
                                                      surface,
                                                      shell_surface_handler));
+
             // Hook the destroy event into this manager.
             wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
                           remove_listener);
@@ -48,18 +64,25 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                           shell_surface.ping_timeout_listener() as _);
             wl_signal_add(&mut (*data).events.new_popup as *mut _ as _,
                           shell_surface.new_popup_listener() as _);
-            wl_signal_add(&mut (*data).events.request_maximize as *mut _ as _,
-                          shell_surface.maximize_listener() as _);
-            wl_signal_add(&mut (*data).events.request_fullscreen as *mut _ as _,
-                          shell_surface.fullscreen_listener() as _);
-            wl_signal_add(&mut (*data).events.request_minimize as *mut _ as _,
-                          shell_surface.minimize_listener() as _);
-            wl_signal_add(&mut (*data).events.request_move as *mut _ as _,
-                          shell_surface.move_listener() as _);
-            wl_signal_add(&mut (*data).events.request_resize as *mut _ as _,
-                          shell_surface.resize_listener() as _);
-            wl_signal_add(&mut (*data).events.request_show_window_menu as *mut _ as _,
-                          shell_surface.show_window_menu_listener() as _);
+            let events = match shell_surface.surface_mut().state() {
+                None | Some(&mut Popup(_)) => None,
+                Some(&mut TopLevel(ref mut toplevel)) => Some((*toplevel.as_ptr()).events)
+            };
+            if let Some(mut events) = events {
+                    wl_signal_add(&mut events.request_maximize as *mut _ as _,
+                                  shell_surface.maximize_listener() as _);
+                    wl_signal_add(&mut events.request_fullscreen as *mut _ as _,
+                                  shell_surface.fullscreen_listener() as _);
+                    wl_signal_add(&mut events.request_minimize as *mut _ as _,
+                                  shell_surface.minimize_listener() as _);
+                    wl_signal_add(&mut events.request_move as *mut _ as _,
+                                  shell_surface.move_listener() as _);
+                    wl_signal_add(&mut events.request_resize as *mut _ as _,
+                                  shell_surface.resize_listener() as _);
+                    wl_signal_add(&mut events.request_show_window_menu as *mut _ as _,
+                                  shell_surface.show_window_menu_listener() as _);
+            }
+
             shells.push(shell_surface);
         }
     };
