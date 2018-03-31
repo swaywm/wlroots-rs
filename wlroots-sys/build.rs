@@ -47,6 +47,13 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=X11-xcb");
     println!("cargo:rustc-link-lib=dylib=xkbcommon");
     println!("cargo:rustc-link-lib=dylib=xcb");
+    println!("cargo:rustc-link-lib=dylib=xcb-composite");
+    println!("cargo:rustc-link-lib=dylib=xcb-xfixes");
+    println!("cargo:rustc-link-lib=dylib=xcb-image");
+    println!("cargo:rustc-link-lib=dylib=xcb-render");
+    println!("cargo:rustc-link-lib=dylib=xcb-shm");
+    println!("cargo:rustc-link-lib=dylib=xcb-icccm");
+    println!("cargo:rustc-link-lib=dylib=xcb-xkb");
     println!("cargo:rustc-link-lib=dylib=cap");
     println!("cargo:rustc-link-lib=dylib=wayland-egl");
     println!("cargo:rustc-link-lib=dylib=wayland-client");
