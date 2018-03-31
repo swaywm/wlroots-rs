@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
                   wlr_xdg_surface_v6_popup_at, wlr_xdg_surface_v6_popup_get_position,
-                  wlr_xdg_surface_v6_role, wlr_xdg_toplevel_v6, wlr_xdg_toplevel_v6_send_close,
+                  wlr_xdg_surface_v6_role, wlr_xdg_surface_v6_send_close, wlr_xdg_toplevel_v6,
                   wlr_xdg_toplevel_v6_set_activated, wlr_xdg_toplevel_v6_set_fullscreen,
                   wlr_xdg_toplevel_v6_set_maximized, wlr_xdg_toplevel_v6_set_resizing,
                   wlr_xdg_toplevel_v6_set_size, wlr_xdg_toplevel_v6_state};
@@ -380,7 +380,7 @@ impl<'surface> XdgV6TopLevel<'surface> {
 
     /// Request that this toplevel surface closes.
     pub fn close(&mut self) {
-        unsafe { wlr_xdg_toplevel_v6_send_close(self.shell_surface) }
+        unsafe { wlr_xdg_surface_v6_send_close(self.shell_surface) }
     }
 }
 
