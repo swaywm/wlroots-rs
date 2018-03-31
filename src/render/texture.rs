@@ -1,5 +1,5 @@
 use libc::c_int;
-use wlroots_sys::{wl_shm_format, wlr_texture, wlr_texture_upload_pixels};
+use wlroots_sys::{wl_shm_format, wlr_texture, wlr_texture_get_size};
 
 /// Wrapper around wl_shm_format, to make it easier and nicer to type.
 #[repr(u32)]
@@ -91,23 +91,10 @@ impl Texture {
     ///
     /// Return value is in (width, height) format.
     pub fn size(&self) -> (c_int, c_int) {
-        unsafe { ((*self.texture).width, (*self.texture).height) }
-    }
-
-    pub fn upload_pixels(&mut self,
-                         texture_format: TextureFormat,
-                         stride: i32,
-                         width: i32,
-                         height: i32,
-                         bytes: &[u8])
-                         -> bool {
         unsafe {
-            wlr_texture_upload_pixels(self.texture,
-                                      texture_format.into(),
-                                      stride,
-                                      width,
-                                      height,
-                                      bytes.as_ptr())
+            let (mut width, mut height) = (0, 0);
+            wlr_texture_get_size(self.texture, &mut width, &mut height);
+            (width, height)
         }
     }
 }
