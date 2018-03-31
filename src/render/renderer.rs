@@ -58,7 +58,6 @@ impl GenericRenderer {
                                       stride: u32,
                                       width: u32,
                                       height: u32,
-                                      // TODO Slice of u8? It's a void*, hmm
                                       data: &[u8])
                                       -> Option<Texture> {
         unsafe {
