@@ -123,20 +123,6 @@ impl XdgV6ShellSurface {
         unsafe { (*self.shell_surface).configure_next_serial }
     }
 
-    /// Get the title associated with this XDg shell.
-    pub fn title(&self) -> String {
-        unsafe {
-            c_to_rust_string((*self.shell_surface).title).expect("Could not parse class as UTF-8")
-        }
-    }
-
-    /// Get the app id associated with this XDG shell.
-    pub fn app_id(&self) -> String {
-        unsafe {
-            c_to_rust_string((*self.shell_surface).app_id).expect("Could not parse class as UTF-8")
-        }
-    }
-
     pub fn has_next_geometry(&self) -> bool {
         unsafe { (*self.shell_surface).has_next_geometry }
     }
@@ -310,6 +296,18 @@ impl<'surface> XdgV6TopLevel<'surface> {
                         phantom: PhantomData }
     }
 
+    /// Get the title associated with this XDG shell toplevel.
+    pub fn title(&self) -> String {
+        unsafe { c_to_rust_string((*self.toplevel).title).expect("Could not parse class as UTF-8") }
+    }
+
+    /// Get the app id associated with this XDG shell toplevel.
+    pub fn app_id(&self) -> String {
+        unsafe {
+            c_to_rust_string((*self.toplevel).app_id).expect("Could not parse class as UTF-8")
+        }
+    }
+
     /// Get a handle to the base surface of the xdg tree.
     pub fn base(&self) -> XdgV6ShellSurfaceHandle {
         unsafe { XdgV6ShellSurfaceHandle::from_ptr((*self.toplevel).base) }
@@ -324,14 +322,14 @@ impl<'surface> XdgV6TopLevel<'surface> {
         unsafe { (*self.toplevel).added }
     }
 
-    /// Get the client protocol request state.
-    pub fn next_state(&self) -> wlr_xdg_toplevel_v6_state {
-        unsafe { (*self.toplevel).next }
+    /// Get the pending client state.
+    pub fn client_pending_state(&self) -> wlr_xdg_toplevel_v6_state {
+        unsafe { (*self.toplevel).client_pending }
     }
 
-    /// Get the pending user configure request state.
-    pub fn pending_state(&self) -> wlr_xdg_toplevel_v6_state {
-        unsafe { (*self.toplevel).pending }
+    /// Get the pending server state.
+    pub fn server_pending_state(&self) -> wlr_xdg_toplevel_v6_state {
+        unsafe { (*self.toplevel).server_pending }
     }
 
     /// Get the current configure state.
