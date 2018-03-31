@@ -12,9 +12,8 @@ use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
 
-const CAT_STRIDE: i32 = 128;
-const CAT_WIDTH: i32 = 128;
-const CAT_HEIGHT: i32 = 128;
+const CAT_WIDTH: u32 = 128;
+const CAT_HEIGHT: u32 = 128;
 const CAT_DATA: &'static [u8] = include_bytes!("cat.data");
 
 /// Helper step by iterator, because `step_by` on `Range` is unstable.
@@ -168,14 +167,12 @@ fn main() {
     {
         let gles2 = &mut compositor.renderer.as_mut().unwrap();
         let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
-        compositor_data.cat_texture = gles2.create_texture().map(|mut cat_texture| {
-            cat_texture.upload_pixels(TextureFormat::ABGR8888,
-                                      CAT_STRIDE,
-                                      CAT_WIDTH,
-                                      CAT_HEIGHT,
-                                      CAT_DATA);
-            cat_texture
-        })
+        compositor_data.cat_texture =
+            gles2.create_texture_from_pixels(TextureFormat::ABGR8888.into(),
+                                             CAT_WIDTH * 4,
+                                             CAT_WIDTH,
+                                             CAT_HEIGHT,
+                                             CAT_DATA);
     }
     compositor.run();
 }
