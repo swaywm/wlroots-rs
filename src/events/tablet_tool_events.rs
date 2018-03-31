@@ -39,18 +39,11 @@ impl AxisEvent {
         unsafe { (*self.event).updated_axes }
     }
 
-    /// Gets the position of the event in mm.
+    /// Gets the position of the event.
     ///
     /// Return value is in (x, y) format.
     pub fn position(&self) -> (f64, f64) {
-        unsafe { ((*self.event).x_mm, (*self.event).y_mm) }
-    }
-
-    /// Gets the size of the touch event in mm.
-    ///
-    /// Return value is in (w, h) format.
-    pub fn size(&self) -> (f64, f64) {
-        unsafe { ((*self.event).width_mm, (*self.event).height_mm) }
+        unsafe { ((*self.event).x, (*self.event).y) }
     }
 
     pub fn pressure(&self) -> f64 {
@@ -90,14 +83,7 @@ impl ProximityEvent {
     ///
     /// Return value is in (x, y) format.
     pub fn position(&self) -> (f64, f64) {
-        unsafe { ((*self.event).x_mm, (*self.event).y_mm) }
-    }
-
-    /// Gets the size of the touch event in mm.
-    ///
-    /// Return value is in (w, h) format.
-    pub fn size(&self) -> (f64, f64) {
-        unsafe { ((*self.event).width_mm, (*self.event).height_mm) }
+        unsafe { ((*self.event).x, (*self.event).y) }
     }
 
     pub fn state(&self) -> wlr_tablet_tool_proximity_state {
@@ -118,14 +104,7 @@ impl TipEvent {
     ///
     /// Return value is in (x, y) format.
     pub fn position(&self) -> (f64, f64) {
-        unsafe { ((*self.event).x_mm, (*self.event).y_mm) }
-    }
-
-    /// Gets the size of the touch event in mm.
-    ///
-    /// Return value is in (w, h) format.
-    pub fn size(&self) -> (f64, f64) {
-        unsafe { ((*self.event).width_mm, (*self.event).height_mm) }
+        unsafe { ((*self.event).x, (*self.event).y) }
     }
 
     pub fn state(&self) -> wlr_tablet_tool_tip_state {

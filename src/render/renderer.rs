@@ -4,11 +4,10 @@ use libc::{c_float, c_int, c_void};
 
 use Output;
 use render::Texture;
-use wlroots_sys::{wl_shm_format, wlr_backend, wlr_render_ellipse_with_matrix, wlr_render_quad_with_matrix,
-                  wlr_texture_from_pixels,
-                  wlr_render_texture, wlr_render_texture_with_matrix,
+use wlroots_sys::{wl_shm_format, wlr_backend, wlr_render_ellipse_with_matrix,
+                  wlr_render_quad_with_matrix, wlr_render_texture, wlr_render_texture_with_matrix,
                   wlr_renderer, wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy,
-                  wlr_renderer_end, wlr_gles2_renderer_create};
+                  wlr_renderer_end, wlr_texture_from_pixels, wlr_gles2_renderer_create};
 
 /// A generic interface for rendering to the screen.
 ///
@@ -54,11 +53,22 @@ impl GenericRenderer {
     }
 
     /// Create a texture using this renderer.
-    pub fn create_texture_from_pixels(&mut self, format: wl_shm_format,
-                                      stride: u32, width: u32, height: u32,
+    pub fn create_texture_from_pixels(&mut self,
+                                      format: wl_shm_format,
+                                      stride: u32,
+                                      width: u32,
+                                      height: u32,
                                       // TODO Slice of u8? It's a void*, hmm
-                                      data: &[u8]) -> Option<Texture> {
-        unsafe { create_texture_from_pixels(self.renderer, format, stride, width, height, data.as_ptr() as _) }
+                                      data: &[u8])
+                                      -> Option<Texture> {
+        unsafe {
+            create_texture_from_pixels(self.renderer,
+                                       format,
+                                       stride,
+                                       width,
+                                       height,
+                                       data.as_ptr() as _)
+        }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_renderer {
@@ -138,10 +148,14 @@ impl<'output> Drop for Renderer<'output> {
     }
 }
 
-unsafe fn create_texture_from_pixels(renderer: *mut wlr_renderer, format: wl_shm_format,
-                                     stride: u32, width: u32, height: u32,
+unsafe fn create_texture_from_pixels(renderer: *mut wlr_renderer,
+                                     format: wl_shm_format,
+                                     stride: u32,
+                                     width: u32,
+                                     height: u32,
                                      // TODO Slice of u8? It's a void*, hmm
-                                     data: *const c_void) -> Option<Texture> {
+                                     data: *const c_void)
+                                     -> Option<Texture> {
     let texture = wlr_texture_from_pixels(renderer, format, stride, width, height, data);
     if texture.is_null() {
         None

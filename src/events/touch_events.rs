@@ -47,14 +47,7 @@ impl DownEvent {
     ///
     /// Return value is in (x, y) format.
     pub fn location(&self) -> (f64, f64) {
-        unsafe { ((*self.event).x_mm, (*self.event).y_mm) }
-    }
-
-    /// Gets the size of the touch event in mm.
-    ///
-    /// Return value is in (w, h) format.
-    pub fn size(&self) -> (f64, f64) {
-        unsafe { ((*self.event).width_mm, (*self.event).height_mm) }
+        unsafe { ((*self.event).x, (*self.event).y) }
     }
 }
 
@@ -94,14 +87,7 @@ impl MotionEvent {
     ///
     /// Return value is in (x, y) format.
     pub fn location(&self) -> (f64, f64) {
-        unsafe { ((*self.event).x_mm, (*self.event).y_mm) }
-    }
-
-    /// Gets the size of the touch event in mm.
-    ///
-    /// Return value is in (w, h) format.
-    pub fn size(&self) -> (f64, f64) {
-        unsafe { ((*self.event).width_mm, (*self.event).height_mm) }
+        unsafe { ((*self.event).x, (*self.event).y) }
     }
 }
 
