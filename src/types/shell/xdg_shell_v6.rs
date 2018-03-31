@@ -1,7 +1,6 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
-use std::marker::PhantomData;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -18,48 +17,72 @@ use utils::c_to_rust_string;
 
 /// Used internally to reclaim a handle from just a *mut wlr_xdg_surface_v6.
 struct XdgV6ShellSurfaceState {
-    handle: Weak<AtomicBool>
+    handle: Weak<AtomicBool>,
+    shell_state: Option<XdgV6ShellState>
 }
 
-pub struct XdgV6TopLevel<'surface> {
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct XdgV6TopLevel {
     shell_surface: *mut wlr_xdg_surface_v6,
-    toplevel: *mut wlr_xdg_toplevel_v6,
-    phantom: PhantomData<&'surface XdgV6ShellSurface>
+    toplevel: *mut wlr_xdg_toplevel_v6
 }
 
-pub struct XdgV6Popup<'surface> {
-    popup: *mut wlr_xdg_popup_v6,
-    phantom: PhantomData<&'surface XdgV6ShellSurface>
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct XdgV6Popup {
+    popup: *mut wlr_xdg_popup_v6
 }
 
 /// A tagged enum of the different roles used by the xdg shell.
 ///
 /// Uses the tag to disambiguate the union in `wlr_xdg_surface_v6`.
-pub enum XdgV6ShellState<'surface> {
-    TopLevel(XdgV6TopLevel<'surface>),
-    Popup(XdgV6Popup<'surface>)
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub enum XdgV6ShellState {
+    TopLevel(XdgV6TopLevel),
+    Popup(XdgV6Popup)
 }
 
 #[derive(Debug)]
 pub struct XdgV6ShellSurface {
     liveliness: Option<Rc<AtomicBool>>,
+    state: Option<XdgV6ShellState>,
     shell_surface: *mut wlr_xdg_surface_v6
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct XdgV6ShellSurfaceHandle {
+    state: Option<XdgV6ShellState>,
     handle: Weak<AtomicBool>,
     shell_surface: *mut wlr_xdg_surface_v6
 }
 
+impl Clone for XdgV6ShellSurfaceHandle {
+    fn clone(&self) -> Self {
+        let state = match self.state {
+            None => None,
+            Some(ref state) => Some(unsafe { state.clone() })
+        };
+        XdgV6ShellSurfaceHandle { state,
+                                  handle: self.handle.clone(),
+                                  shell_surface: self.shell_surface }
+    }
+}
+
 impl XdgV6ShellSurface {
-    pub(crate) unsafe fn new(shell_surface: *mut wlr_xdg_surface_v6) -> Self {
+    pub(crate) unsafe fn new(shell_surface: *mut wlr_xdg_surface_v6,
+                             state: Option<XdgV6ShellState>)
+                             -> Self {
         // TODO FIXME Free state in drop impl when Rc == 1
         (*shell_surface).data = ptr::null_mut();
         let liveliness = Rc::new(AtomicBool::new(false));
-        let state = Box::new(XdgV6ShellSurfaceState { handle: Rc::downgrade(&liveliness) });
-        (*shell_surface).data = Box::into_raw(state) as *mut _;
+        let shell_state =
+            Box::new(XdgV6ShellSurfaceState { handle: Rc::downgrade(&liveliness),
+                                              shell_state: match state {
+                                                  None => None,
+                                                  Some(ref state) => Some(state.clone())
+                                              } });
+        (*shell_surface).data = Box::into_raw(shell_state) as *mut _;
         XdgV6ShellSurface { liveliness: Some(liveliness),
+                            state,
                             shell_surface }
     }
 
@@ -69,6 +92,7 @@ impl XdgV6ShellSurface {
 
     unsafe fn from_handle(handle: &XdgV6ShellSurfaceHandle) -> Self {
         XdgV6ShellSurface { liveliness: None,
+                            state: handle.clone().state,
                             shell_surface: handle.as_ptr() }
     }
 
@@ -88,22 +112,8 @@ impl XdgV6ShellSurface {
         unsafe { (*self.shell_surface).role }
     }
 
-    pub fn state<'surface>(&'surface mut self) -> Option<XdgV6ShellState<'surface>> {
-        use self::wlr_xdg_surface_v6_role::*;
-        use XdgV6ShellState::*;
-        unsafe {
-            match (*self.shell_surface).role {
-                WLR_XDG_SURFACE_V6_ROLE_NONE => None,
-                WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL => {
-                    let toplevel = (*self.shell_surface).__bindgen_anon_1.toplevel;
-                    Some(TopLevel(XdgV6TopLevel::from_shell(self, toplevel)))
-                }
-                WLR_XDG_SURFACE_V6_ROLE_POPUP => {
-                    let popup = (*self.shell_surface).__bindgen_anon_1.popup;
-                    Some(Popup(XdgV6Popup::from_ptr(popup)))
-                }
-            }
-        }
+    pub fn state(&mut self) -> Option<&mut XdgV6ShellState> {
+        self.state.as_mut()
     }
 
     /// Determines if this XDG shell surface has been configured or not.
@@ -186,6 +196,10 @@ impl XdgV6ShellSurface {
         let arc = self.liveliness.as_ref()
                       .expect("Cannot dowgrade a previously upgraded XdgV6ShellSurfaceHandle");
         XdgV6ShellSurfaceHandle { handle: Rc::downgrade(arc),
+                                  state: match self.state {
+                                      None => None,
+                                      Some(ref state) => unsafe { Some(state.clone()) }
+                                  },
                                   shell_surface: self.shell_surface }
     }
 
@@ -210,7 +224,12 @@ impl XdgV6ShellSurfaceHandle {
             panic!("Cannot construct handle from a shell surface that has not been set up!");
         }
         let handle = (*data).handle.clone();
+        let state = match (*data).shell_state {
+            None => None,
+            Some(ref state) => Some(unsafe { state.clone() })
+        };
         XdgV6ShellSurfaceHandle { handle,
+                                  state,
                                   shell_surface }
     }
 
@@ -287,13 +306,12 @@ impl PartialEq for XdgV6ShellSurfaceHandle {
 
 impl Eq for XdgV6ShellSurfaceHandle {}
 
-impl<'surface> XdgV6TopLevel<'surface> {
-    unsafe fn from_shell(shell_surface: &'surface mut XdgV6ShellSurface,
-                         toplevel: *mut wlr_xdg_toplevel_v6)
-                         -> XdgV6TopLevel<'surface> {
-        XdgV6TopLevel { shell_surface: shell_surface.as_ptr(),
-                        toplevel,
-                        phantom: PhantomData }
+impl XdgV6TopLevel {
+    pub(crate) unsafe fn from_shell(shell_surface: *mut wlr_xdg_surface_v6,
+                                    toplevel: *mut wlr_xdg_toplevel_v6)
+                                    -> XdgV6TopLevel {
+        XdgV6TopLevel { shell_surface,
+                        toplevel }
     }
 
     /// Get the title associated with this XDG shell toplevel.
@@ -380,12 +398,15 @@ impl<'surface> XdgV6TopLevel<'surface> {
     pub fn close(&mut self) {
         unsafe { wlr_xdg_surface_v6_send_close(self.shell_surface) }
     }
+
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_xdg_toplevel_v6 {
+        self.toplevel
+    }
 }
 
-impl<'surface> XdgV6Popup<'surface> {
-    pub(crate) unsafe fn from_ptr(popup: *mut wlr_xdg_popup_v6) -> XdgV6Popup<'surface> {
-        XdgV6Popup { popup,
-                     phantom: PhantomData }
+impl XdgV6Popup {
+    pub(crate) unsafe fn from_ptr(popup: *mut wlr_xdg_popup_v6) -> XdgV6Popup {
+        XdgV6Popup { popup }
     }
 
     /// Get a handle to the base surface of the xdg tree.
@@ -409,5 +430,20 @@ impl<'surface> XdgV6Popup<'surface> {
 
     pub fn geometry(&self) -> Area {
         unsafe { Area((*self.popup).geometry) }
+    }
+}
+
+impl XdgV6ShellState {
+    /// Unsafe copy of the pointer
+    unsafe fn clone(&self) -> Self {
+        use XdgV6ShellState::*;
+        match *self {
+            TopLevel(XdgV6TopLevel { shell_surface,
+                                     toplevel }) => {
+                TopLevel(XdgV6TopLevel { shell_surface,
+                                         toplevel })
+            }
+            Popup(XdgV6Popup { popup }) => Popup(XdgV6Popup { popup })
+        }
     }
 }
