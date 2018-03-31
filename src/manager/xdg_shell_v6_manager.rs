@@ -48,18 +48,24 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                           shell_surface.ping_timeout_listener() as _);
             wl_signal_add(&mut (*data).events.new_popup as *mut _ as _,
                           shell_surface.new_popup_listener() as _);
-            wl_signal_add(&mut (*data).events.request_maximize as *mut _ as _,
-                          shell_surface.maximize_listener() as _);
-            wl_signal_add(&mut (*data).events.request_fullscreen as *mut _ as _,
-                          shell_surface.fullscreen_listener() as _);
-            wl_signal_add(&mut (*data).events.request_minimize as *mut _ as _,
-                          shell_surface.minimize_listener() as _);
-            wl_signal_add(&mut (*data).events.request_move as *mut _ as _,
-                          shell_surface.move_listener() as _);
-            wl_signal_add(&mut (*data).events.request_resize as *mut _ as _,
-                          shell_surface.resize_listener() as _);
-            wl_signal_add(&mut (*data).events.request_show_window_menu as *mut _ as _,
-                          shell_surface.show_window_menu_listener() as _);
+            // TODO We gotta costruct a top level / popup here and store it in the
+            // XdgV6Shell so that the listeners can work properly....
+            //
+            // FIXME Consider the possiblity of borrowing the specific type during an
+            // event fire? Aliasing possible? Not sure
+
+            //wl_signal_add(&mut (*data).events.request_maximize as *mut _ as _,
+            //              shell_surface.maximize_listener() as _);
+            //wl_signal_add(&mut (*data).events.request_fullscreen as *mut _ as _,
+            //              shell_surface.fullscreen_listener() as _);
+            //wl_signal_add(&mut (*data).events.request_minimize as *mut _ as _,
+            //              shell_surface.minimize_listener() as _);
+            //wl_signal_add(&mut (*data).events.request_move as *mut _ as _,
+            //              shell_surface.move_listener() as _);
+            //wl_signal_add(&mut (*data).events.request_resize as *mut _ as _,
+            //              shell_surface.resize_listener() as _);
+            //wl_signal_add(&mut (*data).events.request_show_window_menu as *mut _ as _,
+            //              shell_surface.show_window_menu_listener() as _);
             shells.push(shell_surface);
         }
     };
