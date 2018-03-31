@@ -4,10 +4,6 @@
 //! Start your [Compositor](struct.Compositor.html) by implementing an [input
 //! manager](manager/struct.InputManager.html) and an [output
 //! manager](manager/struct.OutputManager.html) on two separate structs.
-//!
-//! # Example
-//! ```rust,no_run
-//! ```
 
 #![allow(unused_unsafe)]
 #[macro_use]
