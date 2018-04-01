@@ -43,7 +43,8 @@ impl Into<Area> for Origin {
 
 impl Into<Origin> for Area {
     fn into(self) -> Origin {
-        Origin { x: self.0.x, y: self.0.y }
+        Origin { x: self.0.x,
+                 y: self.0.y }
     }
 }
 
@@ -74,7 +75,8 @@ impl Into<Area> for Size {
 
 impl Into<Size> for Area {
     fn into(self) -> Size {
-        Size { width: self.0.width, height: self.0.height }
+        Size { width: self.0.width,
+               height: self.0.height }
     }
 }
 
