@@ -4,7 +4,7 @@ use libc::{c_float, c_int, c_void};
 
 use Output;
 use render::Texture;
-use wlroots_sys::{wl_shm_format, wlr_backend, wlr_render_ellipse_with_matrix,
+use wlroots_sys::{wl_shm_format, wlr_backend, wlr_render_ellipse_with_matrix, wlr_backend_get_egl,
                   wlr_render_quad_with_matrix, wlr_render_texture, wlr_render_texture_with_matrix,
                   wlr_renderer, wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy,
                   wlr_renderer_end, wlr_texture_from_pixels, wlr_gles2_renderer_create};
@@ -32,7 +32,11 @@ pub struct Renderer<'output> {
 impl GenericRenderer {
     /// Make a gles2 renderer.
     pub(crate) unsafe fn gles2_renderer(backend: *mut wlr_backend) -> Self {
-        let renderer = wlr_gles2_renderer_create(backend);
+        let egl = wlr_backend_get_egl(backend);
+        if egl.is_null() {
+            panic!("EGL not available for this backend");
+        }
+        let renderer = wlr_gles2_renderer_create(egl);
         if renderer.is_null() {
             panic!("Could not construct GLES2 renderer");
         }
