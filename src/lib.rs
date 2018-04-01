@@ -46,7 +46,6 @@ pub use self::types::shell::*;
 pub use self::types::surface::*;
 pub use self::types::touch::*;
 pub use key_events::Key;
-pub use pointer_events::ButtonState;
 
 pub use self::render::{matrix_identity, matrix_multiply, matrix_rotate, matrix_scale,
                        matrix_texture, matrix_transform, matrix_translate, project_box,
