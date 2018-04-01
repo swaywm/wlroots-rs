@@ -88,6 +88,21 @@ impl Area {
                        height: size.height })
     }
 
+    /// Makes a new `Area` with width and height set to the values in the given
+    /// `Size`.
+    pub fn with_size(self, size: Size) -> Self {
+        Area(wlr_box { width: size.width,
+                       height: size.height,
+                       ..self.0 })
+    }
+
+    /// Makes a new `Area` with x and y set to the value in the given `Origin`.
+    pub fn with_origin(self, origin: Origin) -> Self {
+        Area(wlr_box { x: origin.x,
+                       y: origin.y,
+                       ..self.0 })
+    }
+
     /// Finds the closest point within the box to the given point.
     /// If the (x, y) point lies outside of the box, then it finds the closest
     /// corner and returns that.
