@@ -41,6 +41,12 @@ impl Into<Area> for Origin {
     }
 }
 
+impl Into<Origin> for Area {
+    fn into(self) -> Origin {
+        Origin { x: self.0.x, y: self.0.y }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Size {
     pub width: c_int,
@@ -63,6 +69,12 @@ impl Default for Size {
 impl Into<Area> for Size {
     fn into(self) -> Area {
         Area::new(Origin::default(), self)
+    }
+}
+
+impl Into<Size> for Area {
+    fn into(self) -> Size {
+        Size { width: self.0.width, height: self.0.height }
     }
 }
 
