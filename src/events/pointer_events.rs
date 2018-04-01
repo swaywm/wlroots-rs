@@ -2,22 +2,21 @@
 
 use types::input_device::InputDevice;
 
-use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button,
-                  wlr_event_pointer_motion, wlr_event_pointer_motion_absolute};
+use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion,
+                  wlr_event_pointer_motion_absolute};
 pub use wlroots_sys::wlr_button_state;
 
 // NOTE Taken from linux/input-event-codes.h
 // TODO Find a way to automatically parse and fetch from there.
-pub const BTN_MOUSE: u32   = 0x110;
-pub const BTN_LEFT: u32    = 0x110;
-pub const BTN_RIGHT: u32   = 0x111;
-pub const BTN_MIDDLE: u32  = 0x112;
-pub const BTN_SIDE: u32    = 0x113;
-pub const BTN_EXTRA: u32   = 0x114;
+pub const BTN_MOUSE: u32 = 0x110;
+pub const BTN_LEFT: u32 = 0x110;
+pub const BTN_RIGHT: u32 = 0x111;
+pub const BTN_MIDDLE: u32 = 0x112;
+pub const BTN_SIDE: u32 = 0x113;
+pub const BTN_EXTRA: u32 = 0x114;
 pub const BTN_FORWARD: u32 = 0x115;
-pub const BTN_BACK: u32    = 0x116;
-pub const BTN_TASK: u32    = 0x117;
-
+pub const BTN_BACK: u32 = 0x116;
+pub const BTN_TASK: u32 = 0x117;
 
 /// Event that triggers when the pointer device scrolls (e.g using a wheel
 // or in the case of a touchpad when you use two fingers to scroll).

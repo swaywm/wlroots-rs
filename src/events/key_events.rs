@@ -1,10 +1,9 @@
 use std::time::Duration;
 
-use wlroots_sys::{wlr_event_keyboard_key, xkb_keysym_t, xkb_state, xkb_state_key_get_syms};
+use wlroots_sys::{wlr_event_keyboard_key, wlr_key_state, xkb_keysym_t, xkb_state,
+                  xkb_state_key_get_syms};
 
 pub type Key = xkb_keysym_t;
-
-use types::keyboard::KeyState;
 
 #[derive(Debug)]
 pub struct KeyEvent {
@@ -37,7 +36,7 @@ impl KeyEvent {
     }
 
     /// Get the pressed/released state of the key.
-    pub fn key_state(&self) -> KeyState {
+    pub fn key_state(&self) -> wlr_key_state {
         unsafe { (*self.key).state }
     }
 

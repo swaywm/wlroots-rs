@@ -46,6 +46,7 @@ pub use self::types::shell::*;
 pub use self::types::surface::*;
 pub use self::types::touch::*;
 pub use key_events::Key;
+pub use wlroots_sys::{wlr_button_state, wlr_key_state, wlr_keyboard_modifiers};
 
 pub use self::render::{matrix_identity, matrix_multiply, matrix_rotate, matrix_scale,
                        matrix_texture, matrix_transform, matrix_translate, project_box,
