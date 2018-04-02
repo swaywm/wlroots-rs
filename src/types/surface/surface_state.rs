@@ -3,9 +3,9 @@
 use libc::c_int;
 use std::marker::PhantomData;
 
-use wlroots_sys::{wl_output_transform, wl_resource, wlr_surface_state, pixman_region32_t};
+use wlroots_sys::{wl_output_transform, wl_resource, wlr_surface_state};
 
-use Surface;
+use {PixmanRegion, Surface};
 
 #[derive(Debug)]
 #[repr(u32)]
@@ -118,19 +118,19 @@ impl<'surface> SurfaceState<'surface> {
         (*self.state).buffer
     }
 
-    pub unsafe fn surface_damage(&self) -> pixman_region32_t {
-        (*self.state).surface_damage
+    pub unsafe fn surface_damage(&self) -> PixmanRegion {
+        PixmanRegion { region: (*self.state).surface_damage }
     }
 
-    pub unsafe fn buffer_damage(&self) -> pixman_region32_t {
-        (*self.state).buffer_damage
+    pub unsafe fn buffer_damage(&self) -> PixmanRegion {
+        PixmanRegion { region: (*self.state).buffer_damage }
     }
 
-    pub unsafe fn opaque(&self) -> pixman_region32_t {
-        (*self.state).opaque
+    pub unsafe fn opaque(&self) -> PixmanRegion {
+        PixmanRegion { region: (*self.state).opaque }
     }
 
-    pub unsafe fn input(&self) -> pixman_region32_t {
-        (*self.state).input
+    pub unsafe fn input(&self) -> PixmanRegion {
+        PixmanRegion { region: (*self.state).input }
     }
 }

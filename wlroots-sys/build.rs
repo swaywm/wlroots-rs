@@ -22,6 +22,7 @@ fn main() {
         .whitelisted_type(r"^wlr_.*$")
         .whitelisted_type(r"^xkb_.*$")
         .whitelisted_type(r"^XKB_.*$")
+        .whitelisted_function(r"^_?pixman_.*$")
         .whitelisted_function(r"^_?wlr_.*$")
         .whitelisted_function(r"^xkb_.*$")
         .ctypes_prefix("libc")

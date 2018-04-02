@@ -90,7 +90,7 @@ impl OutputHandler for ExOutput {
         let ms = (seconds_delta * 1000.0) + nano_delta as f32 / 1000000.0;
         let seconds = ms / 1000.0;
         let transform_matrix = output.transform_matrix();
-        let mut renderer = renderer.render(output);
+        let mut renderer = renderer.render(output, None);
         let cat_texture = compositor_data.cat_texture.as_ref().unwrap();
         for y in StepRange(-128 + compositor_data.y_offs as i32, height, 128) {
             for x in StepRange(-128 + compositor_data.x_offs as i32, width, 128) {

@@ -2,6 +2,7 @@
 
 use std::{panic, ptr};
 use std::ffi::CStr;
+use std::mem::ManuallyDrop;
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -9,12 +10,12 @@ use std::time::Duration;
 use libc::{c_float, c_int};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wlr_output,
-                  wlr_output_effective_resolution, wlr_output_enable, wlr_output_get_gamma_size,
-                  wlr_output_make_current, wlr_output_mode, wlr_output_schedule_frame,
-                  wlr_output_set_custom_mode, wlr_output_set_fullscreen_surface,
-                  wlr_output_set_gamma, wlr_output_set_mode, wlr_output_set_position,
-                  wlr_output_set_scale, wlr_output_set_transform, wlr_output_swap_buffers,
-                  pixman_region32_t};
+                  wlr_output_damage, wlr_output_effective_resolution, wlr_output_enable,
+                  wlr_output_get_gamma_size, wlr_output_make_current, wlr_output_mode,
+                  wlr_output_schedule_frame, wlr_output_set_custom_mode,
+                  wlr_output_set_fullscreen_surface, wlr_output_set_gamma, wlr_output_set_mode,
+                  wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
+                  wlr_output_swap_buffers};
 
 use super::output_layout::OutputLayoutHandle;
 use super::output_mode::OutputMode;
@@ -24,10 +25,11 @@ use utils::c_to_rust_string;
 pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;
 
-use {Origin, Size, Surface, SurfaceHandle};
+use {Origin, OutputDamage, PixmanRegion, Size, Surface, SurfaceHandle};
 
 struct OutputState {
     handle: Weak<AtomicBool>,
+    damage: *mut wlr_output_damage,
     layout_handle: Option<OutputLayoutHandle>
 }
 
@@ -43,6 +45,8 @@ pub struct Output {
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `OutputHandle`.
     liveliness: Option<Rc<AtomicBool>>,
+    /// The tracker for damage on the output.
+    damage: ManuallyDrop<OutputDamage>,
     /// The output ptr that refers to this `Output`
     output: *mut wlr_output
 }
@@ -55,6 +59,8 @@ pub struct OutputHandle {
     /// When wlroots deallocates the pointer associated with this handle,
     /// this can no longer be used.
     handle: Weak<AtomicBool>,
+    /// The tracker for damage on the output.
+    damage: *mut wlr_output_damage,
     /// The output ptr that refers to this `Output`
     output: *mut wlr_output
 }
@@ -70,6 +76,7 @@ impl Output {
     /// with NLL, so if this is no longer necessary it should be removed asap.
     pub(crate) unsafe fn clone(&self) -> Output {
         Output { liveliness: self.liveliness.clone(),
+                 damage: ManuallyDrop::new(self.damage.clone()),
                  output: self.output }
     }
 
@@ -82,10 +89,13 @@ impl Output {
         (*output).data = ptr::null_mut();
         let liveliness = Rc::new(AtomicBool::new(false));
         let handle = Rc::downgrade(&liveliness);
+        let damage = ManuallyDrop::new(OutputDamage::new(output));
         let state = Box::new(OutputState { handle,
+                                           damage: damage.as_ptr(),
                                            layout_handle: None });
         (*output).data = Box::into_raw(state) as *mut _;
         Output { liveliness: Some(liveliness),
+                 damage,
                  output }
     }
 
@@ -313,7 +323,7 @@ impl Output {
     /// do your rendering, and then call this function.
     pub unsafe fn swap_buffers(&mut self,
                                when: Option<Duration>,
-                               damage: Option<*mut pixman_region32_t>)
+                               damage: Option<&mut PixmanRegion>)
                                -> bool {
         let when = when.map(|duration| {
                                 timespec { tv_sec: duration.as_secs() as i64,
@@ -321,7 +331,10 @@ impl Output {
                             });
         let when_ptr =
             when.map(|mut duration| &mut duration as *mut _).unwrap_or_else(|| ptr::null_mut());
-        let damage = damage.unwrap_or_else(|| ptr::null_mut());
+        let damage = match damage {
+            Some(region) => &mut region.region as *mut _,
+            None => ptr::null_mut()
+        };
         wlr_output_swap_buffers(self.output, when_ptr, damage)
     }
 
@@ -396,6 +409,10 @@ impl Output {
         unsafe { wlr_output_set_scale(self.output, scale) }
     }
 
+    pub fn damage(&mut self) -> &mut OutputDamage {
+        &mut *self.damage
+    }
+
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
     }
@@ -409,11 +426,13 @@ impl Output {
         let arc = self.liveliness.as_ref()
                       .expect("Cannot downgrade a previously upgraded OutputHandle");
         OutputHandle { handle: Rc::downgrade(arc),
+                       damage: unsafe { self.damage.as_ptr() },
                        output: self.output }
     }
 
     unsafe fn from_handle(handle: &OutputHandle) -> Self {
         Output { liveliness: None,
+                 damage: ManuallyDrop::new(OutputDamage::from_ptr(handle.damage)),
                  output: handle.as_ptr() }
     }
 
@@ -439,6 +458,9 @@ impl Drop for Output {
             Some(ref liveliness) => {
                 if Rc::strong_count(liveliness) == 1 {
                     wlr_log!(L_DEBUG, "Dropped output {:p}", self.output);
+                    unsafe {
+                        ManuallyDrop::drop(&mut self.damage);
+                    }
                     let weak_count = Rc::weak_count(liveliness);
                     if weak_count > 0 {
                         wlr_log!(L_DEBUG,
@@ -454,6 +476,7 @@ impl Drop for Output {
         // TODO Move back up in the some after NLL is a thing.
         unsafe {
             self.remove_from_output_layout();
+            let _ = Box::from_raw((*self.output).data as *mut OutputState);
         }
     }
 }
@@ -464,8 +487,11 @@ impl OutputHandle {
     pub(crate) unsafe fn from_ptr(output: *mut wlr_output) -> Self {
         let data = Box::from_raw((*output).data as *mut OutputState);
         let handle = data.handle.clone();
+        let damage = data.damage;
         (*output).data = Box::into_raw(data) as *mut _;
-        OutputHandle { handle, output }
+        OutputHandle { handle,
+                       output,
+                       damage }
     }
 
     /// Upgrades the output handle to a reference to the backing `Output`.

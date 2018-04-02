@@ -14,8 +14,7 @@ pub trait XdgV6ShellManagerHandler {
     /// Callback that is triggered when a new XDG shell v6 surface appears.
     fn new_surface(&mut self,
                    &mut Compositor,
-                   &mut XdgV6ShellSurface,
-                   &mut Surface)
+                   &mut XdgV6ShellSurface)
                    -> Option<Box<XdgV6ShellHandler>>;
 
     /// Callback that is triggered when an XDG shell v6 surface is destroyed.
@@ -30,7 +29,7 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
         let data = data as *mut wlr_xdg_surface_v6;
         wlr_log!(L_DEBUG, "New xdg_shell_v6_surface request {:p}", data);
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut surface = Surface::new((*data).surface);
+        let surface = Surface::new((*data).surface);
         let state = unsafe {
             match (*data).role {
                 WLR_XDG_SURFACE_V6_ROLE_NONE => None,
@@ -45,10 +44,8 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
             }
         };
         let mut shell_surface = XdgV6ShellSurface::new(data, state);
-        surface.set_lock(true);
         shell_surface.set_lock(true);
-        let new_surface_res = manager.new_surface(compositor, &mut shell_surface, &mut surface);
-        surface.set_lock(false);
+        let new_surface_res = manager.new_surface(compositor, &mut shell_surface);
         shell_surface.set_lock(false);
         if let Some(shell_surface_handler) = new_surface_res {
 
@@ -60,6 +57,10 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
             wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
                           remove_listener);
 
+            // Hook the commit signal from the surface into the shell handler.
+            wl_signal_add(&mut (*(*data).surface).events.commit as *mut _ as _,
+                          shell_surface.commit_listener() as _);
+
             wl_signal_add(&mut (*data).events.ping_timeout as *mut _ as _,
                           shell_surface.ping_timeout_listener() as _);
             wl_signal_add(&mut (*data).events.new_popup as *mut _ as _,
@@ -69,18 +70,18 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                 Some(&mut TopLevel(ref mut toplevel)) => Some((*toplevel.as_ptr()).events)
             };
             if let Some(mut events) = events {
-                    wl_signal_add(&mut events.request_maximize as *mut _ as _,
-                                  shell_surface.maximize_listener() as _);
-                    wl_signal_add(&mut events.request_fullscreen as *mut _ as _,
-                                  shell_surface.fullscreen_listener() as _);
-                    wl_signal_add(&mut events.request_minimize as *mut _ as _,
-                                  shell_surface.minimize_listener() as _);
-                    wl_signal_add(&mut events.request_move as *mut _ as _,
-                                  shell_surface.move_listener() as _);
-                    wl_signal_add(&mut events.request_resize as *mut _ as _,
-                                  shell_surface.resize_listener() as _);
-                    wl_signal_add(&mut events.request_show_window_menu as *mut _ as _,
-                                  shell_surface.show_window_menu_listener() as _);
+                wl_signal_add(&mut events.request_maximize as *mut _ as _,
+                              shell_surface.maximize_listener() as _);
+                wl_signal_add(&mut events.request_fullscreen as *mut _ as _,
+                              shell_surface.fullscreen_listener() as _);
+                wl_signal_add(&mut events.request_minimize as *mut _ as _,
+                              shell_surface.minimize_listener() as _);
+                wl_signal_add(&mut events.request_move as *mut _ as _,
+                              shell_surface.move_listener() as _);
+                wl_signal_add(&mut events.request_resize as *mut _ as _,
+                              shell_surface.resize_listener() as _);
+                wl_signal_add(&mut events.request_show_window_menu as *mut _ as _,
+                              shell_surface.show_window_menu_listener() as _);
             }
 
             shells.push(shell_surface);
@@ -101,6 +102,9 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
         }
         if let Some(index) = shells.iter().position(|shell| shell.surface_ptr() == data) {
             let mut removed_shell = shells.remove(index);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*removed_shell.commit_listener()).link as *mut _ as _);
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
                           &mut (*removed_shell.ping_timeout_listener()).link as *mut _ as _);

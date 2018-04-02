@@ -10,7 +10,11 @@ use xdg_shell_v6_events::{MoveEvent, ResizeEvent, SetFullscreenEvent, ShowWindow
 
 /// Handles events from the client XDG v6 shells.
 pub trait XdgV6ShellHandler {
+    /// Called when the surface recieve a request event.
+    fn on_commit(&mut self, &mut Compositor, &mut Surface, &mut XdgV6ShellSurface) {}
+
     /// Called when the wayland shell is destroyed (e.g by the user)
+
     fn destroy(&mut self, &mut Compositor, &mut Surface, &mut XdgV6ShellSurface) {}
 
     /// Called when the ping request timed out.
@@ -66,6 +70,15 @@ pub trait XdgV6ShellHandler {
 }
 
 wayland_listener!(XdgV6Shell, (XdgV6ShellSurface, Surface, Box<XdgV6ShellHandler>), [
+    commit_listener => commit_notify: |this: &mut XdgV6Shell, _data: *mut libc::c_void,| unsafe {
+        let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
+        let compositor = &mut *COMPOSITOR_PTR;
+        shell_surface.set_lock(true);
+        surface.set_lock(true);
+        manager.on_commit(compositor, surface, shell_surface);
+        shell_surface.set_lock(false);
+        surface.set_lock(false);
+    };
     ping_timeout_listener => ping_timeout_notify: |this: &mut XdgV6Shell,
                                                    _data: *mut libc::c_void,|
     unsafe {

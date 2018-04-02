@@ -8,29 +8,29 @@ use std::{fmt, time::Duration};
 use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_destroy,
-                  wlr_seat_keyboard_clear_focus, wlr_seat_keyboard_end_grab,
-                  wlr_seat_keyboard_enter, wlr_seat_keyboard_has_grab,
+                  wlr_seat_get_keyboard, wlr_seat_keyboard_clear_focus,
+                  wlr_seat_keyboard_end_grab, wlr_seat_keyboard_enter, wlr_seat_keyboard_has_grab,
                   wlr_seat_keyboard_notify_enter, wlr_seat_keyboard_notify_key,
                   wlr_seat_keyboard_notify_modifiers, wlr_seat_keyboard_send_key,
                   wlr_seat_keyboard_send_modifiers, wlr_seat_keyboard_start_grab,
                   wlr_seat_pointer_clear_focus, wlr_seat_pointer_end_grab, wlr_seat_pointer_enter,
                   wlr_seat_pointer_has_grab, wlr_seat_pointer_notify_axis,
                   wlr_seat_pointer_notify_button, wlr_seat_pointer_notify_enter,
-                  wlr_seat_pointer_notify_motion, wlr_seat_pointer_send_axis,
-                  wlr_seat_pointer_send_button, wlr_seat_pointer_send_motion,
-                  wlr_seat_pointer_start_grab, wlr_seat_pointer_surface_has_focus,
-                  wlr_seat_set_capabilities, wlr_seat_set_keyboard, wlr_seat_set_name,
-                  wlr_seat_touch_end_grab, wlr_seat_touch_get_point, wlr_seat_touch_has_grab,
-                  wlr_seat_touch_notify_down, wlr_seat_touch_notify_motion,
-                  wlr_seat_touch_notify_up, wlr_seat_touch_num_points,
-                  wlr_seat_touch_point_clear_focus, wlr_seat_touch_point_focus,
-                  wlr_seat_touch_send_down, wlr_seat_touch_send_motion, wlr_seat_touch_send_up,
-                  wlr_seat_touch_start_grab};
+                  wlr_seat_pointer_notify_motion, wlr_seat_pointer_request_set_cursor_event,
+                  wlr_seat_pointer_send_axis, wlr_seat_pointer_send_button,
+                  wlr_seat_pointer_send_motion, wlr_seat_pointer_start_grab,
+                  wlr_seat_pointer_surface_has_focus, wlr_seat_set_capabilities,
+                  wlr_seat_set_keyboard, wlr_seat_set_name, wlr_seat_touch_end_grab,
+                  wlr_seat_touch_get_point, wlr_seat_touch_has_grab, wlr_seat_touch_notify_down,
+                  wlr_seat_touch_notify_motion, wlr_seat_touch_notify_up,
+                  wlr_seat_touch_num_points, wlr_seat_touch_point_clear_focus,
+                  wlr_seat_touch_point_focus, wlr_seat_touch_send_down,
+                  wlr_seat_touch_send_motion, wlr_seat_touch_send_up, wlr_seat_touch_start_grab};
 pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
-use {wlr_keyboard_modifiers, Compositor, InputDevice, KeyboardGrab, PointerGrab, SeatId, Surface,
-     TouchGrab, TouchId, TouchPoint};
+use {wlr_keyboard_modifiers, Compositor, InputDevice, KeyboardGrab, KeyboardHandle, PointerGrab,
+     SeatId, Surface, TouchGrab, TouchId, TouchPoint, events::seat_events::SetCursorEvent};
 use compositor::COMPOSITOR_PTR;
 use utils::{c_to_rust_string, safe_as_cstring};
 use utils::ToMS;
@@ -54,8 +54,10 @@ pub trait SeatHandler {
     /// Callback triggered when a client has ended a touch grab.
     fn touch_released(&mut self, &mut Compositor, &mut Seat, &mut TouchGrab) {}
 
-    /* TODO FIXME wlr_seat_pointer_request_set_cursor_event */
-    fn cursor_set(&mut self, &mut Compositor, &mut Seat) {}
+    /// Callback triggered when a client sets the cursor for this seat.
+    ///
+    /// E.g this happens when the seat enters a surface.
+    fn cursor_set(&mut self, &mut Compositor, &mut Seat, &mut SetCursorEvent) {}
 
     /// The seat was provided with a selection by the client.
     fn received_selection(&mut self, &mut Compositor, &mut Seat) {}
@@ -137,12 +139,14 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         }
     };
     request_set_cursor_listener => request_set_cursor_notify: |this: &mut Seat,
-    _event: *mut libc::c_void,|
+    event_ptr: *mut libc::c_void,|
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+        let event_ptr = event_ptr as *mut wlr_seat_pointer_request_set_cursor_event;
+        let mut event = SetCursorEvent::from_ptr(event_ptr);
         if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            handler.cursor_set(compositor, &mut seat);
+            handler.cursor_set(compositor, &mut seat, &mut event);
             compositor.seats.insert(seat);
         }
     };
@@ -378,7 +382,7 @@ impl Seat {
     }
 
     /// Set this keyboard as the active keyboard for the seat.
-    pub fn set_keyboard(&self, dev: InputDevice) {
+    pub fn set_keyboard(&self, dev: &InputDevice) {
         unsafe { wlr_seat_set_keyboard(self.data.0, dev.as_ptr()) }
     }
 
@@ -396,6 +400,36 @@ impl Seat {
     /// Compositors should use `Seat::keyboard_notify_modifiers()` to respect any keyboard grabs.
     pub fn keyboard_send_modifiers(&self, modifiers: &mut wlr_keyboard_modifiers) {
         unsafe { wlr_seat_keyboard_send_modifiers(self.data.0, modifiers) }
+    }
+
+    /// Get the keyboard associated with this Seat, if there is one.
+    pub fn get_keyboard(&self) -> Option<KeyboardHandle> {
+        unsafe {
+            let keyboard_ptr = wlr_seat_get_keyboard(self.data.0);
+            if keyboard_ptr.is_null() {
+                None
+            } else {
+                Some(KeyboardHandle::from_ptr(keyboard_ptr))
+            }
+        }
+    }
+
+    /// Notify the seat that the keyboard focus has changed and request it to be the
+    /// focused surface for this keyboard.
+    ///
+    /// Defers to any current grab of the seat's keyboard.
+    pub fn keyboard_notify_enter(&self,
+                                 surface: &mut Surface,
+                                 keycodes: &mut [Keycode],
+                                 modifiers: &mut wlr_keyboard_modifiers) {
+        let keycodes_length = keycodes.len();
+        unsafe {
+            wlr_seat_keyboard_notify_enter(self.data.0,
+                                           surface.as_ptr(),
+                                           keycodes.as_mut_ptr(),
+                                           keycodes_length,
+                                           modifiers)
+        }
     }
 
     /// Send a keyboard enter event to the given surface and consider it to be the
@@ -447,24 +481,6 @@ impl Seat {
     /// Defers to any keyboard grabs.
     pub fn keyboard_notify_modifiers(&self, modifiers: &mut wlr_keyboard_modifiers) {
         unsafe { wlr_seat_keyboard_notify_modifiers(self.data.0, modifiers) }
-    }
-
-    /// Notify the seat that the keyboard focus has changed and request it to be the
-    /// focused surface for this keyboard.
-    ///
-    /// Defers to any current grab of the seat's keyboard.
-    pub fn keyboard_notify_enter(&self,
-                                 surface: &mut Surface,
-                                 keycodes: &mut [Keycode],
-                                 modifiers: &mut wlr_keyboard_modifiers) {
-        let keycodes_length = keycodes.len();
-        unsafe {
-            wlr_seat_keyboard_notify_enter(self.data.0,
-                                           surface.as_ptr(),
-                                           keycodes.as_mut_ptr(),
-                                           keycodes_length,
-                                           modifiers)
-        }
     }
 
     // TODO Wrapper type for Key and State

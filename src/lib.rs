@@ -27,7 +27,7 @@ pub mod render;
 pub mod utils;
 
 pub use self::compositor::{terminate, Compositor, CompositorBuilder};
-pub use self::events::{key_events, pointer_events, touch_events, wl_shell_events,
+pub use self::events::{key_events, pointer_events, seat_events, touch_events, wl_shell_events,
                        xdg_shell_v6_events};
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
                         OutputHandler, OutputManagerHandler, PointerHandler, TouchHandler,
@@ -39,6 +39,7 @@ pub use self::types::data_device::*;
 pub use self::types::input_device::*;
 pub use self::types::keyboard::*;
 pub use self::types::output::output::*;
+pub use self::types::output::output_damage::*;
 pub use self::types::output::output_layout::*;
 pub use self::types::pointer::*;
 pub use self::types::seat::*;
