@@ -47,3 +47,4 @@
 #include <xcursor.h>
 #include <xwayland.h>
 #include <xkbcommon/xkbcommon.h>
+#include <pixman.h>
