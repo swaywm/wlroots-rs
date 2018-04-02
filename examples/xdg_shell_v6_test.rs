@@ -5,20 +5,23 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
-use wlroots::{project_box, Area, Compositor, CompositorBuilder, CursorBuilder, CursorHandler,
-              CursorId, InputManagerHandler, Keyboard, KeyboardHandler, Origin, Output,
-              OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat, SeatHandler, SeatId,
-              Size, Surface, XCursorTheme, XdgV6ShellHandler, XdgV6ShellManagerHandler,
-              XdgV6ShellSurface, XdgV6ShellSurfaceHandle};
+use wlroots::{project_box, Area, Capability, Compositor, CompositorBuilder, CursorBuilder,
+              CursorHandler, CursorId, InputManagerHandler, Keyboard, KeyboardGrab,
+              KeyboardHandle, KeyboardHandler, Origin, Output, OutputBuilder, OutputBuilderResult,
+              OutputHandler, OutputLayout, OutputManagerHandler, Pointer, PointerHandler,
+              Renderer, Seat, SeatHandler, SeatId, Size, Surface, XCursorTheme, XdgV6ShellHandler,
+              XdgV6ShellManagerHandler, XdgV6ShellState, XdgV6ShellSurface,
+              XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_PRESSED;
-use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
+use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
+use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 
 struct State {
     xcursor_theme: XCursorTheme,
+    keyboard: Option<KeyboardHandle>,
     layout: OutputLayout,
     cursor_id: CursorId,
     shells: Vec<XdgV6ShellSurfaceHandle>,
@@ -30,6 +33,7 @@ impl State {
         State { xcursor_theme,
                 layout,
                 cursor_id,
+                keyboard: None,
                 seat_id: None,
                 shells: vec![] }
     }
@@ -43,25 +47,47 @@ struct CursorEx;
 
 impl CursorHandler for CursorEx {}
 
-impl SeatHandler for SeatHandlerEx {
-    // TODO
-}
+impl SeatHandler for SeatHandlerEx {}
 
 struct XdgV6ShellHandlerEx;
 struct XdgV6ShellManager;
 
-impl XdgV6ShellHandler for XdgV6ShellHandlerEx {}
+impl XdgV6ShellHandler for XdgV6ShellHandlerEx {
+    fn on_commit(&mut self,
+                 compositor: &mut Compositor,
+                 surface: &mut Surface,
+                 shell: &mut XdgV6ShellSurface) {
+    }
+}
 impl XdgV6ShellManagerHandler for XdgV6ShellManager {
     fn new_surface(&mut self,
                    compositor: &mut Compositor,
                    shell: &mut XdgV6ShellSurface,
-                   _: &mut Surface)
+                   surface: &mut Surface)
                    -> Option<Box<XdgV6ShellHandler>> {
-        let state: &mut State = compositor.into();
-        state.shells.push(shell.weak_reference());
-        for (mut output, _) in state.layout.outputs() {
-            output.run(|output| output.schedule_frame()).unwrap();
+        shell.ping();
+        match shell.state() {
+            Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
+                toplevel.set_activated(true);
+            }
+            _ => {}
         }
+        let seat_id = {
+            let state: &mut State = compositor.into();
+            state.shells.push(shell.weak_reference());
+            for (mut output, _) in state.layout.outputs() {
+                output.run(|output| output.schedule_frame()).unwrap();
+            }
+            state.seat_id.unwrap()
+        };
+        let seat = compositor.seats.get(seat_id).expect("invalid seat id");
+        let mut keyboard = seat.get_keyboard().expect("Seat did not have a keyboard set");
+        keyboard.run(|keyboard| {
+                         seat.keyboard_notify_enter(surface,
+                                                    &mut keyboard.keycodes(),
+                                                    &mut keyboard.get_modifier_masks())
+                     })
+                .unwrap();
         Some(Box::new(XdgV6ShellHandlerEx))
     }
 
@@ -114,12 +140,21 @@ impl KeyboardHandler for ExKeyboardHandler {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
                 compositor.terminate()
-            } else {
-                thread::spawn(move || {
-                                  Command::new("weston-terminal").output().unwrap();
-                              });
+            } else if key_event.key_state() == WLR_KEY_PRESSED {
+                if key == KEY_F1 {
+                    thread::spawn(move || {
+                                      Command::new("weston-terminal").output().unwrap();
+                                  });
+                    return
+                }
             }
         }
+        let state: &mut State = compositor.data.downcast_mut().unwrap();
+        let seat_id = state.seat_id.unwrap();
+        let seat = compositor.seats.get(seat_id).expect("invalid seat id");
+        seat.keyboard_notify_key(key_event.time_msec(),
+                                 key_event.keycode(),
+                                 key_event.key_state() as u32);
     }
 }
 
@@ -131,12 +166,6 @@ impl PointerHandler for ExPointer {
              .cursor(state.cursor_id)
              .unwrap()
              .move_to(event.device(), delta_x, delta_y);
-    }
-
-    fn on_button(&mut self, _: &mut Compositor, _: &mut Pointer, event: &ButtonEvent) {
-        if event.state() == WLR_BUTTON_PRESSED {
-            wlr_log!(L_DEBUG, "Clicking pointer {}", event.button())
-        }
     }
 }
 
@@ -167,6 +196,7 @@ impl InputManagerHandler for InputManager {
                       -> Option<Box<KeyboardHandler>> {
         let seat_id = {
             let state: &mut State = compositor.into();
+            state.keyboard = Some(keyboard.weak_reference());
             state.seat_id.unwrap()
         };
         let seat = compositor.seats.get(seat_id).expect("Invalid seat id");
@@ -190,8 +220,12 @@ fn main() {
                                 .build_auto(State::new(xcursor_theme, layout, cursor_id));
 
     {
-        let seat_id = Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
-            .expect("Could not allocate the global seat").id();
+        let seat_id = {
+            let seat = Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
+                .expect("Could not allocate the global seat");
+            seat.set_capabilities(Capability::all());
+            seat.id()
+        };
         let state: &mut State = (&mut compositor).into();
         state.seat_id = Some(seat_id);
     }
