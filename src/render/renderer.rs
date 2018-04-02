@@ -1,13 +1,16 @@
 //! TODO Documentation
 
+use std::time::Duration;
+
 use libc::{c_float, c_int, c_void};
 
-use Output;
+use {Output, PixmanRegion};
 use render::Texture;
-use wlroots_sys::{wl_shm_format, wlr_backend, wlr_backend_get_egl, wlr_render_ellipse_with_matrix,
-                  wlr_render_quad_with_matrix, wlr_render_texture, wlr_render_texture_with_matrix,
-                  wlr_renderer, wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy,
-                  wlr_renderer_end, wlr_texture_from_pixels, wlr_gles2_renderer_create};
+use wlroots_sys::{timespec, wl_shm_format, wlr_backend, wlr_backend_get_egl,
+                  wlr_render_ellipse_with_matrix, wlr_render_quad_with_matrix, wlr_render_texture,
+                  wlr_render_texture_with_matrix, wlr_renderer, wlr_renderer_begin,
+                  wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
+                  wlr_texture_from_pixels, wlr_gles2_renderer_create};
 
 /// A generic interface for rendering to the screen.
 ///
@@ -26,6 +29,7 @@ pub struct GenericRenderer {
 #[derive(Debug)]
 pub struct Renderer<'output> {
     renderer: *mut wlr_renderer,
+    pub damage: Option<(PixmanRegion, Duration)>,
     pub output: &'output mut Output
 }
 
@@ -46,12 +50,16 @@ impl GenericRenderer {
     /// Make the `Renderer` state machine type.
     ///
     /// This automatically makes the given output the current output.
-    pub fn render<'output>(&mut self, output: &'output mut Output) -> Renderer<'output> {
+    pub fn render<'output>(&mut self,
+                           output: &'output mut Output,
+                           damage: Option<(PixmanRegion, Duration)>)
+                           -> Renderer<'output> {
         unsafe {
             output.make_current();
             let (width, height) = output.dimensions();
             wlr_renderer_begin(self.renderer, width, height);
             Renderer { renderer: self.renderer,
+                       damage,
                        output }
         }
     }
@@ -145,8 +153,11 @@ impl<'output> Drop for Renderer<'output> {
     fn drop(&mut self) {
         unsafe {
             wlr_renderer_end(self.renderer);
-            // TODO What about damage tracking?
-            self.output.swap_buffers(None, None);
+            if let Some((mut damage, when)) = self.damage.take() {
+                self.output.swap_buffers(Some(when), Some(&mut damage));
+            } else {
+                self.output.swap_buffers(None, None);
+            }
         }
     }
 }
