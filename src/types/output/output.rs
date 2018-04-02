@@ -15,7 +15,7 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
                   wlr_output_schedule_frame, wlr_output_set_custom_mode,
                   wlr_output_set_fullscreen_surface, wlr_output_set_gamma, wlr_output_set_mode,
                   wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
-                  wlr_output_swap_buffers, pixman_region32_t};
+                  wlr_output_swap_buffers};
 
 use super::output_layout::OutputLayoutHandle;
 use super::output_mode::OutputMode;
@@ -25,7 +25,7 @@ use utils::c_to_rust_string;
 pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;
 
-use {Origin, OutputDamage, Size, Surface, SurfaceHandle};
+use {Origin, OutputDamage, PixmanRegion, Size, Surface, SurfaceHandle};
 
 struct OutputState {
     handle: Weak<AtomicBool>,
@@ -323,7 +323,7 @@ impl Output {
     /// do your rendering, and then call this function.
     pub unsafe fn swap_buffers(&mut self,
                                when: Option<Duration>,
-                               damage: Option<*mut pixman_region32_t>)
+                               damage: Option<&mut PixmanRegion>)
                                -> bool {
         let when = when.map(|duration| {
                                 timespec { tv_sec: duration.as_secs() as i64,
@@ -331,7 +331,10 @@ impl Output {
                             });
         let when_ptr =
             when.map(|mut duration| &mut duration as *mut _).unwrap_or_else(|| ptr::null_mut());
-        let damage = damage.unwrap_or_else(|| ptr::null_mut());
+        let damage = match damage {
+            Some(region) => &mut region.region as *mut _,
+            None => ptr::null_mut()
+        };
         wlr_output_swap_buffers(self.output, when_ptr, damage)
     }
 

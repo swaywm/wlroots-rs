@@ -1,11 +1,35 @@
-use std::{ptr, time::Duration};
+use std::{mem, ptr, time::Duration};
 use wlroots_sys::{timespec, wlr_output, wlr_output_damage, wlr_output_damage_add,
                   wlr_output_damage_add_box, wlr_output_damage_add_whole,
                   wlr_output_damage_create, wlr_output_damage_destroy,
                   wlr_output_damage_make_current, wlr_output_damage_swap_buffers,
-                  pixman_region32_t};
+                  pixman_region32_fini, pixman_region32_init, pixman_region32_t};
 
 use Area;
+
+/// A pixman region, used for damage tracking.
+pub struct PixmanRegion {
+    pub region: pixman_region32_t
+}
+
+impl PixmanRegion {
+    /// Make a new pixman region.
+    pub fn new() -> Self {
+        unsafe {
+            // NOTE Rational for uninitialized memory:
+            // We are automatically filling it in with pixman_region32_init.
+            let mut region = mem::uninitialized();
+            pixman_region32_init(&mut region);
+            PixmanRegion { region }
+        }
+    }
+}
+
+impl Drop for PixmanRegion {
+    fn drop(&mut self) {
+        unsafe { pixman_region32_fini(&mut self.region) }
+    }
+}
 
 #[derive(Debug)]
 /// Tracks damage for an output.
@@ -59,10 +83,13 @@ impl OutputDamage {
     /// Returns `true` if `wlr_output_damage_swap_buffers` needs to be called.
     ///
     ///The region of the output that needs to be repainted is added to `damage`.
-    pub fn make_current(&mut self, damage: &mut Option<*mut pixman_region32_t>) -> bool {
+    pub fn make_current(&mut self, damage: Option<&mut PixmanRegion>) -> bool {
         unsafe {
             let mut res = false;
-            let damage = damage.unwrap_or_else(|| ptr::null_mut());
+            let damage = match damage {
+                Some(region) => &mut region.region as *mut _,
+                None => ptr::null_mut()
+            };
             wlr_output_damage_make_current(self.damage, &mut res, damage);
             res
         }
@@ -75,7 +102,7 @@ impl OutputDamage {
     /// Swapping buffers schedules a `frame` event.
     pub fn swap_buffers(&mut self,
                         when: Option<Duration>,
-                        damage: Option<*mut pixman_region32_t>)
+                        damage: Option<&mut PixmanRegion>)
                         -> bool {
         unsafe {
             let when = when.map(|duration| {
@@ -84,15 +111,18 @@ impl OutputDamage {
                                 });
             let when_ptr =
                 when.map(|mut duration| &mut duration as *mut _).unwrap_or_else(|| ptr::null_mut());
-            let damage = damage.unwrap_or_else(|| ptr::null_mut());
+            let damage = match damage {
+                Some(region) => &mut region.region as *mut _,
+                None => ptr::null_mut()
+            };
             wlr_output_damage_swap_buffers(self.damage, when_ptr, damage)
         }
     }
 
     /// Accumulates damage and schedules a `frame` event.
-    pub fn add(&mut self, damage: *mut pixman_region32_t) {
+    pub fn add(&mut self, damage: &mut PixmanRegion) {
         unsafe {
-            wlr_output_damage_add(self.damage, damage);
+            wlr_output_damage_add(self.damage, &mut damage.region);
         }
     }
 
