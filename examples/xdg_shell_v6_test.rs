@@ -62,8 +62,7 @@ impl XdgV6ShellHandler for XdgV6ShellHandlerEx {
 impl XdgV6ShellManagerHandler for XdgV6ShellManager {
     fn new_surface(&mut self,
                    compositor: &mut Compositor,
-                   shell: &mut XdgV6ShellSurface,
-                   surface: &mut Surface)
+                   shell: &mut XdgV6ShellSurface)
                    -> Option<Box<XdgV6ShellHandler>> {
         shell.ping();
         match shell.state() {
@@ -82,12 +81,6 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
         };
         let seat = compositor.seats.get(seat_id).expect("invalid seat id");
         let mut keyboard = seat.get_keyboard().expect("Seat did not have a keyboard set");
-        keyboard.run(|keyboard| {
-                         seat.keyboard_notify_enter(surface,
-                                                    &mut keyboard.keycodes(),
-                                                    &mut keyboard.get_modifier_masks())
-                     })
-                .unwrap();
         Some(Box::new(XdgV6ShellHandlerEx))
     }
 
