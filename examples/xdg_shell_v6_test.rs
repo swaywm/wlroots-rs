@@ -171,7 +171,7 @@ impl OutputHandler for ExOutput {
         let renderer = compositor.renderer
                                  .as_mut()
                                  .expect("Compositor was not loaded with a renderer");
-        render_shells(state, &mut renderer.render(output));
+        render_shells(state, &mut renderer.render(output, None));
     }
 }
 
@@ -251,7 +251,7 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                                                                             matrix);
                                         let start = SystemTime::now();
                                         let now = start.duration_since(UNIX_EPOCH)
-                                            .expect("Time went backwards");
+                                                       .expect("Time went backwards");
                                         surface.send_frame_done(now);
                                     }
                                 })
