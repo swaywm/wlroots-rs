@@ -3,7 +3,7 @@ extern crate wlroots;
 
 use std::process::Command;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use wlroots::{project_box, Area, Capability, Compositor, CompositorBuilder, CursorBuilder,
               CursorHandler, CursorId, InputManagerHandler, Keyboard, KeyboardGrab,
@@ -256,7 +256,10 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                                                                          .transform_matrix());
                                         renderer.render_texture_with_matrix(&surface.texture(),
                                                                             matrix);
-                                        surface.send_frame_done(Duration::from_secs(1));
+                                        let start = SystemTime::now();
+                                        let now = start.duration_since(UNIX_EPOCH)
+                                            .expect("Time went backwards");
+                                        surface.send_frame_done(now);
                                     }
                                 })
                            .unwrap()
