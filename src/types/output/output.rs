@@ -439,6 +439,9 @@ impl Drop for Output {
             Some(ref liveliness) => {
                 if Rc::strong_count(liveliness) == 1 {
                     wlr_log!(L_DEBUG, "Dropped output {:p}", self.output);
+                    unsafe {
+                        let _ = Box::from_raw((*self.output).data as *mut OutputState);
+                    }
                     let weak_count = Rc::weak_count(liveliness);
                     if weak_count > 0 {
                         wlr_log!(L_DEBUG,
