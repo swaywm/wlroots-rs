@@ -440,7 +440,6 @@ impl Drop for Output {
                 if Rc::strong_count(liveliness) == 1 {
                     wlr_log!(L_DEBUG, "Dropped output {:p}", self.output);
                     unsafe {
-                        let _ = Box::from_raw((*self.output).data as *mut OutputState);
                     }
                     let weak_count = Rc::weak_count(liveliness);
                     if weak_count > 0 {
@@ -457,6 +456,7 @@ impl Drop for Output {
         // TODO Move back up in the some after NLL is a thing.
         unsafe {
             self.remove_from_output_layout();
+            let _ = Box::from_raw((*self.output).data as *mut OutputState);
         }
     }
 }
