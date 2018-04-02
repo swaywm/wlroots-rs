@@ -406,6 +406,10 @@ impl Output {
         unsafe { wlr_output_set_scale(self.output, scale) }
     }
 
+    pub fn damage(&mut self) -> &mut OutputDamage {
+        &mut *self.damage
+    }
+
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
     }

@@ -8,6 +8,13 @@ use wlroots_sys::{timespec, wlr_output, wlr_output_damage, wlr_output_damage_add
 use Area;
 
 #[derive(Debug)]
+/// Tracks damage for an output.
+///
+/// When a `frame` event is emitted, `make_current` should be
+/// called. If necessary, the output should be repainted and
+/// `swap_buffers` should be called.
+///
+/// No rendering should happen outside a `frame` event handler.
 pub struct OutputDamage {
     damage: *mut wlr_output_damage
 }
