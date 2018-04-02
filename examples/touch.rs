@@ -70,7 +70,7 @@ impl OutputHandler for ExOutput {
         // NOTE gl functions will probably always be unsafe.
         let (width, height) = output.effective_resolution();
         let transform_matrix = output.transform_matrix();
-        let mut renderer = renderer.render(output);
+        let mut renderer = renderer.render(output, None);
         renderer.clear([0.25, 0.25, 0.25, 1.0]);
         let cat_texture = state.cat_texture.as_mut().unwrap();
         let (cat_width, cat_height) = cat_texture.size();
