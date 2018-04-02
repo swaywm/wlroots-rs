@@ -4,3 +4,4 @@ pub mod wl_shell_events;
 pub mod xdg_shell_v6_events;
 pub mod tablet_tool_events;
 pub mod touch_events;
+pub mod seat_events;
