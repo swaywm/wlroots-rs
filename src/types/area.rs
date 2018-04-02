@@ -3,10 +3,10 @@
 
 use std::ops::{Deref, DerefMut};
 
-use libc::{c_double, c_int};
+use libc::{c_double, c_float, c_int};
 
 use wlroots_sys::{wl_output_transform, wlr_box, wlr_box_closest_point, wlr_box_contains_point,
-                  wlr_box_empty, wlr_box_intersection, wlr_box_transform};
+                  wlr_box_empty, wlr_box_intersection, wlr_box_rotated_bounds, wlr_box_transform};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 /// Result of applying an intersection of two `Area`s.
@@ -122,7 +122,7 @@ impl Area {
     /// corner and returns that.
     ///
     /// Returned value is in form of (x, y).
-    pub fn closest_point(&mut self, x: c_double, y: c_double) -> (c_double, c_double) {
+    pub fn closest_point(mut self, x: c_double, y: c_double) -> (c_double, c_double) {
         unsafe {
             let (mut dest_x, mut dest_y) = (0.0, 0.0);
             wlr_box_closest_point(&mut self.0, x, y, &mut dest_x, &mut dest_y);
@@ -131,7 +131,7 @@ impl Area {
     }
 
     /// Gets the intersection of the two areas.
-    pub fn intersection(&self, other_box: &Area) -> IntersectionResult {
+    pub fn intersection(self, other_box: &Area) -> IntersectionResult {
         unsafe {
             let mut res = Area::default();
             let is_empty = wlr_box_intersection(&self.0, &other_box.0, &mut res.0);
@@ -144,12 +144,12 @@ impl Area {
     }
 
     /// Determines if the box contains the given point.
-    pub fn contains_point(&mut self, x: c_double, y: c_double) -> bool {
+    pub fn contains_point(mut self, x: c_double, y: c_double) -> bool {
         unsafe { wlr_box_contains_point(&mut self.0, x, y) }
     }
 
     /// Determines if the box is empty (e.g if the bounds give it an area of 0).
-    pub fn is_empty(&mut self) -> bool {
+    pub fn is_empty(mut self) -> bool {
         unsafe { wlr_box_empty(&mut self.0) }
     }
 
@@ -157,7 +157,7 @@ impl Area {
     /// output transformation.
     ///
     /// e.g: If it's `WL_OUTPUT_TRANSFORM_90` then it will flip the Area 90° clockwise.
-    pub fn transform(&mut self,
+    pub fn transform(mut self,
                      transform: wl_output_transform,
                      width: c_int,
                      height: c_int)
@@ -166,6 +166,15 @@ impl Area {
             let mut res = Area::default();
             wlr_box_transform(&mut self.0, transform, width, height, &mut res.0);
             res
+        }
+    }
+
+    /// Creates the smallest box that contains the box rotated about its center.
+    pub fn rotated_bounds(self, rotation: c_float) -> Area {
+        unsafe {
+            let mut dest = Area::default();
+            wlr_box_rotated_bounds(&self.0, rotation, &mut dest.0);
+            dest
         }
     }
 }
