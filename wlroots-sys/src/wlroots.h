@@ -27,6 +27,7 @@
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_output_layout.h>
+#include <wlr/types/wlr_output_damage.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_region.h>
 #include <wlr/types/wlr_server_decoration.h>
