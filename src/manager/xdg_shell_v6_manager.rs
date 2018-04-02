@@ -60,6 +60,10 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
             wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
                           remove_listener);
 
+            // Hook the commit signal from the surface into the shell handler.
+            wl_signal_add(&mut (*(*data).surface).events.commit as *mut _ as _,
+                          shell_surface.commit_listener() as _);
+
             wl_signal_add(&mut (*data).events.ping_timeout as *mut _ as _,
                           shell_surface.ping_timeout_listener() as _);
             wl_signal_add(&mut (*data).events.new_popup as *mut _ as _,
@@ -69,18 +73,18 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                 Some(&mut TopLevel(ref mut toplevel)) => Some((*toplevel.as_ptr()).events)
             };
             if let Some(mut events) = events {
-                    wl_signal_add(&mut events.request_maximize as *mut _ as _,
-                                  shell_surface.maximize_listener() as _);
-                    wl_signal_add(&mut events.request_fullscreen as *mut _ as _,
-                                  shell_surface.fullscreen_listener() as _);
-                    wl_signal_add(&mut events.request_minimize as *mut _ as _,
-                                  shell_surface.minimize_listener() as _);
-                    wl_signal_add(&mut events.request_move as *mut _ as _,
-                                  shell_surface.move_listener() as _);
-                    wl_signal_add(&mut events.request_resize as *mut _ as _,
-                                  shell_surface.resize_listener() as _);
-                    wl_signal_add(&mut events.request_show_window_menu as *mut _ as _,
-                                  shell_surface.show_window_menu_listener() as _);
+                wl_signal_add(&mut events.request_maximize as *mut _ as _,
+                              shell_surface.maximize_listener() as _);
+                wl_signal_add(&mut events.request_fullscreen as *mut _ as _,
+                              shell_surface.fullscreen_listener() as _);
+                wl_signal_add(&mut events.request_minimize as *mut _ as _,
+                              shell_surface.minimize_listener() as _);
+                wl_signal_add(&mut events.request_move as *mut _ as _,
+                              shell_surface.move_listener() as _);
+                wl_signal_add(&mut events.request_resize as *mut _ as _,
+                              shell_surface.resize_listener() as _);
+                wl_signal_add(&mut events.request_show_window_menu as *mut _ as _,
+                              shell_surface.show_window_menu_listener() as _);
             }
 
             shells.push(shell_surface);
