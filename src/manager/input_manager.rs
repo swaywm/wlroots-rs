@@ -16,7 +16,8 @@ use utils::safe_as_cstring;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_input_device, wlr_input_device_type, wlr_keyboard_set_keymap,
-                  xkb_context_new, xkb_context_unref, xkb_keymap_new_from_names, xkb_rule_names};
+                  wlr_keyboard_set_repeat_info, xkb_context_new, xkb_context_unref,
+                  xkb_keymap_new_from_names, xkb_keymap_unref, xkb_rule_names};
 use wlroots_sys::xkb_context_flags::*;
 use wlroots_sys::xkb_keymap_compile_flags::*;
 
@@ -235,6 +236,11 @@ pub(crate) unsafe fn add_keyboard(dev: &mut InputDevice) {
     let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT").unwrap_or("".into()));
     let variant = safe_as_cstring(env::var("XKB_DEFAULT_VARIANT").unwrap_or("".into()));
     let options = safe_as_cstring(env::var("XKB_DEFAULT_OPTIONS").unwrap_or("".into()));
+    wlr_log!(L_DEBUG, "Using xkb rules: {:?}", rules);
+    wlr_log!(L_DEBUG, "Using xkb model: {:?}", model);
+    wlr_log!(L_DEBUG, "Using xkb layout: {:?}", layout);
+    wlr_log!(L_DEBUG, "Using xkb variant: {:?}", variant);
+    wlr_log!(L_DEBUG, "Using xkb options: {:?}", options);
     let rules = xkb_rule_names { rules: rules.into_raw(),
                                  model: model.into_raw(),
                                  layout: layout.into_raw(),
@@ -242,11 +248,14 @@ pub(crate) unsafe fn add_keyboard(dev: &mut InputDevice) {
                                  options: options.into_raw() };
     let context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     if context.is_null() {
-        wlr_log!(L_ERROR, "Failed to create XKB context");
-        // NOTE We don't panic here, because we have a C call stack above us
-        ::std::process::exit(1)
+        panic!("Failed to create XKB context");
     }
     let xkb_map = xkb_keymap_new_from_names(context, &rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
+    if xkb_map.is_null() {
+        panic!("Could not create xkb map");
+    }
     wlr_keyboard_set_keymap(dev.dev_union().keyboard, xkb_map);
+    xkb_keymap_unref(xkb_map);
     xkb_context_unref(context);
+    wlr_keyboard_set_repeat_info(dev.dev_union().keyboard, 25, 600);
 }
