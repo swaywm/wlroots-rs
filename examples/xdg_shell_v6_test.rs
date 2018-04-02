@@ -12,14 +12,12 @@ use wlroots::{project_box, Area, Compositor, CompositorBuilder, CursorBuilder, C
               Surface, XCursorTheme, XdgV6ShellHandler, XdgV6ShellManagerHandler,
               XdgV6ShellSurface, XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
-use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
+use wlroots::pointer_events::{ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
-use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
+use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 struct State {
-    color: [f32; 4],
-    default_color: [f32; 4],
     xcursor_theme: XCursorTheme,
     layout: OutputLayout,
     cursor_id: CursorId,
@@ -28,9 +26,7 @@ struct State {
 
 impl State {
     fn new(xcursor_theme: XCursorTheme, layout: OutputLayout, cursor_id: CursorId) -> Self {
-        State { color: [0.25, 0.25, 0.25, 1.0],
-                default_color: [0.25, 0.25, 0.25, 1.0],
-                xcursor_theme,
+        State { xcursor_theme,
                 layout,
                 cursor_id,
                 shells: vec![] }
@@ -137,26 +133,9 @@ impl PointerHandler for ExPointer {
 
     fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &ButtonEvent) {
         let state: &mut State = compositor.into();
-        if event.state() == WLR_BUTTON_RELEASED {
-            state.color = state.default_color;
-        } else {
-            state.color = [0.25, 0.25, 0.25, 1.0];
-            state.color[event.button() as usize % 3] = 1.0;
+        if event.state() == WLR_BUTTON_PRESSED {
+            wlr_log!(L_DEBUG, "Clicking pointer {}", event.button())
         }
-    }
-
-    fn on_axis(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &AxisEvent) {
-        let state: &mut State = compositor.into();
-        for color_byte in &mut state.default_color[..3] {
-            *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
-            if *color_byte > 1.0 {
-                *color_byte = 1.0
-            }
-            if *color_byte < 0.0 {
-                *color_byte = 0.0
-            }
-        }
-        state.color = state.default_color.clone()
     }
 }
 
