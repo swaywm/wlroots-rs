@@ -233,7 +233,7 @@ impl CursorBuilder {
             // xcursor image after this call.
             wlr_cursor_set_image(self.cursor,
                                  image.buffer.as_ptr(),
-                                 image.width as i32,
+                                 (image.width * 4) as i32,
                                  image.width,
                                  image.height,
                                  image.hotspot_x as i32,
@@ -345,7 +345,7 @@ impl Cursor {
             // xcursor image after this call.
             wlr_cursor_set_image(self.cursor,
                                  image.buffer.as_ptr(),
-                                 image.width as i32,
+                                 (image.width * 4) as i32,
                                  image.width,
                                  image.height,
                                  image.hotspot_x as i32,

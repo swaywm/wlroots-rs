@@ -4,7 +4,7 @@ use libc::{c_float, c_int, c_void};
 
 use Output;
 use render::Texture;
-use wlroots_sys::{wl_shm_format, wlr_backend, wlr_render_ellipse_with_matrix, wlr_backend_get_egl,
+use wlroots_sys::{wl_shm_format, wlr_backend, wlr_backend_get_egl, wlr_render_ellipse_with_matrix,
                   wlr_render_quad_with_matrix, wlr_render_texture, wlr_render_texture_with_matrix,
                   wlr_renderer, wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy,
                   wlr_renderer_end, wlr_texture_from_pixels, wlr_gles2_renderer_create};
