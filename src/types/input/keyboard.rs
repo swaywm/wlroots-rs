@@ -13,6 +13,11 @@ use xkbcommon::xkb::ffi::{xkb_keymap, xkb_state};
 
 use InputDevice;
 
+struct KeyboardState {
+    handle: Weak<AtomicBool>,
+    device: InputDevice
+}
+
 /// Information about repeated keypresses for a particular Keyboard.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct RepeatInfo {
@@ -65,7 +70,12 @@ impl Keyboard {
         match (*device).type_ {
             WLR_INPUT_DEVICE_KEYBOARD => {
                 let keyboard = (*device).__bindgen_anon_1.keyboard;
-                Some(Keyboard { liveliness: Some(Rc::new(AtomicBool::new(false))),
+                let liveliness = Rc::new(AtomicBool::new(false));
+                let handle = Rc::downgrade(&liveliness);
+                let state = Box::new(KeyboardState { handle,
+                                                     device: InputDevice::from_ptr(device) });
+                (*keyboard).data = Box::into_raw(state) as *mut _;
+                Some(Keyboard { liveliness: Some(liveliness),
                                 device: InputDevice::from_ptr(device),
                                 keyboard })
             }
@@ -213,6 +223,9 @@ impl Drop for Keyboard {
             Some(ref liveliness) => {
                 if Rc::strong_count(liveliness) == 1 {
                     wlr_log!(L_DEBUG, "Dropped Keyboard {:p}", self.keyboard);
+                    unsafe {
+                        let _ = Box::from_raw((*self.keyboard).data as *mut KeyboardState);
+                    }
                     let weak_count = Rc::weak_count(liveliness);
                     if weak_count > 0 {
                         wlr_log!(L_DEBUG,
@@ -227,6 +240,17 @@ impl Drop for Keyboard {
 }
 
 impl KeyboardHandle {
+    /// Creates an KeyboardHandle from the raw pointer, using the saved
+    /// user data to recreate the memory model.
+    pub(crate) unsafe fn from_ptr(keyboard: *mut wlr_keyboard) -> Self {
+        let data = Box::from_raw((*keyboard).data as *mut KeyboardState);
+        let handle = data.handle.clone();
+        let device = data.device.clone();
+        (*keyboard).data = Box::into_raw(data) as *mut _;
+        KeyboardHandle { handle,
+                         keyboard,
+                         device }
+    }
     /// Upgrades the keyboard handle to a reference to the backing `Keyboard`.
     ///
     /// # Unsafety
