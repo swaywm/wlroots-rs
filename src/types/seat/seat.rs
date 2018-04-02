@@ -382,7 +382,7 @@ impl Seat {
     }
 
     /// Set this keyboard as the active keyboard for the seat.
-    pub fn set_keyboard(&self, dev: InputDevice) {
+    pub fn set_keyboard(&self, dev: &InputDevice) {
         unsafe { wlr_seat_set_keyboard(self.data.0, dev.as_ptr()) }
     }
 
