@@ -14,8 +14,7 @@ pub trait XdgV6ShellManagerHandler {
     /// Callback that is triggered when a new XDG shell v6 surface appears.
     fn new_surface(&mut self,
                    &mut Compositor,
-                   &mut XdgV6ShellSurface,
-                   &mut Surface)
+                   &mut XdgV6ShellSurface)
                    -> Option<Box<XdgV6ShellHandler>>;
 
     /// Callback that is triggered when an XDG shell v6 surface is destroyed.
@@ -45,10 +44,8 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
             }
         };
         let mut shell_surface = XdgV6ShellSurface::new(data, state);
-        surface.set_lock(true);
         shell_surface.set_lock(true);
-        let new_surface_res = manager.new_surface(compositor, &mut shell_surface, &mut surface);
-        surface.set_lock(false);
+        let new_surface_res = manager.new_surface(compositor, &mut shell_surface);
         shell_surface.set_lock(false);
         if let Some(shell_surface_handler) = new_surface_res {
 
