@@ -39,6 +39,7 @@ pub use self::types::data_device::*;
 pub use self::types::input_device::*;
 pub use self::types::keyboard::*;
 pub use self::types::output::output::*;
+pub use self::types::output::output_damage::*;
 pub use self::types::output::output_layout::*;
 pub use self::types::pointer::*;
 pub use self::types::seat::*;
