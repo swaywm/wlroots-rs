@@ -3,19 +3,18 @@ extern crate wlroots;
 
 use std::process::Command;
 use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use wlroots::{project_box, Area, Capability, Compositor, CompositorBuilder, CursorBuilder,
-              CursorHandler, CursorId, InputManagerHandler, Keyboard, KeyboardGrab,
-              KeyboardHandle, KeyboardHandler, Origin, Output, OutputBuilder, OutputBuilderResult,
-              OutputHandler, OutputLayout, OutputManagerHandler, Pointer, PointerHandler,
-              Renderer, Seat, SeatHandler, SeatId, Size, Surface, XCursorTheme, XdgV6ShellHandler,
+              CursorHandler, CursorId, InputManagerHandler, Keyboard, KeyboardHandle,
+              KeyboardHandler, Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler,
+              OutputLayout, OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat,
+              SeatHandler, SeatId, Size, Surface, XCursorTheme, XdgV6ShellHandler,
               XdgV6ShellManagerHandler, XdgV6ShellState, XdgV6ShellSurface,
               XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
-use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_PRESSED;
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 
@@ -52,35 +51,18 @@ impl SeatHandler for SeatHandlerEx {}
 struct XdgV6ShellHandlerEx;
 struct XdgV6ShellManager;
 
-impl XdgV6ShellHandler for XdgV6ShellHandlerEx {
-    fn on_commit(&mut self,
-                 compositor: &mut Compositor,
-                 surface: &mut Surface,
-                 shell: &mut XdgV6ShellSurface) {
-    }
-}
+impl XdgV6ShellHandler for XdgV6ShellHandlerEx {}
 impl XdgV6ShellManagerHandler for XdgV6ShellManager {
     fn new_surface(&mut self,
                    compositor: &mut Compositor,
                    shell: &mut XdgV6ShellSurface)
                    -> Option<Box<XdgV6ShellHandler>> {
         shell.ping();
-        match shell.state() {
-            Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
-                toplevel.set_activated(true);
-            }
-            _ => {}
+        let state: &mut State = compositor.into();
+        state.shells.push(shell.weak_reference());
+        for (mut output, _) in state.layout.outputs() {
+            output.run(|output| output.schedule_frame()).unwrap();
         }
-        let seat_id = {
-            let state: &mut State = compositor.into();
-            state.shells.push(shell.weak_reference());
-            for (mut output, _) in state.layout.outputs() {
-                output.run(|output| output.schedule_frame()).unwrap();
-            }
-            state.seat_id.unwrap()
-        };
-        let seat = compositor.seats.get(seat_id).expect("invalid seat id");
-        let mut keyboard = seat.get_keyboard().expect("Seat did not have a keyboard set");
         Some(Box::new(XdgV6ShellHandlerEx))
     }
 
@@ -159,6 +141,35 @@ impl PointerHandler for ExPointer {
              .cursor(state.cursor_id)
              .unwrap()
              .move_to(event.device(), delta_x, delta_y);
+    }
+
+    fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, _: &ButtonEvent) {
+        let state: &mut State = compositor.data.downcast_mut().unwrap();
+        let seat_id = state.seat_id.unwrap();
+        let seat = compositor.seats.get(seat_id).expect("invalid seat id");
+        let mut keyboard = state.keyboard.clone().unwrap();
+        let mut surface =
+            state.shells[0].run(|shell| {
+                                    match shell.state() {
+                                        Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
+                                            toplevel.set_activated(true);
+                                        }
+                                        _ => {}
+                                    }
+
+                                    shell.surface()
+                                })
+                           .unwrap();
+        keyboard.run(|keyboard| {
+                         surface.run(|surface| {
+                                         seat.set_keyboard(keyboard.input_device());
+                                         seat.keyboard_notify_enter(surface,
+                                                    &mut keyboard.keycodes(),
+                                                    &mut keyboard.get_modifier_masks())
+                                     })
+                                .unwrap()
+                     })
+                .unwrap();
     }
 }
 

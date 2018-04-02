@@ -29,7 +29,7 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
         let data = data as *mut wlr_xdg_surface_v6;
         wlr_log!(L_DEBUG, "New xdg_shell_v6_surface request {:p}", data);
         let compositor = &mut *COMPOSITOR_PTR;
-        let mut surface = Surface::new((*data).surface);
+        let surface = Surface::new((*data).surface);
         let state = unsafe {
             match (*data).role {
                 WLR_XDG_SURFACE_V6_ROLE_NONE => None,
