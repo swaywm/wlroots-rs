@@ -107,6 +107,9 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
             let mut removed_shell = shells.remove(index);
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
+                          &mut (*removed_shell.commit_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
                           &mut (*removed_shell.ping_timeout_listener()).link as *mut _ as _);
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
