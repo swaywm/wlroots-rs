@@ -6,7 +6,10 @@ extern crate wlroots;
 mod config;
 mod server;
 mod output;
+mod input;
+mod seat;
 
+use input::InputManager;
 use output::OutputManager;
 use server::Server;
 use wlroots::*;
@@ -39,6 +42,7 @@ fn main() {
     CompositorBuilder::new().gles2(true)
                             .data_device(true)
                             .output_manager(Box::new(OutputManager::new()))
+                            .input_manager(Box::new(InputManager::new()))
                             .build_auto(Server::new(config))
                             .run()
 }
