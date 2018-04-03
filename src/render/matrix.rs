@@ -3,7 +3,8 @@
 use Area;
 use wlroots_sys::{wl_output_transform, wlr_matrix_identity, wlr_matrix_multiply,
                   wlr_matrix_project_box, wlr_matrix_projection, wlr_matrix_rotate,
-                  wlr_matrix_scale, wlr_matrix_transform, wlr_matrix_translate};
+                  wlr_matrix_scale, wlr_matrix_transform, wlr_matrix_translate,
+                  wlr_matrix_transpose};
 
 /// Modifies the matrix to become the identity matrix.
 pub fn matrix_identity(output: &mut [f32; 9]) {
@@ -55,15 +56,23 @@ pub fn matrix_transform(mut matrix: [f32; 9], transform: wl_output_transform) ->
 
 /// Transform the matrix based on the given Wayland output transform mode and
 /// the width and height of a texture.
-pub fn matrix_texture(mut matrix: [f32; 9],
-                      width: i32,
-                      height: i32,
-                      transform: wl_output_transform)
-                      -> [f32; 9] {
+pub fn matrix_projection(mut matrix: [f32; 9],
+                         width: i32,
+                         height: i32,
+                         transform: wl_output_transform)
+                         -> [f32; 9] {
     unsafe {
         wlr_matrix_projection(matrix.as_mut_ptr(), width, height, transform);
     }
     matrix
+}
+
+pub fn matrix_transpose(matrix: [f32; 9]) -> [f32; 9] {
+    let mut result = [0.0; 9];
+    unsafe {
+        wlr_matrix_transpose(result.as_mut_ptr(), matrix.as_ptr());
+    }
+    result
 }
 
 pub fn project_box(area: Area,
