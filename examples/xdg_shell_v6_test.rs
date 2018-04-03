@@ -170,7 +170,7 @@ impl PointerHandler for ExPointer {
                                     shell.surface()
                                 })
                            .unwrap();
-        seat_handle.run(|seat| {
+        seat_handle.run(|mut seat| {
                             keyboard.run(|keyboard| {
                                              surface.run(|surface| {
                                                  seat.set_keyboard(keyboard.input_device());
@@ -215,7 +215,7 @@ impl InputManagerHandler for InputManager {
         let state: &mut State = compositor.into();
         state.keyboard = Some(keyboard.weak_reference());
         let mut seat_handle = state.seat_handle.clone().unwrap();
-        seat_handle.run(|seat| {
+        seat_handle.run(|mut seat| {
                             seat.set_keyboard(keyboard.input_device());
                             Some(seat)
                         })
@@ -240,7 +240,7 @@ fn main() {
     {
         let mut seat_handle =
             Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx));
-        seat_handle.run(|seat| {
+        seat_handle.run(|mut seat| {
                             seat.set_capabilities(Capability::all());
                             Some(seat)
                         })

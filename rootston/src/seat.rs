@@ -1,4 +1,4 @@
-use wlroots::{SeatHandler};
+use wlroots::SeatHandler;
 
 pub struct Seat {}
 

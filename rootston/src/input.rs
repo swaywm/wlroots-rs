@@ -26,21 +26,23 @@ impl InputManager {
     }
 
     /// Gets the seat by name. If it doesn't exist yet, create it.
-    fn get_seat(&self, compositor: &mut Compositor, seat_name: &str) -> wlroots::SeatHandle {
+    fn get_seat(&mut self, compositor: &mut Compositor, seat_name: &str) -> wlroots::SeatHandle {
         let found = &mut false;
         for seat in &self.seats {
             seat.clone().run(|mut seat| {
-                // TODO Avoid allocation
-                if seat.name() == Some(seat_name.into()) {
-                    *found = true;
-                }
-                Some(seat)
-            }).unwrap();
+                         if seat.name().as_ref().map(|s| &**s) == Some(seat_name) {
+                             *found = true;
+                         }
+                         Some(seat)
+                     })
+                .unwrap();
             if *found {
                 return seat.clone()
             }
         }
-        wlroots::Seat::create(compositor, seat_name.into(), Box::new(seat::Seat::new()))
+        let seat = wlroots::Seat::create(compositor, seat_name.into(), Box::new(seat::Seat::new()));
+        self.seats.push(seat);
+        self.seats.last().unwrap().clone()
     }
 
     pub fn add_device_to_seat(&mut self,
@@ -49,32 +51,32 @@ impl InputManager {
                               input: &mut InputDevice) {
         use wlroots::wlr_input_device_type::*;
         seat.run(|mut seat| {
-            match input.dev_type() {
-                WLR_INPUT_DEVICE_KEYBOARD => seat.set_keyboard(input),
-                WLR_INPUT_DEVICE_POINTER => {
-                    // TODO Need cursor from the output layout from the thingie
-                    // TODO Where is this cursor allocated though...?
-                    // double check seat construction
-                    //cursor.attach_input_device(input);
-                    self.configure_cursor(compositor, &mut seat);
-                    let mut capabilities = seat.capabilities();
-                    capabilities.insert(Capability::Pointer);
-                    seat.set_capabilities(capabilities);
-                }
-                WLR_INPUT_DEVICE_TOUCH | WLR_INPUT_DEVICE_TABLET_TOOL => {
-                    // TODO Need cursor from the output layout from the thingie
-                    // TODO Where is this cursor allocated though...?
-                    // double check seat construction
-                    //cursor.attach_input_device(input);
-                    self.configure_cursor(compositor, &mut seat);
-                    let mut capabilities = seat.capabilities();
-                    capabilities.insert(Capability::Touch);
-                    seat.set_capabilities(capabilities);
-                }
-                WLR_INPUT_DEVICE_TABLET_PAD => { /*TODO*/ }
-            }
-            Some(seat)
-        }).unwrap()
+                     match input.dev_type() {
+                         WLR_INPUT_DEVICE_KEYBOARD => seat.set_keyboard(input),
+                         WLR_INPUT_DEVICE_POINTER => {
+                             // TODO Need cursor from the output layout from the thingie
+                             // TODO Where is this cursor allocated though...?
+                             // double check seat construction
+                             //cursor.attach_input_device(input);
+                             self.configure_cursor(compositor, &mut seat);
+                             let mut capabilities = seat.capabilities();
+                             capabilities.insert(Capability::Pointer);
+                             seat.set_capabilities(capabilities);
+                         }
+                         WLR_INPUT_DEVICE_TOUCH | WLR_INPUT_DEVICE_TABLET_TOOL => {
+                             // TODO Need cursor from the output layout from the thingie
+                             // TODO Where is this cursor allocated though...?
+                             // double check seat construction
+                             //cursor.attach_input_device(input);
+                             self.configure_cursor(compositor, &mut seat);
+                             let mut capabilities = seat.capabilities();
+                             capabilities.insert(Capability::Touch);
+                             seat.set_capabilities(capabilities);
+                         }
+                         WLR_INPUT_DEVICE_TABLET_PAD => { /*TODO*/ }
+                     }
+                     Some(seat)
+                 }).unwrap()
     }
 
     pub fn configure_cursor(&mut self, compositor: &mut Compositor, seat: &mut Box<wlroots::Seat>) {
