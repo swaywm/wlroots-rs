@@ -16,8 +16,8 @@ use types::seat::Seats;
 use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start,
-                  wlr_compositor, wlr_compositor_create, wlr_wl_shell, wlr_wl_shell_create,
-                  wlr_xdg_shell_v6, wlr_xdg_shell_v6_create};
+                  wlr_compositor, wlr_compositor_create, wlr_compositor_destroy, wlr_wl_shell,
+                  wlr_wl_shell_create, wlr_xdg_shell_v6, wlr_xdg_shell_v6_create};
 use wlroots_sys::wayland_server::sys::wl_display_init_shm;
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
@@ -317,6 +317,12 @@ impl Compositor {
     /// later when we are out of the C callback stack.
     pub(crate) fn save_panic_error(&mut self, error: Box<Any + Send>) {
         self.panic_error = Some(error);
+    }
+}
+
+impl Drop for Compositor {
+    fn drop(&mut self) {
+        unsafe { wlr_compositor_destroy(self.compositor) }
     }
 }
 
