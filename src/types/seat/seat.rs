@@ -3,7 +3,7 @@
 //!
 //! TODO This module could really use some examples, as the API surface is huge.
 
-use std::{fmt, time::Duration};
+use std::{fmt, panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}, time::Duration};
 
 use libc;
 use wayland_sys::server::signal::wl_signal_add;
@@ -30,44 +30,107 @@ pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
 use {wlr_keyboard_modifiers, Compositor, InputDevice, KeyboardGrab, KeyboardHandle, PointerGrab,
-     SeatId, Surface, TouchGrab, TouchId, TouchPoint, events::seat_events::SetCursorEvent};
+     Surface, TouchGrab, TouchId, TouchPoint, events::seat_events::SetCursorEvent};
 use compositor::COMPOSITOR_PTR;
+use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::{c_to_rust_string, safe_as_cstring};
 use utils::ToMS;
 
+struct SeatState {
+    /// A counter that will always have a strong count of 1.
+    ///
+    /// Once the seat is destroyed, this will signal to the `SeatHandle`s that
+    /// they cannot be upgraded.
+    counter: Rc<AtomicBool>,
+    /// A raw pointer to the Seat on the heap.
+    seat: *mut Seat
+}
+
+#[derive(Debug, Clone)]
+pub struct SeatHandle {
+    seat: *mut wlr_seat,
+    handle: Weak<AtomicBool>
+}
+
 pub trait SeatHandler {
     /// Callback triggered when a client has grabbed a pointer.
-    fn pointer_grabbed(&mut self, &mut Compositor, &mut Seat, &mut PointerGrab) {}
+    fn pointer_grabbed(&mut self,
+                       &mut Compositor,
+                       seat: Box<Seat>,
+                       &mut PointerGrab)
+                       -> Option<Box<Seat>> {
+        Some(seat)
+    }
 
     /// Callback triggered when a client has ended a pointer grab.
-    fn pointer_released(&mut self, &mut Compositor, &mut Seat, &mut PointerGrab) {}
+    fn pointer_released(&mut self,
+                        &mut Compositor,
+                        seat: Box<Seat>,
+                        &mut PointerGrab)
+                        -> Option<Box<Seat>> {
+        Some(seat)
+    }
 
     /// Callback triggered when a client has grabbed a keyboard.
-    fn keyboard_grabbed(&mut self, &mut Compositor, &mut Seat, &mut KeyboardGrab) {}
+    fn keyboard_grabbed(&mut self,
+                        &mut Compositor,
+                        seat: Box<Seat>,
+                        &mut KeyboardGrab)
+                        -> Option<Box<Seat>> {
+        Some(seat)
+    }
 
     /// Callback triggered when a client has ended a keyboard grab.
-    fn keyboard_released(&mut self, &mut Compositor, &mut Seat, &mut KeyboardGrab) {}
+    fn keyboard_released(&mut self,
+                         &mut Compositor,
+                         seat: Box<Seat>,
+                         &mut KeyboardGrab)
+                         -> Option<Box<Seat>> {
+        Some(seat)
+    }
 
     /// Callback triggered when a client has grabbed a touch.
-    fn touch_grabbed(&mut self, &mut Compositor, &mut Seat, &mut TouchGrab) {}
+    fn touch_grabbed(&mut self,
+                     &mut Compositor,
+                     seat: Box<Seat>,
+                     &mut TouchGrab)
+                     -> Option<Box<Seat>> {
+        Some(seat)
+    }
 
     /// Callback triggered when a client has ended a touch grab.
-    fn touch_released(&mut self, &mut Compositor, &mut Seat, &mut TouchGrab) {}
+    fn touch_released(&mut self,
+                      &mut Compositor,
+                      seat: Box<Seat>,
+                      &mut TouchGrab)
+                      -> Option<Box<Seat>> {
+        Some(seat)
+    }
 
     /// Callback triggered when a client sets the cursor for this seat.
     ///
     /// E.g this happens when the seat enters a surface.
-    fn cursor_set(&mut self, &mut Compositor, &mut Seat, &mut SetCursorEvent) {}
+    fn cursor_set(&mut self,
+                  &mut Compositor,
+                  seat: Box<Seat>,
+                  &mut SetCursorEvent)
+                  -> Option<Box<Seat>> {
+        Some(seat)
+    }
 
     /// The seat was provided with a selection by the client.
-    fn received_selection(&mut self, &mut Compositor, &mut Seat) {}
+    fn received_selection(&mut self, &mut Compositor, seat: Box<Seat>) -> Option<Box<Seat>> {
+        Some(seat)
+    }
 
     /// The seat was provided with a selection from the primary buffer
     /// by the client.
-    fn primary_selection(&mut self, &mut Compositor, &mut Seat) {}
+    fn primary_selection(&mut self, &mut Compositor, seat: Box<Seat>) -> Option<Box<Seat>> {
+        Some(seat)
+    }
 
     /// The seat is being destroyed.
-    fn destroy(&mut self, &mut Compositor, &mut Seat) {}
+    fn destroy(&mut self, &mut Compositor, Box<Seat>) {}
 }
 
 wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
@@ -76,10 +139,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            let pointer_grab = &mut *(event as *mut PointerGrab);
-            handler.pointer_grabbed(compositor, &mut seat, pointer_grab);
-            compositor.seats.insert(seat);
+        let pointer_grab = &mut *(event as *mut PointerGrab);
+        if let Some(seat) = handler.pointer_grabbed(compositor,
+                                                    Seat::from_ptr(seat_ptr),
+                                                    pointer_grab) {
+            Box::into_raw(seat);
         }
     };
 
@@ -88,10 +152,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            let pointer_grab = &mut *(event as *mut PointerGrab);
-            handler.pointer_released(compositor, &mut seat, pointer_grab);
-            compositor.seats.insert(seat);
+        let pointer_grab = &mut *(event as *mut PointerGrab);
+        if let Some(seat) = handler.pointer_released(compositor,
+                                                     Seat::from_ptr(seat_ptr),
+                                                     pointer_grab) {
+            Box::into_raw(seat);
         }
     };
     keyboard_grab_begin_listener => keyboard_grab_begin_notify: |this: &mut Seat,
@@ -99,10 +164,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            let keyboard_grab = &mut *(event as *mut KeyboardGrab);
-            handler.keyboard_grabbed(compositor, &mut seat, keyboard_grab);
-            compositor.seats.insert(seat);
+        let keyboard_grab = &mut *(event as *mut KeyboardGrab);
+        if let Some(seat) = handler.keyboard_grabbed(compositor,
+                                                         Seat::from_ptr(seat_ptr),
+                                                         keyboard_grab) {
+            Box::into_raw(seat);
         }
     };
     keyboard_grab_end_listener => keyboard_grab_end_notify: |this: &mut Seat,
@@ -110,10 +176,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            let keyboard_grab = &mut *(event as *mut KeyboardGrab);
-            handler.keyboard_released(compositor, &mut seat, keyboard_grab);
-            compositor.seats.insert(seat);
+        let keyboard_grab = &mut *(event as *mut KeyboardGrab);
+        if let Some(seat) = handler.keyboard_released(compositor,
+                                                          Seat::from_ptr(seat_ptr),
+                                                          keyboard_grab) {
+            Box::into_raw(seat);
         }
     };
     touch_grab_begin_listener => touch_grab_begin_notify: |this: &mut Seat,
@@ -121,10 +188,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            let touch_grab = &mut *(event as *mut TouchGrab);
-            handler.touch_grabbed(compositor, &mut seat, touch_grab);
-            compositor.seats.insert(seat);
+        let touch_grab = &mut *(event as *mut TouchGrab);
+        if let Some(seat) = handler.touch_grabbed(compositor,
+                                                      Seat::from_ptr(seat_ptr),
+                                                      touch_grab) {
+        Box::into_raw(seat);
         }
     };
     touch_grab_end_listener => touch_grab_end_notify: |this: &mut Seat,
@@ -132,10 +200,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            let touch_grab = &mut *(event as *mut TouchGrab);
-            handler.touch_released(compositor, &mut seat, touch_grab);
-            compositor.seats.insert(seat);
+        let touch_grab = &mut *(event as *mut TouchGrab);
+        if let Some(seat) = handler.touch_released(compositor,
+                                                       Seat::from_ptr(seat_ptr),
+                                                       touch_grab) {
+            Box::into_raw(seat);
         }
     };
     request_set_cursor_listener => request_set_cursor_notify: |this: &mut Seat,
@@ -145,18 +214,17 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let event_ptr = event_ptr as *mut wlr_seat_pointer_request_set_cursor_event;
         let mut event = SetCursorEvent::from_ptr(event_ptr);
-        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            handler.cursor_set(compositor, &mut seat, &mut event);
-            compositor.seats.insert(seat);
+        if let Some(seat) = handler.cursor_set(compositor, Seat::from_ptr(seat_ptr),
+                                                   &mut event) {
+            Box::into_raw(seat);
         }
     };
     selection_listener => selection_notify: |this: &mut Seat, _event: *mut libc::c_void,|
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            handler.received_selection(compositor, &mut seat);
-            compositor.seats.insert(seat);
+        if let Some(seat) = handler.received_selection(compositor, Seat::from_ptr(seat_ptr)){
+            Box::into_raw(seat);
         }
     };
     primary_selection_listener => primary_selection_notify: |this: &mut Seat,
@@ -164,9 +232,8 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            handler.primary_selection(compositor, &mut seat);
-            compositor.seats.insert(seat);
+        if let Some(seat) = handler.primary_selection(compositor, Seat::from_ptr(seat_ptr)){
+            Box::into_raw(seat);
         }
     };
     destroy_listener => destroy_notify: |this: &mut Seat, _event: *mut libc::c_void,|
@@ -177,30 +244,21 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
             return
         }
         let compositor = &mut *COMPOSITOR_PTR;
-        if let Some(mut seat) = compositor.seats.remove(SeatId::new(seat_ptr)) {
-            handler.destroy(compositor, &mut seat);
-            compositor.seats.insert(seat);
-        }
+        handler.destroy(compositor, Seat::from_ptr(seat_ptr));
     };
 ]);
 
 impl Seat {
     /// Allocates a new `wlr_seat` and adds a wl_seat global to the display.
-    ///
-    /// Puts the seat in a `RefCell` so that it's safe to use both in your
-    /// state wherever and in the callback provided by the handler.
-    ///
-    /// Puts the seat in an `Rc` so that the address is static for internal
-    /// purposes.
     pub fn create(compositor: &mut Compositor,
                   name: String,
                   handler: Box<SeatHandler>)
-                  -> Option<&mut Box<Self>> {
+                  -> SeatHandle {
         unsafe {
             let name = safe_as_cstring(name);
             let seat = wlr_seat_create(compositor.display() as _, name.as_ptr());
             if seat.is_null() {
-                None
+                panic!("Could not allocate a wlr_seat");
             } else {
                 let mut res = Seat::new((seat, handler));
                 wl_signal_add(&mut (*seat).events.pointer_grab_begin as *mut _ as _,
@@ -223,16 +281,32 @@ impl Seat {
                               res.primary_selection_listener() as *mut _ as _);
                 wl_signal_add(&mut (*seat).events.destroy as *mut _ as _,
                               res.destroy_listener() as *mut _ as _);
-                Some(compositor.seats.insert(res))
+                let counter = Rc::new(AtomicBool::new(false));
+                let handle = Rc::downgrade(&counter);
+                let state = Box::new(SeatState { counter,
+                                                 seat: Box::into_raw(res) });
+                (*seat).data = Box::into_raw(state) as *mut libc::c_void;
+                SeatHandle { seat: seat, handle }
             }
         }
     }
 
-    /// Get a unique id for this seat.
-    ///
-    /// This id is used to drop it later.
-    pub fn id(&self) -> SeatId {
-        SeatId::new(self.data.0)
+    /// Reconstruct the box from the wlr_seat.
+    unsafe fn from_ptr(seat: *mut wlr_seat) -> Box<Seat> {
+        let data = (*seat).data as *mut SeatState;
+        if data.is_null() {
+            panic!("Data pointer on the seat was null!");
+        }
+        Box::from_raw((*data).seat)
+    }
+
+    /// Get a weak reference to this seat.
+    pub fn weak_reference(&self) -> SeatHandle {
+        unsafe {
+            let handle = Rc::downgrade(&(*((*self.data.0).data as *mut SeatState)).counter);
+            SeatHandle { seat: self.data.0,
+                         handle }
+        }
     }
 
     /// Get the name of the seat.
@@ -655,7 +729,94 @@ impl fmt::Debug for Seat {
 
 impl Drop for Seat {
     fn drop(&mut self) {
-        let seat = self.data.0;
-        unsafe { wlr_seat_destroy(seat) }
+        let seat_ptr = self.data.0;
+        unsafe {
+            let data = Box::from_raw((*seat_ptr).data as *mut SeatState);
+            let _ = Box::from_raw(data.seat);
+            assert_eq!(Rc::strong_count(&data.counter),
+                       1,
+                       "Seat had more than 1 reference count");
+            (*seat_ptr).data = ptr::null_mut();
+            wlr_seat_destroy(seat_ptr)
+        }
+    }
+}
+
+impl SeatHandle {
+    /// Creates an SeatHandle from the raw pointer, using the saved
+    /// user data to recreate the memory model.
+    pub(crate) unsafe fn from_ptr(seat: *mut wlr_seat) -> Self {
+        if (*seat).data.is_null() {
+            panic!("Seat data was null!")
+        }
+        let data = Box::from_raw((*seat).data as *mut SeatState);
+        let handle = Rc::downgrade(&data.counter);
+        Box::into_raw(data);
+        SeatHandle { seat, handle }
+    }
+
+    /// Upgrades the seat handle to a reference to the backing `Seat`.
+    ///
+    /// # Unsafety
+    /// This function is unsafe, because it creates an unbound `Seat`
+    /// which may live forever..
+    /// But a seat could be destroyed else where.
+    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Box<Seat>> {
+        self.handle.upgrade()
+            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            // NOTE
+            // We drop the Rc here because having two would allow a dangling
+            // pointer to exist!
+            .and_then(|check| {
+                if check.load(Ordering::Acquire) {
+                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                }
+                check.store(true, Ordering::Release);
+                Ok(Seat::from_ptr(self.seat))
+            })
+    }
+
+    /// Run a function on the referenced Seat, if it still exists
+    ///
+    /// If the Seat is returned, then the Seat is not deallocated.
+    ///
+    /// # Safety
+    /// By enforcing a rather harsh limit on the lifetime of the Seat
+    /// to a short lived scope of an anonymous function,
+    /// this function ensures the Seat does not live during a callback
+    /// (at which point you would have aliased mutability).
+    ///
+    /// # Panics
+    /// This function will panic if multiple mutable borrows are detected.
+    /// This will happen if you call `upgrade` directly within this callback,
+    /// or if you run this function within the another run to the same `Seat`.
+    ///
+    /// So don't nest `run` calls or call this in a Seat callback
+    /// and everything will be ok :).
+    pub fn run<F>(&mut self, runner: F) -> UpgradeHandleResult<()>
+        where F: FnOnce(Box<Seat>) -> Option<Box<Seat>>
+    {
+        let seat = unsafe { self.upgrade()? };
+        let seat_ptr = seat.data.0;
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(seat)));
+        self.handle.upgrade().map(|check| {
+                                      // Sanity check that it hasn't been tampered with.
+                                      if !check.load(Ordering::Acquire) {
+                                          wlr_log!(L_ERROR,
+                                                   "After running seat callback, mutable lock \
+                                                    was false for {:p}",
+                                                   seat_ptr);
+                                          panic!("Lock in incorrect state!");
+                                      }
+                                      check.store(false, Ordering::Release);
+                                  });
+        match res {
+            Ok(Some(res)) => {
+                Box::into_raw(res);
+                Ok(())
+            }
+            Ok(None) => Ok(()),
+            Err(err) => panic::resume_unwind(err)
+        }
     }
 }

@@ -9,7 +9,6 @@ use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
 use render::GenericRenderer;
-use types::seat::Seats;
 
 use wayland_sys::server::{wl_display, wl_event_loop, signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start,
@@ -50,12 +49,6 @@ wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
 pub struct Compositor {
     /// User data.
     pub data: Box<Any>,
-    /// The list of seats.
-    ///
-    /// This is stored here due to their complicated memory model.
-    ///
-    /// Please refer to the `Seat` and `Seats` documentation to learn how to use this.
-    pub seats: Seats,
     /// Internal compositor handler
     compositor_handler: Option<Box<InternalCompositor>>,
     /// Manager for the inputs.
@@ -284,7 +277,6 @@ impl CompositorBuilder {
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
             Compositor { data: Box::new(data),
-                         seats: Seats::default(),
                          compositor_handler,
                          socket_name,
                          input_manager,
