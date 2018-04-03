@@ -1,7 +1,7 @@
-pub mod input_device;
-pub mod keyboard;
-pub mod pointer;
-pub mod touch;
+mod input_device;
+mod keyboard;
+mod pointer;
+mod touch;
 
 pub use self::input_device::*;
 pub use self::keyboard::*;

@@ -1,7 +1,7 @@
-pub mod seat_client;
-pub mod seat;
-pub mod grab;
-pub mod touch_point;
+mod seat_client;
+mod seat;
+mod grab;
+mod touch_point;
 
 pub use self::grab::*;
 pub use self::seat::*;

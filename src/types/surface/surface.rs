@@ -9,8 +9,9 @@ use std::time::Duration;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_main_surface,
-                  wlr_surface_has_buffer, wlr_surface_make_subsurface, wlr_surface_send_enter,
-                  wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_subsurface_at, wlr_surface_point_accepts_input};
+                  wlr_surface_has_buffer, wlr_surface_make_subsurface,
+                  wlr_surface_point_accepts_input, wlr_surface_send_enter,
+                  wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_subsurface_at};
 
 use super::{Subsurface, SubsurfaceHandle, SubsurfaceManager, SurfaceState};
 use Output;
@@ -157,11 +158,10 @@ impl Surface {
         unsafe { wlr_surface_has_buffer(self.surface) }
     }
 
-    /// Determines if this surface accepts input or not at the provided surface local coordinates.
+    /// Determines if this surface accepts input or not at the provided surface
+    /// local coordinates.
     pub fn accepts_input(&self, sx: c_double, sy: c_double) -> bool {
-        unsafe {
-            wlr_surface_point_accepts_input(self.surface, sx, sy)
-        }
+        unsafe { wlr_surface_point_accepts_input(self.surface, sx, sy) }
     }
 
     /// Find a subsurface within this surface at the surface-local coordinates.
