@@ -510,13 +510,13 @@ fn parse_geometry(input: &str) -> Result<Area, ParseError> {
         let y = iter.next().and_then(|y| y.parse().ok());
         (width.parse()?, height.parse()?, x, y)
     };
-    area.width = width;
-    area.height = height;
+    area.size.width = width;
+    area.size.height = height;
     if let Some(x) = x {
-        area.x = x;
+        area.origin.x = x;
     }
     if let Some(y) = y {
-        area.y = y;
+        area.origin.y = y;
     }
     Ok(area)
 }

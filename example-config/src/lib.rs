@@ -191,13 +191,13 @@ fn parse_geometry(input: &str) -> Option<Area> {
         let y = iter.next().and_then(|y| y.parse().ok());
         (width.parse().ok()?, height.parse().ok()?, x, y)
     };
-    area.width = width;
-    area.height = height;
+    area.size.width = width;
+    area.size.height = height;
     if let Some(x) = x {
-        area.x = x;
+        area.origin.x = x;
     }
     if let Some(y) = y {
-        area.y = y;
+        area.origin.y = y;
     }
     Some(area)
 }
