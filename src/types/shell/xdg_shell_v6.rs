@@ -138,11 +138,11 @@ impl XdgV6ShellSurface {
     }
 
     pub fn next_geometry(&self) -> Area {
-        unsafe { Area((*self.shell_surface).next_geometry) }
+        unsafe { Area::from_box((*self.shell_surface).next_geometry) }
     }
 
     pub fn geometry(&self) -> Area {
-        unsafe { Area((*self.shell_surface).geometry) }
+        unsafe { Area::from_box((*self.shell_surface).geometry) }
     }
 
     /// Send a ping to the surface.
@@ -429,7 +429,7 @@ impl XdgV6Popup {
     }
 
     pub fn geometry(&self) -> Area {
-        unsafe { Area((*self.popup).geometry) }
+        unsafe { Area::from_box((*self.popup).geometry) }
     }
 }
 

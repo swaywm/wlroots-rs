@@ -211,7 +211,7 @@ impl OutputLayout {
             let output_ptr = reference.into()
                                       .map(|output| output.as_ptr())
                                       .unwrap_or(ptr::null_mut());
-            Area(*wlr_output_layout_get_box(self.layout, output_ptr))
+            Area::from_box(*wlr_output_layout_get_box(self.layout, output_ptr))
         }
     }
 
@@ -231,7 +231,7 @@ impl OutputLayout {
     /// Determines if the `Output` in the `OutputLayout` intersects with
     /// the provided `Area`.
     pub fn intersects(&mut self, output: &mut Output, area: Area) -> bool {
-        unsafe { wlr_output_layout_intersects(self.layout, output.as_ptr(), &area.0) }
+        unsafe { wlr_output_layout_intersects(self.layout, output.as_ptr(), &area.into()) }
     }
 
     /// Given x and y as pointers to global coordinates, adjusts them to local output

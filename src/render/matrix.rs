@@ -74,7 +74,7 @@ pub fn project_box(area: Area,
     unsafe {
         let mut output = [0.0; 9];
         wlr_matrix_project_box(output.as_mut_ptr(),
-                               &*area,
+                               &area.into(),
                                transform,
                                rotation,
                                projection.as_ptr());

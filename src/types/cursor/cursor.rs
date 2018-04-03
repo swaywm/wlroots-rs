@@ -426,20 +426,20 @@ impl Cursor {
 
     /// Maps this cursor to an arbitrary region on the associated
     /// wlr_output_layout.
-    pub fn map_to_region(&mut self, mut area: Area) {
-        unsafe { wlr_cursor_map_to_region(self.cursor, &mut area.0) }
+    pub fn map_to_region(&mut self, area: Area) {
+        unsafe { wlr_cursor_map_to_region(self.cursor, &mut area.into()) }
     }
 
     /// Maps inputs from this input device to an arbitrary region on the associated
     /// wlr_output_layout.
     ///
     /// The input device must be attached to this cursor.
-    pub fn map_input_to_region(&mut self, dev: &InputDevice, mut area: Area) {
+    pub fn map_input_to_region(&mut self, dev: &InputDevice, area: Area) {
         // NOTE Rationale for why we don't check input:
         //
         // If the input isn't found, then wlroots prints a diagnostic and
         // returns early (and thus does nothing unsafe).
-        unsafe { wlr_cursor_map_input_to_region(self.cursor, dev.as_ptr(), &mut area.0) }
+        unsafe { wlr_cursor_map_input_to_region(self.cursor, dev.as_ptr(), &mut area.into()) }
     }
 
     /// Convert absolute coordinates to layout coordinates for the device.
