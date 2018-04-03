@@ -36,14 +36,11 @@ pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, Out
 pub use self::types::area::*;
 pub use self::types::cursor::*;
 pub use self::types::data_device::*;
-pub use self::types::input_device::*;
-pub use self::types::keyboard::*;
+pub use self::types::input::*;
 pub use self::types::output::*;
-pub use self::types::pointer::*;
 pub use self::types::seat::*;
 pub use self::types::shell::*;
 pub use self::types::surface::*;
-pub use self::types::touch::*;
 pub use key_events::Key;
 pub use wlroots_sys::{wlr_button_state, wlr_key_state, wlr_keyboard_modifiers};
 

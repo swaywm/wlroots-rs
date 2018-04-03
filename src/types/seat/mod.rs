@@ -8,7 +8,7 @@ pub use self::seat::*;
 pub use self::seat_client::*;
 pub use self::touch_point::*;
 
-pub use seat::Seat;
+pub use self::seat::Seat;
 use std::collections::HashMap;
 use wlroots_sys::wlr_seat;
 
