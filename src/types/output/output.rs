@@ -498,6 +498,18 @@ impl Drop for Output {
 }
 
 impl OutputHandle {
+    /// Constructs a new OutputHandle that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server, or
+    /// for mocking/testing.
+    pub fn new() -> Self {
+        unsafe {
+            OutputHandle { handle: Weak::new(),
+                           damage: ptr::null_mut(),
+                           output: ptr::null_mut() }
+        }
+    }
     /// Creates an OutputHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(output: *mut wlr_output) -> Self {
