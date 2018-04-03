@@ -318,8 +318,7 @@ fn main() {
                                 .output_manager(Box::new(OutputManager))
                                 .wl_shell_manager(Box::new(WlShellManager))
                                 .build_auto(State::new(xcursor_theme, layout, cursor_id));
-    Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
-        .expect("Could not allocate the global seat");
+    Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx));
     compositor.run();
 }
 

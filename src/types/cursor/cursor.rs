@@ -216,7 +216,8 @@ impl CursorBuilder {
             if cursor.is_null() {
                 panic!("Could not create wlr_cursor")
             }
-            CursorBuilder { cursor: cursor, cursor_handler }
+            CursorBuilder { cursor: cursor,
+                            cursor_handler }
         }
     }
 

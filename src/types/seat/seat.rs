@@ -195,12 +195,12 @@ impl Seat {
     pub fn create(compositor: &mut Compositor,
                   name: String,
                   handler: Box<SeatHandler>)
-                  -> Option<&mut Box<Self>> {
+                  -> &mut Self {
         unsafe {
             let name = safe_as_cstring(name);
             let seat = wlr_seat_create(compositor.display() as _, name.as_ptr());
             if seat.is_null() {
-                None
+                panic!("Could not allocate a wlr_seat");
             } else {
                 let mut res = Seat::new((seat, handler));
                 wl_signal_add(&mut (*seat).events.pointer_grab_begin as *mut _ as _,
@@ -223,7 +223,7 @@ impl Seat {
                               res.primary_selection_listener() as *mut _ as _);
                 wl_signal_add(&mut (*seat).events.destroy as *mut _ as _,
                               res.destroy_listener() as *mut _ as _);
-                Some(compositor.seats.insert(res))
+                &mut *compositor.seats.insert(res)
             }
         }
     }

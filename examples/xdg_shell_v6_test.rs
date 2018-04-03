@@ -225,8 +225,7 @@ fn main() {
 
     {
         let seat_id = {
-            let seat = Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
-                .expect("Could not allocate the global seat");
+            let seat = Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx));
             seat.set_capabilities(Capability::all());
             seat.id()
         };
