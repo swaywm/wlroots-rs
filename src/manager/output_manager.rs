@@ -117,6 +117,9 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
             // Add the output buffer swap event to this manager
             wl_signal_add(&mut (*data).events.swap_buffers as *mut _ as _,
                           output.swap_buffers_listener() as _);
+            // Add the output need swap event to this manager
+            wl_signal_add(&mut (*data).events.needs_swap as *mut _ as _,
+                          output.need_swap_listener() as _);
             // Add the output destroy event to this manager
             wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
                           remove_listener);

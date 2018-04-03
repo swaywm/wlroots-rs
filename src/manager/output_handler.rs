@@ -23,6 +23,9 @@ pub trait OutputHandler {
 
     /// Called every time the buffers are swapped on an output.
     fn on_buffers_swapped(&mut self, &mut Compositor, &mut Output) {}
+
+    /// Called every time the buffers need to be swapped on an output.
+    fn needs_swap(&mut self, &mut Compositor, &mut Output) {}
 }
 
 wayland_listener!(UserOutput, (Output, Box<OutputHandler>), [
@@ -69,6 +72,14 @@ wayland_listener!(UserOutput, (Output, Box<OutputHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         output.set_lock(true);
         manager.on_buffers_swapped(compositor, output);
+        output.set_lock(false);
+    };
+    need_swap_listener => need_swap_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
+    unsafe {
+        let (ref mut output, ref mut manager) = this.data;
+        let compositor = &mut *COMPOSITOR_PTR;
+        output.set_lock(true);
+        manager.needs_swap(compositor, output);
         output.set_lock(false);
     };
 ]);
