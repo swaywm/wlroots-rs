@@ -1,5 +1,6 @@
 //! TODO Documentation
 
+use libc::c_double;
 use std::{panic, ptr};
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -13,7 +14,7 @@ use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resoluti
                   wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_get_box,
                   wlr_output_layout_get_center_output, wlr_output_layout_intersects,
                   wlr_output_layout_move, wlr_output_layout_output,
-                  wlr_output_layout_output_coords, wlr_output_layout_remove};
+                  wlr_output_layout_output_coords, wlr_output_layout_remove, wlr_output_layout_get, wlr_output_layout_output_at};
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
@@ -249,6 +250,30 @@ impl OutputLayout {
             output.clear_output_layout_data();
             wlr_output_layout_remove(self.layout, output.as_ptr());
         };
+    }
+
+    /// Get an output's information about its place in the `OutputLayout`, if it's present.
+    pub fn get_output_info<'output>(&mut self, output: &'output mut Output) -> Option<OutputLayoutOutput<'output>> {
+        unsafe {
+            let layout_output = wlr_output_layout_get(self.layout, output.as_ptr());
+            if layout_output.is_null() {
+                None
+            } else {
+                Some(OutputLayoutOutput { layout_output, phantom: PhantomData })
+            }
+        }
+    }
+
+    /// Get the output at the given output layout coordinate location, if there is one there.
+    pub fn output_at(&mut self, lx: c_double, ly: c_double) -> Option<OutputHandle> {
+        unsafe {
+            let output = wlr_output_layout_output_at(self.layout, lx, ly);
+            if output.is_null() {
+                None
+            } else {
+                Some(OutputHandle::from_ptr(output))
+            }
+        }
     }
 
     /// Creates a weak reference to an `OutputLayout`.
