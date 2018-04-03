@@ -1,15 +1,23 @@
 //! TODO Documentation
 
+use std::marker::PhantomData;
+
 use wlroots_sys::wlr_output_mode;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct OutputMode {
-    output_mode: *mut wlr_output_mode
+use Output;
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct OutputMode<'output> {
+    output_mode: *mut wlr_output_mode,
+    phantom: PhantomData<&'output Output>
 }
 
-impl OutputMode {
-    pub(crate) unsafe fn new(output_mode: *mut wlr_output_mode) -> Self {
-        OutputMode { output_mode }
+impl<'output> OutputMode<'output> {
+    /// NOTE This is a lifetime defined by the user of this function, but it must not outlive
+    /// the `Output` that hosts this output mode.
+    pub(crate) unsafe fn new<'unbound>(output_mode: *mut wlr_output_mode) -> OutputMode<'unbound> {
+        OutputMode { output_mode,
+                     phantom: PhantomData }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output_mode {

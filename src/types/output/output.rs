@@ -244,7 +244,7 @@ impl Output {
         unsafe { (*self.output).refresh }
     }
 
-    pub fn current_mode(&self) -> Option<OutputMode> {
+    pub fn current_mode<'output>(&'output self) -> Option<OutputMode<'output>> {
         unsafe {
             if (*self.output).current_mode.is_null() {
                 None
@@ -369,7 +369,7 @@ impl Output {
     /// Get the modes associated with this output.
     ///
     /// Note that some backends may have zero modes.
-    pub fn modes(&self) -> Vec<OutputMode> {
+    pub fn modes<'output>(&'output self) -> Vec<OutputMode<'output>> {
         unsafe {
             let mut result = vec![];
             wl_list_for_each!((*self.output).modes, link, (mode: wlr_output_mode) => {
