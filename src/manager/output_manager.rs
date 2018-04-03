@@ -2,7 +2,7 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
-use Output;
+use {Output, OutputHandle};
 use compositor::{Compositor, COMPOSITOR_PTR};
 use errors::UpgradeHandleErr;
 use libc;
@@ -51,6 +51,17 @@ pub trait OutputManagerHandler {
 }
 
 impl<'output> OutputBuilder<'output> {
+    /// Get a handle to the output this is building.
+    ///
+    /// This is so you can use this output later.
+    pub fn handle(&self) -> OutputHandle {
+        self.output.weak_reference()
+    }
+
+    /// Build the output with the best mode.
+    ///
+    /// To complete construction, return this in your implementation of
+    /// `OutputManagerHandler::output_added`.
     pub fn build_best_mode<T: OutputHandler + 'static>(self,
                                                        data: T)
                                                        -> OutputBuilderResult<'output> {
