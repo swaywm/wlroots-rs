@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use libc::c_double;
+use libc::{c_double, c_int};
 use std::{panic, ptr};
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -11,10 +11,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resolution,
                   wlr_output_layout, wlr_output_layout_add, wlr_output_layout_add_auto,
                   wlr_output_layout_closest_point, wlr_output_layout_contains_point,
-                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_get_box,
-                  wlr_output_layout_get_center_output, wlr_output_layout_intersects,
-                  wlr_output_layout_move, wlr_output_layout_output,
-                  wlr_output_layout_output_coords, wlr_output_layout_remove, wlr_output_layout_get, wlr_output_layout_output_at};
+                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_get,
+                  wlr_output_layout_get_box, wlr_output_layout_get_center_output,
+                  wlr_output_layout_intersects, wlr_output_layout_move, wlr_output_layout_output,
+                  wlr_output_layout_output_at, wlr_output_layout_output_coords,
+                  wlr_output_layout_remove};
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
@@ -252,19 +253,24 @@ impl OutputLayout {
         };
     }
 
-    /// Get an output's information about its place in the `OutputLayout`, if it's present.
-    pub fn get_output_info<'output>(&mut self, output: &'output mut Output) -> Option<OutputLayoutOutput<'output>> {
+    /// Get an output's information about its place in the `OutputLayout`, if
+    /// it's present.
+    pub fn get_output_info<'output>(&mut self,
+                                    output: &'output mut Output)
+                                    -> Option<OutputLayoutOutput<'output>> {
         unsafe {
             let layout_output = wlr_output_layout_get(self.layout, output.as_ptr());
             if layout_output.is_null() {
                 None
             } else {
-                Some(OutputLayoutOutput { layout_output, phantom: PhantomData })
+                Some(OutputLayoutOutput { layout_output,
+                                          phantom: PhantomData })
             }
         }
     }
 
-    /// Get the output at the given output layout coordinate location, if there is one there.
+    /// Get the output at the given output layout coordinate location, if there
+    /// is one there.
     pub fn output_at(&mut self, lx: c_double, ly: c_double) -> Option<OutputHandle> {
         unsafe {
             let output = wlr_output_layout_output_at(self.layout, lx, ly);
@@ -380,6 +386,16 @@ impl OutputLayoutHandle {
 }
 
 impl<'output> OutputLayoutOutput<'output> {
+    /// Get a handle to the output that this structure describes.
+    pub fn output(&self) -> OutputHandle {
+        unsafe { OutputHandle::from_ptr((*self.layout_output).output) }
+    }
+
+    /// Get the coordinates of this output in the layout output.
+    pub fn coords(&self) -> (c_int, c_int) {
+        unsafe { ((*self.layout_output).x, (*self.layout_output).y) }
+    }
+
     /// Get the absolute top left edge coordinate of this output in the output
     /// layout.
     pub fn top_left_edge(&self) -> Origin {
