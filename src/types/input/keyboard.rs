@@ -22,9 +22,9 @@ struct KeyboardState {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct RepeatInfo {
     /// The rate at which extended keypresses will fire more events.
-    rate: i32,
+    pub rate: i32,
     /// How long it takes for a keypress to register on this device.
-    delay: i32
+    pub delay: i32
 }
 
 #[derive(Debug)]
