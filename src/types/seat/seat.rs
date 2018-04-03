@@ -262,7 +262,7 @@ impl Seat {
 
     /// Updates the capabilities available on this seat.
     /// Will automatically send it to all clients.
-    pub fn set_capabilities(&self, capabilities: Capability) {
+    pub fn set_capabilities(&mut self, capabilities: Capability) {
         unsafe { wlr_seat_set_capabilities(self.data.0, capabilities.bits()) }
     }
 
@@ -382,7 +382,7 @@ impl Seat {
     }
 
     /// Set this keyboard as the active keyboard for the seat.
-    pub fn set_keyboard(&self, dev: &InputDevice) {
+    pub fn set_keyboard(&mut self, dev: &InputDevice) {
         unsafe { wlr_seat_set_keyboard(self.data.0, dev.as_ptr()) }
     }
 
