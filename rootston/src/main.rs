@@ -4,6 +4,12 @@ extern crate ini;
 extern crate wlroots;
 
 mod config;
+mod server;
+mod output;
+
+use output::OutputManager;
+use server::Server;
+use wlroots::*;
 
 const ROOSTON_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const ROOSTON_AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
@@ -27,6 +33,12 @@ fn main() {
                                                                .value_name("COMMAND")
                                                                .help("Command that will be ran \
                                                                       at startup."));
+    wlroots::utils::init_logging(wlroots::utils::L_DEBUG, None);
     let config = config::roots_config_from_args(app);
     wlr_log!(L_DEBUG, "Config: {:#?}", config);
+    CompositorBuilder::new().gles2(true)
+                            .data_device(true)
+                            .output_manager(Box::new(OutputManager::new()))
+                            .build_auto(Server::new(config))
+                            .run()
 }
