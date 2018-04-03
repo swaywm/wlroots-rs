@@ -40,8 +40,15 @@ pub type wlr_output_events = self::generated::wlr_output__bindgen_ty_1;
 pub type wlr_input_device_pointer = self::generated::wlr_input_device__bindgen_ty_1;
 
 impl wl_output_transform {
-    /// Invert the transform.
+    /// Returns the transform that, when composed with `self`, gives
+    /// `WL_OUTPUT_TRANSFORM_NORMAL`.
     pub fn invert(self) -> Self {
         unsafe { wlr_output_transform_invert(self) }
+    }
+
+    /// Returns a transform that, when applied, has the same effect as applying
+    /// sequentially `self` and `other`.
+    pub fn compose(self, other: Self) -> Self {
+        unsafe { wlr_output_transform_compose(self, other) }
     }
 }

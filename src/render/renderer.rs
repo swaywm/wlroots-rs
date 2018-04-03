@@ -55,7 +55,7 @@ impl GenericRenderer {
                            -> Renderer<'output> {
         unsafe {
             output.make_current();
-            let (width, height) = output.dimensions();
+            let (width, height) = output.size();
             wlr_renderer_begin(self.renderer, width, height);
             Renderer { renderer: self.renderer,
                        damage,
