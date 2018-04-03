@@ -18,12 +18,11 @@ impl OutputCursor {
     /// When the `Output` is destroyed, this can no longer be used.
     ///
     /// # Ergonomics
-    /// TODO Put in module documentation
     ///
     /// To make this easier for you, I would suggest putting the `OutputCursor` in your
     /// `OutputHandler` implementor's state so that when the `Output` is removed you
     /// just don't have to think about it and it will clean itself up by itself.
-    pub fn new<'output>(output: &'output mut Output) -> Option<OutputCursor> {
+    pub fn new(output: &mut Output) -> Option<OutputCursor> {
         unsafe {
             let output_handle = output.weak_reference();
             let cursor = wlr_output_cursor_create(output.as_ptr());
@@ -58,12 +57,14 @@ impl OutputCursor {
     }
 
     /// Sets the hardware cursor's surface.
-    pub fn set_surface(&mut self, surface: Surface, hotspot_x: i32, hotspot_y: i32) {
+    pub fn set_surface(&mut self, surface: Option<Surface>, hotspot_x: i32, hotspot_y: i32) {
         unsafe {
+            let surface_ptr = surface.map(|surface| surface.as_ptr())
+                                     .unwrap_or_else(|| ptr::null_mut());
             let cursor = self.cursor;
             let res = self.output_handle.run(|_| {
                                                  wlr_output_cursor_set_surface(cursor,
-                                                                               surface.as_ptr(),
+                                                                               surface_ptr,
                                                                                hotspot_x,
                                                                                hotspot_y)
                                              });
