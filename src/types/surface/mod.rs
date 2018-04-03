@@ -1,6 +1,6 @@
-pub mod surface;
-pub mod surface_state;
-pub mod sub_surface;
+mod surface;
+mod surface_state;
+mod sub_surface;
 mod subsurface_manager;
 
 pub use self::sub_surface::*;
