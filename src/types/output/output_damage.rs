@@ -142,8 +142,8 @@ impl OutputDamage {
     }
 
     /// Accumulates damage from an `Area` and schedules a `frame` event.
-    pub fn add_area(&mut self, mut area: Area) {
-        unsafe { wlr_output_damage_add_box(self.damage, &mut area.0) }
+    pub fn add_area(&mut self, area: Area) {
+        unsafe { wlr_output_damage_add_box(self.damage, &mut area.into()) }
     }
 }
 

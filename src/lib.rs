@@ -26,7 +26,7 @@ pub mod extensions;
 pub mod render;
 pub mod utils;
 
-pub use self::compositor::{terminate, Compositor, CompositorBuilder};
+pub use self::compositor::{terminate, Compositor, CompositorBuilder, CompositorHandler};
 pub use self::events::{key_events, pointer_events, seat_events, touch_events, wl_shell_events,
                        xdg_shell_v6_events};
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
@@ -36,21 +36,16 @@ pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, Out
 pub use self::types::area::*;
 pub use self::types::cursor::*;
 pub use self::types::data_device::*;
-pub use self::types::input_device::*;
-pub use self::types::keyboard::*;
-pub use self::types::output::output::*;
-pub use self::types::output::output_damage::*;
-pub use self::types::output::output_layout::*;
-pub use self::types::pointer::*;
+pub use self::types::input::*;
+pub use self::types::output::*;
 pub use self::types::seat::*;
 pub use self::types::shell::*;
 pub use self::types::surface::*;
-pub use self::types::touch::*;
 pub use key_events::Key;
 pub use wlroots_sys::{wlr_button_state, wlr_key_state, wlr_keyboard_modifiers};
 
-pub use self::render::{matrix_identity, matrix_multiply, matrix_rotate, matrix_scale,
-                       matrix_texture, matrix_transform, matrix_translate, project_box,
-                       GenericRenderer, Renderer, Texture, TextureFormat};
+pub use self::render::{matrix_identity, matrix_multiply, matrix_projection, matrix_rotate,
+                       matrix_scale, matrix_transform, matrix_translate, matrix_transpose,
+                       project_box, GenericRenderer, Image, Renderer, Texture, TextureFormat};
 
 pub use self::errors::*;

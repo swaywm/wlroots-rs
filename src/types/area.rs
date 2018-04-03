@@ -1,12 +1,10 @@
 //! Wrapper for the `wlr_box` type.
 //! Note that we renamed it to `Area` to avoid conflicts with Rust's Box.
 
-use std::ops::{Deref, DerefMut};
-
-use libc::{c_double, c_int};
+use libc::{c_double, c_float, c_int};
 
 use wlroots_sys::{wl_output_transform, wlr_box, wlr_box_closest_point, wlr_box_contains_point,
-                  wlr_box_empty, wlr_box_intersection, wlr_box_transform};
+                  wlr_box_empty, wlr_box_intersection, wlr_box_rotated_bounds, wlr_box_transform};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 /// Result of applying an intersection of two `Area`s.
@@ -17,7 +15,7 @@ pub enum IntersectionResult {
     NoIntersection
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub struct Origin {
     pub x: c_int,
     pub y: c_int
@@ -29,26 +27,13 @@ impl Origin {
     }
 }
 
-impl Default for Origin {
-    fn default() -> Self {
-        Origin { x: 0, y: 0 }
-    }
-}
-
 impl Into<Area> for Origin {
     fn into(self) -> Area {
         Area::new(self, Size::default())
     }
 }
 
-impl Into<Origin> for Area {
-    fn into(self) -> Origin {
-        Origin { x: self.0.x,
-                 y: self.0.y }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Size {
     pub width: c_int,
     pub height: c_int
@@ -60,61 +45,51 @@ impl Size {
     }
 }
 
-impl Default for Size {
-    fn default() -> Self {
-        Size { width: 0,
-               height: 0 }
-    }
-}
-
 impl Into<Area> for Size {
     fn into(self) -> Area {
         Area::new(Origin::default(), self)
     }
 }
 
-impl Into<Size> for Area {
-    fn into(self) -> Size {
-        Size { width: self.0.width,
-               height: self.0.height }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
 /// Generic geometry-like struct. Container an origin (x, y) point and bounds
 /// (width, height).
-pub struct Area(pub wlr_box);
+pub struct Area {
+    pub origin: Origin,
+    pub size: Size
+}
 
-impl Default for Area {
-    fn default() -> Area {
-        Area(wlr_box { x: 0,
-                       y: 0,
-                       width: 0,
-                       height: 0 })
+impl Into<wlr_box> for Area {
+    fn into(self) -> wlr_box {
+        wlr_box { x: self.origin.x,
+                  y: self.origin.y,
+                  width: self.size.width,
+                  height: self.size.height }
     }
 }
 
 impl Area {
     pub fn new(origin: Origin, size: Size) -> Self {
-        Area(wlr_box { x: origin.x,
-                       y: origin.y,
-                       width: size.width,
-                       height: size.height })
+        Area { origin, size }
+    }
+
+    /// Construct an Area from a `wlr_box`.
+    pub fn from_box(wlr_box: wlr_box) -> Self {
+        Area { origin: Origin { x: wlr_box.x,
+                                y: wlr_box.y },
+               size: Size { width: wlr_box.width,
+                            height: wlr_box.height } }
     }
 
     /// Makes a new `Area` with width and height set to the values in the given
     /// `Size`.
     pub fn with_size(self, size: Size) -> Self {
-        Area(wlr_box { width: size.width,
-                       height: size.height,
-                       ..self.0 })
+        Area { size, ..self }
     }
 
     /// Makes a new `Area` with x and y set to the value in the given `Origin`.
     pub fn with_origin(self, origin: Origin) -> Self {
-        Area(wlr_box { x: origin.x,
-                       y: origin.y,
-                       ..self.0 })
+        Area { origin, ..self }
     }
 
     /// Finds the closest point within the box to the given point.
@@ -122,19 +97,19 @@ impl Area {
     /// corner and returns that.
     ///
     /// Returned value is in form of (x, y).
-    pub fn closest_point(&mut self, x: c_double, y: c_double) -> (c_double, c_double) {
+    pub fn closest_point(self, x: c_double, y: c_double) -> (c_double, c_double) {
         unsafe {
             let (mut dest_x, mut dest_y) = (0.0, 0.0);
-            wlr_box_closest_point(&mut self.0, x, y, &mut dest_x, &mut dest_y);
+            wlr_box_closest_point(&mut self.into(), x, y, &mut dest_x, &mut dest_y);
             (dest_x, dest_y)
         }
     }
 
     /// Gets the intersection of the two areas.
-    pub fn intersection(&self, other_box: &Area) -> IntersectionResult {
+    pub fn intersection(self, other_box: Area) -> IntersectionResult {
         unsafe {
-            let mut res = Area::default();
-            let is_empty = wlr_box_intersection(&self.0, &other_box.0, &mut res.0);
+            let res = Area::default();
+            let is_empty = wlr_box_intersection(&self.into(), &other_box.into(), &mut res.into());
             if is_empty {
                 IntersectionResult::NoIntersection
             } else {
@@ -144,51 +119,33 @@ impl Area {
     }
 
     /// Determines if the box contains the given point.
-    pub fn contains_point(&mut self, x: c_double, y: c_double) -> bool {
-        unsafe { wlr_box_contains_point(&mut self.0, x, y) }
+    pub fn contains_point(self, x: c_double, y: c_double) -> bool {
+        unsafe { wlr_box_contains_point(&mut self.into(), x, y) }
     }
 
     /// Determines if the box is empty (e.g if the bounds give it an area of 0).
-    pub fn is_empty(&mut self) -> bool {
-        unsafe { wlr_box_empty(&mut self.0) }
+    pub fn is_empty(self) -> bool {
+        unsafe { wlr_box_empty(&mut self.into()) }
     }
 
     /// Transforms the box coordinates and bounds according to the
     /// output transformation.
     ///
     /// e.g: If it's `WL_OUTPUT_TRANSFORM_90` then it will flip the Area 90° clockwise.
-    pub fn transform(&mut self,
-                     transform: wl_output_transform,
-                     width: c_int,
-                     height: c_int)
-                     -> Area {
+    pub fn transform(self, transform: wl_output_transform, width: c_int, height: c_int) -> Area {
         unsafe {
-            let mut res = Area::default();
-            wlr_box_transform(&mut self.0, transform, width, height, &mut res.0);
+            let res = Area::default();
+            wlr_box_transform(&mut self.into(), transform, width, height, &mut res.into());
             res
         }
     }
-}
 
-impl Deref for Area {
-    type Target = wlr_box;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    /// Creates the smallest box that contains the box rotated about its center.
+    pub fn rotated_bounds(self, rotation: c_float) -> Area {
+        unsafe {
+            let dest = Area::default();
+            wlr_box_rotated_bounds(&self.into(), rotation, &mut dest.into());
+            dest
+        }
     }
 }
-
-impl DerefMut for Area {
-    fn deref_mut(&mut self) -> &mut wlr_box {
-        &mut self.0
-    }
-}
-
-impl PartialEq for Area {
-    fn eq(&self, other: &Area) -> bool {
-        self.x == other.x && self.y == other.y && self.height == other.height
-        && self.width == other.width
-    }
-}
-
-impl Eq for Area {}

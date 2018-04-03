@@ -1,6 +1,6 @@
-pub mod cursor;
-pub mod xcursor;
+mod cursor;
+mod xcursor;
 
-pub use cursor::{Cursor, CursorBuilder, CursorHandler, CursorId};
-pub(crate) use cursor::CursorWrapper;
-pub use xcursor::*;
+pub use self::cursor::{Cursor, CursorBuilder, CursorHandler, CursorId};
+pub(crate) use self::cursor::CursorWrapper;
+pub use self::xcursor::*;

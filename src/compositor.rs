@@ -1,27 +1,50 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
-use std::{env, ptr};
-use std::any::Any;
-use std::cell::UnsafeCell;
-use std::ffi::CStr;
+use libc;
+use std::{env, ptr, any::Any, cell::UnsafeCell, ffi::CStr};
 
-use DataDeviceManager;
+use {DataDeviceManager, SurfaceHandle};
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
 use render::GenericRenderer;
 use types::seat::Seats;
 
-use wayland_sys::server::{wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
-use wayland_sys::server::signal::wl_signal_add;
+use wayland_sys::server::{wl_display, wl_event_loop, signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start,
-                  wlr_compositor, wlr_compositor_create, wlr_wl_shell, wlr_wl_shell_create,
-                  wlr_xdg_shell_v6, wlr_xdg_shell_v6_create};
+                  wlr_compositor, wlr_compositor_create, wlr_compositor_destroy, wlr_wl_shell,
+                  wlr_wl_shell_create, wlr_xdg_shell_v6, wlr_xdg_shell_v6_create};
 use wlroots_sys::wayland_server::sys::wl_display_init_shm;
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 pub static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
+
+pub trait CompositorHandler {
+    /// Callback that's triggered when a surface is provided to the compositor.
+    fn new_surface(&mut self, &mut Compositor, &mut SurfaceHandle) {}
+
+    /// Callback that's triggered during shutdown.
+    fn on_shutdown(&mut self) {}
+}
+
+wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
+    new_surface_listener => new_surface_notify: |this: &mut InternalCompositor,
+                                                 surface: *mut libc::c_void,|
+    unsafe {
+        let handler = &mut this.data;
+        let compositor = &mut *COMPOSITOR_PTR;
+        let mut surface = SurfaceHandle::from_ptr(surface as _);
+        handler.new_surface(compositor, &mut surface);
+    };
+    shutdown_listener => shutdown_notify: |this: &mut InternalCompositor,
+                                           _data: *mut libc::c_void,|
+    unsafe {
+        let handler = &mut this.data;
+        assert!(COMPOSITOR_PTR.is_null(), "COMPOSITOR_PTR was not NULL!");
+        handler.on_shutdown();
+    };
+]);
 
 #[allow(dead_code)]
 pub struct Compositor {
@@ -33,6 +56,8 @@ pub struct Compositor {
     ///
     /// Please refer to the `Seat` and `Seats` documentation to learn how to use this.
     pub seats: Seats,
+    /// Internal compositor handler
+    compositor_handler: Option<Box<InternalCompositor>>,
     /// Manager for the inputs.
     input_manager: Option<Box<InputManager>>,
     /// Manager for the outputs.
@@ -70,6 +95,7 @@ pub struct Compositor {
 }
 
 pub struct CompositorBuilder {
+    compositor_handler: Option<Box<CompositorHandler>>,
     input_manager_handler: Option<Box<InputManagerHandler>>,
     output_manager_handler: Option<Box<OutputManagerHandler>>,
     wl_shell_manager_handler: Option<Box<WlShellManagerHandler>>,
@@ -87,10 +113,17 @@ impl CompositorBuilder {
         CompositorBuilder { gles2: false,
                             server_decoration_manager: false,
                             data_device_manager: false,
+                            compositor_handler: None,
                             input_manager_handler: None,
                             output_manager_handler: None,
                             wl_shell_manager_handler: None,
                             xdg_v6_shell_manager_handler: None }
+    }
+
+    /// Set the handler for global compositor callbacks.
+    pub fn compositor_handler(mut self, compositor_handler: Box<CompositorHandler>) -> Self {
+        self.compositor_handler = Some(compositor_handler);
+        self
     }
 
     /// Set the handler for inputs.
@@ -188,6 +221,16 @@ impl CompositorBuilder {
                 None
             };
 
+            // Set up compositor handler, if the user provided it.
+            let compositor_handler = self.compositor_handler.map(|handler| {
+                let mut compositor_handler = InternalCompositor::new(handler);
+                wl_signal_add(&mut (*compositor).events.new_surface as *mut _ as _,
+                              compositor_handler.new_surface_listener() as *mut _ as _);
+                wl_signal_add(&mut (*compositor).events.destroy as *mut _ as _,
+                              compositor_handler.shutdown_listener() as *mut _ as _);
+                compositor_handler
+            });
+
             // Set up input manager, if the user provided it.
             let input_manager = self.input_manager_handler.map(|handler| {
                 let mut input_manager = InputManager::new((vec![], handler));
@@ -242,6 +285,7 @@ impl CompositorBuilder {
             env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
             Compositor { data: Box::new(data),
                          seats: Seats::default(),
+                         compositor_handler,
                          socket_name,
                          input_manager,
                          output_manager,
@@ -317,6 +361,12 @@ impl Compositor {
     /// later when we are out of the C callback stack.
     pub(crate) fn save_panic_error(&mut self, error: Box<Any + Send>) {
         self.panic_error = Some(error);
+    }
+}
+
+impl Drop for Compositor {
+    fn drop(&mut self) {
+        unsafe { wlr_compositor_destroy(self.compositor) }
     }
 }
 

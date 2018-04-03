@@ -15,10 +15,9 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
                   wlr_output_schedule_frame, wlr_output_set_custom_mode,
                   wlr_output_set_fullscreen_surface, wlr_output_set_gamma, wlr_output_set_mode,
                   wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
-                  wlr_output_swap_buffers};
+                  wlr_output_swap_buffers, wlr_output_transformed_resolution};
 
-use super::output_layout::OutputLayoutHandle;
-use super::output_mode::OutputMode;
+use {OutputLayoutHandle, OutputMode};
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
 
@@ -244,22 +243,12 @@ impl Output {
         unsafe { (*self.output).refresh }
     }
 
-    pub fn current_mode(&self) -> Option<OutputMode> {
+    pub fn current_mode<'output>(&'output self) -> Option<OutputMode<'output>> {
         unsafe {
             if (*self.output).current_mode.is_null() {
                 None
             } else {
                 Some(OutputMode::new((*self.output).current_mode))
-            }
-        }
-    }
-
-    pub fn fullscreen_surface(&self) -> Option<SurfaceHandle> {
-        unsafe {
-            if (*self.output).fullscreen_surface.is_null() {
-                None
-            } else {
-                Some(SurfaceHandle::from_ptr((*self.output).fullscreen_surface))
             }
         }
     }
@@ -338,17 +327,44 @@ impl Output {
         wlr_output_swap_buffers(self.output, when_ptr, damage)
     }
 
+    /// If there is a fullscreen surface on this output, returns a handle to it.
+    pub fn fullscreen_surface(&self) -> Option<SurfaceHandle> {
+        unsafe {
+            let surface = (*self.output).fullscreen_surface;
+            if surface.is_null() {
+                None
+            } else {
+                Some(SurfaceHandle::from_ptr(surface))
+            }
+        }
+    }
+
+    /// Determines if a frame is pending or not.
+    pub fn frame_pending(&self) -> bool {
+        unsafe { (*self.output).frame_pending }
+    }
+
     /// Get the dimensions of the output as (width, height).
-    pub fn dimensions(&self) -> (i32, i32) {
+    pub fn size(&self) -> (i32, i32) {
         unsafe { ((*self.output).width, (*self.output).height) }
     }
 
     /// Get the physical dimensions of the output as (width, height).
-    pub fn physical_dimensions(&self) -> (i32, i32) {
+    pub fn physical_size(&self) -> (i32, i32) {
         unsafe { ((*self.output).phys_width, (*self.output).phys_height) }
     }
 
-    pub fn effective_resolution(&self) -> (i32, i32) {
+    /// Computes the transformed output resolution
+    pub fn transformed_resolution(&self) -> (c_int, c_int) {
+        unsafe {
+            let (mut x, mut y) = (0, 0);
+            wlr_output_transformed_resolution(self.output, &mut x, &mut y);
+            (x, y)
+        }
+    }
+
+    /// Computes the transformed and scaled output resolution.
+    pub fn effective_resolution(&self) -> (c_int, c_int) {
         unsafe {
             let (mut x, mut y) = (0, 0);
             wlr_output_effective_resolution(self.output, &mut x, &mut y);
@@ -369,7 +385,7 @@ impl Output {
     /// Get the modes associated with this output.
     ///
     /// Note that some backends may have zero modes.
-    pub fn modes(&self) -> Vec<OutputMode> {
+    pub fn modes<'output>(&'output self) -> Vec<OutputMode<'output>> {
         unsafe {
             let mut result = vec![];
             wl_list_for_each!((*self.output).modes, link, (mode: wlr_output_mode) => {

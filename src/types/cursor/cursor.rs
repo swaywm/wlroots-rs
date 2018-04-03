@@ -12,7 +12,7 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_absolute_to_layout_coords,
                   wlr_cursor_map_to_region, wlr_cursor_move, wlr_cursor_set_image,
                   wlr_cursor_set_surface, wlr_cursor_warp, wlr_cursor_warp_absolute};
 
-use {Area, InputDevice, Output, OutputHandle, OutputLayoutHandle, Surface, XCursorImage};
+use {Area, Image, InputDevice, Output, OutputHandle, OutputLayoutHandle, Surface, XCursorImage};
 use compositor::{Compositor, COMPOSITOR_PTR};
 use errors::UpgradeHandleErr;
 use events::{pointer_events, tablet_tool_events, touch_events};
@@ -223,22 +223,21 @@ impl CursorBuilder {
     }
 
     /// Sets the image of the cursor to the image from the XCursor.
-    pub fn set_cursor_image(self, image: &XCursorImage) -> Self {
+    pub fn set_cursor_image(self, image: &Image) -> Self {
         unsafe {
-            let scale = 0.0;
             // NOTE Rationale for why lifetime isn't attached:
             //
             // wlr_cursor_set_image uses gl calls internally, which copies
             // the buffer and so it doesn't matter what happens to the
             // xcursor image after this call.
             wlr_cursor_set_image(self.cursor,
-                                 image.buffer.as_ptr(),
-                                 (image.width * 4) as i32,
+                                 image.pixels.as_ptr(),
+                                 image.stride,
                                  image.width,
                                  image.height,
-                                 image.hotspot_x as i32,
-                                 image.hotspot_y as i32,
-                                 scale)
+                                 image.hotspot_x,
+                                 image.hotspot_y,
+                                 image.scale)
         }
         self
     }
@@ -426,20 +425,20 @@ impl Cursor {
 
     /// Maps this cursor to an arbitrary region on the associated
     /// wlr_output_layout.
-    pub fn map_to_region(&mut self, mut area: Area) {
-        unsafe { wlr_cursor_map_to_region(self.cursor, &mut area.0) }
+    pub fn map_to_region(&mut self, area: Area) {
+        unsafe { wlr_cursor_map_to_region(self.cursor, &mut area.into()) }
     }
 
     /// Maps inputs from this input device to an arbitrary region on the associated
     /// wlr_output_layout.
     ///
     /// The input device must be attached to this cursor.
-    pub fn map_input_to_region(&mut self, dev: &InputDevice, mut area: Area) {
+    pub fn map_input_to_region(&mut self, dev: &InputDevice, area: Area) {
         // NOTE Rationale for why we don't check input:
         //
         // If the input isn't found, then wlroots prints a diagnostic and
         // returns early (and thus does nothing unsafe).
-        unsafe { wlr_cursor_map_input_to_region(self.cursor, dev.as_ptr(), &mut area.0) }
+        unsafe { wlr_cursor_map_input_to_region(self.cursor, dev.as_ptr(), &mut area.into()) }
     }
 
     /// Convert absolute coordinates to layout coordinates for the device.

@@ -105,6 +105,14 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                                                                  keyboard_handler));
                         wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
                                     keyboard.key_listener() as *mut _ as _);
+                        wl_signal_add(&mut (*dev.dev_union().keyboard).events.modifiers
+                                      as *mut _ as _,
+                                      keyboard.modifiers_listener() as *mut _ as _);
+                        wl_signal_add(&mut (*dev.dev_union().keyboard).events.keymap as *mut _ as _,
+                                      keyboard.keymap_listener() as *mut _ as _);
+                        wl_signal_add(&mut (*dev.dev_union().keyboard).events.repeat_info
+                                      as *mut _ as _,
+                                      keyboard.repeat_listener() as *mut _ as _);
                         // Forget until we need to drop it in the destroy callback
                         inputs.push(Input::Keyboard(keyboard));
                     }

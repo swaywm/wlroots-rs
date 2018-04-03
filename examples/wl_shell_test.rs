@@ -309,7 +309,7 @@ fn main() {
     init_logging(L_DEBUG, None);
     let cursor = CursorBuilder::new(Box::new(CursorEx)).expect("Could not create cursor");
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
-    let mut layout = OutputLayout::new().expect("Could not construct an output layout");
+    let mut layout = OutputLayout::new(None).expect("Could not construct an output layout");
 
     let cursor_id = layout.attach_cursor(cursor);
     let mut compositor =

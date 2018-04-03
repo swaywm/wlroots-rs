@@ -1,23 +1,72 @@
 //! TODO Documentation
 
-use std::{panic, ptr};
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
-use std::marker::PhantomData;
-use std::rc::{Rc, Weak};
-use std::sync::atomic::{AtomicBool, Ordering};
+use libc::{self, c_double, c_int};
+use std::{fmt, panic, ptr, cell::{RefCell, RefMut}, collections::HashMap, marker::PhantomData,
+          rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
 
+use wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resolution,
                   wlr_output_layout, wlr_output_layout_add, wlr_output_layout_add_auto,
                   wlr_output_layout_closest_point, wlr_output_layout_contains_point,
-                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_get_box,
-                  wlr_output_layout_get_center_output, wlr_output_layout_intersects,
-                  wlr_output_layout_move, wlr_output_layout_output,
-                  wlr_output_layout_output_coords, wlr_output_layout_remove};
+                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_get,
+                  wlr_output_layout_get_box, wlr_output_layout_get_center_output,
+                  wlr_output_layout_intersects, wlr_output_layout_move, wlr_output_layout_output,
+                  wlr_output_layout_output_at, wlr_output_layout_output_coords,
+                  wlr_output_layout_remove};
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
-use {Area, Cursor, CursorBuilder, CursorId, CursorWrapper, Origin, Output, OutputHandle};
+use {Area, Compositor, Cursor, CursorBuilder, CursorId, CursorWrapper, Origin, Output,
+     OutputHandle, compositor::COMPOSITOR_PTR};
+
+pub trait OutputLayoutHandler {
+    /// Callback that's triggered when an output is added to the output layout.
+    fn output_added<'this>(&'this mut self, &mut Compositor, &mut OutputLayoutOutput<'this>) {}
+
+    /// Callback that's triggered when an output is removed from the output
+    /// layout.
+    fn output_removed<'this>(&'this mut self, &mut Compositor, &mut OutputLayoutOutput<'this>) {}
+
+    /// Callback that's triggered when the layout changes.
+    fn on_change<'this>(&mut self, &mut Compositor, &mut OutputLayoutOutput<'this>) {}
+}
+
+wayland_listener!(InternalOutputLayout, Box<OutputLayoutHandler>, [
+    output_add_listener => output_add_notify: |this: &mut InternalOutputLayout,
+                                               data: *mut libc::c_void,|
+    unsafe {
+        let manager = &mut this.data;
+        let layout_output = data as *mut wlr_output_layout_output;
+        let mut layout_output = OutputLayoutOutput{
+            layout_output, phantom: PhantomData
+        };
+        let compositor = &mut *COMPOSITOR_PTR;
+        manager.output_added(compositor, &mut layout_output);
+    };
+    output_remove_listener => output_remove_notify: |this: &mut InternalOutputLayout,
+                                                     data: *mut libc::c_void,|
+    unsafe {
+        let manager = &mut this.data;
+        let layout_output = data as *mut wlr_output_layout_output;
+        let mut layout_output = OutputLayoutOutput { layout_output, phantom: PhantomData};
+        let compositor = &mut *COMPOSITOR_PTR;
+        manager.output_removed(compositor, &mut layout_output);
+    };
+    change_listener => change_notify: |this: &mut InternalOutputLayout, data: *mut libc::c_void,|
+    unsafe {
+        let manager = &mut this.data;
+        let layout_output = data as *mut wlr_output_layout_output;
+        let mut layout_output = OutputLayoutOutput { layout_output, phantom: PhantomData};
+        let compositor = &mut *COMPOSITOR_PTR;
+        manager.on_change(compositor, &mut layout_output);
+    };
+]);
+
+impl fmt::Debug for InternalOutputLayout {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "")
+    }
+}
 
 #[derive(Debug)]
 pub struct OutputLayout {
@@ -34,7 +83,9 @@ pub struct OutputLayout {
     /// The output_layout ptr that refers to this `OutputLayout`
     layout: *mut wlr_output_layout,
     /// The cursors attached to this output layout.
-    pub(crate) cursors: Rc<RefCell<HashMap<CursorId, Box<CursorWrapper>>>>
+    pub(crate) cursors: Rc<RefCell<HashMap<CursorId, Box<CursorWrapper>>>>,
+    /// Optional callback handler for the OutputLayout.
+    manager: Option<Box<InternalOutputLayout>>
 }
 
 /// A handle to an `OutputLayout`.
@@ -62,15 +113,27 @@ pub struct OutputLayoutOutput<'output> {
 
 impl OutputLayout {
     /// Construct a new OuputLayout.
-    pub fn new() -> Option<Self> {
+    pub fn new(handler: Option<Box<OutputLayoutHandler>>) -> Option<Self> {
         unsafe {
             let layout = wlr_output_layout_create();
             if layout.is_null() {
                 None
             } else {
+                let manager =
+                    handler.map(|handler| {
+                                    let mut manager = InternalOutputLayout::new(handler);
+                                    wl_signal_add(&mut (*layout).events.add as *mut _ as _,
+                                                  manager.output_add_listener() as *mut _ as _);
+                                    wl_signal_add(&mut (*layout).events.destroy as *mut _ as _,
+                                                  manager.output_remove_listener() as *mut _ as _);
+                                    wl_signal_add(&mut (*layout).events.change as *mut _ as _,
+                                                  manager.change_listener() as *mut _ as _);
+                                    manager
+                                });
                 Some(OutputLayout { liveliness: Some(Rc::new(AtomicBool::new(false))),
                                     layout,
-                                    cursors: Rc::new(RefCell::new(HashMap::new())) })
+                                    cursors: Rc::new(RefCell::new(HashMap::new())),
+                                    manager })
             }
         }
     }
@@ -211,7 +274,7 @@ impl OutputLayout {
             let output_ptr = reference.into()
                                       .map(|output| output.as_ptr())
                                       .unwrap_or(ptr::null_mut());
-            Area(*wlr_output_layout_get_box(self.layout, output_ptr))
+            Area::from_box(*wlr_output_layout_get_box(self.layout, output_ptr))
         }
     }
 
@@ -231,7 +294,7 @@ impl OutputLayout {
     /// Determines if the `Output` in the `OutputLayout` intersects with
     /// the provided `Area`.
     pub fn intersects(&mut self, output: &mut Output, area: Area) -> bool {
-        unsafe { wlr_output_layout_intersects(self.layout, output.as_ptr(), &area.0) }
+        unsafe { wlr_output_layout_intersects(self.layout, output.as_ptr(), &area.into()) }
     }
 
     /// Given x and y as pointers to global coordinates, adjusts them to local output
@@ -251,6 +314,35 @@ impl OutputLayout {
         };
     }
 
+    /// Get an output's information about its place in the `OutputLayout`, if
+    /// it's present.
+    pub fn get_output_info<'output>(&mut self,
+                                    output: &'output mut Output)
+                                    -> Option<OutputLayoutOutput<'output>> {
+        unsafe {
+            let layout_output = wlr_output_layout_get(self.layout, output.as_ptr());
+            if layout_output.is_null() {
+                None
+            } else {
+                Some(OutputLayoutOutput { layout_output,
+                                          phantom: PhantomData })
+            }
+        }
+    }
+
+    /// Get the output at the given output layout coordinate location, if there
+    /// is one there.
+    pub fn output_at(&mut self, lx: c_double, ly: c_double) -> Option<OutputHandle> {
+        unsafe {
+            let output = wlr_output_layout_output_at(self.layout, lx, ly);
+            if output.is_null() {
+                None
+            } else {
+                Some(OutputHandle::from_ptr(output))
+            }
+        }
+    }
+
     /// Creates a weak reference to an `OutputLayout`.
     ///
     /// # Panics
@@ -266,6 +358,7 @@ impl OutputLayout {
 
     unsafe fn from_handle(handle: &OutputLayoutHandle) -> Self {
         OutputLayout { liveliness: None,
+                       manager: None,
                        layout: handle.as_ptr(),
                        cursors: handle.cursors
                                       .upgrade()
@@ -279,8 +372,23 @@ impl Drop for OutputLayout {
             None => {}
             Some(ref liveliness) => {
                 if Rc::strong_count(liveliness) == 1 {
-                    unsafe { wlr_output_layout_destroy(self.layout) }
                     wlr_log!(L_DEBUG, "Dropped {:?}", self);
+                    if let Some(mut manager) = self.manager.take() {
+                        unsafe {
+                            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                          wl_list_remove,
+                                          &mut (*manager.output_add_listener()).link as *mut _
+                                          as _);
+                            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                          wl_list_remove,
+                                          &mut (*manager.output_remove_listener()).link as *mut _
+                                          as _);
+                            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                          wl_list_remove,
+                                          &mut (*manager.change_listener()).link as *mut _ as _);
+                        }
+                    }
+                    unsafe { wlr_output_layout_destroy(self.layout) }
                     let weak_count = Rc::weak_count(liveliness);
                     if weak_count > 0 {
                         wlr_log!(L_DEBUG,
@@ -355,6 +463,16 @@ impl OutputLayoutHandle {
 }
 
 impl<'output> OutputLayoutOutput<'output> {
+    /// Get a handle to the output that this structure describes.
+    pub fn output(&self) -> OutputHandle {
+        unsafe { OutputHandle::from_ptr((*self.layout_output).output) }
+    }
+
+    /// Get the coordinates of this output in the layout output.
+    pub fn coords(&self) -> (c_int, c_int) {
+        unsafe { ((*self.layout_output).x, (*self.layout_output).y) }
+    }
+
     /// Get the absolute top left edge coordinate of this output in the output
     /// layout.
     pub fn top_left_edge(&self) -> Origin {

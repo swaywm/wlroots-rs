@@ -1,6 +1,6 @@
 //! Pointers and their events
 
-use types::input_device::InputDevice;
+use InputDevice;
 
 use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion,
                   wlr_event_pointer_motion_absolute};

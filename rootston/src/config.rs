@@ -7,8 +7,7 @@ use std::process::exit;
 use std::str::{ParseBoolError, Utf8Error};
 
 use self::wl_output_transform::*;
-use wlroots::{Area, Key};
-use wlroots::types::keyboard::KeyboardModifier;
+use wlroots::{Area, Key, KeyboardModifier};
 use wlroots::utils::safe_as_cstring;
 use wlroots::wlroots_sys::{wl_output_transform, xkb_keysym_from_name};
 use wlroots::wlroots_sys::xkb_keysym_flags::XKB_KEYSYM_NO_FLAGS;
@@ -510,13 +509,13 @@ fn parse_geometry(input: &str) -> Result<Area, ParseError> {
         let y = iter.next().and_then(|y| y.parse().ok());
         (width.parse()?, height.parse()?, x, y)
     };
-    area.width = width;
-    area.height = height;
+    area.size.width = width;
+    area.size.height = height;
     if let Some(x) = x {
-        area.x = x;
+        area.origin.x = x;
     }
     if let Some(y) = y {
-        area.y = y;
+        area.origin.y = y;
     }
     Ok(area)
 }

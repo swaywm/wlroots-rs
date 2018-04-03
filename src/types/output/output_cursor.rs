@@ -1,10 +1,11 @@
 //! TODO documentation
 
+use std::ptr;
 use wlroots_sys::{wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor_destroy,
                   wlr_output_cursor_move, wlr_output_cursor_set_image,
                   wlr_output_cursor_set_surface};
 
-use {Output, OutputHandle, Surface, UpgradeHandleErr};
+use {Image, Output, OutputHandle, Surface, SurfaceHandle, Texture, UpgradeHandleErr};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct OutputCursor {
@@ -18,12 +19,11 @@ impl OutputCursor {
     /// When the `Output` is destroyed, this can no longer be used.
     ///
     /// # Ergonomics
-    /// TODO Put in module documentation
     ///
     /// To make this easier for you, I would suggest putting the `OutputCursor` in your
     /// `OutputHandler` implementor's state so that when the `Output` is removed you
     /// just don't have to think about it and it will clean itself up by itself.
-    pub fn new<'output>(output: &'output mut Output) -> Option<OutputCursor> {
+    pub fn new(output: &mut Output) -> Option<OutputCursor> {
         unsafe {
             let output_handle = output.weak_reference();
             let cursor = wlr_output_cursor_create(output.as_ptr());
@@ -37,25 +37,17 @@ impl OutputCursor {
     }
 
     /// Sets the hardware cursor's image.
-    pub fn set_image(&mut self,
-                     pixels: &[u8],
-                     stride: i32,
-                     width: u32,
-                     height: u32,
-                     hotspot_x: i32,
-                     hotspot_y: i32)
-                     -> bool {
+    pub fn set_image(&mut self, image: &Image) -> bool {
         unsafe {
             let cursor = self.cursor;
             let res = self.output_handle.run(|_| {
-                                                 // TODO Ensure the buffer is correct?
                                                  wlr_output_cursor_set_image(cursor,
-                                                                             pixels.as_ptr(),
-                                                                             stride,
-                                                                             width,
-                                                                             height,
-                                                                             hotspot_x,
-                                                                             hotspot_y)
+                                                                             image.pixels.as_ptr(),
+                                                                             image.stride,
+                                                                             image.width,
+                                                                             image.height,
+                                                                             image.hotspot_x,
+                                                                             image.hotspot_y)
                                              });
             match res {
                 Ok(res) => res,
@@ -66,12 +58,14 @@ impl OutputCursor {
     }
 
     /// Sets the hardware cursor's surface.
-    pub fn set_surface(&mut self, surface: Surface, hotspot_x: i32, hotspot_y: i32) {
+    pub fn set_surface(&mut self, surface: Option<Surface>, hotspot_x: i32, hotspot_y: i32) {
         unsafe {
+            let surface_ptr = surface.map(|surface| surface.as_ptr())
+                                     .unwrap_or_else(|| ptr::null_mut());
             let cursor = self.cursor;
             let res = self.output_handle.run(|_| {
                                                  wlr_output_cursor_set_surface(cursor,
-                                                                               surface.as_ptr(),
+                                                                               surface_ptr,
                                                                                hotspot_x,
                                                                                hotspot_y)
                                              });
@@ -124,6 +118,31 @@ impl OutputCursor {
     /// Returned value is in (x, y) coordinates.
     pub fn hotspots(&self) -> (i32, i32) {
         unsafe { ((*self.cursor).hotspot_x, (*self.cursor).hotspot_y) }
+    }
+
+    /// Gets the texture for the cursor, if a software cursor is used without a
+    /// surface.
+    pub fn texture(&self) -> Option<Texture> {
+        unsafe {
+            let texture = (*self.cursor).texture;
+            if texture.is_null() {
+                None
+            } else {
+                Some(Texture::from_ptr(texture))
+            }
+        }
+    }
+
+    /// Gets the surface for the cursor, if using a cursor surface.
+    pub fn surface(&self) -> Option<SurfaceHandle> {
+        unsafe {
+            let surface = (*self.cursor).surface;
+            if surface.is_null() {
+                None
+            } else {
+                Some(SurfaceHandle::from_ptr(surface))
+            }
+        }
     }
 }
 
