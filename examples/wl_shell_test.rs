@@ -8,8 +8,8 @@ extern crate wlroots;
 use std::thread;
 use std::time::Duration;
 
-use wlroots::{project_box, Area, Compositor, CompositorBuilder, CursorBuilder, CursorHandler,
-              CursorId, InputManagerHandler, Keyboard, KeyboardHandler, Origin, Output,
+use wlroots::{project_box, Area, Compositor, CompositorBuilder, Cursor, CursorHandle,
+              CursorHandler, InputManagerHandler, Keyboard, KeyboardHandler, Origin, Output,
               OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
               OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat, SeatHandler, Size,
               Surface, WlShellHandler, WlShellManagerHandler, WlShellSurface,
@@ -25,17 +25,17 @@ struct State {
     default_color: [f32; 4],
     xcursor_theme: XCursorTheme,
     layout: OutputLayout,
-    cursor_id: CursorId,
+    cursor: CursorHandle,
     shells: Vec<WlShellSurfaceHandle>
 }
 
 impl State {
-    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout, cursor_id: CursorId) -> Self {
+    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout, cursor: CursorHandle) -> Self {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
                 xcursor_theme,
                 layout,
-                cursor_id,
+                cursor,
                 shells: vec![] }
     }
 }
@@ -91,14 +91,20 @@ impl OutputManagerHandler for OutputManager {
         let xcursor = state.xcursor_theme
                            .get_cursor("left_ptr".into())
                            .expect("Could not load left_ptr cursor");
+        let layout = &mut state.layout;
+        layout.add_auto(result.output);
         let image = &xcursor.images()[0];
-        // TODO use output config if present instead of auto
-        state.layout.add_auto(result.output);
-        let mut cursor = state.layout.cursor(state.cursor_id).unwrap();
-        cursor.set_cursor_image(image);
-        let (x, y) = cursor.coords();
-        // https://en.wikipedia.org/wiki/Mouse_warping
-        cursor.warp(None, x, y);
+        state.cursor
+             .clone()
+             .run(|mut cursor| {
+                      cursor.attach_output_layout(layout);
+                      cursor.set_cursor_image(image.into());
+                      let (x, y) = cursor.coords();
+                      // https://en.wikipedia.org/wiki/Mouse_warping
+                      cursor.warp(None, x, y);
+                      Some(cursor)
+                  })
+             .unwrap();
         Some(result)
     }
 }
@@ -245,10 +251,13 @@ impl PointerHandler for ExPointer {
     fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
-        state.layout
-             .cursor(state.cursor_id)
-             .unwrap()
-             .move_to(event.device(), delta_x, delta_y);
+        state.cursor
+             .clone()
+             .run(|mut cursor| {
+                      cursor.move_to(event.device(), delta_x, delta_y);
+                      Some(cursor)
+                  })
+             .unwrap();
     }
 
     fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &ButtonEvent) {
@@ -307,19 +316,17 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let cursor = CursorBuilder::new(Box::new(CursorEx)).expect("Could not create cursor");
+    let cursor = Cursor::create(Box::new(CursorEx));
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
-    let mut layout = OutputLayout::new(None).expect("Could not construct an output layout");
+    let layout = OutputLayout::new(None).expect("Could not construct an output layout");
 
-    let cursor_id = layout.attach_cursor(cursor);
     let mut compositor =
         CompositorBuilder::new().gles2(true)
                                 .input_manager(Box::new(InputManager))
                                 .output_manager(Box::new(OutputManager))
                                 .wl_shell_manager(Box::new(WlShellManager))
-                                .build_auto(State::new(xcursor_theme, layout, cursor_id));
-    Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
-        .expect("Could not allocate the global seat");
+                                .build_auto(State::new(xcursor_theme, layout, cursor));
+    Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx));
     compositor.run();
 }
 

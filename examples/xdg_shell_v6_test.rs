@@ -5,11 +5,11 @@ use std::process::Command;
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use wlroots::{project_box, Area, Capability, Compositor, CompositorBuilder, CursorBuilder,
-              CursorHandler, CursorId, InputManagerHandler, Keyboard, KeyboardHandle,
-              KeyboardHandler, Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler,
-              OutputLayout, OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat,
-              SeatHandler, SeatId, Size, Surface, XCursorTheme, XdgV6ShellHandler,
+use wlroots::{project_box, Area, Capability, Compositor, CompositorBuilder, Cursor, CursorHandle,
+              CursorHandler, InputManagerHandler, Keyboard, KeyboardHandle, KeyboardHandler,
+              Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
+              OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat, SeatHandle,
+              SeatHandler, Size, Surface, XCursorTheme, XdgV6ShellHandler,
               XdgV6ShellManagerHandler, XdgV6ShellState, XdgV6ShellSurface,
               XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
@@ -22,18 +22,18 @@ struct State {
     xcursor_theme: XCursorTheme,
     keyboard: Option<KeyboardHandle>,
     layout: OutputLayout,
-    cursor_id: CursorId,
+    cursor: CursorHandle,
     shells: Vec<XdgV6ShellSurfaceHandle>,
-    seat_id: Option<SeatId>
+    seat_handle: Option<SeatHandle>
 }
 
 impl State {
-    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout, cursor_id: CursorId) -> Self {
+    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout, cursor: CursorHandle) -> Self {
         State { xcursor_theme,
                 layout,
-                cursor_id,
+                cursor,
                 keyboard: None,
-                seat_id: None,
+                seat_handle: None,
                 shells: vec![] }
     }
 }
@@ -100,12 +100,18 @@ impl OutputManagerHandler for OutputManager {
                            .expect("Could not load left_ptr cursor");
         let image = &xcursor.images()[0];
         // TODO use output config if present instead of auto
-        state.layout.add_auto(result.output);
-        let mut cursor = state.layout.cursor(state.cursor_id).unwrap();
-        cursor.set_cursor_image(image);
-        let (x, y) = cursor.coords();
-        // https://en.wikipedia.org/wiki/Mouse_warping
-        cursor.warp(None, x, y);
+        let layout = &mut state.layout;
+        layout.add_auto(result.output);
+        state.cursor
+             .run(|mut cursor| {
+                      cursor.attach_output_layout(layout);
+                      cursor.set_cursor_image(image);
+                      let (x, y) = cursor.coords();
+                      // https://en.wikipedia.org/wiki/Mouse_warping
+                      cursor.warp(None, x, y);
+                      Some(cursor)
+                  })
+             .unwrap();
         Some(result)
     }
 }
@@ -124,12 +130,15 @@ impl KeyboardHandler for ExKeyboardHandler {
                 }
             }
         }
-        let state: &mut State = compositor.data.downcast_mut().unwrap();
-        let seat_id = state.seat_id.unwrap();
-        let seat = compositor.seats.get(seat_id).expect("invalid seat id");
-        seat.keyboard_notify_key(key_event.time_msec(),
-                                 key_event.keycode(),
-                                 key_event.key_state() as u32);
+        let state: &mut State = compositor.into();
+        let mut seat_handle = state.seat_handle.clone().unwrap();
+        seat_handle.run(|seat| {
+                            seat.keyboard_notify_key(key_event.time_msec(),
+                                                     key_event.keycode(),
+                                                     key_event.key_state() as u32);
+                            Some(seat)
+                        })
+                   .unwrap();
     }
 }
 
@@ -137,16 +146,17 @@ impl PointerHandler for ExPointer {
     fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
-        state.layout
-             .cursor(state.cursor_id)
-             .unwrap()
-             .move_to(event.device(), delta_x, delta_y);
+        state.cursor
+             .run(|mut cursor| {
+                      cursor.move_to(event.device(), delta_x, delta_y);
+                      Some(cursor)
+                  })
+             .unwrap();
     }
 
     fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, _: &ButtonEvent) {
-        let state: &mut State = compositor.data.downcast_mut().unwrap();
-        let seat_id = state.seat_id.unwrap();
-        let seat = compositor.seats.get(seat_id).expect("invalid seat id");
+        let state: &mut State = compositor.into();
+        let mut seat_handle = state.seat_handle.clone().unwrap();
         let mut keyboard = state.keyboard.clone().unwrap();
         let mut surface =
             state.shells[0].run(|shell| {
@@ -160,16 +170,20 @@ impl PointerHandler for ExPointer {
                                     shell.surface()
                                 })
                            .unwrap();
-        keyboard.run(|keyboard| {
-                         surface.run(|surface| {
-                                         seat.set_keyboard(keyboard.input_device());
-                                         seat.keyboard_notify_enter(surface,
+        seat_handle.run(|seat| {
+                            keyboard.run(|keyboard| {
+                                             surface.run(|surface| {
+                                                 seat.set_keyboard(keyboard.input_device());
+                                                 seat.keyboard_notify_enter(surface,
                                                     &mut keyboard.keycodes(),
                                                     &mut keyboard.get_modifier_masks())
-                                     })
-                                .unwrap()
-                     })
-                .unwrap();
+                                             })
+                                                    .unwrap();
+                                         })
+                                    .unwrap();
+                            Some(seat)
+                        })
+                   .unwrap();
     }
 }
 
@@ -198,40 +212,41 @@ impl InputManagerHandler for InputManager {
                       compositor: &mut Compositor,
                       keyboard: &mut Keyboard)
                       -> Option<Box<KeyboardHandler>> {
-        let seat_id = {
-            let state: &mut State = compositor.into();
-            state.keyboard = Some(keyboard.weak_reference());
-            state.seat_id.unwrap()
-        };
-        let seat = compositor.seats.get(seat_id).expect("Invalid seat id");
-        seat.set_keyboard(keyboard.input_device());
+        let state: &mut State = compositor.into();
+        state.keyboard = Some(keyboard.weak_reference());
+        let mut seat_handle = state.seat_handle.clone().unwrap();
+        seat_handle.run(|seat| {
+                            seat.set_keyboard(keyboard.input_device());
+                            Some(seat)
+                        })
+                   .unwrap();
         Some(Box::new(ExKeyboardHandler))
     }
 }
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let cursor = CursorBuilder::new(Box::new(CursorEx)).expect("Could not create cursor");
+    let cursor = Cursor::create(Box::new(CursorEx));
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
-    let mut layout = OutputLayout::new(None).expect("Could not construct an output layout");
+    let layout = OutputLayout::new(None).expect("Could not construct an output layout");
 
-    let cursor_id = layout.attach_cursor(cursor);
     let mut compositor =
         CompositorBuilder::new().gles2(true)
                                 .input_manager(Box::new(InputManager))
                                 .output_manager(Box::new(OutputManager))
                                 .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
-                                .build_auto(State::new(xcursor_theme, layout, cursor_id));
+                                .build_auto(State::new(xcursor_theme, layout, cursor));
 
     {
-        let seat_id = {
-            let seat = Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx))
-                .expect("Could not allocate the global seat");
-            seat.set_capabilities(Capability::all());
-            seat.id()
-        };
+        let mut seat_handle =
+            Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx));
+        seat_handle.run(|seat| {
+                            seat.set_capabilities(Capability::all());
+                            Some(seat)
+                        })
+                   .unwrap();
         let state: &mut State = (&mut compositor).into();
-        state.seat_id = Some(seat_id);
+        state.seat_handle = Some(seat_handle);
     }
     compositor.run();
 }
