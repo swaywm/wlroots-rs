@@ -210,15 +210,13 @@ impl fmt::Debug for CursorWrapper {
 }
 
 impl CursorBuilder {
-    pub fn new(cursor_handler: Box<CursorHandler>) -> Option<Self> {
+    pub fn new(cursor_handler: Box<CursorHandler>) -> Self {
         unsafe {
             let cursor = wlr_cursor_create();
             if cursor.is_null() {
-                None
-            } else {
-                Some(CursorBuilder { cursor: cursor,
-                                     cursor_handler })
+                panic!("Could not create wlr_cursor")
             }
+            CursorBuilder { cursor: cursor, cursor_handler }
         }
     }
 

@@ -149,7 +149,7 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let cursor = CursorBuilder::new(Box::new(ExCursor)).expect("Could not create cursor");
+    let cursor = CursorBuilder::new(Box::new(ExCursor));
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
     let mut layout = OutputLayout::new(None).expect("Could not construct an output layout");
 
