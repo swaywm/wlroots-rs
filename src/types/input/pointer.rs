@@ -1,8 +1,6 @@
 //! TODO Documentation
 
-use std::panic;
-use std::rc::{Rc, Weak};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use wlroots_sys::{wlr_input_device, wlr_pointer};
@@ -128,6 +126,22 @@ impl Drop for Pointer {
 }
 
 impl PointerHandle {
+    /// Constructs a new PointerHandle that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server, or
+    /// for mocking/testing.
+    pub fn new() -> Self {
+        unsafe {
+            PointerHandle { handle: Weak::new(),
+                            // NOTE Rationale for null pointer here:
+                            // It's never used, because you can never upgrade it,
+                            // so no way to dereference it and trigger UB.
+                            device: InputDevice::from_ptr(ptr::null_mut()),
+                            pointer: ptr::null_mut() }
+        }
+    }
+
     /// Upgrades the pointer handle to a reference to the backing `Pointer`.
     ///
     /// # Unsafety

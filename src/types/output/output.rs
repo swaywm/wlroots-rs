@@ -510,6 +510,7 @@ impl OutputHandle {
                            output: ptr::null_mut() }
         }
     }
+
     /// Creates an OutputHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(output: *mut wlr_output) -> Self {

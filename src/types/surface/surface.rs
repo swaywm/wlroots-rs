@@ -1,10 +1,7 @@
 //! TODO Documentation
 
 use libc::c_double;
-use std::panic;
-use std::rc::{Rc, Weak};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}, time::Duration};
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
@@ -274,6 +271,18 @@ impl Surface {
 }
 
 impl SurfaceHandle {
+    /// Constructs a new SurfaceHandle that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server, or
+    /// for mocking/testing.
+    pub fn new() -> Self {
+        unsafe {
+            SurfaceHandle { handle: Weak::new(),
+                            subsurfaces_manager: Weak::new(),
+                            surface: ptr::null_mut() }
+        }
+    }
     /// Creates an SurfaceHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(surface: *mut wlr_surface) -> Self {

@@ -1,8 +1,6 @@
 //! TODO Documentation
 
-use std::panic;
-use std::rc::{Rc, Weak};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
 
 use wlroots_sys::wlr_subsurface;
 
@@ -100,6 +98,17 @@ impl Subsurface {
 }
 
 impl SubsurfaceHandle {
+    /// Constructs a new SubsurfaceHandle that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server, or
+    /// for mocking/testing.
+    pub fn new() -> Self {
+        unsafe {
+            SubsurfaceHandle { handle: Weak::new(),
+                               subsurface: ptr::null_mut() }
+        }
+    }
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_subsurface {
         self.subsurface
     }

@@ -1,5 +1,5 @@
 //! TODO Documentation
-use std::{fmt, panic};
+use std::{fmt, panic, ptr};
 use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -240,6 +240,22 @@ impl Drop for Keyboard {
 }
 
 impl KeyboardHandle {
+    /// Constructs a new KeyboardHandle that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server, or
+    /// for mocking/testing.
+    pub fn new() -> Self {
+        unsafe {
+            KeyboardHandle { handle: Weak::new(),
+                             // NOTE Rationale for null pointer here:
+                             // It's never used, because you can never upgrade it,
+                             // so no way to dereference it and trigger UB.
+                             device: InputDevice::from_ptr(ptr::null_mut()),
+                             keyboard: ptr::null_mut() }
+        }
+    }
+
     /// Creates an KeyboardHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(keyboard: *mut wlr_keyboard) -> Self {

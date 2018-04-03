@@ -743,6 +743,18 @@ impl Drop for Seat {
 }
 
 impl SeatHandle {
+    /// Constructs a new SeatHandle that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server, or
+    /// for mocking/testing.
+    pub fn new() -> Self {
+        unsafe {
+            SeatHandle { handle: Weak::new(),
+                         seat: ptr::null_mut() }
+        }
+    }
+
     /// Creates an SeatHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(seat: *mut wlr_seat) -> Self {

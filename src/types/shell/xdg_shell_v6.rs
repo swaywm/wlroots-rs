@@ -216,6 +216,19 @@ impl XdgV6ShellSurface {
 }
 
 impl XdgV6ShellSurfaceHandle {
+    /// Constructs a new XdgV6ShellSurfaceHandle that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server, or
+    /// for mocking/testing.
+    pub fn new() -> Self {
+        unsafe {
+            XdgV6ShellSurfaceHandle { handle: Weak::new(),
+                                      state: None,
+                                      shell_surface: ptr::null_mut() }
+        }
+    }
+
     /// Creates a XdgV6ShellSurfaceHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(shell_surface: *mut wlr_xdg_surface_v6) -> Self {

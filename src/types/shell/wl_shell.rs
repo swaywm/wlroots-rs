@@ -143,6 +143,18 @@ impl WlShellSurface {
 }
 
 impl WlShellSurfaceHandle {
+    /// Constructs a new WlShellSurfaceHandle that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server, or
+    /// for mocking/testing.
+    pub fn new() -> Self {
+        unsafe {
+            WlShellSurfaceHandle { handle: Weak::new(),
+                                   shell_surface: ptr::null_mut() }
+        }
+    }
+
     /// Creates a WlShellSurfaceHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(shell_surface: *mut wlr_wl_shell_surface) -> Self {
