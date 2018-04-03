@@ -4,7 +4,7 @@ use wlroots_sys::{wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor
                   wlr_output_cursor_move, wlr_output_cursor_set_image,
                   wlr_output_cursor_set_surface};
 
-use {Output, OutputHandle, Surface, UpgradeHandleErr};
+use {Image, Output, OutputHandle, Surface, UpgradeHandleErr};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct OutputCursor {
@@ -37,25 +37,17 @@ impl OutputCursor {
     }
 
     /// Sets the hardware cursor's image.
-    pub fn set_image(&mut self,
-                     pixels: &[u8],
-                     stride: i32,
-                     width: u32,
-                     height: u32,
-                     hotspot_x: i32,
-                     hotspot_y: i32)
-                     -> bool {
+    pub fn set_image(&mut self, image: &Image) -> bool {
         unsafe {
             let cursor = self.cursor;
             let res = self.output_handle.run(|_| {
-                                                 // TODO Ensure the buffer is correct?
                                                  wlr_output_cursor_set_image(cursor,
-                                                                             pixels.as_ptr(),
-                                                                             stride,
-                                                                             width,
-                                                                             height,
-                                                                             hotspot_x,
-                                                                             hotspot_y)
+                                                                             image.pixels.as_ptr(),
+                                                                             image.stride,
+                                                                             image.width,
+                                                                             image.height,
+                                                                             image.hotspot_x,
+                                                                             image.hotspot_y)
                                              });
             match res {
                 Ok(res) => res,

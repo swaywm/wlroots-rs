@@ -51,6 +51,6 @@ pub use wlroots_sys::{wlr_button_state, wlr_key_state, wlr_keyboard_modifiers};
 
 pub use self::render::{matrix_identity, matrix_multiply, matrix_rotate, matrix_scale,
                        matrix_texture, matrix_transform, matrix_translate, project_box,
-                       GenericRenderer, Renderer, Texture, TextureFormat};
+                       GenericRenderer, Image, Renderer, Texture, TextureFormat};
 
 pub use self::errors::*;
