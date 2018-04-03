@@ -1,23 +1,21 @@
 //! TODO Documentation
 
 use libc::{self, c_double, c_int};
-use std::{fmt, panic, ptr, cell::{RefCell, RefMut}, collections::HashMap, marker::PhantomData,
-          rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
+use std::{fmt, panic, ptr, marker::PhantomData, rc::{Rc, Weak},
+          sync::atomic::{AtomicBool, Ordering}};
 
 use wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
-use wlroots_sys::{wlr_cursor_attach_output_layout, wlr_output_effective_resolution,
-                  wlr_output_layout, wlr_output_layout_add, wlr_output_layout_add_auto,
-                  wlr_output_layout_closest_point, wlr_output_layout_contains_point,
-                  wlr_output_layout_create, wlr_output_layout_destroy, wlr_output_layout_get,
-                  wlr_output_layout_get_box, wlr_output_layout_get_center_output,
-                  wlr_output_layout_intersects, wlr_output_layout_move, wlr_output_layout_output,
-                  wlr_output_layout_output_at, wlr_output_layout_output_coords,
-                  wlr_output_layout_remove};
+use wlroots_sys::{wlr_output_effective_resolution, wlr_output_layout, wlr_output_layout_add,
+                  wlr_output_layout_add_auto, wlr_output_layout_closest_point,
+                  wlr_output_layout_contains_point, wlr_output_layout_create,
+                  wlr_output_layout_destroy, wlr_output_layout_get, wlr_output_layout_get_box,
+                  wlr_output_layout_get_center_output, wlr_output_layout_intersects,
+                  wlr_output_layout_move, wlr_output_layout_output, wlr_output_layout_output_at,
+                  wlr_output_layout_output_coords, wlr_output_layout_remove};
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
-use {Area, Compositor, Cursor, CursorBuilder, CursorId, CursorWrapper, Origin, Output,
-     OutputHandle, compositor::COMPOSITOR_PTR};
+use {Area, Compositor, Origin, Output, OutputHandle, compositor::COMPOSITOR_PTR};
 
 pub trait OutputLayoutHandler {
     /// Callback that's triggered when an output is added to the output layout.
@@ -82,8 +80,6 @@ pub struct OutputLayout {
     liveliness: Option<Rc<AtomicBool>>,
     /// The output_layout ptr that refers to this `OutputLayout`
     layout: *mut wlr_output_layout,
-    /// The cursors attached to this output layout.
-    pub(crate) cursors: Rc<RefCell<HashMap<CursorId, Box<CursorWrapper>>>>,
     /// Optional callback handler for the OutputLayout.
     manager: Option<Box<InternalOutputLayout>>
 }
@@ -99,9 +95,7 @@ pub(crate) struct OutputLayoutHandle {
     /// this can no longer be used.
     handle: Weak<AtomicBool>,
     /// The output_layout ptr that refers to this `OutputLayout`
-    layout: *mut wlr_output_layout,
-    /// The cursors attached to this output layout.
-    cursors: Weak<RefCell<HashMap<CursorId, Box<CursorWrapper>>>>
+    layout: *mut wlr_output_layout
 }
 
 /// The coordinate information of an `Output` within an `OutputLayout`.
@@ -132,10 +126,13 @@ impl OutputLayout {
                                 });
                 Some(OutputLayout { liveliness: Some(Rc::new(AtomicBool::new(false))),
                                     layout,
-                                    cursors: Rc::new(RefCell::new(HashMap::new())),
                                     manager })
             }
         }
+    }
+
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
+        self.layout
     }
 
     /// Get the outputs associated with this OutputLayout.
@@ -165,50 +162,6 @@ impl OutputLayout {
                                   })
                               });
             result
-        }
-    }
-
-    /// Gets a cursor by its id.
-    ///
-    /// If the cursor has been dropped, or is currently being borrowed, `None` is returned.
-    pub fn cursor(&mut self, id: CursorId) -> Option<RefMut<Cursor>> {
-        let borrow = self.cursors.borrow_mut();
-        if borrow.get(&id).is_none() {
-            return None
-        }
-        Some(RefMut::map(borrow, |borrow| {
-                 borrow.get_mut(&id).map(|boxed| boxed.cursor()).unwrap()
-             }))
-    }
-
-    /// Drops the cursor associated with the id.
-    ///
-    /// **Note that if the Cursor is being borrowed in a callback, it will not be dropped**.
-    pub fn drop_cursor(&mut self, id: CursorId) {
-        self.cursors.borrow_mut().remove(&id);
-    }
-
-    /// Apply some operations to all cursors.
-    pub fn apply_to_cursors<F>(&mut self, mut f: F)
-        where F: FnMut(&mut Cursor) -> ()
-    {
-        let mut borrow = self.cursors.borrow_mut();
-        for cursor in borrow.values_mut().map(|boxed| boxed.cursor()) {
-            f(cursor)
-        }
-    }
-
-    /// Attach a cursor to this OutputLayout.
-    ///
-    /// Returns the id of the cursor so it
-    /// can be accessed later.
-    pub fn attach_cursor(&mut self, cursor: CursorBuilder) -> CursorId {
-        unsafe {
-            let cursor = cursor.build(self.weak_reference());
-            wlr_cursor_attach_output_layout(cursor.as_ptr(), self.layout);
-            let id = CursorId::new(cursor.as_ptr());
-            self.cursors.borrow_mut().insert(id, cursor);
-            id
         }
     }
 
@@ -352,17 +305,13 @@ impl OutputLayout {
         let arc = self.liveliness.as_ref()
                       .expect("Cannot downgrade a previously upgraded OutputLayoutHandle");
         OutputLayoutHandle { handle: Rc::downgrade(arc),
-                             layout: self.layout,
-                             cursors: Rc::downgrade(&self.cursors) }
+                             layout: self.layout }
     }
 
     unsafe fn from_handle(handle: &OutputLayoutHandle) -> Self {
         OutputLayout { liveliness: None,
                        manager: None,
-                       layout: handle.as_ptr(),
-                       cursors: handle.cursors
-                                      .upgrade()
-                                      .expect("Could not upgrade cursors Rc") }
+                       layout: handle.as_ptr() }
     }
 }
 

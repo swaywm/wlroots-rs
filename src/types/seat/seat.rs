@@ -250,12 +250,6 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
 
 impl Seat {
     /// Allocates a new `wlr_seat` and adds a wl_seat global to the display.
-    ///
-    /// Puts the seat in a `RefCell` so that it's safe to use both in your
-    /// state wherever and in the callback provided by the handler.
-    ///
-    /// Puts the seat in an `Rc` so that the address is static for internal
-    /// purposes.
     pub fn create(compositor: &mut Compositor,
                   name: String,
                   handler: Box<SeatHandler>)
@@ -761,12 +755,12 @@ impl SeatHandle {
         SeatHandle { seat, handle }
     }
 
-    /// Upgrades the output handle to a reference to the backing `Output`.
+    /// Upgrades the seat handle to a reference to the backing `Seat`.
     ///
     /// # Unsafety
-    /// This function is unsafe, because it creates an unbound `Output`
+    /// This function is unsafe, because it creates an unbound `Seat`
     /// which may live forever..
-    /// But no output lives forever and might be disconnected at any time.
+    /// But a seat could be destroyed else where.
     pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Box<Seat>> {
         self.handle.upgrade()
             .ok_or(UpgradeHandleErr::AlreadyDropped)
