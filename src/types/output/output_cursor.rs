@@ -1,10 +1,11 @@
 //! TODO documentation
 
+use std::ptr;
 use wlroots_sys::{wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor_destroy,
                   wlr_output_cursor_move, wlr_output_cursor_set_image,
                   wlr_output_cursor_set_surface};
 
-use {Image, Output, OutputHandle, Surface, UpgradeHandleErr};
+use {Image, Output, OutputHandle, Surface, SurfaceHandle, Texture, UpgradeHandleErr};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct OutputCursor {
@@ -117,6 +118,31 @@ impl OutputCursor {
     /// Returned value is in (x, y) coordinates.
     pub fn hotspots(&self) -> (i32, i32) {
         unsafe { ((*self.cursor).hotspot_x, (*self.cursor).hotspot_y) }
+    }
+
+    /// Gets the texture for the cursor, if a software cursor is used without a
+    /// surface.
+    pub fn texture(&self) -> Option<Texture> {
+        unsafe {
+            let texture = (*self.cursor).texture;
+            if texture.is_null() {
+                None
+            } else {
+                Some(Texture::from_ptr(texture))
+            }
+        }
+    }
+
+    /// Gets the surface for the cursor, if using a cursor surface.
+    pub fn surface(&self) -> Option<SurfaceHandle> {
+        unsafe {
+            let surface = (*self.cursor).surface;
+            if surface.is_null() {
+                None
+            } else {
+                Some(SurfaceHandle::from_ptr(surface))
+            }
+        }
     }
 }
 
