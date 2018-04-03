@@ -11,7 +11,7 @@ use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
                   wlr_xdg_toplevel_v6_set_maximized, wlr_xdg_toplevel_v6_set_resizing,
                   wlr_xdg_toplevel_v6_set_size, wlr_xdg_toplevel_v6_state};
 
-use {Area, SeatId, SurfaceHandle};
+use {Area, SeatHandle, SurfaceHandle};
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use utils::c_to_rust_string;
 
@@ -423,9 +423,16 @@ impl XdgV6Popup {
         unsafe { (*self.popup).committed }
     }
 
-    /// Get the id of the seat associated with this popup.
-    pub fn seat_id(&self) -> SeatId {
-        unsafe { SeatId::new((*self.popup).seat) }
+    /// Get a handle to the seat associated with this popup.
+    pub fn seat_handle(&self) -> Option<SeatHandle> {
+        unsafe {
+            let seat = (*self.popup).seat;
+            if seat.is_null() {
+                None
+            } else {
+                Some(SeatHandle::from_ptr(seat))
+            }
+        }
     }
 
     pub fn geometry(&self) -> Area {
