@@ -1,5 +1,5 @@
-use super::seat;
-use wlroots::{self, Capability, Compositor, InputDevice, InputManagerHandler};
+use super::{seat, server::Server};
+use wlroots::{self, Capability, Compositor, HandleResult, InputDevice, InputManagerHandler};
 
 const DEFAULT_SEAT_NAME: &str = "seat0";
 
@@ -11,12 +11,20 @@ pub struct Input {}
 
 impl InputManagerHandler for InputManager {
     fn input_added(&mut self, compositor: &mut Compositor, input: &mut InputDevice) {
-        // TODO Get configuration from compositor state, use that name instead
-        let seat_name = DEFAULT_SEAT_NAME;
-        let seat = self.get_seat(compositor, seat_name);
-        // TODO Should we move this device specific setup to the device specific
-        // callbacks?
-        self.add_device_to_seat(compositor, seat, input);
+        let seat_name;
+        {
+            let state: &mut Server = compositor.into();
+            seat_name = match state.config
+                                   .devices
+                                   .iter()
+                                   .find(|dev_conf| dev_conf.name.as_str() == DEFAULT_SEAT_NAME)
+            {
+                None => DEFAULT_SEAT_NAME.into(),
+                Some(dev) => dev.name.clone()
+            };
+        }
+        let seat = self.get_seat(compositor, &*seat_name).expect("Could make a new seat");
+        self.add_device_to_seat(compositor, seat, input).expect("Could not add a device to a seat");
     }
 }
 
@@ -26,84 +34,143 @@ impl InputManager {
     }
 
     /// Gets the seat by name. If it doesn't exist yet, create it.
-    fn get_seat(&mut self, compositor: &mut Compositor, seat_name: &str) -> wlroots::SeatHandle {
+    fn get_seat(&mut self,
+                compositor: &mut Compositor,
+                seat_name: &str)
+                -> HandleResult<wlroots::SeatHandle> {
         let found = &mut false;
         for seat in &mut self.seats {
             seat.seat.clone().run(|seat| {
-                         if seat.name().as_ref().map(|s| &**s) == Some(seat_name) {
-                             *found = true;
-                         }
-                         Some(seat)
-                     })
-                .unwrap();
+                                       if seat.name().as_ref().map(|s| &**s) == Some(seat_name) {
+                                           *found = true;
+                                       }
+                                       Some(seat)
+                                   })?;
             if *found {
-                return seat.seat.clone()
+                return Ok(seat.seat.clone())
             }
         }
         let seat_handle = wlroots::Seat::create(compositor,
-                                         seat_name.into(),
-                                         Box::new(seat::SeatHandler::new()));
+                                                seat_name.into(),
+                                                Box::new(seat::SeatHandler::new()));
         let seat = seat::Seat::new(seat_handle);
         self.seats.push(seat);
-        self.seats.last_mut().unwrap().seat.clone()
+        Ok(self.seats.last_mut().expect("impossible").seat.clone())
     }
 
     pub fn add_device_to_seat(&mut self,
                               compositor: &mut Compositor,
                               mut seat: wlroots::SeatHandle,
-                              input: &mut InputDevice) {
+                              input: &mut InputDevice)
+                              -> HandleResult<()> {
         use wlroots::wlr_input_device_type::*;
         match input.dev_type() {
-            WLR_INPUT_DEVICE_KEYBOARD => seat.run(|mut seat| {
-                seat.set_keyboard(input);
-                Some(seat)
-            }).unwrap(),
-            WLR_INPUT_DEVICE_POINTER => {
-                // TODO Need cursor from the output layout from the thingie
-                // TODO Where is this cursor allocated though...?
-                // double check seat construction
-                //cursor.attach_input_device(input);
-                self.configure_cursor(compositor, seat.clone());
+            WLR_INPUT_DEVICE_KEYBOARD => {
                 seat.run(|mut seat| {
-                    let mut capabilities = seat.capabilities();
-                    capabilities.insert(Capability::Pointer);
-                    seat.set_capabilities(capabilities);
-                    Some(seat)
-                }).unwrap();
+                              seat.set_keyboard(input);
+                              Some(seat)
+                          })?
+            }
+            WLR_INPUT_DEVICE_POINTER => {
+                {
+                    let roots_seat = self.roots_seat_from_handle(seat.clone());
+                    if let Some(cursor) = roots_seat.cursor.as_mut() {
+                        cursor.cursor.run(|mut cursor| {
+                                               cursor.attach_input_device(input);
+                                               Some(cursor)
+                                           })?;
+                    }
+                }
+                self.configure_cursor(compositor, seat.clone())?;
+                seat.run(|mut seat| {
+                              let mut capabilities = seat.capabilities();
+                              capabilities.insert(Capability::Pointer);
+                              seat.set_capabilities(capabilities);
+                              Some(seat)
+                          })?
             }
             WLR_INPUT_DEVICE_TOUCH | WLR_INPUT_DEVICE_TABLET_TOOL => {
-                // TODO Need cursor from the output layout from the thingie
-                // TODO Where is this cursor allocated though...?
-                // double check seat construction
-                //cursor.attach_input_device(input);
-                self.configure_cursor(compositor, seat.clone());
+                {
+                    let roots_seat = self.roots_seat_from_handle(seat.clone());
+                    if let Some(cursor) = roots_seat.cursor.as_mut() {
+                        cursor.cursor.run(|mut cursor| {
+                                               cursor.attach_input_device(input);
+                                               Some(cursor)
+                                           })?;
+                    }
+                }
+                self.configure_cursor(compositor, seat.clone())?;
                 seat.run(|mut seat| {
-                    let mut capabilities = seat.capabilities();
-                    capabilities.insert(Capability::Touch);
-                    seat.set_capabilities(capabilities);
-                    Some(seat)
-                }).unwrap();
+                              let mut capabilities = seat.capabilities();
+                              capabilities.insert(Capability::Touch);
+                              seat.set_capabilities(capabilities);
+                              Some(seat)
+                          })?
             }
             WLR_INPUT_DEVICE_TABLET_PAD => { /*TODO*/ }
         }
+        Ok(())
     }
 
-    pub fn configure_cursor(&mut self, compositor: &mut Compositor, seat: wlroots::SeatHandle) {
+    pub fn configure_cursor(&mut self,
+                            // TODO Remove?
+                            compositor: &mut Compositor,
+                            mut seat: wlroots::SeatHandle)
+                            -> HandleResult<()> {
+        let state: &mut Server = compositor.into();
         let roots_seat = self.roots_seat_from_handle(seat.clone());
-        // reset mappings
         if let Some(cursor) = roots_seat.cursor.as_mut() {
-            cursor.cursor.run(|mut cursor| {
-                cursor.map_to_output(None);
-                Some(cursor)
-            }).unwrap();
+            let pointers = &mut roots_seat.pointers;
+            let touches = &mut roots_seat.touch;
+            seat.run(|seat| {
+                          cursor.cursor
+                                .run(|mut cursor| {
+                                         // reset mappings
+                                         cursor.map_to_output(None);
+                                         for pointer in pointers {
+                                             cursor.map_input_to_output(pointer.input_device(),
+                                                                        None)
+                                         }
+                                         // TODO Also map input to region if part of config
+                                         for touch in touches {
+                                             cursor.map_input_to_output(touch.input_device(), None)
+                                         }
+                                         // TODO table tool
+                                         let outputs = &mut state.outputs;
+                                         let seat_name = seat.name().unwrap_or_else(|| "".into());
+                                         match state.config
+                                                    .cursors
+                                                    .iter()
+                                                    .find(|cursor| cursor.seat == seat_name)
+                                         {
+                                             None => {}
+                                             Some(cursor_config) => {
+                                                 if let Some(mapped_output_name) =
+                                                     cursor_config.mapped_output.as_ref()
+                                                 {
+                                                     for output in outputs {
+                                                         output.run(|output| {
+                                                             if output.name() == *mapped_output_name
+                                                             {
+                                                                 cursor.map_to_output(Some(output))
+                                                             }
+                                                         }).ok()?;
+                                                     }
+                                                 }
+                                             }
+                                         }
+                                         Some(cursor)
+                                     })
+                                .ok()?;
+                          Some(seat)
+                      })?;
         }
-        //for pointer in
-        //state.layout.cursor(cursor_id)
 
         // configure device to output mappings
+        Ok(())
     }
 
-    fn roots_seat_from_handle(&mut self, mut handle: wlroots::SeatHandle) -> &mut seat::Seat {
+    fn roots_seat_from_handle(&mut self, handle: wlroots::SeatHandle) -> &mut seat::Seat {
         for seat in &mut self.seats {
             if seat.seat == handle {
                 return seat

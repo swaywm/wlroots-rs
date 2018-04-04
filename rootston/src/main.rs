@@ -15,6 +15,8 @@ use output::OutputManager;
 use server::Server;
 use wlroots::*;
 
+compositor_data!(server::Server);
+
 const ROOSTON_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const ROOSTON_AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 const ROOSTON_DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");

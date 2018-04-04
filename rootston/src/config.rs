@@ -29,76 +29,76 @@ static DEFAULT_SEAT_NAME: &'static str = "seat0";
 /// Complete configuration for rootston reference compositor.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MainConfig {
-    config_path: PathBuf,
-    startup_cmd: Option<String>,
-    xwayland: bool,
-    outputs: Vec<OutputConfig>,
-    devices: Vec<DeviceConfig>,
-    bindings: Vec<BindingConfig>,
-    keyboards: Vec<KeyboardConfig>,
-    cursors: Vec<CursorConfig>
+    pub config_path: PathBuf,
+    pub startup_cmd: Option<String>,
+    pub xwayland: bool,
+    pub outputs: Vec<OutputConfig>,
+    pub devices: Vec<DeviceConfig>,
+    pub bindings: Vec<BindingConfig>,
+    pub keyboards: Vec<KeyboardConfig>,
+    pub cursors: Vec<CursorConfig>
 }
 
 /// Configuration for an output in rootston.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputConfig {
-    name: String,
-    transform: wl_output_transform,
-    x: i32,
-    y: i32,
-    scale: f32,
-    mode: ModeConfig
+    pub name: String,
+    pub transform: wl_output_transform,
+    pub x: i32,
+    pub y: i32,
+    pub scale: f32,
+    pub mode: ModeConfig
 }
 
 /// Configuration for an output's mode.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ModeConfig {
-    width: i32,
-    height: i32,
-    refresh_rate: f32
+    pub width: i32,
+    pub height: i32,
+    pub refresh_rate: f32
 }
 
 /// Configuration for a generic device.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DeviceConfig {
-    name: String,
-    seat: Option<String>,
-    mapped_output: Option<String>,
-    tap_enabled: Option<bool>,
-    mapped_box: Option<Area>
+    pub name: String,
+    pub seat: Option<String>,
+    pub mapped_output: Option<String>,
+    pub tap_enabled: Option<bool>,
+    pub mapped_box: Option<Area>
 }
 
 /// Configuration for a keyboard binding.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct BindingConfig {
-    modifiers: u32,
-    keysyms: Vec<Key>,
-    command: String
+    pub modifiers: u32,
+    pub keysyms: Vec<Key>,
+    pub command: String
 }
 
 /// Configuration for a keyboard device.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct KeyboardConfig {
-    name: String,
-    seat: Option<String>,
-    meta_key: Option<u32>,
-    rules: Option<String>,
-    model: Option<String>,
-    layout: Option<String>,
-    variant: Option<String>,
-    options: Option<String>,
-    repeat_rate: Option<i32>,
-    repeat_delay: Option<i32>
+    pub name: String,
+    pub seat: Option<String>,
+    pub meta_key: Option<u32>,
+    pub rules: Option<String>,
+    pub model: Option<String>,
+    pub layout: Option<String>,
+    pub variant: Option<String>,
+    pub options: Option<String>,
+    pub repeat_rate: Option<i32>,
+    pub repeat_delay: Option<i32>
 }
 
 /// Configuration for a cursor.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CursorConfig {
-    seat: String,
-    mapped_output: Option<String>,
-    mapped_box: Option<Area>,
-    theme: Option<String>,
-    default_image: Option<String>
+    pub seat: String,
+    pub mapped_output: Option<String>,
+    pub mapped_box: Option<Area>,
+    pub theme: Option<String>,
+    pub default_image: Option<String>
 }
 
 /// Possible error conditions from parsing configuration file.
