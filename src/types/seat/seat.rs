@@ -832,3 +832,11 @@ impl SeatHandle {
         }
     }
 }
+
+impl PartialEq for SeatHandle {
+    fn eq(&self, other: &SeatHandle) -> bool {
+        self.seat == other.seat
+    }
+}
+
+impl Eq for SeatHandle {}

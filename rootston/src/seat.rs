@@ -1,13 +1,30 @@
-use wlroots::SeatHandler;
+use super::cursor;
+use wlroots;
 
-pub struct Seat {}
+#[derive(Debug)]
+pub struct Seat {
+    pub seat: wlroots::SeatHandle,
+    pub cursor: Option<cursor::Cursor>
+}
 
-impl Seat {
+#[derive(Debug)]
+pub struct SeatHandler {
+    pub cursor: Option<cursor::Cursor>
+}
+
+impl SeatHandler {
     pub fn new() -> Self {
-        Seat {}
+        SeatHandler { cursor: None }
     }
 }
 
-impl SeatHandler for Seat {
+impl wlroots::SeatHandler for SeatHandler {
     // TODO
+}
+
+
+impl Seat {
+    pub fn new(seat: wlroots::SeatHandle) -> Self {
+        Seat { seat, cursor: None }
+    }
 }

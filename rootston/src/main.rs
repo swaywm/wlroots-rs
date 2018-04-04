@@ -8,6 +8,7 @@ mod server;
 mod output;
 mod input;
 mod seat;
+mod cursor;
 
 use input::InputManager;
 use output::OutputManager;
