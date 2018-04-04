@@ -214,12 +214,11 @@ impl InputManagerHandler for InputManager {
                       -> Option<Box<KeyboardHandler>> {
         let state: &mut State = compositor.into();
         state.keyboard = Some(keyboard.weak_reference());
-        let mut seat_handle = state.seat_handle.clone().unwrap();
-        seat_handle.run(|mut seat| {
-                            seat.set_keyboard(keyboard.input_device());
-                            Some(seat)
-                        })
-                   .unwrap();
+        let seat_handle = state.seat_handle.clone().unwrap();
+        run_handles!([(seat: {seat_handle})] => {
+            seat.set_keyboard(keyboard.input_device());
+            Some(seat)
+        }).unwrap();
         Some(Box::new(ExKeyboardHandler))
     }
 }
@@ -255,34 +254,29 @@ fn main() {
 fn render_shells(state: &mut State, renderer: &mut Renderer) {
     let shells = state.shells.clone();
     for mut shell in shells {
-        shell.run(|shell| {
-                      shell.surface()
-                           .run(|surface| {
-                                    let (width, height) = surface.current_state().size();
-                                    let (render_width, render_height) =
-                                        (width * renderer.output.scale() as i32,
-                                        height * renderer.output.scale() as i32);
-                                    let (lx, ly) = (0.0, 0.0);
-                                    let render_box = Area::new(Origin::new(lx as i32, ly as i32),
-                                                               Size::new(render_width,
-                                                                         render_height));
-                                    if state.layout.intersects(renderer.output, render_box) {
-                                        let transform = renderer.output.get_transform().invert();
-                                        let matrix = project_box(render_box,
-                                                                 transform,
-                                                                 0.0,
-                                                                 renderer.output
-                                                                         .transform_matrix());
-                                        renderer.render_texture_with_matrix(&surface.texture(),
-                                                                            matrix);
-                                        let start = SystemTime::now();
-                                        let now = start.duration_since(UNIX_EPOCH)
-                                                       .expect("Time went backwards");
-                                        surface.send_frame_done(now);
-                                    }
-                                })
-                           .unwrap()
-                  })
-             .unwrap();
+        run_handles!([(shell: {shell}), (surface: {shell.surface()})] => {
+            let (width, height) = surface.current_state().size();
+            let (render_width, render_height) =
+                (width * renderer.output.scale() as i32,
+                 height * renderer.output.scale() as i32);
+            let (lx, ly) = (0.0, 0.0);
+            let render_box = Area::new(Origin::new(lx as i32, ly as i32),
+                                       Size::new(render_width,
+                                                 render_height));
+            if state.layout.intersects(renderer.output, render_box) {
+                let transform = renderer.output.get_transform().invert();
+                let matrix = project_box(render_box,
+                                         transform,
+                                         0.0,
+                                         renderer.output
+                                         .transform_matrix());
+                renderer.render_texture_with_matrix(&surface.texture(),
+                                                    matrix);
+                let start = SystemTime::now();
+                let now = start.duration_since(UNIX_EPOCH)
+                    .expect("Time went backwards");
+                surface.send_frame_done(now);
+            }
+        }).unwrap().unwrap();
     }
 }

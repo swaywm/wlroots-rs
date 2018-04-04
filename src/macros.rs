@@ -210,3 +210,19 @@ macro_rules! compositor_data {
         }
     }
 }
+
+#[macro_export]
+macro_rules! run_handles {
+    ([($handle_name: ident: $unhandle_name: block)] => $body: block) => {
+        #[allow(unused_mut)]
+        $unhandle_name.run(|mut $handle_name| {
+            $body
+        })
+    };
+    ([($handle_name: ident: $unhandle_name: block), $rest: tt] => $body: block) => {
+        #[allow(unused_mut)]
+        $unhandle_name.run(|mut $handle_name| {
+            run_handles!([$rest] => $body)
+        })
+    };
+}
