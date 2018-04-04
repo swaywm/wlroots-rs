@@ -17,6 +17,7 @@ pub trait PointerHandler {
     /// Callback that is triggered when the buttons on the pointer are pressed.
     fn on_button(&mut self, &mut Compositor, &mut Pointer, &ButtonEvent) {}
 
+    /// Callback that is triggerde when an axis event fires
     fn on_axis(&mut self, &mut Compositor, &mut Pointer, &AxisEvent) {}
 }
 

@@ -7,10 +7,10 @@ use libc;
 use std::{env, panic};
 use std::process::abort;
 
-use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper, TouchHandler,
-            TouchWrapper};
+use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper, TabletPadHandler,
+            TabletPadWrapper, TabletToolHandler, TabletToolWrapper, TouchHandler, TouchWrapper};
 use compositor::{Compositor, COMPOSITOR_PTR};
-use types::input::{InputDevice, Keyboard, Pointer, Touch};
+use types::input::{InputDevice, Keyboard, Pointer, TabletPad, TabletTool, Touch};
 use utils::safe_as_cstring;
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -25,7 +25,9 @@ use wlroots_sys::xkb_keymap_compile_flags::*;
 pub enum Input {
     Keyboard(Box<KeyboardWrapper>),
     Pointer(Box<PointerWrapper>),
-    Touch(Box<TouchWrapper>)
+    Touch(Box<TouchWrapper>),
+    TabletTool(Box<TabletToolWrapper>),
+    TabletPad(Box<TabletPadWrapper>)
 }
 
 impl Input {
@@ -34,7 +36,9 @@ impl Input {
         match *self {
             Keyboard(ref keyboard) => keyboard.input_device().as_ptr(),
             Pointer(ref pointer) => pointer.input_device().as_ptr(),
-            Touch(ref touch) => touch.input_device().as_ptr()
+            Touch(ref touch) => touch.input_device().as_ptr(),
+            TabletTool(ref tool) => tool.input_device().as_ptr(),
+            TabletPad(ref pad) => pad.input_device().as_ptr()
         }
     }
 }
@@ -48,9 +52,7 @@ pub trait InputManagerHandler {
     fn input_added(&mut self, &mut Compositor, &mut InputDevice) {}
 
     /// Callback triggered when an input device is removed.
-    fn input_removed(&mut self, &mut Compositor, &mut InputDevice) {
-        // TODO
-    }
+    fn input_removed(&mut self, &mut Compositor, &mut InputDevice) {}
 
     /// Callback triggered when a keyboard device is added.
     ///
@@ -71,8 +73,32 @@ pub trait InputManagerHandler {
     /// Callback triggered when a touch device is added.
     ///
     /// # Panics
-    /// Any panic in this functino will cause the process to abort.
+    /// Any panic in this function will cause the process to abort.
     fn touch_added(&mut self, &mut Compositor, &mut Touch) -> Option<Box<TouchHandler>> {
+        None
+    }
+
+    /// Callback triggered when a tablet tool is added.
+    ///
+    ///
+    /// # Panics
+    /// Any panic in this function will cause the process to abort.
+    fn tablet_tool_added(&mut self,
+                         &mut Compositor,
+                         &mut TabletTool)
+                         -> Option<Box<TabletToolHandler>> {
+        None
+    }
+
+    /// Callback triggered when a tablet pad is added.
+    ///
+    ///
+    /// # Panics
+    /// Any panic in this function will cause the process to abort.
+    fn tablet_pad_added(&mut self,
+                        &mut Compositor,
+                        &mut TabletPad)
+                        -> Option<Box<TabletPadHandler>> {
         None
     }
 }
@@ -165,8 +191,58 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                         // Forget until we need to drop it in the destroy callback
                         inputs.push(Input::Touch(touch))
                     }
+                },
+                WLR_INPUT_DEVICE_TABLET_TOOL => {
+                    let mut tablet_tool_handle = match TabletTool::new_from_input_device(data) {
+                        Some(dev) => dev,
+                        None => {
+                            wlr_log!(L_ERROR, "Device {:#?}, was not a tablet tool", dev);
+                            abort()
+                        }
+                    };
+                    tablet_tool_handle.set_lock(true);
+                    if let Some(tablet_tool) = manager.tablet_tool_added(compositor,
+                                                                         &mut tablet_tool_handle) {
+                        tablet_tool_handle.set_lock(false);
+                        let mut tablet_tool = TabletToolWrapper::new((tablet_tool_handle,
+                                                                      tablet_tool));
+                        let tool_ptr = &mut (*dev.dev_union().tablet_tool);
+                        wl_signal_add(&mut tool_ptr.events.axis as *mut _ as _,
+                                      tablet_tool.axis_listener() as *mut _ as _);
+                        wl_signal_add(&mut tool_ptr.events.proximity as *mut _ as _,
+                                      tablet_tool.proximity_listener() as *mut _ as _);
+                        wl_signal_add(&mut tool_ptr.events.tip as *mut _ as _,
+                                      tablet_tool.tip_listener() as *mut _ as _);
+                        wl_signal_add(&mut tool_ptr.events.button as *mut _ as _,
+                                      tablet_tool.button_listener() as *mut _ as _);
+                        // Forget until we need to drop it in the destroy callback
+                        inputs.push(Input::TabletTool(tablet_tool))
+                    }
+                },
+                WLR_INPUT_DEVICE_TABLET_PAD => {
+                    let mut tablet_pad_handle = match TabletPad::new_from_input_device(data) {
+                        Some(dev) => dev,
+                        None => {
+                            wlr_log!(L_ERROR, "Device {:#?}, was not a tablet pad", dev);
+                            abort()
+                        }
+                    };
+                    tablet_pad_handle.set_lock(true);
+                    if let Some(tablet_pad) = manager.tablet_pad_added(compositor,
+                                                                       &mut tablet_pad_handle) {
+                        tablet_pad_handle.set_lock(false);
+                        let mut tablet_pad = TabletPadWrapper::new((tablet_pad_handle, tablet_pad));
+                        let pad_ptr = &mut (*dev.dev_union().tablet_pad);
+                        wl_signal_add(&mut pad_ptr.events.button as *mut _ as _,
+                                      tablet_pad.button_listener() as *mut _ as _);;
+                        wl_signal_add(&mut pad_ptr.events.ring as *mut _ as _,
+                                      tablet_pad.ring_listener() as *mut _ as _);;
+                        wl_signal_add(&mut pad_ptr.events.strip as *mut _ as _,
+                                      tablet_pad.strip_listener() as *mut _ as _);;
+                        // Forget until we need to drop it in the destroy callback
+                        inputs.push(Input::TabletPad(tablet_pad))
+                    }
                 }
-                _ => unimplemented!(),
             }
             manager.input_added(compositor, &mut dev)
         }));
@@ -231,6 +307,31 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                   wl_list_remove,
                                   &mut (*touch.cancel_listener()).link as *mut _ as _);
+                },
+                Input::TabletTool(mut tool) => {
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*tool.axis_listener()).link as *mut _ as _);
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*tool.proximity_listener()).link as *mut _ as _);
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*tool.tip_listener()).link as *mut _ as _);
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*tool.button_listener()).link as *mut _ as _);
+                },
+                Input::TabletPad(mut pad) => {
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*pad.button_listener()).link as *mut _ as _);
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*pad.ring_listener()).link as *mut _ as _);
+                    ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                  wl_list_remove,
+                                  &mut (*pad.strip_listener()).link as *mut _ as _);
                 }
             }
         }
