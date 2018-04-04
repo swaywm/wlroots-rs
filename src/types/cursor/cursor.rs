@@ -488,7 +488,9 @@ impl Cursor {
     ///
     /// The input device must be attached to this cursor
     /// and the output must be among the outputs in the attached output layout.
-    pub fn map_input_to_output(&mut self, dev: &InputDevice, output: &Output) {
+    pub fn map_input_to_output<'output, O>(&mut self, dev: &InputDevice, output: O)
+        where O: Into<Option<&'output Output>>
+    {
         if !self.in_layout() {
             return
         }
@@ -497,12 +499,21 @@ impl Cursor {
         // If the input isn't found, then wlroots prints a diagnostic and
         // returns early (and thus does nothing unsafe).
 
-        if !self.output_in_output_layout(output.weak_reference()) {
-            wlr_log!(L_ERROR,
-                     "Tried to map input to an output not in the OutputLayout");
-            return
+        match output.into() {
+            None => unsafe {
+                wlr_cursor_map_input_to_output(self.data.0, dev.as_ptr(), ptr::null_mut())
+            },
+            Some(output) => {
+                if !self.output_in_output_layout(output.weak_reference()) {
+                    wlr_log!(L_ERROR,
+                             "Tried to map input to an output not in the OutputLayout");
+                    return
+                }
+                unsafe {
+                    wlr_cursor_map_input_to_output(self.data.0, dev.as_ptr(), output.as_ptr())
+                }
+            }
         }
-        unsafe { wlr_cursor_map_input_to_output(self.data.0, dev.as_ptr(), output.as_ptr()) }
     }
 
     /// Maps this cursor to an arbitrary region on the associated

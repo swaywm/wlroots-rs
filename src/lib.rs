@@ -50,3 +50,5 @@ pub use self::render::{matrix_identity, matrix_multiply, matrix_projection, matr
                        project_box, GenericRenderer, Image, Renderer, Texture, TextureFormat};
 
 pub use self::errors::*;
+
+pub type HandleResult<T> = Result<T, UpgradeHandleErr>;
