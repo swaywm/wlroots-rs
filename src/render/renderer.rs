@@ -4,12 +4,13 @@ use std::time::Duration;
 
 use libc::{c_float, c_int, c_void};
 
-use {Output, PixmanRegion};
+use {Area, Output, PixmanRegion};
 use render::Texture;
 use wlroots_sys::{wl_shm_format, wlr_backend, wlr_backend_get_egl, wlr_render_ellipse_with_matrix,
-                  wlr_render_quad_with_matrix, wlr_render_texture, wlr_render_texture_with_matrix,
-                  wlr_renderer, wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy,
-                  wlr_renderer_end, wlr_texture_from_pixels, wlr_gles2_renderer_create};
+                  wlr_render_quad_with_matrix, wlr_render_rect, wlr_render_texture,
+                  wlr_render_texture_with_matrix, wlr_renderer, wlr_renderer_begin,
+                  wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
+                  wlr_texture_from_pixels, wlr_gles2_renderer_create};
 
 /// A generic interface for rendering to the screen.
 ///
@@ -145,6 +146,11 @@ impl<'output> Renderer<'output> {
     /// Renders a solid ellipse in the specified color.
     pub fn render_colored_ellipse(&mut self, color: [f32; 4], matrix: [f32; 9]) {
         unsafe { wlr_render_ellipse_with_matrix(self.renderer, color.as_ptr(), matrix.as_ptr()) }
+    }
+
+    /// Renders a solid rectangle in the specified color.
+    pub fn render_colored_rect(&mut self, area: Area, color: [f32; 4], matrix: [f32; 9]) {
+        unsafe { wlr_render_rect(self.renderer, &area.into(), color.as_ptr(), matrix.as_ptr()) }
     }
 }
 

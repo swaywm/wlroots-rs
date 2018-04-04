@@ -1,7 +1,5 @@
 //! TODO Documentation
-use std::{fmt, panic, ptr};
-use std::rc::{Rc, Weak};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{fmt, panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
 
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
 use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
@@ -267,6 +265,7 @@ impl KeyboardHandle {
                          keyboard,
                          device }
     }
+
     /// Upgrades the keyboard handle to a reference to the backing `Keyboard`.
     ///
     /// # Unsafety

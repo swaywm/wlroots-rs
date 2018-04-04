@@ -2,7 +2,7 @@
 
 use wlroots_sys::{wlr_button_state, wlr_event_tablet_tool_axis, wlr_event_tablet_tool_button,
                   wlr_event_tablet_tool_proximity, wlr_event_tablet_tool_tip,
-                  wlr_tablet_tool_proximity_state, wlr_tablet_tool_tip_state};
+                  wlr_tablet_tool_axes, wlr_tablet_tool_proximity_state, wlr_tablet_tool_tip_state};
 
 #[derive(Debug)]
 /// Event that is triggered when a tablet tool axis event occurs.
@@ -35,8 +35,8 @@ impl AxisEvent {
         unsafe { (*self.event).time_msec }
     }
 
-    pub fn updated_axes(&self) -> u32 {
-        unsafe { (*self.event).updated_axes }
+    pub fn updated_axes(&self) -> TabletToolAxis {
+        unsafe { TabletToolAxis::from_bits_truncate((*self.event).updated_axes) }
     }
 
     /// Gets the position of the event.
@@ -127,5 +127,22 @@ impl ButtonEvent {
 
     pub fn state(&self) -> wlr_button_state {
         unsafe { (*self.event).state }
+    }
+}
+
+bitflags! {
+    pub struct TabletToolAxis: u32 {
+        const WLR_TABLET_TOOL_AXIS_X =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_X as u32;
+        const WLR_TABLET_TOOL_AXIS_Y =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_Y as u32;
+        const WLR_TABLET_TOOL_AXIS_DISTANCE =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_DISTANCE as u32;
+        const WLR_TABLET_TOOL_AXIS_PRESSURE =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_PRESSURE as u32;
+        const WLR_TABLET_TOOL_AXIS_TILT_X =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_TILT_X as u32;
+        const WLR_TABLET_TOOL_AXIS_TILT_Y =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_TILT_Y as u32;
     }
 }
