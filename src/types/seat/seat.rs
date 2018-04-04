@@ -828,6 +828,17 @@ impl SeatHandle {
             Err(err) => panic::resume_unwind(err)
         }
     }
+
+    /// Destroy the seat that this handle refers to.
+    ///
+    /// This will invalidate the other handles.
+    ///
+    /// If the seat was previously destroyed, does nothing
+    pub fn destroy(self) {
+        unsafe {
+            self.upgrade().ok();
+        }
+    }
 }
 
 impl PartialEq for SeatHandle {
