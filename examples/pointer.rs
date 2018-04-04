@@ -88,9 +88,7 @@ impl PointerHandler for ExPointer {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
         state.cursor
-             .run(|cursor|
-                      cursor.move_to(None, delta_x, delta_y)
-                  )
+             .run(|cursor| cursor.move_to(None, delta_x, delta_y))
              .unwrap();
     }
 
@@ -139,9 +137,7 @@ impl InputManagerHandler for InputManager {
                      -> Option<Box<PointerHandler>> {
         let state: &mut State = compositor.into();
         state.cursor
-             .run(|cursor|
-                      cursor.attach_input_device(pointer.input_device())
-                  )
+             .run(|cursor| cursor.attach_input_device(pointer.input_device()))
              .unwrap();
         Some(Box::new(ExPointer))
     }
