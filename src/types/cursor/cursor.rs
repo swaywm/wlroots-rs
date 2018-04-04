@@ -686,12 +686,13 @@ impl CursorHandle {
     ///
     /// So don't nest `run` calls or call this in a Cursor callback
     /// and everything will be ok :).
-    pub fn run<F>(&mut self, runner: F) -> UpgradeHandleResult<()>
-        where F: FnOnce(Box<Cursor>) -> Option<Box<Cursor>>
+    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+        where F: FnOnce(&mut Cursor) -> R
     {
-        let cursor = unsafe { self.upgrade()? };
+        let mut cursor = unsafe { self.upgrade()? };
         let cursor_ptr = cursor.data.0;
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(cursor)));
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut cursor)));
+        Box::into_raw(cursor);
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.load(Ordering::Acquire) {
@@ -704,11 +705,7 @@ impl CursorHandle {
                                       check.store(false, Ordering::Release);
                                   });
         match res {
-            Ok(Some(res)) => {
-                Box::into_raw(res);
-                Ok(())
-            }
-            Ok(None) => Ok(()),
+            Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)
         }
     }

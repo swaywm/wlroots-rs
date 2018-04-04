@@ -805,12 +805,13 @@ impl SeatHandle {
     ///
     /// So don't nest `run` calls or call this in a Seat callback
     /// and everything will be ok :).
-    pub fn run<F>(&mut self, runner: F) -> UpgradeHandleResult<()>
-        where F: FnOnce(Box<Seat>) -> Option<Box<Seat>>
+    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+        where F: FnOnce(&mut Seat) -> R
     {
-        let seat = unsafe { self.upgrade()? };
+        let mut seat = unsafe { self.upgrade()? };
         let seat_ptr = seat.data.0;
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(seat)));
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut seat)));
+        Box::into_raw(seat);
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.load(Ordering::Acquire) {
@@ -823,11 +824,7 @@ impl SeatHandle {
                                       check.store(false, Ordering::Release);
                                   });
         match res {
-            Ok(Some(res)) => {
-                Box::into_raw(res);
-                Ok(())
-            }
-            Ok(None) => Ok(()),
+            Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)
         }
     }

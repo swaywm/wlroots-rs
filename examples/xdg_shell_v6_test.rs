@@ -103,13 +103,12 @@ impl OutputManagerHandler for OutputManager {
         let layout = &mut state.layout;
         layout.add_auto(result.output);
         state.cursor
-             .run(|mut cursor| {
+             .run(|cursor| {
                       cursor.attach_output_layout(layout);
                       cursor.set_cursor_image(image);
                       let (x, y) = cursor.coords();
                       // https://en.wikipedia.org/wiki/Mouse_warping
                       cursor.warp(None, x, y);
-                      Some(cursor)
                   })
              .unwrap();
         Some(result)
@@ -136,7 +135,6 @@ impl KeyboardHandler for ExKeyboardHandler {
                             seat.keyboard_notify_key(key_event.time_msec(),
                                                      key_event.keycode(),
                                                      key_event.key_state() as u32);
-                            Some(seat)
                         })
                    .unwrap();
     }
@@ -147,9 +145,8 @@ impl PointerHandler for ExPointer {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
         state.cursor
-             .run(|mut cursor| {
+             .run(|cursor| {
                       cursor.move_to(event.device(), delta_x, delta_y);
-                      Some(cursor)
                   })
              .unwrap();
     }
@@ -170,7 +167,7 @@ impl PointerHandler for ExPointer {
                                     shell.surface()
                                 })
                            .unwrap();
-        seat_handle.run(|mut seat| {
+        seat_handle.run(|seat| {
                             keyboard.run(|keyboard| {
                                              surface.run(|surface| {
                                                  seat.set_keyboard(keyboard.input_device());
@@ -181,7 +178,6 @@ impl PointerHandler for ExPointer {
                                                     .unwrap();
                                          })
                                     .unwrap();
-                            Some(seat)
                         })
                    .unwrap();
     }
@@ -217,7 +213,6 @@ impl InputManagerHandler for InputManager {
         let seat_handle = state.seat_handle.clone().unwrap();
         run_handles!([(seat: {seat_handle})] => {
             seat.set_keyboard(keyboard.input_device());
-            Some(seat)
         }).unwrap();
         Some(Box::new(ExKeyboardHandler))
     }
@@ -239,9 +234,8 @@ fn main() {
     {
         let mut seat_handle =
             Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx));
-        seat_handle.run(|mut seat| {
+        seat_handle.run(|seat| {
                             seat.set_capabilities(Capability::all());
-                            Some(seat)
                         })
                    .unwrap();
         let state: &mut State = (&mut compositor).into();

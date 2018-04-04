@@ -96,13 +96,12 @@ impl OutputManagerHandler for OutputManager {
         let image = &xcursor.images()[0];
         state.cursor
              .clone()
-             .run(|mut cursor| {
+             .run(|cursor| {
                       cursor.attach_output_layout(layout);
                       cursor.set_cursor_image(image.into());
                       let (x, y) = cursor.coords();
                       // https://en.wikipedia.org/wiki/Mouse_warping
                       cursor.warp(None, x, y);
-                      Some(cursor)
                   })
              .unwrap();
         Some(result)
@@ -253,9 +252,8 @@ impl PointerHandler for ExPointer {
         let (delta_x, delta_y) = event.delta();
         state.cursor
              .clone()
-             .run(|mut cursor| {
+             .run(|cursor| {
                       cursor.move_to(event.device(), delta_x, delta_y);
-                      Some(cursor)
                   })
              .unwrap();
     }

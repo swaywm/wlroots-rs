@@ -61,12 +61,11 @@ impl OutputManagerHandler for OutputManager {
         // TODO use output config if present instead of auto
         layout.add_auto(result.output);
         state.cursor
-             .run(|mut cursor| {
+             .run(|cursor| {
                       cursor.attach_output_layout(layout);
                       cursor.set_cursor_image(image);
                       let (x, y) = cursor.coords();
                       cursor.warp(None, x, y);
-                      Some(cursor)
                   })
              .unwrap();
         // https://en.wikipedia.org/wiki/Mouse_warping
@@ -89,10 +88,9 @@ impl PointerHandler for ExPointer {
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
         state.cursor
-             .run(|mut cursor| {
-                      cursor.move_to(None, delta_x, delta_y);
-                      Some(cursor)
-                  })
+             .run(|cursor|
+                      cursor.move_to(None, delta_x, delta_y)
+                  )
              .unwrap();
     }
 
@@ -141,10 +139,9 @@ impl InputManagerHandler for InputManager {
                      -> Option<Box<PointerHandler>> {
         let state: &mut State = compositor.into();
         state.cursor
-             .run(|mut cursor| {
-                      cursor.attach_input_device(pointer.input_device());
-                      Some(cursor)
-                  })
+             .run(|cursor|
+                      cursor.attach_input_device(pointer.input_device())
+                  )
              .unwrap();
         Some(Box::new(ExPointer))
     }
