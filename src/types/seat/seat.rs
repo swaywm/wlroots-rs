@@ -32,7 +32,7 @@ use xkbcommon::xkb::Keycode;
 use {wlr_keyboard_modifiers, Compositor, InputDevice, KeyboardGrab, KeyboardHandle, PointerGrab,
      Surface, TouchGrab, TouchId, TouchPoint, events::seat_events::SetCursorEvent};
 use compositor::COMPOSITOR_PTR;
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 use utils::{c_to_rust_string, safe_as_cstring};
 use utils::ToMS;
 
@@ -760,15 +760,15 @@ impl SeatHandle {
     /// This function is unsafe, because it creates an unbound `Seat`
     /// which may live forever..
     /// But a seat could be destroyed else where.
-    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Box<Seat>> {
+    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Box<Seat>> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
                 if check.load(Ordering::Acquire) {
-                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                    return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
                 Ok(Seat::from_ptr(self.seat))
@@ -792,7 +792,7 @@ impl SeatHandle {
     ///
     /// So don't nest `run` calls or call this in a Seat callback
     /// and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut Seat) -> R
     {
         let mut seat = unsafe { self.upgrade()? };

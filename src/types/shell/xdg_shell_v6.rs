@@ -13,7 +13,7 @@ use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
                   wlr_xdg_toplevel_v6_state};
 
 use {Area, SeatHandle, SurfaceHandle};
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 use utils::c_to_rust_string;
 
 /// Used internally to reclaim a handle from just a *mut wlr_xdg_surface_v6.
@@ -243,16 +243,16 @@ impl XdgV6ShellSurfaceHandle {
     /// This function is unsafe, because it creates an unbound `XdgV6ShellSurface`
     /// which may live forever..
     /// But no surface lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<XdgV6ShellSurface> {
+    pub(crate) unsafe fn upgrade(&self) -> HandleResult<XdgV6ShellSurface> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
                 let shell_surface = XdgV6ShellSurface::from_handle(self);
                 if check.load(Ordering::Acquire) {
-                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                    return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
                 Ok(shell_surface)
@@ -275,7 +275,7 @@ impl XdgV6ShellSurfaceHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut XdgV6ShellSurface) -> R
     {
         let mut xdg_surface = unsafe { self.upgrade()? };

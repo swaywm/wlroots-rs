@@ -12,7 +12,7 @@ use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_su
 
 use super::{Subsurface, SubsurfaceHandle, SubsurfaceManager, SurfaceState};
 use Output;
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 use render::Texture;
 use utils::c_to_rust_string;
 
@@ -296,15 +296,15 @@ impl SurfaceHandle {
     /// This function is unsafe, because it creates an unbound `Surface`
     /// which may live forever..
     /// But no surface lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Surface> {
+    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Surface> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
                 if check.load(Ordering::Acquire) {
-                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                    return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
                 Ok(Surface::from_handle(self))
@@ -327,7 +327,7 @@ impl SurfaceHandle {
     /// or if you run this function within the another run to the same `Surface`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut Surface) -> R
     {
         let mut surface = unsafe { self.upgrade()? };

@@ -2,7 +2,7 @@
 
 use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
 
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
 use InputDevice;
@@ -148,9 +148,9 @@ impl PointerHandle {
     /// This function is unsafe, because it creates an unbound `Pointer`
     /// which may live forever..
     /// But no pointer lives forever and might be disconnected at any time.
-    pub unsafe fn upgrade(&self) -> UpgradeHandleResult<Pointer> {
+    pub unsafe fn upgrade(&self) -> HandleResult<Pointer> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
@@ -181,7 +181,7 @@ impl PointerHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&Pointer) -> R
     {
         let mut pointer = unsafe { self.upgrade()? };

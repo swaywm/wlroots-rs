@@ -18,7 +18,7 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
                   wlr_output_swap_buffers, wlr_output_transformed_resolution};
 
 use {OutputLayoutHandle, OutputMode};
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 use utils::c_to_rust_string;
 
 pub type Subpixel = wl_output_subpixel;
@@ -135,8 +135,8 @@ impl Output {
         // Remove output from previous output layout.
         if let Some(mut layout_handle) = (*output_data).layout_handle.take() {
             match layout_handle.run(|layout| layout.remove(self)) {
-                Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => self.clear_output_layout_data(),
-                Err(UpgradeHandleErr::AlreadyBorrowed) => {
+                Ok(_) | Err(HandleErr::AlreadyDropped) => self.clear_output_layout_data(),
+                Err(HandleErr::AlreadyBorrowed) => {
                     panic!("Could not add OutputLayout to Output user data!")
                 }
             }
@@ -530,16 +530,16 @@ impl OutputHandle {
     /// This function is unsafe, because it creates an unbound `Output`
     /// which may live forever..
     /// But no output lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Output> {
+    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Output> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
                 let output = Output::from_handle(self);
                 if check.load(Ordering::Acquire) {
-                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                    return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
                 Ok(output)
@@ -562,7 +562,7 @@ impl OutputHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut Output) -> R
     {
         let mut output = unsafe { self.upgrade()? };

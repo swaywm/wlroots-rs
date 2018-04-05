@@ -1,7 +1,7 @@
 //! TODO Documentation
 use std::{fmt, panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
 
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
                   wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap};
 pub use wlroots_sys::{wlr_key_state, wlr_keyboard_modifiers};
@@ -272,16 +272,16 @@ impl KeyboardHandle {
     /// This function is unsafe, because it creates an unbounded `Keyboard`
     /// which may live forever..
     /// But no keyboard lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Keyboard> {
+    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Keyboard> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
                 let keyboard = Keyboard::from_handle(self);
                 if check.load(Ordering::Acquire) {
-                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                    return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
                 Ok(keyboard)
@@ -304,7 +304,7 @@ impl KeyboardHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut Keyboard) -> R
     {
         let mut keyboard = unsafe { self.upgrade()? };

@@ -5,7 +5,7 @@ use wlroots_sys::{wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor
                   wlr_output_cursor_move, wlr_output_cursor_set_image,
                   wlr_output_cursor_set_surface};
 
-use {Image, Output, OutputHandle, Surface, SurfaceHandle, Texture, UpgradeHandleErr};
+use {HandleErr, Image, Output, OutputHandle, Surface, SurfaceHandle, Texture};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct OutputCursor {
@@ -51,8 +51,8 @@ impl OutputCursor {
                                              });
             match res {
                 Ok(res) => res,
-                Err(UpgradeHandleErr::AlreadyDropped) => false,
-                err @ Err(UpgradeHandleErr::AlreadyBorrowed) => panic!(err)
+                Err(HandleErr::AlreadyDropped) => false,
+                err @ Err(HandleErr::AlreadyBorrowed) => panic!(err)
             }
         }
     }
@@ -70,8 +70,8 @@ impl OutputCursor {
                                                                                hotspot_y)
                                              });
             match res {
-                Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => {}
-                err @ Err(UpgradeHandleErr::AlreadyBorrowed) => panic!(err)
+                Ok(_) | Err(HandleErr::AlreadyDropped) => {}
+                err @ Err(HandleErr::AlreadyBorrowed) => panic!(err)
             }
         }
     }
@@ -83,8 +83,8 @@ impl OutputCursor {
             let res = self.output_handle.run(|_| wlr_output_cursor_move(cursor, x, y));
             match res {
                 Ok(res) => res,
-                Err(UpgradeHandleErr::AlreadyDropped) => false,
-                err @ Err(UpgradeHandleErr::AlreadyBorrowed) => panic!(err)
+                Err(HandleErr::AlreadyDropped) => false,
+                err @ Err(HandleErr::AlreadyBorrowed) => panic!(err)
             }
         }
     }

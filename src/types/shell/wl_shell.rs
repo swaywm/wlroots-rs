@@ -8,7 +8,7 @@ use wlroots_sys::{wl_shell_surface_resize, wlr_wl_shell_surface, wlr_wl_shell_su
                   wlr_wl_shell_surface_ping, wlr_wl_shell_surface_surface_at};
 
 use SurfaceHandle;
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 use utils::c_to_rust_string;
 
 struct WlShellSurfaceState {
@@ -173,16 +173,16 @@ impl WlShellSurfaceHandle {
     /// This function is unsafe, because it creates an unbound `WlShellSurface`
     /// which may live forever..
     /// But no surface lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<WlShellSurface> {
+    pub(crate) unsafe fn upgrade(&self) -> HandleResult<WlShellSurface> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
                 let shell_surface = WlShellSurface::from_handle(self);
                 if check.load(Ordering::Acquire) {
-                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                    return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
                 Ok(shell_surface)
@@ -205,7 +205,7 @@ impl WlShellSurfaceHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut WlShellSurface) -> R
     {
         let mut wl_shell_surface = unsafe { self.upgrade()? };

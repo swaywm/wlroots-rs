@@ -2,7 +2,7 @@
 
 use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
 
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_touch};
 
 use InputDevice;
@@ -147,9 +147,9 @@ impl TouchHandle {
     /// This function is unsafe, because it creates an unbound `Touch`
     /// which may live forever..
     /// But no touch lives forever and might be disconnected at any time.
-    pub unsafe fn upgrade(&self) -> UpgradeHandleResult<Touch> {
+    pub unsafe fn upgrade(&self) -> HandleResult<Touch> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // touch to exist!
@@ -180,7 +180,7 @@ impl TouchHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&Touch) -> R
     {
         let mut touch = unsafe { self.upgrade()? };

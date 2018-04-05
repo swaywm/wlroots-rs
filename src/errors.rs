@@ -3,11 +3,13 @@
 use std::error::Error;
 use std::fmt;
 
-pub type UpgradeHandleResult<T> = Result<T, UpgradeHandleErr>;
+/// The result of trying to upgrade a handle, either using `run` or
+/// `run_handles!`.
+pub type HandleResult<T> = Result<T, HandleErr>;
 
 /// The types of ways upgrading a handle can fail.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum UpgradeHandleErr {
+pub enum HandleErr {
     /// Attempting a handle that already has a mutable borrow to its
     /// backing structure.
     AlreadyBorrowed,
@@ -15,9 +17,9 @@ pub enum UpgradeHandleErr {
     AlreadyDropped
 }
 
-impl fmt::Display for UpgradeHandleErr {
+impl fmt::Display for HandleErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use UpgradeHandleErr::*;
+        use HandleErr::*;
         match *self {
             AlreadyBorrowed => write!(f, "AlreadyBorrowed"),
             AlreadyDropped => write!(f, "AlreadyDropped")
@@ -25,9 +27,9 @@ impl fmt::Display for UpgradeHandleErr {
     }
 }
 
-impl Error for UpgradeHandleErr {
+impl Error for HandleErr {
     fn description(&self) -> &str {
-        use UpgradeHandleErr::*;
+        use HandleErr::*;
         match *self {
             AlreadyBorrowed => "Structure is already mutably borrowed",
             AlreadyDropped => "Structure has already been dropped"

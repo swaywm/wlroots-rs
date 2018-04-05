@@ -4,7 +4,7 @@
 
 use {Output, OutputHandle};
 use compositor::{Compositor, COMPOSITOR_PTR};
-use errors::UpgradeHandleErr;
+use errors::HandleErr;
 use libc;
 use manager::{OutputHandler, UserOutput};
 
@@ -156,8 +156,8 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
             // NOTE We don't remove the lock because we are removing it
             if let Some(mut layout) = output.layout() {
                 match layout.run(|layout| layout.remove(output)) {
-                    Ok(_) | Err(UpgradeHandleErr::AlreadyDropped) => {},
-                    Err(UpgradeHandleErr::AlreadyBorrowed) => {
+                    Ok(_) | Err(HandleErr::AlreadyDropped) => {},
+                    Err(HandleErr::AlreadyBorrowed) => {
                         panic!("Tried to remove layout from output, but it's already borrowed");
                     }
                 }

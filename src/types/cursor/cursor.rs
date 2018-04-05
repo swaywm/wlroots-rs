@@ -16,7 +16,7 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_absolute_to_layout_coords,
 use {Area, InputDevice, Output, OutputHandle, OutputLayout, OutputLayoutHandle, Surface,
      XCursorImage};
 use compositor::{Compositor, COMPOSITOR_PTR};
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 use events::{pointer_events, tablet_tool_events, touch_events};
 
 #[derive(Debug)]
@@ -503,7 +503,7 @@ impl Cursor {
     /// Determines if we are within a valid layout.
     fn assert_layout(&self) {
         match self.data.2.clone().map(|mut layout| layout.run(|_| ())) {
-            Some(Ok(())) | Some(Err(UpgradeHandleErr::AlreadyBorrowed)) => {}
+            Some(Ok(())) | Some(Err(HandleErr::AlreadyBorrowed)) => {}
             None | Some(Err(_)) => panic!("Cursor was not attached to an output layout!")
         }
     }
@@ -524,7 +524,7 @@ impl Cursor {
                                                    false
                                                }) {
             Ok(res) => res,
-            Err(UpgradeHandleErr::AlreadyDropped) => false,
+            Err(HandleErr::AlreadyDropped) => false,
             Err(err) => panic!(err)
         }
     }
@@ -598,15 +598,15 @@ impl CursorHandle {
     /// This function is unsafe, because it creates an unbound `Cursor`
     /// which may live forever..
     /// But a cursor could be destoryed else where.
-    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Box<Cursor>> {
+    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Box<Cursor>> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
         // NOTE
         // We drop the Rc here because having two would allow a dangling
         // pointer to exist!
             .and_then(|check| {
                 if check.load(Ordering::Acquire) {
-                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                    return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
                 Ok(Cursor::from_ptr(self.cursor))
@@ -630,7 +630,7 @@ impl CursorHandle {
     ///
     /// So don't nest `run` calls or call this in a Cursor callback
     /// and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut Cursor) -> R
     {
         let mut cursor = unsafe { self.upgrade()? };

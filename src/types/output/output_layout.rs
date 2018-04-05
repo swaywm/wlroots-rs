@@ -13,7 +13,7 @@ use wlroots_sys::{wlr_output_effective_resolution, wlr_output_layout, wlr_output
                   wlr_output_layout_move, wlr_output_layout_output, wlr_output_layout_output_at,
                   wlr_output_layout_output_coords, wlr_output_layout_remove};
 
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 
 use {Area, Compositor, Origin, Output, OutputHandle, compositor::COMPOSITOR_PTR};
 
@@ -362,15 +362,15 @@ impl OutputLayoutHandle {
     /// This function is unsafe, because it creates an unbound `OutputLayout`
     /// which may live forever..
     /// But the actual lifetime of `OutputLayout` is determined by the user.
-    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Box<OutputLayout>> {
+    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Box<OutputLayout>> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
                 if check.load(Ordering::Acquire) {
-                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                    return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
                 Ok(OutputLayout::from_ptr(self.layout))
@@ -386,7 +386,7 @@ impl OutputLayoutHandle {
     /// to a short lived scope of an anonymous function,
     /// this function ensures the OutputLayout does not live longer
     /// than it exists (because the lifetime is controlled by the user).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut OutputLayout) -> R
     {
         let mut output_layout = unsafe { self.upgrade()? };

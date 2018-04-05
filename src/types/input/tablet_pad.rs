@@ -1,7 +1,7 @@
 //! TODO Documentation
 use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
 
-use errors::{UpgradeHandleErr, UpgradeHandleResult};
+use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_tablet_pad};
 
 use InputDevice;
@@ -139,16 +139,16 @@ impl TabletPadHandle {
     /// This function is unsafe, because it creates an unbounded `TabletPad`
     /// which may live forever..
     /// But no tablet tool lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<TabletPad> {
+    pub(crate) unsafe fn upgrade(&self) -> HandleResult<TabletPad> {
         self.handle.upgrade()
-            .ok_or(UpgradeHandleErr::AlreadyDropped)
+            .ok_or(HandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
                 let pad = TabletPad::from_handle(self);
                 if check.load(Ordering::Acquire) {
-                    return Err(UpgradeHandleErr::AlreadyBorrowed)
+                    return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
                 Ok(pad)
@@ -171,7 +171,7 @@ impl TabletPadHandle {
     /// or if you run this function within the another run to the same `TabletPad`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> UpgradeHandleResult<R>
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut TabletPad) -> R
     {
         let mut pad = unsafe { self.upgrade()? };
