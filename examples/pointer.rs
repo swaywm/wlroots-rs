@@ -3,8 +3,8 @@ extern crate wlroots;
 
 use wlroots::{Compositor, CompositorBuilder, Cursor, CursorHandle, CursorHandler,
               InputManagerHandler, Keyboard, KeyboardHandler, Output, OutputBuilder,
-              OutputBuilderResult, OutputHandler, OutputLayout, OutputManagerHandler, Pointer,
-              PointerHandler, XCursorTheme};
+              OutputBuilderResult, OutputHandler, OutputLayout, OutputLayoutHandle,
+              OutputLayoutHandler, OutputManagerHandler, Pointer, PointerHandler, XCursorTheme};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -17,11 +17,11 @@ struct State {
     default_color: [f32; 4],
     xcursor_theme: XCursorTheme,
     cursor: CursorHandle,
-    layout: OutputLayout
+    layout: OutputLayoutHandle
 }
 
 impl State {
-    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout, cursor: CursorHandle) -> Self {
+    fn new(xcursor_theme: XCursorTheme, layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
                 xcursor_theme,
@@ -44,7 +44,11 @@ struct ExPointer;
 
 struct ExKeyboardHandler;
 
+struct OutputLayoutEx;
+
 impl CursorHandler for ExCursor {}
+
+impl OutputLayoutHandler for OutputLayoutEx {}
 
 impl OutputManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
@@ -54,21 +58,22 @@ impl OutputManagerHandler for OutputManager {
         let result = builder.build_best_mode(ExOutput);
         let state: &mut State = compositor.into();
         let layout = &mut state.layout;
+        let cursor = &mut state.cursor;
         let xcursor = state.xcursor_theme
                            .get_cursor("left_ptr".into())
                            .expect("Could not load left_ptr cursor");
         let image = &xcursor.images()[0];
         // TODO use output config if present instead of auto
-        layout.add_auto(result.output);
-        state.cursor
-             .run(|cursor| {
-                      cursor.attach_output_layout(layout);
-                      cursor.set_cursor_image(image);
-                      let (x, y) = cursor.coords();
-                      cursor.warp(None, x, y);
-                  })
-             .unwrap();
-        // https://en.wikipedia.org/wiki/Mouse_warping
+        run_handles!([(layout: {layout}), (cursor: {cursor})] => {
+            layout.add_auto(result.output);
+            cursor.attach_output_layout(layout);
+            cursor.set_cursor_image(image);
+            let (x, y) = cursor.coords();
+            // https://en.wikipedia.org/wiki/Mouse_warping
+            cursor.warp(None, x, y);
+        })
+            .expect("Cursor was destroyed")
+            .expect("Layout was destroyed");
         Some(result)
     }
 }
@@ -154,7 +159,7 @@ fn main() {
     init_logging(L_DEBUG, None);
     let cursor = Cursor::create(Box::new(ExCursor));
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
-    let layout = OutputLayout::new(None).expect("Could not construct an output layout");
+    let layout = OutputLayout::create(Box::new(OutputLayoutEx));
 
     let compositor = CompositorBuilder::new().input_manager(Box::new(InputManager))
                                              .output_manager(Box::new(OutputManager))

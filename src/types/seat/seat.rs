@@ -259,35 +259,34 @@ impl Seat {
             let seat = wlr_seat_create(compositor.display() as _, name.as_ptr());
             if seat.is_null() {
                 panic!("Could not allocate a wlr_seat");
-            } else {
-                let mut res = Seat::new((seat, handler));
-                wl_signal_add(&mut (*seat).events.pointer_grab_begin as *mut _ as _,
-                              res.pointer_grab_begin_listener() as *mut _ as _);
-                wl_signal_add(&mut (*seat).events.pointer_grab_end as *mut _ as _,
-                              res.pointer_grab_end_listener() as *mut _ as _);
-                wl_signal_add(&mut (*seat).events.keyboard_grab_begin as *mut _ as _,
-                              res.keyboard_grab_begin_listener() as *mut _ as _);
-                wl_signal_add(&mut (*seat).events.keyboard_grab_end as *mut _ as _,
-                              res.keyboard_grab_end_listener() as *mut _ as _);
-                wl_signal_add(&mut (*seat).events.touch_grab_begin as *mut _ as _,
-                              res.touch_grab_begin_listener() as *mut _ as _);
-                wl_signal_add(&mut (*seat).events.touch_grab_end as *mut _ as _,
-                              res.touch_grab_end_listener() as *mut _ as _);
-                wl_signal_add(&mut (*seat).events.request_set_cursor as *mut _ as _,
-                              res.request_set_cursor_listener() as *mut _ as _);
-                wl_signal_add(&mut (*seat).events.selection as *mut _ as _,
-                              res.selection_listener() as *mut _ as _);
-                wl_signal_add(&mut (*seat).events.primary_selection as *mut _ as _,
-                              res.primary_selection_listener() as *mut _ as _);
-                wl_signal_add(&mut (*seat).events.destroy as *mut _ as _,
-                              res.destroy_listener() as *mut _ as _);
-                let counter = Rc::new(AtomicBool::new(false));
-                let handle = Rc::downgrade(&counter);
-                let state = Box::new(SeatState { counter,
-                                                 seat: Box::into_raw(res) });
-                (*seat).data = Box::into_raw(state) as *mut libc::c_void;
-                SeatHandle { seat: seat, handle }
             }
+            let mut res = Seat::new((seat, handler));
+            wl_signal_add(&mut (*seat).events.pointer_grab_begin as *mut _ as _,
+                          res.pointer_grab_begin_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.pointer_grab_end as *mut _ as _,
+                          res.pointer_grab_end_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.keyboard_grab_begin as *mut _ as _,
+                          res.keyboard_grab_begin_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.keyboard_grab_end as *mut _ as _,
+                          res.keyboard_grab_end_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.touch_grab_begin as *mut _ as _,
+                          res.touch_grab_begin_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.touch_grab_end as *mut _ as _,
+                          res.touch_grab_end_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.request_set_cursor as *mut _ as _,
+                          res.request_set_cursor_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.selection as *mut _ as _,
+                          res.selection_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.primary_selection as *mut _ as _,
+                          res.primary_selection_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.destroy as *mut _ as _,
+                          res.destroy_listener() as *mut _ as _);
+            let counter = Rc::new(AtomicBool::new(false));
+            let handle = Rc::downgrade(&counter);
+            let state = Box::new(SeatState { counter,
+                                             seat: Box::into_raw(res) });
+            (*seat).data = Box::into_raw(state) as *mut libc::c_void;
+            SeatHandle { seat: seat, handle }
         }
     }
 
@@ -833,7 +832,7 @@ impl SeatHandle {
     ///
     /// This will invalidate the other handles.
     ///
-    /// If the seat was previously destroyed, does nothing
+    /// If the seat was previously destroyed, does nothing.
     pub fn destroy(self) {
         unsafe {
             self.upgrade().ok();

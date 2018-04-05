@@ -17,78 +17,79 @@ use errors::{UpgradeHandleErr, UpgradeHandleResult};
 
 use {Area, Compositor, Origin, Output, OutputHandle, compositor::COMPOSITOR_PTR};
 
+struct OutputLayoutState {
+    /// A counter that will always have a strong count of 1.
+    ///
+    /// Once the output layout is destroyed, this will signal to the `OutputHandle`s that
+    /// they cannot be upgraded.
+    counter: Rc<AtomicBool>,
+    /// A raw pointer to the `OutputLayout` on the heap.
+    layout: *mut OutputLayout
+}
+
 pub trait OutputLayoutHandler {
     /// Callback that's triggered when an output is added to the output layout.
-    fn output_added<'this>(&'this mut self, &mut Compositor, &mut OutputLayoutOutput<'this>) {}
+    fn output_added<'this>(&'this mut self,
+                           &mut Compositor,
+                           &mut OutputLayout,
+                           OutputLayoutOutput<'this>) {
+    }
 
     /// Callback that's triggered when an output is removed from the output
     /// layout.
-    fn output_removed<'this>(&'this mut self, &mut Compositor, &mut OutputLayoutOutput<'this>) {}
+    fn output_removed<'this>(&'this mut self,
+                             &mut Compositor,
+                             &mut OutputLayout,
+                             OutputLayoutOutput<'this>) {
+    }
 
     /// Callback that's triggered when the layout changes.
-    fn on_change<'this>(&mut self, &mut Compositor, &mut OutputLayoutOutput<'this>) {}
+    fn on_change<'this>(&mut self, &mut Compositor, &mut OutputLayout, OutputLayoutOutput<'this>) {}
 }
 
-wayland_listener!(InternalOutputLayout, Box<OutputLayoutHandler>, [
-    output_add_listener => output_add_notify: |this: &mut InternalOutputLayout,
-                                               data: *mut libc::c_void,|
+wayland_listener!(OutputLayout, (*mut wlr_output_layout, Box<OutputLayoutHandler>), [
+    output_add_listener => output_add_notify: |this: &mut OutputLayout, data: *mut libc::c_void,|
     unsafe {
-        let manager = &mut this.data;
+        let (output_ptr, ref mut manager) = this.data;
         let layout_output = data as *mut wlr_output_layout_output;
-        let mut layout_output = OutputLayoutOutput{
-            layout_output, phantom: PhantomData
-        };
+        let layout_output = OutputLayoutOutput{layout_output, phantom: PhantomData};
         let compositor = &mut *COMPOSITOR_PTR;
-        manager.output_added(compositor, &mut layout_output);
+        let mut output_layout = OutputLayout::from_ptr(output_ptr);
+        manager.output_added(compositor, &mut output_layout, layout_output);
+        Box::into_raw(output_layout);
     };
-    output_remove_listener => output_remove_notify: |this: &mut InternalOutputLayout,
+    output_remove_listener => output_remove_notify: |this: &mut OutputLayout,
                                                      data: *mut libc::c_void,|
     unsafe {
-        let manager = &mut this.data;
+        let (output_ptr, ref mut manager) = this.data;
         let layout_output = data as *mut wlr_output_layout_output;
-        let mut layout_output = OutputLayoutOutput { layout_output, phantom: PhantomData};
+        let layout_output = OutputLayoutOutput { layout_output, phantom: PhantomData};
         let compositor = &mut *COMPOSITOR_PTR;
-        manager.output_removed(compositor, &mut layout_output);
+        let mut output_layout = OutputLayout::from_ptr(output_ptr);
+        manager.output_removed(compositor, &mut output_layout, layout_output);
+        Box::into_raw(output_layout);
     };
-    change_listener => change_notify: |this: &mut InternalOutputLayout, data: *mut libc::c_void,|
+    change_listener => change_notify: |this: &mut OutputLayout, data: *mut libc::c_void,|
     unsafe {
-        let manager = &mut this.data;
+        let (output_ptr, ref mut manager) = this.data;
         let layout_output = data as *mut wlr_output_layout_output;
-        let mut layout_output = OutputLayoutOutput { layout_output, phantom: PhantomData};
+        let layout_output = OutputLayoutOutput { layout_output, phantom: PhantomData};
         let compositor = &mut *COMPOSITOR_PTR;
-        manager.on_change(compositor, &mut layout_output);
+        let mut output_layout = OutputLayout::from_ptr(output_ptr);
+        manager.on_change(compositor, &mut output_layout, layout_output);
+        Box::into_raw(output_layout);
     };
 ]);
 
-impl fmt::Debug for InternalOutputLayout {
+impl fmt::Debug for OutputLayout {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "")
     }
 }
 
-#[derive(Debug)]
-pub struct OutputLayout {
-    /// The structure that ensures weak handles to this structure are still alive.
-    ///
-    /// They contain weak handles, and will safely not use dead memory when this
-    /// is freed by wlroots.
-    ///
-    /// If this is `None`, then this is from an upgraded `OutputHandle`, and
-    /// the operations are **unchecked**.
-    /// This is means safe operations might fail, but only if you use the unsafe
-    /// marked function `upgrade` on a `OutputHandle`.
-    liveliness: Option<Rc<AtomicBool>>,
-    /// The output_layout ptr that refers to this `OutputLayout`
-    layout: *mut wlr_output_layout,
-    /// Optional callback handler for the OutputLayout.
-    manager: Option<Box<InternalOutputLayout>>
-}
-
 /// A handle to an `OutputLayout`.
-///
-/// Used internally by `Output` to gain access to the `OutputLayout`.
 #[derive(Debug, Clone)]
-pub(crate) struct OutputLayoutHandle {
+pub struct OutputLayoutHandle {
     /// The Rc that ensures that this handle is still alive.
     ///
     /// When wlroots deallocates the pointer associated with this handle,
@@ -107,32 +108,39 @@ pub struct OutputLayoutOutput<'output> {
 
 impl OutputLayout {
     /// Construct a new OuputLayout.
-    pub fn new(handler: Option<Box<OutputLayoutHandler>>) -> Option<Self> {
+    pub fn create(handler: Box<OutputLayoutHandler>) -> OutputLayoutHandle {
         unsafe {
             let layout = wlr_output_layout_create();
             if layout.is_null() {
-                None
-            } else {
-                let manager =
-                    handler.map(|handler| {
-                                    let mut manager = InternalOutputLayout::new(handler);
-                                    wl_signal_add(&mut (*layout).events.add as *mut _ as _,
-                                                  manager.output_add_listener() as *mut _ as _);
-                                    wl_signal_add(&mut (*layout).events.destroy as *mut _ as _,
-                                                  manager.output_remove_listener() as *mut _ as _);
-                                    wl_signal_add(&mut (*layout).events.change as *mut _ as _,
-                                                  manager.change_listener() as *mut _ as _);
-                                    manager
-                                });
-                Some(OutputLayout { liveliness: Some(Rc::new(AtomicBool::new(false))),
-                                    layout,
-                                    manager })
+                panic!("Could not allocate a wlr_output_layout")
             }
+            let mut output_layout = OutputLayout::new((layout, handler));
+            wl_signal_add(&mut (*layout).events.add as *mut _ as _,
+                          output_layout.output_add_listener() as *mut _ as _);
+            wl_signal_add(&mut (*layout).events.destroy as *mut _ as _,
+                          output_layout.output_remove_listener() as *mut _ as _);
+            wl_signal_add(&mut (*layout).events.change as *mut _ as _,
+                          output_layout.change_listener() as *mut _ as _);
+            let counter = Rc::new(AtomicBool::new(false));
+            let handle = Rc::downgrade(&counter);
+            let state = Box::new(OutputLayoutState { counter,
+                                                     layout: Box::into_raw(output_layout) });
+            (*layout).data = Box::into_raw(state) as *mut libc::c_void;
+            OutputLayoutHandle { layout, handle }
         }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
-        self.layout
+        self.data.0
+    }
+
+    /// Reconstruct the box from the wlr_output_layout.
+    unsafe fn from_ptr(layout: *mut wlr_output_layout) -> Box<OutputLayout> {
+        let data = (*layout).data as *mut OutputLayoutState;
+        if data.is_null() {
+            panic!("Data pointer on the output layout was null!");
+        }
+        Box::from_raw((*data).layout)
     }
 
     /// Get the outputs associated with this OutputLayout.
@@ -141,7 +149,7 @@ impl OutputLayout {
     pub fn outputs(&mut self) -> Vec<(OutputHandle, Origin)> {
         unsafe {
             let mut result = vec![];
-            wl_list_for_each!((*self.layout).outputs, link, (pos: wlr_output_layout_output) => {
+            wl_list_for_each!((*self.data.0).outputs, link, (pos: wlr_output_layout_output) => {
                 result.push((OutputHandle::from_ptr((*pos).output),
                              Origin::new((*pos).x, (*pos).y)))
             });
@@ -155,7 +163,7 @@ impl OutputLayout {
     pub fn outputs_layouts<'output>(&'output mut self) -> Vec<OutputLayoutOutput<'output>> {
         unsafe {
             let mut result = vec![];
-            wl_list_for_each!((*self.layout).outputs, link,
+            wl_list_for_each!((*self.data.0).outputs, link,
                               (layout_output: wlr_output_layout_output) => {
                                   result.push(OutputLayoutOutput { layout_output,
                                                                    phantom: PhantomData
@@ -168,7 +176,7 @@ impl OutputLayout {
     /// Adds an output to the layout at the given coordinates.
     pub fn add(&mut self, output: &mut Output, origin: Origin) {
         let (x, y) = (origin.x, origin.y);
-        unsafe { wlr_output_layout_add(self.layout, output.as_ptr(), x, y) }
+        unsafe { wlr_output_layout_add(self.data.0, output.as_ptr(), x, y) }
     }
 
     /// Adds an output to the layout, automatically positioning it with
@@ -177,7 +185,7 @@ impl OutputLayout {
         unsafe {
             let layout_handle = self.weak_reference();
             output.set_output_layout(Some(layout_handle));
-            wlr_output_layout_add_auto(self.layout, output.as_ptr());
+            wlr_output_layout_add_auto(self.data.0, output.as_ptr());
             wlr_log!(L_DEBUG, "Added {:?} to {:?}", output, self);
         }
     }
@@ -187,7 +195,7 @@ impl OutputLayout {
     /// If the output is not part of this layout this does nothing.
     pub fn move_output(&mut self, output: &mut Output, origin: Origin) {
         let (x, y) = (origin.x, origin.y);
-        unsafe { wlr_output_layout_move(self.layout, output.as_ptr(), x, y) }
+        unsafe { wlr_output_layout_move(self.data.0, output.as_ptr(), x, y) }
     }
 
     /// Get the closest point on this layout from the given point from the reference
@@ -204,7 +212,7 @@ impl OutputLayout {
                                       .map(|output| output.as_ptr())
                                       .unwrap_or(ptr::null_mut());
             let (ref mut out_x, ref mut out_y) = (0.0, 0.0);
-            wlr_output_layout_closest_point(self.layout, output_ptr, x, y, out_x, out_y);
+            wlr_output_layout_closest_point(self.data.0, output_ptr, x, y, out_x, out_y);
             (*out_x, *out_y)
         }
     }
@@ -213,7 +221,7 @@ impl OutputLayout {
     /// point.
     pub fn contains_point(&mut self, output: &mut Output, origin: Origin) -> bool {
         unsafe {
-            wlr_output_layout_contains_point(self.layout, output.as_ptr(), origin.x, origin.y)
+            wlr_output_layout_contains_point(self.data.0, output.as_ptr(), origin.x, origin.y)
         }
     }
 
@@ -227,7 +235,7 @@ impl OutputLayout {
             let output_ptr = reference.into()
                                       .map(|output| output.as_ptr())
                                       .unwrap_or(ptr::null_mut());
-            Area::from_box(*wlr_output_layout_get_box(self.layout, output_ptr))
+            Area::from_box(*wlr_output_layout_get_box(self.data.0, output_ptr))
         }
     }
 
@@ -235,7 +243,7 @@ impl OutputLayout {
     /// exists.
     pub fn get_center_output(&mut self) -> Option<OutputHandle> {
         unsafe {
-            let output = wlr_output_layout_get_center_output(self.layout);
+            let output = wlr_output_layout_get_center_output(self.data.0);
             if output.is_null() {
                 None
             } else {
@@ -247,13 +255,13 @@ impl OutputLayout {
     /// Determines if the `Output` in the `OutputLayout` intersects with
     /// the provided `Area`.
     pub fn intersects(&mut self, output: &mut Output, area: Area) -> bool {
-        unsafe { wlr_output_layout_intersects(self.layout, output.as_ptr(), &area.into()) }
+        unsafe { wlr_output_layout_intersects(self.data.0, output.as_ptr(), &area.into()) }
     }
 
     /// Given x and y as pointers to global coordinates, adjusts them to local output
     /// coordinates relative to the given reference output.
     pub fn output_coords(&mut self, output: &mut Output, x: &mut f64, y: &mut f64) {
-        unsafe { wlr_output_layout_output_coords(self.layout, output.as_ptr(), x, y) }
+        unsafe { wlr_output_layout_output_coords(self.data.0, output.as_ptr(), x, y) }
     }
 
     /// Remove an output from this layout.
@@ -263,7 +271,7 @@ impl OutputLayout {
         wlr_log!(L_DEBUG, "Removing {:?} from {:?}", output, self);
         unsafe {
             output.clear_output_layout_data();
-            wlr_output_layout_remove(self.layout, output.as_ptr());
+            wlr_output_layout_remove(self.data.0, output.as_ptr());
         };
     }
 
@@ -273,7 +281,7 @@ impl OutputLayout {
                                     output: &'output mut Output)
                                     -> Option<OutputLayoutOutput<'output>> {
         unsafe {
-            let layout_output = wlr_output_layout_get(self.layout, output.as_ptr());
+            let layout_output = wlr_output_layout_get(self.data.0, output.as_ptr());
             if layout_output.is_null() {
                 None
             } else {
@@ -287,7 +295,7 @@ impl OutputLayout {
     /// is one there.
     pub fn output_at(&mut self, lx: c_double, ly: c_double) -> Option<OutputHandle> {
         unsafe {
-            let output = wlr_output_layout_output_at(self.layout, lx, ly);
+            let output = wlr_output_layout_output_at(self.data.0, lx, ly);
             if output.is_null() {
                 None
             } else {
@@ -301,57 +309,52 @@ impl OutputLayout {
     /// # Panics
     /// If this `OutputLayout` is a previously upgraded `OutputLayoutHandle`,
     /// then this function will panic.
-    pub(crate) fn weak_reference(&self) -> OutputLayoutHandle {
-        let arc = self.liveliness.as_ref()
-                      .expect("Cannot downgrade a previously upgraded OutputLayoutHandle");
-        OutputLayoutHandle { handle: Rc::downgrade(arc),
-                             layout: self.layout }
-    }
-
-    unsafe fn from_handle(handle: &OutputLayoutHandle) -> Self {
-        OutputLayout { liveliness: None,
-                       manager: None,
-                       layout: handle.as_ptr() }
+    pub fn weak_reference(&self) -> OutputLayoutHandle {
+        unsafe {
+            let handle = Rc::downgrade(&(*((*self.data.0).data as *mut OutputLayoutState)).counter);
+            OutputLayoutHandle { layout: self.data.0,
+                                 handle }
+        }
     }
 }
 
 impl Drop for OutputLayout {
     fn drop(&mut self) {
-        match self.liveliness {
-            None => {}
-            Some(ref liveliness) => {
-                if Rc::strong_count(liveliness) == 1 {
-                    wlr_log!(L_DEBUG, "Dropped {:?}", self);
-                    if let Some(mut manager) = self.manager.take() {
-                        unsafe {
-                            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                          wl_list_remove,
-                                          &mut (*manager.output_add_listener()).link as *mut _
-                                          as _);
-                            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                          wl_list_remove,
-                                          &mut (*manager.output_remove_listener()).link as *mut _
-                                          as _);
-                            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                          wl_list_remove,
-                                          &mut (*manager.change_listener()).link as *mut _ as _);
-                        }
-                    }
-                    unsafe { wlr_output_layout_destroy(self.layout) }
-                    let weak_count = Rc::weak_count(liveliness);
-                    if weak_count > 0 {
-                        wlr_log!(L_DEBUG,
-                                 "Still {} weak pointers to OutputLayout {:?}",
-                                 weak_count,
-                                 self.layout);
-                    }
-                }
-            }
+        let layout_ptr = self.data.0;
+        unsafe {
+            let data = Box::from_raw((*layout_ptr).data as *mut OutputLayoutState);
+            let mut manager = Box::from_raw(data.layout);
+            assert_eq!(Rc::strong_count(&data.counter),
+                       1,
+                       "OutputLayout had more than 1 reference count");
+            (*layout_ptr).data = ptr::null_mut();
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.output_add_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.output_remove_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.change_listener()).link as *mut _ as _);
+            wlr_output_layout_destroy(self.data.0)
         }
     }
 }
 
 impl OutputLayoutHandle {
+    /// Constructs a new OutputLayoutHandle that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server, or
+    /// for mocking/testing.
+    pub fn new() -> Self {
+        unsafe {
+            OutputLayoutHandle { handle: Weak::new(),
+                                 layout: ptr::null_mut() }
+        }
+    }
+
     /// Upgrades the `OutputLayoutHandle` to a reference
     /// to the backing `OutputLayout`.
     ///
@@ -359,19 +362,18 @@ impl OutputLayoutHandle {
     /// This function is unsafe, because it creates an unbound `OutputLayout`
     /// which may live forever..
     /// But the actual lifetime of `OutputLayout` is determined by the user.
-    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<OutputLayout> {
+    pub(crate) unsafe fn upgrade(&self) -> UpgradeHandleResult<Box<OutputLayout>> {
         self.handle.upgrade()
             .ok_or(UpgradeHandleErr::AlreadyDropped)
             // NOTE
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                let output_layout = OutputLayout::from_handle(self);
                 if check.load(Ordering::Acquire) {
                     return Err(UpgradeHandleErr::AlreadyBorrowed)
                 }
                 check.store(true, Ordering::Release);
-                Ok(output_layout)
+                Ok(OutputLayout::from_ptr(self.layout))
             })
     }
 
@@ -400,14 +402,23 @@ impl OutputLayoutHandle {
                                       }
                                       check.store(false, Ordering::Release);
                                   });
+        Box::into_raw(output_layout);
         match res {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)
         }
     }
 
-    unsafe fn as_ptr(&self) -> *mut wlr_output_layout {
-        self.layout
+    /// Destroy the output layout that this handle refers to.
+    ///
+    /// This will invalidate the other handles, including the ones held by
+    /// `Output`s.
+    ///
+    /// If the output layout was previously destroyed, does nothing.
+    pub fn destroy(self) {
+        unsafe {
+            self.upgrade().ok();
+        }
     }
 }
 
@@ -455,6 +466,12 @@ impl<'output> OutputLayoutOutput<'output> {
             let (x, y) = ((*self.layout_output).x, (*self.layout_output).y);
             Origin::new(x + height, y + height)
         }
+    }
+}
+
+impl Default for OutputLayoutHandle {
+    fn default() -> Self {
+        OutputLayoutHandle::new()
     }
 }
 

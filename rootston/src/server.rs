@@ -1,17 +1,20 @@
 use super::config::MainConfig;
-use wlroots::{OutputHandle, OutputLayout};
+use wlroots::{self, OutputHandle, OutputLayoutHandle};
+
+struct OutputLayout;
+impl wlroots::OutputLayoutHandler for OutputLayout {}
 
 #[derive(Debug)]
 pub struct Server {
     pub config: MainConfig,
-    pub layout: OutputLayout,
+    pub layout: OutputLayoutHandle,
     pub outputs: Vec<OutputHandle>
 }
 
 impl Server {
     pub fn new(config: MainConfig) -> Self {
         Server { config,
-                 layout: OutputLayout::new(None).expect("Could not construct an OutputLayout"),
+                 layout: wlroots::OutputLayout::create(Box::new(OutputLayout)),
                  outputs: vec![] }
     }
 }

@@ -8,10 +8,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use wlroots::{project_box, Area, Capability, Compositor, CompositorBuilder, Cursor, CursorHandle,
               CursorHandler, InputManagerHandler, Keyboard, KeyboardHandle, KeyboardHandler,
               Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat, SeatHandle,
-              SeatHandler, Size, Surface, XCursorTheme, XdgV6ShellHandler,
-              XdgV6ShellManagerHandler, XdgV6ShellState, XdgV6ShellSurface,
-              XdgV6ShellSurfaceHandle};
+              OutputLayoutHandle, OutputLayoutHandler, OutputManagerHandler, Pointer,
+              PointerHandler, Renderer, Seat, SeatHandle, SeatHandler, Size, Surface,
+              XCursorTheme, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState,
+              XdgV6ShellSurface, XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -21,14 +21,14 @@ use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 struct State {
     xcursor_theme: XCursorTheme,
     keyboard: Option<KeyboardHandle>,
-    layout: OutputLayout,
+    layout: OutputLayoutHandle,
     cursor: CursorHandle,
     shells: Vec<XdgV6ShellSurfaceHandle>,
     seat_handle: Option<SeatHandle>
 }
 
 impl State {
-    fn new(xcursor_theme: XCursorTheme, layout: OutputLayout, cursor: CursorHandle) -> Self {
+    fn new(xcursor_theme: XCursorTheme, layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
         State { xcursor_theme,
                 layout,
                 cursor,
@@ -50,6 +50,9 @@ impl SeatHandler for SeatHandlerEx {}
 
 struct XdgV6ShellHandlerEx;
 struct XdgV6ShellManager;
+struct OutputLayoutEx;
+
+impl OutputLayoutHandler for OutputLayoutEx {}
 
 impl XdgV6ShellHandler for XdgV6ShellHandlerEx {}
 impl XdgV6ShellManagerHandler for XdgV6ShellManager {
@@ -60,9 +63,13 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
         shell.ping();
         let state: &mut State = compositor.into();
         state.shells.push(shell.weak_reference());
-        for (mut output, _) in state.layout.outputs() {
-            output.run(|output| output.schedule_frame()).unwrap();
-        }
+        run_handles!([(layout: {&mut state.layout})] => {
+            for (mut output, _) in layout.outputs() {
+                run_handles!([(output: {output})] =>{
+                    output.schedule_frame()
+                }).ok();
+            }
+        }).expect("Layout was destroyed");
         Some(Box::new(XdgV6ShellHandlerEx))
     }
 
@@ -101,16 +108,15 @@ impl OutputManagerHandler for OutputManager {
         let image = &xcursor.images()[0];
         // TODO use output config if present instead of auto
         let layout = &mut state.layout;
-        layout.add_auto(result.output);
-        state.cursor
-             .run(|cursor| {
-                      cursor.attach_output_layout(layout);
-                      cursor.set_cursor_image(image);
-                      let (x, y) = cursor.coords();
-                      // https://en.wikipedia.org/wiki/Mouse_warping
-                      cursor.warp(None, x, y);
-                  })
-             .unwrap();
+        let cursor = &mut state.cursor;
+        run_handles!([(layout: {layout}), (cursor: {cursor})] => {
+            layout.add_auto(result.output);
+            cursor.attach_output_layout(layout);
+            cursor.set_cursor_image(image);
+            let (x, y) = cursor.coords();
+            // https://en.wikipedia.org/wiki/Mouse_warping
+            cursor.warp(None, x, y);
+        }).expect("Layout was destroyed").expect("Cursor was destroyed");
         Some(result)
     }
 }
@@ -222,7 +228,7 @@ fn main() {
     init_logging(L_DEBUG, None);
     let cursor = Cursor::create(Box::new(CursorEx));
     let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
-    let layout = OutputLayout::new(None).expect("Could not construct an output layout");
+    let layout = OutputLayout::create(Box::new(OutputLayoutEx));
 
     let mut compositor =
         CompositorBuilder::new().gles2(true)
@@ -248,7 +254,9 @@ fn main() {
 fn render_shells(state: &mut State, renderer: &mut Renderer) {
     let shells = state.shells.clone();
     for mut shell in shells {
-        run_handles!([(shell: {shell}), (surface: {shell.surface()})] => {
+        run_handles!([(shell: {shell}),
+                      (surface: {shell.surface()}),
+                      (layout: {&mut state.layout})] => {
             let (width, height) = surface.current_state().size();
             let (render_width, render_height) =
                 (width * renderer.output.scale() as i32,
@@ -257,7 +265,7 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
             let render_box = Area::new(Origin::new(lx as i32, ly as i32),
                                        Size::new(render_width,
                                                  render_height));
-            if state.layout.intersects(renderer.output, render_box) {
+            if layout.intersects(renderer.output, render_box) {
                 let transform = renderer.output.get_transform().invert();
                 let matrix = project_box(render_box,
                                          transform,
@@ -271,6 +279,6 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                     .expect("Time went backwards");
                 surface.send_frame_done(now);
             }
-        }).unwrap().unwrap();
+        }).unwrap().unwrap().unwrap();
     }
 }

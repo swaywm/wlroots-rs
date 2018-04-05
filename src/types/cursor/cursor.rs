@@ -337,7 +337,7 @@ impl Cursor {
     /// Attach this cursor to an output layout.
     pub fn attach_output_layout(&mut self, output_layout: &mut OutputLayout) {
         unsafe {
-            let weak_reference = Some(output_layout.weak_reference());
+            let weak_reference = Some(output_layout.weak_reference().clone());
             self.data.2 = weak_reference.clone();
             let mut data = Box::from_raw((*self.data.0).data as *mut CursorState);
             data.output_layout = weak_reference;
@@ -553,7 +553,7 @@ impl Cursor {
     /// Determines if we are within a valid layout.
     fn assert_layout(&self) {
         match self.data.2.clone().map(|mut layout| layout.run(|_| ())) {
-            Some(Ok(())) => {}
+            Some(Ok(())) | Some(Err(UpgradeHandleErr::AlreadyBorrowed)) => {}
             None | Some(Err(_)) => panic!("Cursor was not attached to an output layout!")
         }
     }
