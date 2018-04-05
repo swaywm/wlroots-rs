@@ -5,7 +5,7 @@ use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use wlroots_sys::{wl_shell_surface_resize, wlr_wl_shell_surface, wlr_wl_shell_surface_configure,
-                  wlr_wl_shell_surface_ping, wlr_wl_shell_surface_popup_at};
+                  wlr_wl_shell_surface_ping, wlr_wl_shell_surface_surface_at};
 
 use SurfaceHandle;
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
@@ -97,23 +97,23 @@ impl WlShellSurface {
         }
     }
 
-    /// Find a popup within this surface at the surface-local coordinates.
+    /// Find a surface within this surface at the surface-local coordinates.
     ///
     /// Returns the popup and coordinates in the topmost surface coordinate system
     /// or None if no popup is found at that location.
-    pub fn popup_at(&mut self,
-                    sx: f64,
-                    sy: f64,
-                    popup_sx: &mut f64,
-                    popup_sy: &mut f64)
-                    -> Option<WlShellSurfaceHandle> {
+    pub fn surface_at(&mut self,
+                      sx: f64,
+                      sy: f64,
+                      sub_sx: &mut f64,
+                      sub_sy: &mut f64)
+                      -> Option<SurfaceHandle> {
         unsafe {
-            let popup_surface =
-                wlr_wl_shell_surface_popup_at(self.shell_surface, sx, sy, popup_sx, popup_sy);
-            if popup_surface.is_null() {
+            let sub_surface =
+                wlr_wl_shell_surface_surface_at(self.shell_surface, sx, sy, sub_sx, sub_sy);
+            if sub_surface.is_null() {
                 None
             } else {
-                Some(WlShellSurfaceHandle::from_ptr(popup_surface))
+                Some(SurfaceHandle::from_ptr(sub_surface))
             }
         }
     }

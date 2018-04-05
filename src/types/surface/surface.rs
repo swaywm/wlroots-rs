@@ -5,10 +5,10 @@ use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}, time
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_main_surface,
+use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_surface,
                   wlr_surface_has_buffer, wlr_surface_make_subsurface,
                   wlr_surface_point_accepts_input, wlr_surface_send_enter,
-                  wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_subsurface_at};
+                  wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_surface_at};
 
 use super::{Subsurface, SubsurfaceHandle, SubsurfaceManager, SurfaceState};
 use Output;
@@ -170,18 +170,14 @@ impl Surface {
                          sy: f64,
                          sub_x: &mut f64,
                          sub_y: &mut f64)
-                         -> Option<SubsurfaceHandle> {
+                         -> Option<SurfaceHandle> {
         unsafe {
-            let surface = wlr_surface_subsurface_at(self.surface, sx, sy, sub_x, sub_y);
+            let surface = wlr_surface_surface_at(self.surface, sx, sy, sub_x, sub_y);
             if surface.is_null() {
-                return None
+                None
+            } else {
+                Some(SurfaceHandle::from_ptr(surface))
             }
-            for subsurface in self.subsurfaces() {
-                if subsurface.as_ptr() == surface {
-                    return Some(subsurface)
-                }
-            }
-            return None
         }
     }
 
@@ -191,9 +187,9 @@ impl Surface {
     }
 
     /// Get the top of the subsurface tree for this surface.
-    pub fn get_main_surface(&self) -> Option<SurfaceHandle> {
+    pub fn get_root_surface(&self) -> Option<SurfaceHandle> {
         unsafe {
-            let surface = wlr_surface_get_main_surface(self.surface);
+            let surface = wlr_surface_get_root_surface(self.surface);
             if surface.is_null() {
                 None
             } else {

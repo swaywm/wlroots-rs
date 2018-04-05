@@ -5,11 +5,12 @@ use std::rc::{Rc, Weak};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
-                  wlr_xdg_surface_v6_popup_at, wlr_xdg_surface_v6_popup_get_position,
-                  wlr_xdg_surface_v6_role, wlr_xdg_surface_v6_send_close, wlr_xdg_toplevel_v6,
-                  wlr_xdg_toplevel_v6_set_activated, wlr_xdg_toplevel_v6_set_fullscreen,
-                  wlr_xdg_toplevel_v6_set_maximized, wlr_xdg_toplevel_v6_set_resizing,
-                  wlr_xdg_toplevel_v6_set_size, wlr_xdg_toplevel_v6_state};
+                  wlr_xdg_surface_v6_popup_get_position, wlr_xdg_surface_v6_role,
+                  wlr_xdg_surface_v6_send_close, wlr_xdg_surface_v6_surface_at,
+                  wlr_xdg_toplevel_v6, wlr_xdg_toplevel_v6_set_activated,
+                  wlr_xdg_toplevel_v6_set_fullscreen, wlr_xdg_toplevel_v6_set_maximized,
+                  wlr_xdg_toplevel_v6_set_resizing, wlr_xdg_toplevel_v6_set_size,
+                  wlr_xdg_toplevel_v6_state};
 
 use {Area, SeatHandle, SurfaceHandle};
 use errors::{UpgradeHandleErr, UpgradeHandleResult};
@@ -166,23 +167,23 @@ impl XdgV6ShellSurface {
         }
     }
 
-    /// Find a popup within this surface at the surface-local coordinates.
+    /// Find a surface within this surface at the surface-local coordinates.
     ///
     /// Returns the popup and coordinates in the topmost surface coordinate system
     /// or None if no popup is found at that location.
-    pub fn popup_at(&mut self,
-                    sx: f64,
-                    sy: f64,
-                    popup_sx: &mut f64,
-                    popup_sy: &mut f64)
-                    -> Option<XdgV6ShellSurfaceHandle> {
+    pub fn surface_at(&mut self,
+                      sx: f64,
+                      sy: f64,
+                      sub_sx: &mut f64,
+                      sub_sy: &mut f64)
+                      -> Option<SurfaceHandle> {
         unsafe {
-            let popup_surface =
-                wlr_xdg_surface_v6_popup_at(self.shell_surface, sx, sy, popup_sx, popup_sy);
-            if popup_surface.is_null() {
+            let sub_surface =
+                wlr_xdg_surface_v6_surface_at(self.shell_surface, sx, sy, sub_sx, sub_sy);
+            if sub_surface.is_null() {
                 None
             } else {
-                Some(XdgV6ShellSurfaceHandle::from_ptr(popup_surface))
+                Some(SurfaceHandle::from_ptr(sub_surface))
             }
         }
     }
