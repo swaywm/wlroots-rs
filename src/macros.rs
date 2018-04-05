@@ -218,9 +218,9 @@ macro_rules! run_handles {
             $body
         })
     };
-    ([($handle_name: ident: $unhandle_name: block), $rest: tt] => $body: block) => {
+    ([($handle_name: ident: $unhandle_name: block), $($rest: tt)*] => $body: block) => {
         $unhandle_name.run(|$handle_name| {
-            run_handles!([$rest] => $body)
+            run_handles!([$($rest)*] => $body)
         })
     };
 }
