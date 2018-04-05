@@ -469,14 +469,15 @@ impl Drop for Output {
         // NOTE
         // We do _not_ need to call wlr_output_destroy for the output
         // That is handled by the backend automatically
+
+        // NOTE
+        // We do _not_ need to call wlr_output_damage_detroy for the output,
+        // that is handled automatically by the listeners in wlroots.
         match self.liveliness {
             None => return,
             Some(ref liveliness) => {
                 if Rc::strong_count(liveliness) == 1 {
                     wlr_log!(L_DEBUG, "Dropped output {:p}", self.output);
-                    unsafe {
-                        ManuallyDrop::drop(&mut self.damage);
-                    }
                     let weak_count = Rc::weak_count(liveliness);
                     if weak_count > 0 {
                         wlr_log!(L_DEBUG,
