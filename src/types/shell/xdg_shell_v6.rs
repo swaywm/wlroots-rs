@@ -30,6 +30,7 @@ pub struct XdgV6TopLevel {
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct XdgV6Popup {
+    shell_surface: *mut wlr_xdg_surface_v6,
     popup: *mut wlr_xdg_popup_v6
 }
 
@@ -153,17 +154,6 @@ impl XdgV6ShellSurface {
     pub fn ping(&mut self) {
         unsafe {
             wlr_xdg_surface_v6_ping(self.shell_surface);
-        }
-    }
-
-    /// Compute the popup position in surface-local coordinates.
-    ///
-    /// Return value is in (x, y) format.
-    pub fn position(&self) -> (f64, f64) {
-        unsafe {
-            let (mut x, mut y) = (0.0, 0.0);
-            wlr_xdg_surface_v6_popup_get_position(self.shell_surface, &mut x, &mut y);
-            (x, y)
         }
     }
 
@@ -425,8 +415,22 @@ impl XdgV6TopLevel {
 }
 
 impl XdgV6Popup {
-    pub(crate) unsafe fn from_ptr(popup: *mut wlr_xdg_popup_v6) -> XdgV6Popup {
-        XdgV6Popup { popup }
+    pub(crate) unsafe fn from_shell(shell_surface: *mut wlr_xdg_surface_v6,
+                                    popup: *mut wlr_xdg_popup_v6)
+                                    -> XdgV6Popup {
+        XdgV6Popup { shell_surface,
+                     popup }
+    }
+
+    /// Compute the popup position in surface-local coordinates.
+    ///
+    /// Return value is in (x, y) format.
+    pub fn position(&self) -> (f64, f64) {
+        unsafe {
+            let (mut x, mut y) = (0.0, 0.0);
+            wlr_xdg_surface_v6_popup_get_position(self.shell_surface, &mut x, &mut y);
+            (x, y)
+        }
     }
 
     /// Get a handle to the base surface of the xdg tree.
@@ -470,7 +474,11 @@ impl XdgV6ShellState {
                 TopLevel(XdgV6TopLevel { shell_surface,
                                          toplevel })
             }
-            Popup(XdgV6Popup { popup }) => Popup(XdgV6Popup { popup })
+            Popup(XdgV6Popup { shell_surface,
+                               popup }) => {
+                Popup(XdgV6Popup { shell_surface,
+                                   popup })
+            }
         }
     }
 }

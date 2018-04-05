@@ -38,7 +38,7 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                 }
                 WLR_XDG_SURFACE_V6_ROLE_POPUP => {
                     let popup = (*data).__bindgen_anon_1.popup;
-                    Some(Popup(XdgV6Popup::from_ptr(popup)))
+                    Some(Popup(XdgV6Popup::from_shell(data, popup)))
                 }
             }
         };

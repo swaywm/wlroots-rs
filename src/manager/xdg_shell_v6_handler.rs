@@ -4,7 +4,7 @@ use libc;
 
 use wlroots_sys::wlr_xdg_surface_v6;
 
-use {Surface, XdgV6Popup, XdgV6ShellSurface};
+use {Surface, XdgV6ShellSurface};
 use compositor::{Compositor, COMPOSITOR_PTR};
 use xdg_shell_v6_events::{MoveEvent, ResizeEvent, SetFullscreenEvent, ShowWindowMenuEvent};
 
@@ -23,12 +23,7 @@ pub trait XdgV6ShellHandler {
     fn ping_timeout(&mut self, &mut Compositor, &mut Surface, &mut XdgV6ShellSurface) {}
 
     /// Called when a new popup appears in the xdg tree.
-    fn new_popup(&mut self,
-                 &mut Compositor,
-                 &mut Surface,
-                 &mut XdgV6ShellSurface,
-                 &mut XdgV6Popup) {
-    }
+    fn new_popup(&mut self, &mut Compositor, &mut Surface, &mut XdgV6ShellSurface) {}
 
     /// Called when there is a request to maximize the XDG surface.
     fn maximize_request(&mut self, &mut Compositor, &mut Surface, &mut XdgV6ShellSurface) {}
@@ -90,14 +85,13 @@ wayland_listener!(XdgV6Shell, (XdgV6ShellSurface, Surface, Box<XdgV6ShellHandler
         shell_surface.set_lock(false);
         surface.set_lock(false);
     };
-    new_popup_listener => new_popup_notify: |this: &mut XdgV6Shell, popup: *mut libc::c_void,|
+    new_popup_listener => new_popup_notify: |this: &mut XdgV6Shell, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         shell_surface.set_lock(true);
         surface.set_lock(true);
-        let mut popup = XdgV6Popup::from_ptr(popup as _);
-        manager.new_popup(compositor, surface, shell_surface, &mut popup);
+        manager.new_popup(compositor, surface, shell_surface);
         shell_surface.set_lock(false);
         surface.set_lock(false);
     };
