@@ -9,9 +9,9 @@ use wlroots::{project_box, Area, Capability, Compositor, CompositorBuilder, Curs
               CursorHandler, InputManagerHandler, Keyboard, KeyboardHandle, KeyboardHandler,
               Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
               OutputLayoutHandle, OutputLayoutHandler, OutputManagerHandler, Pointer,
-              PointerHandler, Renderer, Seat, SeatHandle, SeatHandler, Size, Surface,
-              XCursorTheme, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState,
-              XdgV6ShellSurface, XdgV6ShellSurfaceHandle};
+              PointerHandler, Renderer, Seat, SeatHandle, SeatHandler, Size, XCursorTheme,
+              XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState, XdgV6ShellSurface,
+              XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -73,10 +73,7 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
         Some(Box::new(XdgV6ShellHandlerEx))
     }
 
-    fn surface_destroyed(&mut self,
-                         compositor: &mut Compositor,
-                         shell: &mut XdgV6ShellSurface,
-                         _: &mut Surface) {
+    fn surface_destroyed(&mut self, compositor: &mut Compositor, shell: &mut XdgV6ShellSurface) {
         let state: &mut State = compositor.into();
         let weak = shell.weak_reference();
         if let Some(index) = state.shells.iter().position(|s| *s == weak) {

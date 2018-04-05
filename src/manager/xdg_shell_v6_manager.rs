@@ -6,8 +6,7 @@ use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface_v6, wlr_xdg_surface_v6_role::*};
 
 use super::xdg_shell_v6_handler::XdgV6Shell;
-use {Surface, SurfaceHandle, XdgV6Popup, XdgV6ShellHandler, XdgV6ShellState::*, XdgV6ShellSurface,
-     XdgV6TopLevel};
+use {Surface, XdgV6Popup, XdgV6ShellHandler, XdgV6ShellState::*, XdgV6ShellSurface, XdgV6TopLevel};
 use compositor::{Compositor, COMPOSITOR_PTR};
 
 pub trait XdgV6ShellManagerHandler {
@@ -18,7 +17,7 @@ pub trait XdgV6ShellManagerHandler {
                    -> Option<Box<XdgV6ShellHandler>>;
 
     /// Callback that is triggered when an XDG shell v6 surface is destroyed.
-    fn surface_destroyed(&mut self, &mut Compositor, &mut XdgV6ShellSurface, &mut Surface);
+    fn surface_destroyed(&mut self, &mut Compositor, &mut XdgV6ShellSurface);
 }
 
 wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManagerHandler>), [
@@ -91,14 +90,11 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
     unsafe {
         let (ref mut shells, ref mut manager) = this.data;
         let data = data as *mut wlr_xdg_surface_v6;
-        let mut surface = SurfaceHandle::from_ptr((*data).surface);
         let compositor = &mut *COMPOSITOR_PTR;
         if let Some(shell) = shells.iter_mut().find(|shell| shell.surface_ptr() == data) {
             let mut shell_surface = shell.surface_mut();
             shell_surface.set_lock(true);
-            surface.run(|mut surface| {
-                manager.surface_destroyed(compositor, &mut shell_surface, &mut surface);
-            }).expect("Surface was invalid")
+            manager.surface_destroyed(compositor, &mut shell_surface);
         }
         if let Some(index) = shells.iter().position(|shell| shell.surface_ptr() == data) {
             let mut removed_shell = shells.remove(index);
