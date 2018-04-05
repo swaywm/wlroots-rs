@@ -2,9 +2,11 @@
 
 use InputDevice;
 
+use libc::c_double;
+
+pub use wlroots_sys::{wlr_axis_orientation, wlr_axis_source, wlr_button_state};
 use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion,
                   wlr_event_pointer_motion_absolute};
-pub use wlroots_sys::wlr_button_state;
 
 // NOTE Taken from linux/input-event-codes.h
 // TODO Find a way to automatically parse and fetch from there.
@@ -68,6 +70,11 @@ impl ButtonEvent {
         unsafe { (*self.event).state }
     }
 
+    /// Get the timestamp of this event.
+    pub fn time_msec(&self) -> u32 {
+        unsafe { (*self.event).time_msec }
+    }
+
     /// Get the value of the button pressed. This will generally be an atomically
     /// increasing value, with e.g left click being 1 and right click being 2...
     ///
@@ -90,6 +97,19 @@ impl AxisEvent {
         &self.device
     }
 
+    /// Get the timestamp of this event.
+    pub fn time_msec(&self) -> u32 {
+        unsafe { (*self.event).time_msec }
+    }
+
+    pub fn source(&self) -> wlr_axis_source {
+        unsafe { (*self.event).source }
+    }
+
+    pub fn orientation(&self) -> wlr_axis_orientation {
+        unsafe { (*self.event).orientation }
+    }
+
     /// Get the change from the last axis value.
     ///
     /// Useful to determine e.g how much to scroll.
@@ -110,6 +130,11 @@ impl MotionEvent {
         &self.device
     }
 
+    /// Get the timestamp of this event.
+    pub fn time_msec(&self) -> u32 {
+        unsafe { (*self.event).time_msec }
+    }
+
     /// Get the change from the last positional value.
     ///
     /// Returned in (x, y) form.
@@ -127,6 +152,16 @@ impl AbsoluteMotionEvent {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_motion_absolute) -> Self {
         AbsoluteMotionEvent { device: InputDevice::from_ptr((*event).device),
                               event }
+    }
+
+    /// Get the timestamp of this event.
+    pub fn time_msec(&self) -> u32 {
+        unsafe { (*self.event).time_msec }
+    }
+
+    /// Get the absolute position of the pointer from this event.
+    pub fn pos(&self) -> (c_double, c_double) {
+        unsafe { ((*self.event).x, (*self.event).y) }
     }
 
     /// Get the device this event refers to.
