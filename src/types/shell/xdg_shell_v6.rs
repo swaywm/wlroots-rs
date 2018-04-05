@@ -311,6 +311,12 @@ impl XdgV6ShellSurfaceHandle {
     }
 }
 
+impl Default for XdgV6ShellSurfaceHandle {
+    fn default() -> Self {
+        XdgV6ShellSurfaceHandle::new()
+    }
+}
+
 impl PartialEq for XdgV6ShellSurfaceHandle {
     fn eq(&self, other: &XdgV6ShellSurfaceHandle) -> bool {
         self.shell_surface == other.shell_surface

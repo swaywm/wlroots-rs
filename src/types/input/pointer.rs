@@ -214,6 +214,12 @@ impl PointerHandle {
     }
 }
 
+impl Default for PointerHandle {
+    fn default() -> Self {
+        PointerHandle::new()
+    }
+}
+
 impl Clone for PointerHandle {
     fn clone(&self) -> Self {
         PointerHandle { pointer: self.pointer,

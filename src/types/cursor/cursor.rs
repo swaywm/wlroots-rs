@@ -648,6 +648,16 @@ impl Drop for Cursor {
 }
 
 impl CursorHandle {
+    /// Constructs a CursorHandle that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server,
+    /// or for mocking/testing.
+    pub fn new() -> Self {
+        CursorHandle { handle: Weak::new(),
+                       cursor: ptr::null_mut()
+        }
+    }
     /// Upgrades the cursor handle to a reference to the backing `Cursor`.
     ///
     /// # Unsafety
@@ -719,5 +729,11 @@ impl CursorHandle {
         unsafe {
             self.upgrade().ok();
         }
+    }
+}
+
+impl Default for CursorHandle {
+    fn default() -> Self {
+        CursorHandle::new()
     }
 }

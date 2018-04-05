@@ -337,6 +337,12 @@ impl KeyboardHandle {
     }
 }
 
+impl Default for KeyboardHandle {
+    fn default() -> Self {
+        KeyboardHandle::new()
+    }
+}
+
 impl Clone for KeyboardHandle {
     fn clone(&self) -> Self {
         KeyboardHandle { keyboard: self.keyboard,

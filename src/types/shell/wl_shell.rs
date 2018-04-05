@@ -232,6 +232,12 @@ impl WlShellSurfaceHandle {
     }
 }
 
+impl Default for WlShellSurfaceHandle {
+    fn default() -> Self {
+        WlShellSurfaceHandle::new()
+    }
+}
+
 impl PartialEq for WlShellSurfaceHandle {
     fn eq(&self, other: &WlShellSurfaceHandle) -> bool {
         self.shell_surface == other.shell_surface

@@ -172,3 +172,9 @@ impl SubsurfaceHandle {
         }
     }
 }
+
+impl Default for SubsurfaceHandle {
+    fn default() -> Self {
+        SubsurfaceHandle::new()
+    }
+}

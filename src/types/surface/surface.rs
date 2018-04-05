@@ -354,6 +354,12 @@ impl SurfaceHandle {
     }
 }
 
+impl Default for SurfaceHandle {
+    fn default() -> Self {
+        SurfaceHandle::new()
+    }
+}
+
 impl Drop for Surface {
     fn drop(&mut self) {
         match self.liveliness {

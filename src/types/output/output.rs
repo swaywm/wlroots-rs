@@ -589,6 +589,12 @@ impl OutputHandle {
     }
 }
 
+impl Default for OutputHandle {
+    fn default() -> Self {
+        OutputHandle::new()
+    }
+}
+
 impl PartialEq for OutputHandle {
     fn eq(&self, other: &OutputHandle) -> bool {
         self.output == other.output

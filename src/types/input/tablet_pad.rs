@@ -204,6 +204,12 @@ impl TabletPadHandle {
     }
 }
 
+impl Default for TabletPadHandle {
+    fn default() -> Self {
+        TabletPadHandle::new()
+    }
+}
+
 impl Clone for TabletPadHandle {
     fn clone(&self) -> Self {
         TabletPadHandle { pad: self.pad,

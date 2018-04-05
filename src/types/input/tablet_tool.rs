@@ -204,6 +204,12 @@ impl TabletToolHandle {
     }
 }
 
+impl Default for TabletToolHandle {
+    fn default() -> Self {
+        TabletToolHandle::new()
+    }
+}
+
 impl Clone for TabletToolHandle {
     fn clone(&self) -> Self {
         TabletToolHandle { tool: self.tool,

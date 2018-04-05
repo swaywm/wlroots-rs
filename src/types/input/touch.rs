@@ -213,6 +213,12 @@ impl TouchHandle {
     }
 }
 
+impl Default for TouchHandle {
+    fn default() -> Self {
+        TouchHandle::new()
+    }
+}
+
 impl Clone for TouchHandle {
     fn clone(&self) -> Self {
         TouchHandle { touch: self.touch,
