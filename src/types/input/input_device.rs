@@ -5,7 +5,7 @@ use wlroots_sys::{wlr_input_device, wlr_input_device_pointer, wlr_input_device_t
 use utils::c_to_rust_string;
 
 /// Wrapper for wlr_input_device
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct InputDevice {
     device: *mut wlr_input_device
 }
