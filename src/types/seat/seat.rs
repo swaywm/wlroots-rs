@@ -6,7 +6,7 @@
 use std::{fmt, panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}, time::Duration};
 
 use libc;
-use wayland_sys::server::signal::wl_signal_add;
+use wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_destroy,
                   wlr_seat_get_keyboard, wlr_seat_keyboard_clear_focus,
                   wlr_seat_keyboard_end_grab, wlr_seat_keyboard_enter, wlr_seat_keyboard_has_grab,
@@ -731,11 +731,41 @@ impl Drop for Seat {
         let seat_ptr = self.data.0;
         unsafe {
             let data = Box::from_raw((*seat_ptr).data as *mut SeatState);
-            let _ = Box::from_raw(data.seat);
+            let mut manager = Box::from_raw(data.seat);
             assert_eq!(Rc::strong_count(&data.counter),
                        1,
                        "Seat had more than 1 reference count");
             (*seat_ptr).data = ptr::null_mut();
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.pointer_grab_begin_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.pointer_grab_end_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.keyboard_grab_begin_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.keyboard_grab_end_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.touch_grab_begin_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.touch_grab_end_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.request_set_cursor_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.selection_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.primary_selection_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.destroy_listener()).link as *mut _ as _);
             wlr_seat_destroy(seat_ptr)
         }
     }
