@@ -372,9 +372,7 @@ impl Cursor {
     pub fn warp<'this, O>(&'this mut self, dev: O, x: f64, y: f64) -> bool
         where O: Into<Option<&'this InputDevice>>
     {
-        if !self.in_layout() {
-            return false
-        }
+        self.assert_layout();
         unsafe {
             let dev_ptr = dev.into().map(|input_device| input_device.as_ptr())
                              .unwrap_or(ptr::null_mut());
@@ -385,9 +383,7 @@ impl Cursor {
     pub fn warp_absolute<'this, O>(&'this mut self, dev: O, x_mm: f64, y_mm: f64)
         where O: Into<Option<&'this InputDevice>>
     {
-        if !self.in_layout() {
-            return
-        }
+        self.assert_layout();
         unsafe {
             let dev_ptr = dev.into().map(|input_device| input_device.as_ptr())
                              .unwrap_or(ptr::null_mut());
@@ -402,6 +398,7 @@ impl Cursor {
     pub fn move_to<'this, O>(&'this mut self, dev: O, delta_x: f64, delta_y: f64)
         where O: Into<Option<&'this InputDevice>>
     {
+        self.assert_layout();
         unsafe {
             let dev_ptr = dev.into().map(|dev| dev.as_ptr())
                              .unwrap_or(ptr::null_mut());
@@ -469,9 +466,7 @@ impl Cursor {
     /// Attaches this cursor to the given output, which must be among the outputs in
     /// the current output_layout for this cursor.
     pub fn map_to_output(&mut self, output: Option<&Output>) {
-        if !self.in_layout() {
-            return
-        }
+        self.assert_layout();
         match output {
             None => unsafe { wlr_cursor_map_to_output(self.data.0, ptr::null_mut()) },
             Some(output) => {
@@ -491,9 +486,7 @@ impl Cursor {
     pub fn map_input_to_output<'output, O>(&mut self, dev: &InputDevice, output: O)
         where O: Into<Option<&'output Output>>
     {
-        if !self.in_layout() {
-            return
-        }
+        self.assert_layout();
         // NOTE Rationale for why we don't check input:
         //
         // If the input isn't found, then wlroots prints a diagnostic and
@@ -519,9 +512,7 @@ impl Cursor {
     /// Maps this cursor to an arbitrary region on the associated
     /// wlr_output_layout.
     pub fn map_to_region(&mut self, area: Area) {
-        if !self.in_layout() {
-            return
-        }
+        self.assert_layout();
         unsafe { wlr_cursor_map_to_region(self.data.0, &mut area.into()) }
     }
 
@@ -530,9 +521,7 @@ impl Cursor {
     ///
     /// The input device must be attached to this cursor.
     pub fn map_input_to_region(&mut self, dev: &InputDevice, area: Area) {
-        if !self.in_layout() {
-            return
-        }
+        self.assert_layout();
         // NOTE Rationale for why we don't check input:
         //
         // If the input isn't found, then wlroots prints a diagnostic and
@@ -548,9 +537,7 @@ impl Cursor {
                                      x_mm: f64,
                                      y_mm: f64)
                                      -> (f64, f64) {
-        if !self.in_layout() {
-            return (0.0, 0.0)
-        }
+        self.assert_layout();
         unsafe {
             let (mut lx, mut ly) = (0.0, 0.0);
             wlr_cursor_absolute_to_layout_coords(self.data.0,
@@ -564,11 +551,11 @@ impl Cursor {
     }
 
     /// Determines if we are within a valid layout.
-    fn in_layout(&self) -> bool {
-        self.data.2
-            .clone()
-            .map(|mut layout| layout.run(|_| true).unwrap_or(false))
-            .unwrap_or(false)
+    fn assert_layout(&self) {
+        match self.data.2.clone().map(|mut layout| layout.run(|_| ())) {
+            Some(Ok(())) => {}
+            None | Some(Err(_)) => panic!("Cursor was not attached to an output layout!")
+        }
     }
 
     /// Checks if the output is in the OutputLayout associated with this
@@ -577,9 +564,7 @@ impl Cursor {
     /// If it isn't, or the OutputLayout has been dropped, this returns `false`.
     /// Otherwise it returns `true`.
     fn output_in_output_layout(&mut self, output: OutputHandle) -> bool {
-        if !self.in_layout() {
-            return false
-        }
+        self.assert_layout();
         match self.data.2.clone().unwrap().run(|output_layout| {
                                                    for (cur_output, _) in output_layout.outputs() {
                                                        if cur_output == output {
