@@ -59,7 +59,11 @@ wayland_listener!(TouchWrapper, (Touch, Box<TouchHandler>), [
 ]);
 
 impl TouchWrapper {
-    pub(crate) unsafe fn input_device(&self) -> &InputDevice {
+    pub(crate) fn input_device(&self) -> &InputDevice {
         self.data.0.input_device()
+    }
+
+    pub(crate) fn touch(&mut self) -> &mut Touch {
+        &mut self.data.0
     }
 }

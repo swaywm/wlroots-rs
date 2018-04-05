@@ -62,6 +62,9 @@ pub trait InputManagerHandler {
         None
     }
 
+    /// Callback triggered when a keyboard device is removed.
+    fn keyboard_removed(&mut self, &mut Compositor, &mut Keyboard) {}
+
     /// Callback triggered when a pointer device is added.
     ///
     /// # Panics
@@ -70,6 +73,9 @@ pub trait InputManagerHandler {
         None
     }
 
+    /// Callback triggered when a pointer device is removed.
+    fn pointer_removed(&mut self, &mut Compositor, &mut Pointer) {}
+
     /// Callback triggered when a touch device is added.
     ///
     /// # Panics
@@ -77,6 +83,9 @@ pub trait InputManagerHandler {
     fn touch_added(&mut self, &mut Compositor, &mut Touch) -> Option<Box<TouchHandler>> {
         None
     }
+
+    /// Callback triggered when a touch device is removed.
+    fn touch_removed(&mut self, &mut Compositor, &mut Touch) {}
 
     /// Callback triggered when a tablet tool is added.
     ///
@@ -90,6 +99,9 @@ pub trait InputManagerHandler {
         None
     }
 
+    /// Callback triggered when a touch device is removed.
+    fn tablet_tool_removed(&mut self, &mut Compositor, &mut TabletTool) {}
+
     /// Callback triggered when a tablet pad is added.
     ///
     ///
@@ -101,6 +113,9 @@ pub trait InputManagerHandler {
                         -> Option<Box<TabletPadHandler>> {
         None
     }
+
+    /// Callback triggered when a touch device is removed.
+    fn tablet_pad_removed(&mut self, &mut Compositor, &mut TabletPad) {}
 }
 
 wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
@@ -279,6 +294,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                   wl_list_remove,
                                   &mut (*keyboard.key_listener()).link as *mut _ as _);
+                    manager.keyboard_removed(compositor, keyboard.keyboard());
                 },
                 Input::Pointer(mut pointer) => {
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
@@ -293,6 +309,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                   wl_list_remove,
                                   &mut (*pointer.axis_listener()).link as *mut _ as _);
+                    manager.pointer_removed(compositor, pointer.pointer());
                 },
                 Input::Touch(mut touch) => {
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
@@ -307,6 +324,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                   wl_list_remove,
                                   &mut (*touch.cancel_listener()).link as *mut _ as _);
+                    manager.touch_removed(compositor, touch.touch());
                 },
                 Input::TabletTool(mut tool) => {
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
@@ -321,6 +339,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                   wl_list_remove,
                                   &mut (*tool.button_listener()).link as *mut _ as _);
+                    manager.tablet_tool_removed(compositor, tool.tablet_tool());
                 },
                 Input::TabletPad(mut pad) => {
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
@@ -332,6 +351,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                   wl_list_remove,
                                   &mut (*pad.strip_listener()).link as *mut _ as _);
+                    manager.tablet_pad_removed(compositor, pad.tablet_pad());
                 }
             }
         }

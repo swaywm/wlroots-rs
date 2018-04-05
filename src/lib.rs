@@ -42,9 +42,10 @@ pub use self::types::seat::*;
 pub use self::types::shell::*;
 pub use self::types::surface::*;
 pub use key_events::Key;
-pub use wlroots_sys::{wl_shm_format::{self, *}, wlr_keyboard_modifiers, wlr_tablet_tool_axes, wlr_button_state::{self, *},
-                      wlr_input_device_type::{self, *}, wlr_key_state::{self, *},
-                      wlr_keyboard_modifier::{self, *}, wlr_tablet_pad_ring_source::{self, *},
+pub use wlroots_sys::{wlr_keyboard_modifiers, wlr_tablet_tool_axes, wl_shm_format::{self, *},
+                      wlr_button_state::{self, *}, wlr_input_device_type::{self, *},
+                      wlr_key_state::{self, *}, wlr_keyboard_modifier::{self, *},
+                      wlr_tablet_pad_ring_source::{self, *},
                       wlr_tablet_pad_strip_source::{self, *},
                       wlr_tablet_tool_proximity_state::{self, *}};
 

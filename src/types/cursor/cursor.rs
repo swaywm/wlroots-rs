@@ -655,8 +655,7 @@ impl CursorHandle {
     /// or for mocking/testing.
     pub fn new() -> Self {
         CursorHandle { handle: Weak::new(),
-                       cursor: ptr::null_mut()
-        }
+                       cursor: ptr::null_mut() }
     }
     /// Upgrades the cursor handle to a reference to the backing `Cursor`.
     ///

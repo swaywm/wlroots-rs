@@ -46,7 +46,11 @@ wayland_listener!(TabletPadWrapper, (TabletPad, Box<TabletPadHandler>), [
 ]);
 
 impl TabletPadWrapper {
-    pub fn input_device(&self) -> &InputDevice {
+    pub(crate) fn input_device(&self) -> &InputDevice {
         self.data.0.input_device()
+    }
+
+    pub(crate) fn tablet_pad(&mut self) -> &mut TabletPad {
+        &mut self.data.0
     }
 }

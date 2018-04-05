@@ -59,7 +59,11 @@ wayland_listener!(TabletToolWrapper, (TabletTool, Box<TabletToolHandler>), [
 ]);
 
 impl TabletToolWrapper {
-    pub fn input_device(&self) -> &InputDevice {
+    pub(crate) fn input_device(&self) -> &InputDevice {
         self.data.0.input_device()
+    }
+
+    pub fn tablet_tool(&mut self) -> &mut TabletTool {
+        &mut self.data.0
     }
 }
