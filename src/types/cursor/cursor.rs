@@ -415,7 +415,7 @@ impl Cursor {
 
     /// Attaches this cursor to the given output, which must be among the outputs in
     /// the current output_layout for this cursor.
-    pub fn map_to_output<'a, T: Into<Option<&'a Output>>>(&mut self, output: T) {
+    pub fn map_to_output<'a, T: Into<Option<&'a mut Output>>>(&mut self, output: T) {
         self.assert_layout();
         match output.into() {
             None => unsafe { wlr_cursor_map_to_output(self.data.0, ptr::null_mut()) },
