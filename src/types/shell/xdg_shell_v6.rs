@@ -70,9 +70,10 @@ impl Clone for XdgV6ShellSurfaceHandle {
 }
 
 impl XdgV6ShellSurface {
-    pub(crate) unsafe fn new(shell_surface: *mut wlr_xdg_surface_v6,
-                             state: Option<XdgV6ShellState>)
+    pub(crate) unsafe fn new<T: Into<Option<XdgV6ShellState>>>
+                             (shell_surface: *mut wlr_xdg_surface_v6, state: T)
                              -> Self {
+        let state = state.into();
         // TODO FIXME Free state in drop impl when Rc == 1
         (*shell_surface).data = ptr::null_mut();
         let liveliness = Rc::new(AtomicBool::new(false));
@@ -84,7 +85,7 @@ impl XdgV6ShellSurface {
                                               } });
         (*shell_surface).data = Box::into_raw(shell_state) as *mut _;
         XdgV6ShellSurface { liveliness: Some(liveliness),
-                            state,
+                            state: state,
                             shell_surface }
     }
 
