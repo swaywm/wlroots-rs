@@ -71,9 +71,7 @@ impl OutputManagerHandler for OutputManager {
             let (x, y) = cursor.coords();
             // https://en.wikipedia.org/wiki/Mouse_warping
             cursor.warp(None, x, y);
-        })
-            .expect("Cursor was destroyed")
-            .expect("Layout was destroyed");
+        }).expect("Cursor was destroyed");
         Some(result)
     }
 }

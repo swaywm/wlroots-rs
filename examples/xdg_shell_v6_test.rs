@@ -113,7 +113,7 @@ impl OutputManagerHandler for OutputManager {
             let (x, y) = cursor.coords();
             // https://en.wikipedia.org/wiki/Mouse_warping
             cursor.warp(None, x, y);
-        }).expect("Layout was destroyed").expect("Cursor was destroyed");
+        }).expect("Layout was destroyed");
         Some(result)
     }
 }
@@ -276,6 +276,6 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                     .expect("Time went backwards");
                 surface.send_frame_done(now);
             }
-        }).unwrap().unwrap().unwrap();
+        }).unwrap();
     }
 }

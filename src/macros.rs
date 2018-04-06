@@ -211,6 +211,8 @@ macro_rules! compositor_data {
     }
 }
 
+
+
 #[macro_export]
 macro_rules! run_handles {
     ([($handle_name: ident: $unhandle_name: block)] => $body: block) => {
@@ -218,9 +220,16 @@ macro_rules! run_handles {
             $body
         })
     };
+    ([($handle_name1: ident: $unhandle_name1: block),
+      ($handle_name2: ident: $unhandle_name2: block),
+      $($rest: tt)*] => $body: block) => {
+        $unhandle_name1.run(|$handle_name1| {
+            run_handles!([($handle_name2: $unhandle_name2), $($rest)*] => $body)
+        }).and_then(|n: $crate::HandleResult<_>| n)
+    };
     ([($handle_name: ident: $unhandle_name: block), $($rest: tt)*] => $body: block) => {
         $unhandle_name.run(|$handle_name| {
             run_handles!([$($rest)*] => $body)
-        })
+        }).and_then(|n: $crate::HandleResult<_>| n)
     };
 }
