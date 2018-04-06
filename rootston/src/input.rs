@@ -142,7 +142,7 @@ impl InputManager {
                                 output.run(|output| {
                                     if output.name() == *mapped_output_name
                                     {
-                                        cursor.map_to_output(Some(output))
+                                        cursor.map_to_output(output)
                                     }
                                 }).unwrap();
                             }

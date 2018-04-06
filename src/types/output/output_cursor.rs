@@ -58,9 +58,12 @@ impl OutputCursor {
     }
 
     /// Sets the hardware cursor's surface.
-    pub fn set_surface(&mut self, surface: Option<Surface>, hotspot_x: i32, hotspot_y: i32) {
+    pub fn set_surface<T: Into<Option<Surface>>>(&mut self,
+                                                 surface: T,
+                                                 hotspot_x: i32,
+                                                 hotspot_y: i32) {
         unsafe {
-            let surface_ptr = surface.map(|surface| surface.as_ptr())
+            let surface_ptr = surface.into().map(|surface| surface.as_ptr())
                                      .unwrap_or_else(|| ptr::null_mut());
             let cursor = self.cursor;
             let res = self.output_handle.run(|_| {
