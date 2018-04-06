@@ -98,14 +98,14 @@ impl Output {
                  output }
     }
 
-    pub(crate) unsafe fn set_output_layout(&mut self, layout_handle: Option<OutputLayoutHandle>) {
+    pub(crate) unsafe fn set_output_layout<T: Into<Option<OutputLayoutHandle>>>(&mut self, layout_handle: T) {
         self.remove_from_output_layout();
         let user_data = self.user_data();
         if user_data.is_null() {
             return
         }
         let mut data = Box::from_raw(user_data);
-        data.layout_handle = layout_handle;
+        data.layout_handle = layout_handle.into();
         (*self.output).data = Box::into_raw(data) as *mut _;
     }
 
@@ -310,17 +310,17 @@ impl Output {
     /// You should try to use a `GenericRenderer`, but sometimes it's necessary to
     /// do your own manual rendering in a compositor. In that case, call `make_current`,
     /// do your rendering, and then call this function.
-    pub unsafe fn swap_buffers(&mut self,
-                               when: Option<Duration>,
-                               damage: Option<&mut PixmanRegion>)
+    pub unsafe fn swap_buffers<'a, T: Into<Option<Duration>>,
+                               U: Into<Option<&'a mut PixmanRegion>>>
+                               (&mut self, when: T, damage: U)
                                -> bool {
-        let when = when.map(|duration| {
+        let when = when.into().map(|duration| {
                                 timespec { tv_sec: duration.as_secs() as i64,
                                            tv_nsec: duration.subsec_nanos() as i64 }
                             });
         let when_ptr =
             when.map(|mut duration| &mut duration as *mut _).unwrap_or_else(|| ptr::null_mut());
-        let damage = match damage {
+        let damage = match damage.into() {
             Some(region) => &mut region.region as *mut _,
             None => ptr::null_mut()
         };

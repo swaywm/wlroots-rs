@@ -33,9 +33,9 @@ pub struct XCursorImage<'cursor> {
 
 impl XCursorTheme {
     /// If no name is given, defaults to "default".
-    pub fn load_theme(name: Option<String>, size: i32) -> Option<Self> {
+    pub fn load_theme<T: Into<Option<String>>>(name: T, size: i32) -> Option<Self> {
         unsafe {
-            let name_str = name.map(safe_as_cstring);
+            let name_str = name.into().map(safe_as_cstring);
             let name_ptr = name_str.map(|s| s.as_ptr()).unwrap_or(ptr::null_mut());
             let theme = wlr_xcursor_theme_load(name_ptr, size);
             if theme.is_null() {

@@ -22,9 +22,10 @@ pub type LogVerbosity = log_importance_t;
 ///
 /// To log using this system, use the `wlr_log!` macro.
 // TODO Wrap the callback function type
-pub fn init_logging(verbosity: LogVerbosity, callback: Option<LogCallback>) {
+pub fn init_logging<T: Into<Option<LogCallback>>>(verbosity: LogVerbosity,
+                                                  callback: T) {
     unsafe {
-        match callback {
+        match callback.into() {
             None => wlr_log_init(verbosity, None),
             Some(callback) => {
                 RUST_LOGGING_FN = callback;
