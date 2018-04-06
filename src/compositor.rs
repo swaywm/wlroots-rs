@@ -47,6 +47,7 @@ wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
 
 #[allow(dead_code)]
 pub struct Compositor {
+    terminating: bool,
     /// User data.
     pub data: Box<Any>,
     /// Internal compositor handler
@@ -277,6 +278,7 @@ impl CompositorBuilder {
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
             Compositor { data: Box::new(data),
+                         terminating: false,
                          compositor_handler,
                          socket_name,
                          input_manager,
@@ -324,6 +326,9 @@ impl Compositor {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_display_run,
                           (*compositor.get()).display);
+            if (*compositor.get()).terminating {
+                return
+            }
             match (*compositor.get()).panic_error.take() {
                 None => {}
                 Some(err) => {
@@ -334,10 +339,12 @@ impl Compositor {
         }
     }
 
-    pub fn terminate(&mut self) {
+    pub fn terminate(&mut self) -> ! {
         unsafe {
+            self.terminating = true;
             COMPOSITOR_PTR = 0 as _;
             ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
+            panic!("terminating gracefully");
         }
     }
 
@@ -368,7 +375,6 @@ pub fn terminate() {
     unsafe {
         if COMPOSITOR_PTR != 0 as _ {
             (*COMPOSITOR_PTR).terminate();
-            COMPOSITOR_PTR = 0 as _
         }
     }
 }
