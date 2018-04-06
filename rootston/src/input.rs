@@ -149,7 +149,7 @@ impl InputManager {
                         }
                     }
                 }
-            })??;
+            })?;
             //                                         Some(cursor)
             //                                     })
             //                                .ok()?;
