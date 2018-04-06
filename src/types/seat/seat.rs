@@ -319,7 +319,7 @@ impl Seat {
 
     /// Clears the focused surface for the pointer and leaves all entered
     /// surfaces.
-    pub fn clear_focus(&self) {
+    pub fn pointer_clear_focus(&self) {
         unsafe { wlr_seat_pointer_clear_focus(self.data.0) }
     }
 
@@ -372,12 +372,6 @@ impl Seat {
     /// Whether or not the pointer has a grab other than the default grab.
     pub fn pointer_has_grab(&self) -> bool {
         unsafe { wlr_seat_pointer_has_grab(self.data.0) }
-    }
-
-    /// Clear the focused surface for the pointer and leave all entered
-    /// surfaces.
-    pub fn pointer_clear_focus(&self) {
-        unsafe { wlr_seat_pointer_clear_focus(self.data.0) }
     }
 
     /// Notify the seat of a pointer enter event to the given surface and request it
