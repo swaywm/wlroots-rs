@@ -1,0 +1,44 @@
+image: archlinux
+packages:
+    - meson
+    - ninja
+    - wayland
+    - wayland-protocols
+    - mesa
+    - libinput
+    - pixman
+    - libxkbcommon
+    - xcb-util-image
+    - libcap
+    - rustup
+    - clang
+    - libxcb
+    - xcb-util-image
+    - xcb-util-cursor
+    - xcb-util-wm
+sources:
+  - https://github.com/swaywm/wlroots-rs
+tasks:
+  - setup: |
+      rustup install stable
+      export CC=clang
+      rustup default stable
+      export RUST_BACKTRACE=full
+      cd wlroots-rs
+      git submodule update --init --recursive
+  - build: |
+      cd wlroots-rs
+      cd wlroots-sys
+      cd wlroots
+
+      meson build
+      ninja -C build
+      cd ../
+
+      cargo build --verbose --features static
+      cd ../
+
+      cargo build --verbose
+      cargo build --examples
+      cargo doc
+      cargo test --all
