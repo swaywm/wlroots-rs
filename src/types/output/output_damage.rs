@@ -93,9 +93,9 @@ impl OutputDamage {
     /// Returns `true` if `wlr_output_damage_swap_buffers` needs to be called.
     ///
     ///The region of the output that needs to be repainted is added to `damage`.
-    pub fn make_current<'a, T: Into<Option<&'a mut PixmanRegion>>>(&mut self,
-                                                                   damage: T)
-                                                                   -> bool {
+    pub fn make_current<'a, T>(&mut self, damage: T) -> bool
+        where T: Into<Option<&'a mut PixmanRegion>>
+    {
         unsafe {
             let mut res = false;
             let damage = match damage.into() {
@@ -112,15 +112,15 @@ impl OutputDamage {
     /// If the time of the frame isn't known, set `when` to `None`.
     ///
     /// Swapping buffers schedules a `frame` event.
-    pub fn swap_buffers<'a, T: Into<Option<Duration>>,
-                        U: Into<Option<&'a mut PixmanRegion>>>
-                        (&mut self, when: T, damage: U)
-                        -> bool {
+    pub fn swap_buffers<'a, T, U>(&mut self, when: T, damage: U) -> bool
+        where T: Into<Option<Duration>>,
+              U: Into<Option<&'a mut PixmanRegion>>
+    {
         unsafe {
             let when = when.into().map(|duration| {
-                                    timespec { tv_sec: duration.as_secs() as i64,
-                                               tv_nsec: duration.subsec_nanos() as i64 }
-                                });
+                                           timespec { tv_sec: duration.as_secs() as i64,
+                                                      tv_nsec: duration.subsec_nanos() as i64 }
+                                       });
             let when_ptr =
                 when.map(|mut duration| &mut duration as *mut _).unwrap_or_else(|| ptr::null_mut());
             let damage = match damage.into() {

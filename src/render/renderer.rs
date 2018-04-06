@@ -50,11 +50,12 @@ impl GenericRenderer {
     /// Make the `Renderer` state machine type.
     ///
     /// This automatically makes the given output the current output.
-    pub fn render<'output, T: Into<Option<(PixmanRegion, Duration)>>>
-                  (&mut self,
-                  output: &'output mut Output,
-                  damage: T)
-                  -> Renderer<'output> {
+    pub fn render<'output, T>(&mut self,
+                              output: &'output mut Output,
+                              damage: T)
+                              -> Renderer<'output>
+        where T: Into<Option<(PixmanRegion, Duration)>>
+    {
         unsafe {
             output.make_current();
             let (width, height) = output.size();

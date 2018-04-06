@@ -211,8 +211,6 @@ macro_rules! compositor_data {
     }
 }
 
-
-
 #[macro_export]
 macro_rules! run_handles {
     ([($handle_name: ident: $unhandle_name: block)] => $body: block) => {

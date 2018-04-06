@@ -98,7 +98,9 @@ impl Output {
                  output }
     }
 
-    pub(crate) unsafe fn set_output_layout<T: Into<Option<OutputLayoutHandle>>>(&mut self, layout_handle: T) {
+    pub(crate) unsafe fn set_output_layout<T>(&mut self, layout_handle: T)
+        where T: Into<Option<OutputLayoutHandle>>
+    {
         self.remove_from_output_layout();
         let user_data = self.user_data();
         if user_data.is_null() {
@@ -310,14 +312,14 @@ impl Output {
     /// You should try to use a `GenericRenderer`, but sometimes it's necessary to
     /// do your own manual rendering in a compositor. In that case, call `make_current`,
     /// do your rendering, and then call this function.
-    pub unsafe fn swap_buffers<'a, T: Into<Option<Duration>>,
-                               U: Into<Option<&'a mut PixmanRegion>>>
-                               (&mut self, when: T, damage: U)
-                               -> bool {
+    pub unsafe fn swap_buffers<'a, T, U>(&mut self, when: T, damage: U) -> bool
+        where T: Into<Option<Duration>>,
+              U: Into<Option<&'a mut PixmanRegion>>
+    {
         let when = when.into().map(|duration| {
-                                timespec { tv_sec: duration.as_secs() as i64,
-                                           tv_nsec: duration.subsec_nanos() as i64 }
-                            });
+                                       timespec { tv_sec: duration.as_secs() as i64,
+                                                  tv_nsec: duration.subsec_nanos() as i64 }
+                                   });
         let when_ptr =
             when.map(|mut duration| &mut duration as *mut _).unwrap_or_else(|| ptr::null_mut());
         let damage = match damage.into() {
