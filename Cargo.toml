@@ -20,7 +20,7 @@ travis-ci = { repository = "way-cooler/wlroots-rs/" }
 [dependencies]
 libc = "^0.2.*"
 rust-ini = "0.10.0"
-wlroots-sys = { path = "wlroots-sys" }
+wlroots-sys = { path = "wlroots-sys", default-features = false }
 wayland-sys = { version = "0.9.*", features = ["client", "dlopen", "server",] }
 lazy_static = "0.2"
 xkbcommon = "0.3"
