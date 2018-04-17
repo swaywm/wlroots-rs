@@ -215,8 +215,8 @@ macro_rules! compositor_data {
 macro_rules! run_handles {
     ([($handle_name: ident: $unhandle_name: block)] => $body: block) => {
         $unhandle_name.run(|$handle_name| {
-            $body
-        })
+            Ok($body)
+        }).and_then(|n: $crate::HandleResult<_>| n)
     };
     ([($handle_name1: ident: $unhandle_name1: block),
       ($handle_name2: ident: $unhandle_name2: block),
