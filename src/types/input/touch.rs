@@ -60,10 +60,10 @@ impl Touch {
     }
 
     /// Creates an unbound `Touch` from a `TouchHandle`
-    unsafe fn from_handle(handle: &TouchHandle) -> Self {
-        Touch { liveliness: None,
-                device: handle.input_device().clone(),
-                touch: handle.as_ptr() }
+    unsafe fn from_handle(handle: &TouchHandle) -> HandleResult<Self> {
+        Ok(Touch { liveliness: None,
+                   device: handle.input_device()?.clone(),
+                   touch: handle.as_ptr() })
     }
 
     /// Gets the wlr_input_device associated with this `Touch`.
@@ -154,7 +154,7 @@ impl TouchHandle {
             // We drop the Rc here because having two would allow a dangling
             // touch to exist!
             .and_then(|check| {
-                let touch = Touch::from_handle(self);
+                let touch = Touch::from_handle(self)?;
                 if check.load(Ordering::Acquire) {
                     wlr_log!(L_ERROR, "Double mutable borrows on {:?}", touch);
                     panic!("Double mutable borrows detected");
@@ -203,8 +203,11 @@ impl TouchHandle {
     }
 
     /// Gets the wlr_input_device associated with this TouchHandle.
-    pub fn input_device(&self) -> &InputDevice {
-        &self.device
+    pub fn input_device(&self) -> HandleResult<&InputDevice> {
+        match self.handle.upgrade() {
+            Some(_) => Ok(&self.device),
+            None => Err(HandleErr::AlreadyDropped)
+        }
     }
 
     /// Gets the `wlr_touch` associated with this `TouchHandle`.
