@@ -4,6 +4,7 @@ extern crate gl_generator;
 #[cfg(feature = "static")]
 extern crate meson;
 extern crate wayland_scanner;
+extern crate pkg_config;
 
 use gl_generator::{Api, Fallbacks, Profile, Registry, StaticGenerator};
 use std::env;
@@ -55,7 +56,6 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=xcb-shm");
     println!("cargo:rustc-link-lib=dylib=xcb-icccm");
     println!("cargo:rustc-link-lib=dylib=xcb-xkb");
-    println!("cargo:rustc-link-lib=dylib=cap");
     println!("cargo:rustc-link-lib=dylib=wayland-egl");
     println!("cargo:rustc-link-lib=dylib=wayland-client");
     println!("cargo:rustc-link-lib=dylib=wayland-server");
@@ -65,9 +65,10 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=drm");
     println!("cargo:rustc-link-lib=dylib=input");
     println!("cargo:rustc-link-lib=dylib=udev");
-    println!("cargo:rustc-link-lib=dylib=systemd");
     println!("cargo:rustc-link-lib=dylib=dbus-1");
     println!("cargo:rustc-link-lib=dylib=pixman-1");
+
+    link_optional_libs();
 
     if !cfg!(feature = "static") {
         println!("cargo:rustc-link-lib=dylib=wlroots");
@@ -141,5 +142,16 @@ fn generate_protocols() {
         wayland_scanner::generate_interfaces(protocol.0,
                                              output_dir.join(format!("{}_interfaces.rs",
                                                                      protocol.1)));
+    }
+}
+fn link_optional_libs() {
+    if cfg!(feature = "libcap") && pkg_config::probe_library("libcap").is_ok() {
+        println!("cargo:rustc-link-lib=dylib=cap");
+    }
+    if cfg!(feature = "systemd") && pkg_config::probe_library("libsystemd").is_ok() {
+        println!("cargo:rustc-link-lib=dylib=systemd");
+    }
+    if cfg!(feature = "elogind") && pkg_config::probe_library("elogind").is_ok() {
+        println!("cargo:rustc-link-lib=dylib=elogind");
     }
 }

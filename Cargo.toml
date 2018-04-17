@@ -35,5 +35,8 @@ tempfile = "2"
 gl_generator = "0.5.0"
 
 [features]
-default = ["static"]
+default = ["static", "libcap", "systemd", "elogind"]
 static = ["wlroots-sys/static"]
+libcap = ["wlroots-sys/libcap"]
+systemd = ["wlroots-sys/systemd"]
+elogind = ["wlroots-sys/elogind"]
