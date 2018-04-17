@@ -118,12 +118,12 @@ impl InputManager {
                 // reset mappings
                 cursor.map_to_output(None);
                 for pointer in pointers {
-                    cursor.map_input_to_output(pointer.input_device(),
+                    cursor.map_input_to_output(pointer.input_device()?,
                                                None)
                 }
                 // TODO Also map input to region if part of config
                 for touch in touches {
-                    cursor.map_input_to_output(touch.input_device(), None)
+                    cursor.map_input_to_output(touch.input_device()?, None)
                 }
                 // TODO table tool
                 let outputs = &mut state.outputs;

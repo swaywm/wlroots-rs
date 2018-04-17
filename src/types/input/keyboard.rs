@@ -81,10 +81,10 @@ impl Keyboard {
         }
     }
 
-    unsafe fn from_handle(handle: &KeyboardHandle) -> Self {
-        Keyboard { liveliness: None,
-                   device: handle.input_device().clone(),
-                   keyboard: handle.as_ptr() }
+    unsafe fn from_handle(handle: &KeyboardHandle) -> HandleResult<Self> {
+        Ok(Keyboard { liveliness: None,
+                      device: handle.input_device()?.clone(),
+                      keyboard: handle.as_ptr() })
     }
 
     /// Gets the wlr_keyboard associated with this KeyboardHandle.
@@ -279,7 +279,7 @@ impl KeyboardHandle {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                let keyboard = Keyboard::from_handle(self);
+                let keyboard = Keyboard::from_handle(self)?;
                 if check.load(Ordering::Acquire) {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
@@ -327,8 +327,11 @@ impl KeyboardHandle {
     }
 
     /// Gets the wlr_input_device associated with this KeyboardHandle
-    pub fn input_device(&self) -> &InputDevice {
-        &self.device
+    pub fn input_device(&self) -> HandleResult<&InputDevice> {
+        match self.handle.upgrade() {
+            Some(_) => Ok(&self.device),
+            None => Err(HandleErr::AlreadyDropped)
+        }
     }
 
     /// Gets the wlr_keyboard associated with this KeyboardHandle.

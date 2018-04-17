@@ -57,10 +57,10 @@ impl TabletTool {
         }
     }
 
-    unsafe fn from_handle(handle: &TabletToolHandle) -> Self {
-        TabletTool { liveliness: None,
-                     device: handle.device.clone(),
-                     tool: handle.as_ptr() }
+    unsafe fn from_handle(handle: &TabletToolHandle) -> HandleResult<Self> {
+        Ok(TabletTool { liveliness: None,
+                        device: handle.input_device()?.clone(),
+                        tool: handle.as_ptr() })
     }
 
     /// Gets the wlr_input_device associated with this TabletTool.
@@ -146,7 +146,7 @@ impl TabletToolHandle {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                let tool = TabletTool::from_handle(self);
+                let tool = TabletTool::from_handle(self)?;
                 if check.load(Ordering::Acquire) {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
@@ -194,8 +194,11 @@ impl TabletToolHandle {
     }
 
     /// Gets the wlr_input_device associated with this TabletToolHandle
-    pub fn input_device(&self) -> &InputDevice {
-        &self.device
+    pub fn input_device(&self) -> HandleResult<&InputDevice> {
+        match self.handle.upgrade() {
+            Some(_) => Ok(&self.device),
+            None => Err(HandleErr::AlreadyDropped)
+        }
     }
 
     /// Gets the wlr_tablet_tool associated with this TabletToolHandle.

@@ -60,10 +60,10 @@ impl Pointer {
     }
 
     /// Creates an unbound Pointer from a `PointerHandle`
-    unsafe fn from_handle(handle: &PointerHandle) -> Self {
-        Pointer { liveliness: None,
-                  device: handle.input_device().clone(),
-                  pointer: handle.as_ptr() }
+    unsafe fn from_handle(handle: &PointerHandle) -> HandleResult<Self> {
+        Ok(Pointer { liveliness: None,
+                     device: handle.input_device()?.clone(),
+                     pointer: handle.as_ptr() })
     }
 
     /// Gets the wlr_input_device associated with this Pointer.
@@ -155,7 +155,7 @@ impl PointerHandle {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                let pointer = Pointer::from_handle(self);
+                let pointer = Pointer::from_handle(self)?;
                 if check.load(Ordering::Acquire) {
                     wlr_log!(L_ERROR, "Double mutable borrows on {:?}", pointer);
                     panic!("Double mutable borrows detected");
@@ -204,8 +204,11 @@ impl PointerHandle {
     }
 
     /// Gets the wlr_input_device associated with this PointerHandle.
-    pub fn input_device(&self) -> &InputDevice {
-        &self.device
+    pub fn input_device(&self) -> HandleResult<&InputDevice> {
+        match self.handle.upgrade() {
+            Some(_) => Ok(&self.device),
+            None => Err(HandleErr::AlreadyDropped)
+        }
     }
 
     /// Gets the wlr_pointer associated with this PointerHandle.
