@@ -6,11 +6,11 @@ use libc::{c_float, c_int, c_void};
 
 use {Area, Output, PixmanRegion};
 use render::Texture;
-use wlroots_sys::{wl_shm_format, wlr_backend, wlr_backend_get_egl, wlr_render_ellipse_with_matrix,
-                  wlr_render_quad_with_matrix, wlr_render_rect, wlr_render_texture,
-                  wlr_render_texture_with_matrix, wlr_renderer, wlr_renderer_begin,
-                  wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
-                  wlr_texture_from_pixels, wlr_gles2_renderer_create};
+use wlroots_sys::{wl_shm_format, wlr_backend, wlr_backend_get_renderer,
+                  wlr_render_ellipse_with_matrix, wlr_render_quad_with_matrix, wlr_render_rect,
+                  wlr_render_texture, wlr_render_texture_with_matrix, wlr_renderer,
+                  wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
+                  wlr_texture_from_pixels};
 
 /// A generic interface for rendering to the screen.
 ///
@@ -36,11 +36,7 @@ pub struct Renderer<'output> {
 impl GenericRenderer {
     /// Make a gles2 renderer.
     pub(crate) unsafe fn gles2_renderer(backend: *mut wlr_backend) -> Self {
-        let egl = wlr_backend_get_egl(backend);
-        if egl.is_null() {
-            panic!("EGL not available for this backend");
-        }
-        let renderer = wlr_gles2_renderer_create(egl);
+        let renderer = wlr_backend_get_renderer(backend);
         if renderer.is_null() {
             panic!("Could not construct GLES2 renderer");
         }
