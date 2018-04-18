@@ -4,7 +4,7 @@
 use libc;
 use std::{env, ptr, any::Any, cell::UnsafeCell, ffi::CStr};
 
-use {DataDeviceManager, SurfaceHandle};
+use {DataDeviceManager, SurfaceHandle, XWaylandServer};
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
@@ -81,6 +81,8 @@ pub struct Compositor {
     pub server_decoration_manager: Option<ServerDecorationManager>,
     /// The renderer used to draw things to the screen.
     pub renderer: Option<GenericRenderer>,
+    /// XWayland server, only Some if it is enabled
+    pub xwayland: Option<XWaylandServer>,
     /// The DnD manager
     data_device_manager: Option<DataDeviceManager>,
     /// The error from the panic, if there was one.
@@ -95,7 +97,8 @@ pub struct CompositorBuilder {
     xdg_v6_shell_manager_handler: Option<Box<XdgV6ShellManagerHandler>>,
     gles2: bool,
     server_decoration_manager: bool,
-    data_device_manager: bool
+    data_device_manager: bool,
+    xwayland: bool
 }
 
 impl CompositorBuilder {
@@ -106,6 +109,7 @@ impl CompositorBuilder {
         CompositorBuilder { gles2: false,
                             server_decoration_manager: false,
                             data_device_manager: false,
+                            xwayland: false,
                             compositor_handler: None,
                             input_manager_handler: None,
                             output_manager_handler: None,
@@ -165,6 +169,12 @@ impl CompositorBuilder {
     /// extension.
     pub fn server_decoration_manager(mut self, server_decoration_manager: bool) -> Self {
         self.server_decoration_manager = server_decoration_manager;
+        self
+    }
+
+    /// Decide whether or not to run an xwayland server.
+    pub fn xwayland(mut self, xwayland: bool) -> Self {
+        self.xwayland = xwayland;
         self
     }
 
@@ -262,6 +272,13 @@ impl CompositorBuilder {
                 xdg_v6_shell_manager
             });
 
+            // Set up the XWayland server, if the user wants it.
+            let xwayland = if self.xwayland {
+                Some(XWaylandServer::new(display as _, compositor))
+            } else {
+                None
+            };
+
             // Open the socket to the Wayland server.
             let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
             if socket.is_null() {
@@ -293,6 +310,7 @@ impl CompositorBuilder {
                          shm_fd,
                          server_decoration_manager,
                          renderer,
+                         xwayland,
                          panic_error: None }
         }
     }

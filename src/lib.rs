@@ -25,6 +25,7 @@ pub mod types;
 pub mod extensions;
 pub mod render;
 pub mod utils;
+mod xwayland;
 
 pub use self::compositor::{terminate, Compositor, CompositorBuilder, CompositorHandler};
 pub use self::events::{key_events, seat_events, tablet_pad_events, tablet_tool_events,
@@ -44,6 +45,7 @@ pub use self::types::output::*;
 pub use self::types::seat::*;
 pub use self::types::shell::*;
 pub use self::types::surface::*;
+pub use self::xwayland::{XWaylandServer, XWaylandManagerHandler};
 pub use key_events::Key;
 pub use wlroots_sys::{wlr_keyboard_modifiers, wlr_tablet_tool_axes, wl_shm_format::{self, *},
                       wlr_axis_orientation::{self, *}, wlr_axis_source::{self, *},
