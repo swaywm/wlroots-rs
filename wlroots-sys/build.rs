@@ -3,8 +3,8 @@ extern crate gcc;
 extern crate gl_generator;
 #[cfg(feature = "static")]
 extern crate meson;
-extern crate wayland_scanner;
 extern crate pkg_config;
+extern crate wayland_scanner;
 
 use gl_generator::{Api, Fallbacks, Profile, Registry, StaticGenerator};
 use std::env;
