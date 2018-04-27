@@ -6,8 +6,7 @@ use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}, time
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_surface,
-                  wlr_surface_has_buffer, wlr_surface_make_subsurface,
-                  wlr_surface_point_accepts_input, wlr_surface_send_enter,
+                  wlr_surface_has_buffer, wlr_surface_point_accepts_input, wlr_surface_send_enter,
                   wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_surface_at};
 
 use super::{Subsurface, SubsurfaceHandle, SubsurfaceManager, SurfaceState};
@@ -94,7 +93,7 @@ impl Surface {
     fn create_manager(surface: *mut wlr_surface) -> Box<SubsurfaceManager> {
         unsafe {
             let mut subsurfaces = vec![];
-            wl_list_for_each!((*surface).subsurface_list, parent_link,
+            wl_list_for_each!((*surface).subsurfaces, parent_link,
                               (subsurface: wlr_subsurface) => {
                                   subsurfaces.push(Subsurface::new(subsurface))
                               });
@@ -179,11 +178,6 @@ impl Surface {
                 Some(SurfaceHandle::from_ptr(surface))
             }
         }
-    }
-
-    /// Create the subsurface implementation for this surface.
-    pub fn make_subsurface(&mut self, parent: &mut Surface, id: u32) {
-        unsafe { wlr_surface_make_subsurface(self.surface, parent.as_ptr(), id) }
     }
 
     /// Get the top of the subsurface tree for this surface.
