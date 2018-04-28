@@ -7,13 +7,15 @@ extern crate pkg_config;
 extern crate wayland_scanner;
 
 use gl_generator::{Api, Fallbacks, Profile, Registry, StaticGenerator};
-use std::env;
-use std::fs::File;
-#[allow(unused_imports)]
+use std::{env, io};
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 fn main() {
     meson();
+    let protocol_header_path =
+        generate_protocol_headers().expect("Could not generate header files for wayland protocols");
     let target_dir = env::var("OUT_DIR").expect("$OUT_DIR not set!");
     let generated = bindgen::builder()
         .derive_debug(true)
@@ -33,8 +35,7 @@ fn main() {
         // pragma information on what features are available in a header file
         // titled "config.h"
         .clang_arg(format!("-I{}{}", target_dir, "/include/"))
-        // NOTE Necessary because the xdg-shell-v6 headers generate here
-        .clang_arg(format!("-I{}{}", target_dir, "/protocol/wl_protos@sta"))
+        .clang_arg(format!("-I{}", protocol_header_path.to_str().unwrap()))
         .clang_arg("-Iwlroots/include/xcursor")
         .clang_arg("-I/usr/include/pixman-1")
         // Work around bug https://github.com/rust-lang-nursery/rust-bindgen/issues/687
@@ -123,6 +124,40 @@ fn meson() {
     }
 
     meson::build("wlroots", build_path_str);
+}
+
+/// Gets the unstable and stable protocols in /usr/share-wayland-protocols and
+/// generates server headers for them.
+///
+/// The path to the folder with the generated headers is returned. It will
+/// have two directories, `stable`, and `unstable`.
+fn generate_protocol_headers() -> io::Result<PathBuf> {
+    let output_dir_str = env::var("OUT_DIR").unwrap();
+    let out_path: PathBuf = format!("{}/wayland-protocols", output_dir_str).into();
+    fs::create_dir(&out_path).ok();
+    let protocols = fs::read_dir("/usr/share/wayland-protocols/stable")?
+        .chain(fs::read_dir("/usr/share/wayland-protocols/unstable")?);
+    for entry in protocols {
+        let entry = entry?;
+        for entry in fs::read_dir(entry.path())? {
+            let entry = entry?;
+            let path = entry.path();
+            let mut filename = entry.file_name().into_string().unwrap();
+            if filename.ends_with(".xml") {
+                let new_length = filename.len() - 4;
+                filename.truncate(new_length);
+            }
+            filename.push_str("-protocol");
+            Command::new("wayland-scanner").arg("server-header")
+                                           .arg(path.clone())
+                                           .arg(format!("{}/{}.h",
+                                                        out_path.to_str().unwrap(),
+                                                        filename))
+                                           .status()
+                                           .unwrap();
+        }
+    }
+    Ok(out_path)
 }
 
 fn generate_protocols() {
