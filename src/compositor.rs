@@ -172,13 +172,11 @@ impl CompositorBuilder {
         self
     }
 
-    /// Decide whether or not to run an xwayland server.
+    /// Add a handler for xwayland.
     ///
-    /// If you want to run an xwayland server, you must provide a manager handler.
-    pub fn xwayland<O>(mut self, xwayland: O) -> Self
-        where O: Into<Option<Box<XWaylandManagerHandler>>>
-    {
-        self.xwayland = xwayland.into();
+    /// If you do not provide a handler then the xwayland server does not run.
+    pub fn xwayland(mut self, xwayland: Box<XWaylandManagerHandler>) -> Self {
+        self.xwayland = Some(xwayland);
         self
     }
 
@@ -324,12 +322,11 @@ impl Compositor {
     /// Enters the wayland event loop. Won't return until the compositor is
     /// shut off
     pub fn run(self) {
-        self.run_with(|_|
-            unsafe {
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                              wl_display_run,
-                              (*COMPOSITOR_PTR).display);
-            })
+        self.run_with(|_| unsafe {
+                          ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                        wl_display_run,
+                                        (*COMPOSITOR_PTR).display);
+                      })
     }
 
     /// Prepare to enter the wayland event loop. Instead of calling
