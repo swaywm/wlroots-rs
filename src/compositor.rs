@@ -4,7 +4,7 @@
 use libc;
 use std::{env, ptr, any::Any, cell::UnsafeCell, ffi::CStr};
 
-use {DataDeviceManager, SurfaceHandle, XWaylandServer};
+use {DataDeviceManager, SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
@@ -98,7 +98,7 @@ pub struct CompositorBuilder {
     gles2: bool,
     server_decoration_manager: bool,
     data_device_manager: bool,
-    xwayland: bool
+    xwayland: Option<Box<XWaylandManagerHandler>>
 }
 
 impl CompositorBuilder {
@@ -109,7 +109,7 @@ impl CompositorBuilder {
         CompositorBuilder { gles2: false,
                             server_decoration_manager: false,
                             data_device_manager: false,
-                            xwayland: false,
+                            xwayland: None,
                             compositor_handler: None,
                             input_manager_handler: None,
                             output_manager_handler: None,
@@ -173,8 +173,12 @@ impl CompositorBuilder {
     }
 
     /// Decide whether or not to run an xwayland server.
-    pub fn xwayland(mut self, xwayland: bool) -> Self {
-        self.xwayland = xwayland;
+    ///
+    /// If you want to run an xwayland server, you must provide a manager handler.
+    pub fn xwayland<O>(mut self, xwayland: O) -> Self
+        where O: Into<Option<Box<XWaylandManagerHandler>>>
+    {
+        self.xwayland = xwayland.into();
         self
     }
 
@@ -273,11 +277,11 @@ impl CompositorBuilder {
             });
 
             // Set up the XWayland server, if the user wants it.
-            let xwayland = if self.xwayland {
-                Some(XWaylandServer::new(display as _, compositor))
-            } else {
-                None
-            };
+            let xwayland = self.xwayland.and_then(|manager| {
+                                                      Some(XWaylandServer::new(display as _,
+                                                                               compositor,
+                                                                               manager))
+                                                  });
 
             // Open the socket to the Wayland server.
             let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
