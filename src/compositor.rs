@@ -302,6 +302,20 @@ impl Compositor {
     /// Enters the wayland event loop. Won't return until the compositor is
     /// shut off
     pub fn run(self) {
+        self.run_with(|_|
+            unsafe {
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                              wl_display_run,
+                              (*COMPOSITOR_PTR).display);
+            })
+    }
+
+    /// Prepare to enter the wayland event loop. Instead of calling
+    /// `wl_display_run`, the provided callback function is invoked. Allows
+    /// integration with a different event loop.
+    pub fn run_with<F>(self, runner: F)
+        where F: FnOnce(&Compositor)
+    {
         unsafe {
             let compositor = UnsafeCell::new(self);
             if COMPOSITOR_PTR != 0 as _ {
@@ -321,9 +335,7 @@ impl Compositor {
                 panic!("Failed to start backend");
             }
             env::set_var("WAYLAND_DISPLAY", (*COMPOSITOR_PTR).socket_name.clone());
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_display_run,
-                          (*compositor.get()).display);
+            runner(&*COMPOSITOR_PTR);
             match (*compositor.get()).panic_error.take() {
                 None => {}
                 Some(err) => {
