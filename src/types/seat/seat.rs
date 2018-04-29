@@ -3,7 +3,7 @@
 //!
 //! TODO This module could really use some examples, as the API surface is huge.
 
-use std::{fmt, panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}, time::Duration};
+use std::{fmt, panic, ptr, cell::Cell, rc::{Rc, Weak}, time::Duration};
 
 use libc;
 use wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
@@ -41,7 +41,7 @@ struct SeatState {
     ///
     /// Once the seat is destroyed, this will signal to the `SeatHandle`s that
     /// they cannot be upgraded.
-    counter: Rc<AtomicBool>,
+    counter: Rc<Cell<bool>>,
     /// A raw pointer to the Seat on the heap.
     seat: *mut Seat
 }
@@ -49,7 +49,7 @@ struct SeatState {
 #[derive(Debug, Clone)]
 pub struct SeatHandle {
     seat: *mut wlr_seat,
-    handle: Weak<AtomicBool>
+    handle: Weak<Cell<bool>>
 }
 
 pub trait SeatHandler {
@@ -239,7 +239,7 @@ impl Seat {
                           res.primary_selection_listener() as *mut _ as _);
             wl_signal_add(&mut (*seat).events.destroy as *mut _ as _,
                           res.destroy_listener() as *mut _ as _);
-            let counter = Rc::new(AtomicBool::new(false));
+            let counter = Rc::new(Cell::new(false));
             let handle = Rc::downgrade(&counter);
             let state = Box::new(SeatState { counter,
                                              seat: Box::into_raw(res) });
@@ -761,10 +761,10 @@ impl SeatHandle {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(Seat::from_ptr(self.seat))
             })
     }
@@ -795,14 +795,14 @@ impl SeatHandle {
         Box::into_raw(seat);
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running seat callback, mutable lock \
                                                     was false for {:p}",
                                                    seat_ptr);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),

@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
+use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 
 use wlroots_sys::wlr_subsurface;
 
@@ -18,7 +18,7 @@ pub struct Subsurface {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `SurfaceHandle`.
-    liveliness: Option<Rc<AtomicBool>>,
+    liveliness: Option<Rc<Cell<bool>>>,
     /// The pointer to the wlroots object that wraps a wl_surface.
     subsurface: *mut wlr_subsurface
 }
@@ -29,14 +29,14 @@ pub struct SubsurfaceHandle {
     ///
     /// When wlroots deallocates the pointer associated with this handle,
     /// this can no longer be used.
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     /// The pointer to the wlroots object that wraps a wl_surface.
     subsurface: *mut wlr_subsurface
 }
 
 impl Subsurface {
     pub(crate) unsafe fn new(subsurface: *mut wlr_subsurface) -> Self {
-        let liveliness = Some(Rc::new(AtomicBool::new(false)));
+        let liveliness = Some(Rc::new(Cell::new(false)));
         Subsurface { subsurface,
                      liveliness }
     }
@@ -126,10 +126,10 @@ impl SubsurfaceHandle {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(Subsurface::from_handle(self))
             })
     }
@@ -157,14 +157,14 @@ impl SubsurfaceHandle {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut subsurface)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running subsurface callback, mutable \
                                                     lock was false for: {:?}",
                                                    subsurface);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),

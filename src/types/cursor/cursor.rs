@@ -1,6 +1,6 @@
 //! Wrapper for wlr_cursor
 
-use std::{fmt, panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
+use std::{fmt, panic, ptr, cell::Cell, rc::{Rc, Weak}};
 
 use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -26,7 +26,7 @@ pub struct CursorState {
     ///
     /// Once the cursor is destroyed, this will signal to the `CursorHandle`s that
     /// they cannot be upgraded.
-    counter: Rc<AtomicBool>,
+    counter: Rc<Cell<bool>>,
     /// A raw pointer to the Cursor on the heap
     cursor: *mut Cursor
 }
@@ -34,7 +34,7 @@ pub struct CursorState {
 #[derive(Debug, Clone)]
 pub struct CursorHandle {
     cursor: *mut wlr_cursor,
-    handle: Weak<AtomicBool>
+    handle: Weak<Cell<bool>>
 }
 
 pub trait CursorHandler {
@@ -256,7 +256,7 @@ impl Cursor {
                           cursor.tablet_tool_tip_listener() as *mut _ as _);
             wl_signal_add(&mut (*cursor_ptr).events.tablet_tool_button as *mut _ as _,
                           cursor.tablet_tool_button_listener() as *mut _ as _);
-            let counter = Rc::new(AtomicBool::new(false));
+            let counter = Rc::new(Cell::new(false));
             let handle = Rc::downgrade(&counter);
             let state = Box::new(CursorState { counter,
                                                cursor: Box::into_raw(cursor),
@@ -605,10 +605,10 @@ impl CursorHandle {
         // We drop the Rc here because having two would allow a dangling
         // pointer to exist!
             .and_then(|check| {
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(Cursor::from_ptr(self.cursor))
             })
     }
@@ -639,14 +639,14 @@ impl CursorHandle {
         Box::into_raw(cursor);
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running cursor callback, mutable lock \
                                                     was false for {:p}",
                                                    cursor_ptr);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),

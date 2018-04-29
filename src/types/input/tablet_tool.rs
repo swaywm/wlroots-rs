@@ -1,5 +1,5 @@
 //! TODO Documentation
-use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
+use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 
 use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_tablet_tool};
@@ -17,7 +17,7 @@ pub struct TabletTool {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `TabletToolHandle`.
-    liveliness: Option<Rc<AtomicBool>>,
+    liveliness: Option<Rc<Cell<bool>>>,
     /// The device that refers to this tablet tool.
     device: InputDevice,
     /// Underlying tablet state
@@ -29,7 +29,7 @@ pub struct TabletToolHandle {
     /// The Rc that ensures that this handle is still alive.
     ///
     /// When wlroots deallocates the tablet tool associated with this handle,
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     /// The device that refers to this tablet_tool.
     device: InputDevice,
     /// The underlying tablet state
@@ -49,7 +49,7 @@ impl TabletTool {
         match (*device).type_ {
             WLR_INPUT_DEVICE_TABLET_TOOL => {
                 let tool = (*device).__bindgen_anon_1.tablet_tool;
-                Some(TabletTool { liveliness: Some(Rc::new(AtomicBool::new(false))),
+                Some(TabletTool { liveliness: Some(Rc::new(Cell::new(false))),
                                   device: InputDevice::from_ptr(device),
                                   tool })
             }
@@ -94,7 +94,7 @@ impl TabletTool {
     pub(crate) unsafe fn set_lock(&self, val: bool) {
         self.liveliness.as_ref()
             .expect("Tried to set lock on borrowed TabletTool")
-            .store(val, Ordering::Release)
+            .set(val)
     }
 }
 
@@ -147,10 +147,10 @@ impl TabletToolHandle {
             // pointer to exist!
             .and_then(|check| {
                 let tool = TabletTool::from_handle(self)?;
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(tool)
             })
     }
@@ -178,14 +178,14 @@ impl TabletToolHandle {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut tool)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running tablet tool callback, mutable \
                                                     lock was false for: {:?}",
                                                    tool);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),

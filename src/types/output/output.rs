@@ -1,10 +1,10 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
+use std::cell::Cell;
 use std::ffi::CStr;
 use std::mem::ManuallyDrop;
 use std::rc::{Rc, Weak};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use libc::{c_float, c_int};
@@ -27,7 +27,7 @@ pub type Transform = wl_output_transform;
 use {Origin, OutputDamage, PixmanRegion, Size, Surface, SurfaceHandle};
 
 struct OutputState {
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     damage: *mut wlr_output_damage,
     layout_handle: Option<OutputLayoutHandle>
 }
@@ -43,7 +43,7 @@ pub struct Output {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `OutputHandle`.
-    liveliness: Option<Rc<AtomicBool>>,
+    liveliness: Option<Rc<Cell<bool>>>,
     /// The tracker for damage on the output.
     damage: ManuallyDrop<OutputDamage>,
     /// The output ptr that refers to this `Output`
@@ -57,7 +57,7 @@ pub struct OutputHandle {
     ///
     /// When wlroots deallocates the pointer associated with this handle,
     /// this can no longer be used.
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     /// The tracker for damage on the output.
     damage: *mut wlr_output_damage,
     /// The output ptr that refers to this `Output`
@@ -86,7 +86,7 @@ impl Output {
     /// so only do this once per `wlr_output`!
     pub(crate) unsafe fn new(output: *mut wlr_output) -> Self {
         (*output).data = ptr::null_mut();
-        let liveliness = Rc::new(AtomicBool::new(false));
+        let liveliness = Rc::new(Cell::new(false));
         let handle = Rc::downgrade(&liveliness);
         let damage = ManuallyDrop::new(OutputDamage::new(output));
         let state = Box::new(OutputState { handle,
@@ -462,7 +462,7 @@ impl Output {
     pub(crate) unsafe fn set_lock(&self, val: bool) {
         self.liveliness.as_ref()
             .expect("Tried to set lock on borrowed Output")
-            .store(val, Ordering::Release);
+            .set(val);
     }
 }
 
@@ -540,10 +540,10 @@ impl OutputHandle {
             // pointer to exist!
             .and_then(|check| {
                 let output = Output::from_handle(self);
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(output)
             })
     }
@@ -571,14 +571,14 @@ impl OutputHandle {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut output)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running output callback, mutable lock \
                                                     was false for: {:?}",
                                                    output);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),

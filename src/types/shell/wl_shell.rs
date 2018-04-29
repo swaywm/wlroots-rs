@@ -1,8 +1,8 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
+use std::cell::Cell;
 use std::rc::{Rc, Weak};
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use wlroots_sys::{wl_shell_surface_resize, wlr_wl_shell_surface, wlr_wl_shell_surface_configure,
                   wlr_wl_shell_surface_ping, wlr_wl_shell_surface_surface_at};
@@ -12,18 +12,18 @@ use errors::{HandleErr, HandleResult};
 use utils::c_to_rust_string;
 
 struct WlShellSurfaceState {
-    handle: Weak<AtomicBool>
+    handle: Weak<Cell<bool>>
 }
 
 #[derive(Debug)]
 pub struct WlShellSurface {
-    liveliness: Option<Rc<AtomicBool>>,
+    liveliness: Option<Rc<Cell<bool>>>,
     shell_surface: *mut wlr_wl_shell_surface
 }
 
 #[derive(Debug, Clone)]
 pub struct WlShellSurfaceHandle {
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     shell_surface: *mut wlr_wl_shell_surface
 }
 
@@ -31,7 +31,7 @@ impl WlShellSurface {
     pub(crate) unsafe fn new(shell_surface: *mut wlr_wl_shell_surface) -> Self {
         // TODO FIXME Free state in drop impl when Rc == 1
         (*shell_surface).data = ptr::null_mut();
-        let liveliness = Rc::new(AtomicBool::new(false));
+        let liveliness = Rc::new(Cell::new(false));
         let state = Box::new(WlShellSurfaceState { handle: Rc::downgrade(&liveliness) });
         (*shell_surface).data = Box::into_raw(state) as *mut _;
         WlShellSurface { liveliness: Some(liveliness),
@@ -138,7 +138,7 @@ impl WlShellSurface {
     pub(crate) unsafe fn set_lock(&self, val: bool) {
         self.liveliness.as_ref()
             .expect("Tried to set lock on borrowed WlShellSurface")
-            .store(val, Ordering::Release);
+            .set(val);
     }
 }
 
@@ -181,10 +181,10 @@ impl WlShellSurfaceHandle {
             // pointer to exist!
             .and_then(|check| {
                 let shell_surface = WlShellSurface::from_handle(self);
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(shell_surface)
             })
     }
@@ -212,14 +212,14 @@ impl WlShellSurfaceHandle {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut wl_shell_surface)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running WlShellSurface callback, \
                                                     mutable lock was false for: {:?}",
                                                    wl_shell_surface);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),

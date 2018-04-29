@@ -1,8 +1,7 @@
 //! TODO Documentation
 
 use libc::{self, c_double, c_int};
-use std::{fmt, panic, ptr, marker::PhantomData, rc::{Rc, Weak},
-          sync::atomic::{AtomicBool, Ordering}};
+use std::{fmt, panic, ptr, cell::Cell, marker::PhantomData, rc::{Rc, Weak}};
 
 use wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{wlr_output_effective_resolution, wlr_output_layout, wlr_output_layout_add,
@@ -22,7 +21,7 @@ struct OutputLayoutState {
     ///
     /// Once the output layout is destroyed, this will signal to the `OutputHandle`s that
     /// they cannot be upgraded.
-    counter: Rc<AtomicBool>,
+    counter: Rc<Cell<bool>>,
     /// A raw pointer to the `OutputLayout` on the heap.
     layout: *mut OutputLayout
 }
@@ -94,7 +93,7 @@ pub struct OutputLayoutHandle {
     ///
     /// When wlroots deallocates the pointer associated with this handle,
     /// this can no longer be used.
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     /// The output_layout ptr that refers to this `OutputLayout`
     layout: *mut wlr_output_layout
 }
@@ -121,7 +120,7 @@ impl OutputLayout {
                           output_layout.output_remove_listener() as *mut _ as _);
             wl_signal_add(&mut (*layout).events.change as *mut _ as _,
                           output_layout.change_listener() as *mut _ as _);
-            let counter = Rc::new(AtomicBool::new(false));
+            let counter = Rc::new(Cell::new(false));
             let handle = Rc::downgrade(&counter);
             let state = Box::new(OutputLayoutState { counter,
                                                      layout: Box::into_raw(output_layout) });
@@ -369,10 +368,10 @@ impl OutputLayoutHandle {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(OutputLayout::from_ptr(self.layout))
             })
     }
@@ -393,14 +392,14 @@ impl OutputLayoutHandle {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut output_layout)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running OutputLayout callback, mutable \
                                                     lock was false for: {:?}",
                                                    output_layout);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         Box::into_raw(output_layout);
         match res {
