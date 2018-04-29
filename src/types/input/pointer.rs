@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
+use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 
 use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_pointer};
@@ -18,7 +18,7 @@ pub struct Pointer {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `PointerHandle`.
-    liveliness: Option<Rc<AtomicBool>>,
+    liveliness: Option<Rc<Cell<bool>>>,
     /// The device that refers to this pointer.
     device: InputDevice,
     /// The underlying pointer data.
@@ -31,7 +31,7 @@ pub struct PointerHandle {
     ///
     /// When wlroots deallocates the pointer associated with this handle,
     /// this can no longer be used.
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     /// The device that refers to this pointer.
     device: InputDevice,
     /// The underlying pointer data.
@@ -51,7 +51,7 @@ impl Pointer {
         match (*device).type_ {
             WLR_INPUT_DEVICE_POINTER => {
                 let pointer = (*device).__bindgen_anon_1.pointer;
-                Some(Pointer { liveliness: Some(Rc::new(AtomicBool::new(false))),
+                Some(Pointer { liveliness: Some(Rc::new(Cell::new(false))),
                                device: InputDevice::from_ptr(device),
                                pointer })
             }
@@ -101,7 +101,7 @@ impl Pointer {
     pub(crate) unsafe fn set_lock(&self, val: bool) {
         self.liveliness.as_ref()
             .expect("Tried to set lock on borrowed Pointer")
-            .store(val, Ordering::Release);
+            .set(val);
     }
 }
 
@@ -156,11 +156,11 @@ impl PointerHandle {
             // pointer to exist!
             .and_then(|check| {
                 let pointer = Pointer::from_handle(self)?;
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     wlr_log!(L_ERROR, "Double mutable borrows on {:?}", pointer);
                     panic!("Double mutable borrows detected");
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(pointer)
             })
     }
@@ -188,14 +188,14 @@ impl PointerHandle {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut pointer)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running pointer callback, mutable lock \
                                                     was false for: {:?}",
                                                    pointer);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),

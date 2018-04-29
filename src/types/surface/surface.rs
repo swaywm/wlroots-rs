@@ -1,7 +1,7 @@
 //! TODO Documentation
 
 use libc::c_double;
-use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}, time::Duration};
+use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}, time::Duration};
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
@@ -18,7 +18,7 @@ use utils::c_to_rust_string;
 /// The state stored in the wlr_surface user data.
 struct InternalSurfaceState {
     /// Used to reconstruct a SurfaceHandle from just an *mut wlr_surface.
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     /// Weak reference to the manager for the list of subsurfaces.
     /// This is here so that we can reconstruct the Surface from a SurfaceHandle.
     subsurfaces_manager: Weak<Box<SubsurfaceManager>>
@@ -39,7 +39,7 @@ pub struct Surface {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `SurfaceHandle`.
-    liveliness: Option<Rc<AtomicBool>>,
+    liveliness: Option<Rc<Cell<bool>>>,
     /// The manager of the list of subsurfaces for this surface.
     ///
     /// When the subsurface destruction event fires the manager will deal with
@@ -59,7 +59,7 @@ pub struct SurfaceHandle {
     ///
     /// When wlroots deallocates the pointer associated with this handle,
     /// this can no longer be used.
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     /// Weak reference to the manager of the list of subsurfaces for this surface.
     ///
     /// Used when reconstructing a `Surface` so that we can access
@@ -74,7 +74,7 @@ impl Surface {
         if !(*surface).data.is_null() {
             panic!("Tried to construct a Surface from an already initialized wlr_surface");
         }
-        let liveliness = Rc::new(AtomicBool::new(false));
+        let liveliness = Rc::new(Cell::new(false));
         let handle = Rc::downgrade(&liveliness);
         let subsurfaces_manager = Rc::new(Surface::create_manager(surface));
         let weak_manager = Rc::downgrade(&subsurfaces_manager);
@@ -245,7 +245,7 @@ impl Surface {
     pub(crate) unsafe fn set_lock(&self, val: bool) {
         self.liveliness.as_ref()
             .expect("Tried to set lock on borrowed Surface")
-            .store(val, Ordering::Release);
+            .set(val);
     }
 
     unsafe fn from_handle(handle: &SurfaceHandle) -> Self {
@@ -297,10 +297,10 @@ impl SurfaceHandle {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(Surface::from_handle(self))
             })
     }
@@ -328,14 +328,14 @@ impl SurfaceHandle {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut surface)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running surface callback, mutable lock \
                                                     was false for: {:?}",
                                                    surface);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),

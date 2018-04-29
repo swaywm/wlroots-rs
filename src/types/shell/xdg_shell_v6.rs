@@ -1,8 +1,8 @@
 //! TODO Documentation
 
 use std::{panic, ptr};
+use std::cell::Cell;
 use std::rc::{Rc, Weak};
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
                   wlr_xdg_surface_v6_popup_get_position, wlr_xdg_surface_v6_role,
@@ -18,7 +18,7 @@ use utils::c_to_rust_string;
 
 /// Used internally to reclaim a handle from just a *mut wlr_xdg_surface_v6.
 struct XdgV6ShellSurfaceState {
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     shell_state: Option<XdgV6ShellState>
 }
 
@@ -45,7 +45,7 @@ pub enum XdgV6ShellState {
 
 #[derive(Debug)]
 pub struct XdgV6ShellSurface {
-    liveliness: Option<Rc<AtomicBool>>,
+    liveliness: Option<Rc<Cell<bool>>>,
     state: Option<XdgV6ShellState>,
     shell_surface: *mut wlr_xdg_surface_v6
 }
@@ -53,7 +53,7 @@ pub struct XdgV6ShellSurface {
 #[derive(Debug)]
 pub struct XdgV6ShellSurfaceHandle {
     state: Option<XdgV6ShellState>,
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     shell_surface: *mut wlr_xdg_surface_v6
 }
 
@@ -76,7 +76,7 @@ impl XdgV6ShellSurface {
         let state = state.into();
         // TODO FIXME Free state in drop impl when Rc == 1
         (*shell_surface).data = ptr::null_mut();
-        let liveliness = Rc::new(AtomicBool::new(false));
+        let liveliness = Rc::new(Cell::new(false));
         let shell_state =
             Box::new(XdgV6ShellSurfaceState { handle: Rc::downgrade(&liveliness),
                                               shell_state: match state {
@@ -203,7 +203,7 @@ impl XdgV6ShellSurface {
     pub(crate) unsafe fn set_lock(&self, val: bool) {
         self.liveliness.as_ref()
             .expect("Tried to set lock on borrowed XdgV6ShellSurface")
-            .store(val, Ordering::Release);
+            .set(val);
     }
 }
 
@@ -252,10 +252,10 @@ impl XdgV6ShellSurfaceHandle {
             // pointer to exist!
             .and_then(|check| {
                 let shell_surface = XdgV6ShellSurface::from_handle(self);
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(shell_surface)
             })
     }
@@ -283,14 +283,14 @@ impl XdgV6ShellSurfaceHandle {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut xdg_surface)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running XdgV6ShellSurface callback, \
                                                     mutable lock was false for: {:?}",
                                                    xdg_surface);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),

@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use std::{panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
+use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 
 use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_touch};
@@ -18,7 +18,7 @@ pub struct Touch {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `TouchHandle`.
-    liveliness: Option<Rc<AtomicBool>>,
+    liveliness: Option<Rc<Cell<bool>>>,
     /// The device that refers to this touch.
     device: InputDevice,
     /// The underlying touch data.
@@ -31,7 +31,7 @@ pub struct TouchHandle {
     ///
     /// When wlroots deallocates the touch associated with this handle,
     /// this can no longer be used.
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     /// The device that refers to this touch.
     device: InputDevice,
     /// The underlying touch data.
@@ -51,7 +51,7 @@ impl Touch {
         match (*device).type_ {
             WLR_INPUT_DEVICE_TOUCH => {
                 let touch = (*device).__bindgen_anon_1.touch;
-                Some(Touch { liveliness: Some(Rc::new(AtomicBool::new(false))),
+                Some(Touch { liveliness: Some(Rc::new(Cell::new(false))),
                              device: InputDevice::from_ptr(device),
                              touch })
             }
@@ -101,7 +101,7 @@ impl Touch {
     pub(crate) unsafe fn set_lock(&self, val: bool) {
         self.liveliness.as_ref()
             .expect("Tried to set lock on borrowed Touch")
-            .store(val, Ordering::Release);
+            .set(val);
     }
 }
 impl Drop for Touch {
@@ -155,11 +155,11 @@ impl TouchHandle {
             // touch to exist!
             .and_then(|check| {
                 let touch = Touch::from_handle(self)?;
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     wlr_log!(L_ERROR, "Double mutable borrows on {:?}", touch);
                     panic!("Double mutable borrows detected");
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(touch)
             })
     }
@@ -187,14 +187,14 @@ impl TouchHandle {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut touch)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running touch callback, mutable lock \
                                                     was false for: {:?}",
                                                    touch);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),

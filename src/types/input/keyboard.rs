@@ -1,5 +1,5 @@
 //! TODO Documentation
-use std::{fmt, panic, ptr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
+use std::{fmt, panic, ptr, cell::Cell, rc::{Rc, Weak}};
 
 use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
@@ -12,7 +12,7 @@ use xkbcommon::xkb::ffi::{xkb_keymap, xkb_state};
 use InputDevice;
 
 struct KeyboardState {
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     device: InputDevice
 }
 
@@ -36,7 +36,7 @@ pub struct Keyboard {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `KeyboardHandle`.
-    liveliness: Option<Rc<AtomicBool>>,
+    liveliness: Option<Rc<Cell<bool>>>,
     /// The device that refers to this keyboard.
     device: InputDevice,
     /// The underlying keyboard data.
@@ -48,7 +48,7 @@ pub struct KeyboardHandle {
     /// The Rc that ensures that this handle is still alive.
     ///
     /// When wlroots deallocates the keyboard associated with this handle,
-    handle: Weak<AtomicBool>,
+    handle: Weak<Cell<bool>>,
     /// The device that refers to this keyboard.
     device: InputDevice,
     /// The underlying keyboard data.
@@ -68,7 +68,7 @@ impl Keyboard {
         match (*device).type_ {
             WLR_INPUT_DEVICE_KEYBOARD => {
                 let keyboard = (*device).__bindgen_anon_1.keyboard;
-                let liveliness = Rc::new(AtomicBool::new(false));
+                let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
                 let state = Box::new(KeyboardState { handle,
                                                      device: InputDevice::from_ptr(device) });
@@ -210,7 +210,7 @@ impl Keyboard {
     pub(crate) unsafe fn set_lock(&self, val: bool) {
         self.liveliness.as_ref()
             .expect("Tried to set lock on borrowed Keyboard")
-            .store(val, Ordering::Release);
+            .set(val);
     }
 }
 
@@ -280,10 +280,10 @@ impl KeyboardHandle {
             // pointer to exist!
             .and_then(|check| {
                 let keyboard = Keyboard::from_handle(self)?;
-                if check.load(Ordering::Acquire) {
+                if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
-                check.store(true, Ordering::Release);
+                check.set(true);
                 Ok(keyboard)
             })
     }
@@ -311,14 +311,14 @@ impl KeyboardHandle {
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut keyboard)));
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
-                                      if !check.load(Ordering::Acquire) {
+                                      if !check.get() {
                                           wlr_log!(L_ERROR,
                                                    "After running keyboard callback, mutable \
                                                     lock was false for: {:?}",
                                                    keyboard);
                                           panic!("Lock in incorrect state!");
                                       }
-                                      check.store(false, Ordering::Release);
+                                      check.set(false);
                                   });
         match res {
             Ok(res) => Ok(res),
