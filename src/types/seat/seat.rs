@@ -330,12 +330,12 @@ impl Seat {
     /// Panics when trying to set the lock on an upgraded handle.
     unsafe fn set_lock(&self, val: bool) {
         let counter = &(*((*self.data.0).data as *mut SeatState)).counter;
-        counter.as_ref().store(val, Ordering::Release);
+        counter.as_ref().set(val);
     }
 
     unsafe fn get_lock(&self) -> bool {
         (*((*self.data.0).data as *mut SeatState)).counter
-                                                  .load(Ordering::Relaxed)
+                                                  .get()
     }
 
     /// Get the name of the seat.

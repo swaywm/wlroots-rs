@@ -367,12 +367,11 @@ impl Cursor {
     /// Panics when trying to set the lock on an upgraded handle.
     unsafe fn set_lock(&self, val: bool) {
         let counter = &(*((*self.data.0).data as *mut CursorState)).counter;
-        counter.as_ref().store(val, Ordering::Release);
+        counter.as_ref().set(val);
     }
 
     unsafe fn get_lock(&self) -> bool {
-        (*((*self.data.0).data as *mut CursorState)).counter
-                                                    .load(Ordering::Relaxed)
+        (*((*self.data.0).data as *mut CursorState)).counter.get()
     }
 
     /// Attach this cursor to an output layout.
