@@ -32,55 +32,78 @@ wayland_listener!(UserOutput, (Output, Box<OutputHandler>), [
     frame_listener => frame_notify: |this: &mut UserOutput, _output: *mut libc::c_void,| unsafe {
         let (ref mut output, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         output.set_lock(true);
         manager.on_frame(compositor, output);
         output.set_lock(false);
+        compositor.lock.set(false);
     };
     mode_listener => mode_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
     unsafe {
         let (ref mut output, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         output.set_lock(true);
         manager.on_mode_change(compositor, output);
         output.set_lock(false);
+        compositor.lock.set(false);
     };
     enable_listener => enable_notify: |this: &mut UserOutput, _output: *mut libc::c_void,| unsafe {
         let (ref mut output, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         output.set_lock(true);
         manager.on_enable(compositor, output);
         output.set_lock(false);
+        compositor.lock.set(false);
     };
     scale_listener => scale_notify: |this: &mut UserOutput, _output: *mut libc::c_void,| unsafe {
         let (ref mut output, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         output.set_lock(true);
         manager.on_scale_change(compositor, output);
         output.set_lock(false);
+        compositor.lock.set(false);
     };
     transform_listener => transform_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
     unsafe {
         let (ref mut output, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         output.set_lock(true);
         manager.on_transform(compositor, output);
         output.set_lock(false);
+        compositor.lock.set(false);
     };
     swap_buffers_listener => swap_buffers_notify: |this: &mut UserOutput,
-                                                   _output: *mut libc::c_void,| unsafe {
+                                                   _output: *mut libc::c_void,|
+    unsafe {
+
         let (ref mut output, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         output.set_lock(true);
         manager.on_buffers_swapped(compositor, output);
         output.set_lock(false);
+        compositor.lock.set(false);
     };
     need_swap_listener => need_swap_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
     unsafe {
         let (ref mut output, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         output.set_lock(true);
         manager.needs_swap(compositor, output);
         output.set_lock(false);
+        compositor.lock.set(false);
     };
 ]);
 

@@ -28,33 +28,45 @@ wayland_listener!(TouchWrapper, (Touch, Box<TouchHandler>), [
         let (ref mut touch, ref mut handler) = this.data;
         let event = DownEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         touch.set_lock(true);
         handler.on_down(compositor, touch, &event);
         touch.set_lock(false);
+        compositor.lock.set(false);
     };
     up_listener => up_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
         let (ref mut touch, ref mut handler) = this.data;
         let event = UpEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         touch.set_lock(true);
         handler.on_up(compositor, touch, &event);
         touch.set_lock(false);
+        compositor.lock.set(false);
     };
     motion_listener => motion_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
         let (ref mut touch, ref mut handler) = this.data;
         let event = MotionEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         touch.set_lock(true);
         handler.on_motion(compositor, touch, &event);
         touch.set_lock(false);
+        compositor.lock.set(false);
     };
     cancel_listener => cancel_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
         let (ref mut touch, ref mut handler) = this.data;
         let event = CancelEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         touch.set_lock(true);
         handler.on_cancel(compositor, touch, &event);
         touch.set_lock(false);
+        compositor.lock.set(false);
     };
 ]);
 

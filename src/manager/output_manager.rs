@@ -93,6 +93,7 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
         let output_clone = output.clone();
         let builder = OutputBuilder { output: &mut output };
         let compositor = &mut *COMPOSITOR_PTR;
+        compositor.lock.set(true);
         output_clone.set_lock(true);
         let res = panic::catch_unwind(
             panic::AssertUnwindSafe(||manager.output_added(compositor, builder)));
@@ -107,6 +108,7 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
             // To fix this, we abort the process if there was a panic in output setup.
             Err(_) => ::std::process::abort()
         };
+        compositor.lock.set(false);
         if let Some(OutputBuilderResult {result: output_ptr, .. }) = build_result {
             output_clone.set_lock(false);
             let mut output = UserOutput::new((output_clone, output_ptr));
@@ -146,6 +148,7 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
             return;
         }
         let compositor = &mut *COMPOSITOR_PTR;
+        compositor.lock.set(true);
         // NOTE
         // We get it from the list so that we can get the Rc'd `Output`, because there's
         // no way to re-construct that using just the raw pointer.
@@ -158,11 +161,13 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
                 match layout.run(|layout| layout.remove(output)) {
                     Ok(_) | Err(HandleErr::AlreadyDropped) => {},
                     Err(HandleErr::AlreadyBorrowed) => {
+                        compositor.lock.set(false);
                         panic!("Tried to remove layout from output, but it's already borrowed");
                     }
                 }
             }
         }
+        compositor.lock.set(false);
         // Remove user output data
         if let Some(index) = outputs.iter().position(|output| output.output_ptr() == data) {
             let mut removed_output = outputs.remove(index);

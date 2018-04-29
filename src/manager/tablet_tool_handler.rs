@@ -25,9 +25,12 @@ wayland_listener!(TabletToolWrapper, (TabletTool, Box<TabletToolHandler>), [
         let (ref mut tool, ref mut handler) = this.data;
         let event = AxisEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         tool.set_lock(true);
         handler.on_axis(compositor, tool, &event);
         tool.set_lock(false);
+        compositor.lock.set(false);
     };
     proximity_listener => proximity_notify: |this: &mut TabletToolWrapper,
     data: *mut libc::c_void,|
@@ -35,26 +38,35 @@ wayland_listener!(TabletToolWrapper, (TabletTool, Box<TabletToolHandler>), [
         let (ref mut tool, ref mut handler) = this.data;
         let event = ProximityEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         tool.set_lock(true);
         handler.on_proximity(compositor, tool, &event);
         tool.set_lock(false);
+        compositor.lock.set(false);
     };
     tip_listener => tip_notify: |this: &mut TabletToolWrapper, data: *mut libc::c_void,| unsafe {
         let (ref mut tool, ref mut handler) = this.data;
         let event = TipEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         tool.set_lock(true);
         handler.on_tip(compositor, tool, &event);
         tool.set_lock(false);
+        compositor.lock.set(false);
     };
     button_listener => button_notify: |this: &mut TabletToolWrapper, data: *mut libc::c_void,|
     unsafe {
         let (ref mut tool, ref mut handler) = this.data;
         let event = ButtonEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         tool.set_lock(true);
         handler.on_button(compositor, tool, &event);
         tool.set_lock(false);
+        compositor.lock.set(false);
     };
 ]);
 

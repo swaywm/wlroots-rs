@@ -102,10 +102,11 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
         let mut event = pointer_events::MotionEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_pointer_motion(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
@@ -118,42 +119,43 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
         let mut cursor = Cursor::from_ptr(cursor_ptr);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_pointer_motion_absolute(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
     };
-    pointer_button_listener => pointer_button_notify:
-    |this: &mut Cursor, event: *mut libc::c_void,|
+    pointer_button_listener => pointer_button_notify: |this: &mut Cursor, event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let mut cursor = Cursor::from_ptr(cursor_ptr);
         let mut event = pointer_events::ButtonEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_pointer_button(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
     };
-    pointer_axis_listener => pointer_axis_notify:
-    |this: &mut Cursor, event: *mut libc::c_void,|
+    pointer_axis_listener => pointer_axis_notify: |this: &mut Cursor, event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let mut cursor = Cursor::from_ptr(cursor_ptr);
         let mut event = pointer_events::AxisEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_pointer_axis(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
@@ -165,10 +167,11 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
         let mut event = touch_events::UpEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_touch_up(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
@@ -180,106 +183,111 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
         let mut event = touch_events::DownEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_touch_down(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
     };
-    touch_motion_listener => touch_motion_notify:
-    |this: &mut Cursor, event: *mut libc::c_void,|
+    touch_motion_listener => touch_motion_notify: |this: &mut Cursor, event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let mut cursor = Cursor::from_ptr(cursor_ptr);
         let mut event = touch_events::MotionEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_touch_motion(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
     };
-    touch_cancel_listener => touch_cancel_notify:
-    |this: &mut Cursor, event: *mut libc::c_void,|
+    touch_cancel_listener => touch_cancel_notify: |this: &mut Cursor, event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let mut cursor = Cursor::from_ptr(cursor_ptr);
         let mut event = touch_events::CancelEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_touch_cancel(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
     };
-    tablet_tool_axis_listener => tablet_tool_axis_notify:
-    |this: &mut Cursor, event: *mut libc::c_void,|
+    tablet_tool_axis_listener => tablet_tool_axis_notify: |this: &mut Cursor,
+                                                           event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let mut cursor = Cursor::from_ptr(cursor_ptr);
         let mut event = tablet_tool_events::AxisEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_tablet_tool_axis(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
     };
-    tablet_tool_proximity_listener => tablet_tool_proximity_notify:
-    |this: &mut Cursor, event: *mut libc::c_void,|
+    tablet_tool_proximity_listener => tablet_tool_proximity_notify: |this: &mut Cursor,
+                                                                     event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let mut cursor = Cursor::from_ptr(cursor_ptr);
         let mut event = tablet_tool_events::ProximityEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_tablet_tool_proximity(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
     };
-    tablet_tool_tip_listener => tablet_tool_tip_notify:
-    |this: &mut Cursor, event: *mut libc::c_void,|
+    tablet_tool_tip_listener => tablet_tool_tip_notify: |this: &mut Cursor,
+                                                         event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let mut cursor = Cursor::from_ptr(cursor_ptr);
         let mut event = tablet_tool_events::TipEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_tablet_tool_tip(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
     };
-    tablet_tool_button_listener => tablet_tool_button_notify:
-    |this: &mut Cursor, event: *mut libc::c_void,|
+    tablet_tool_button_listener => tablet_tool_button_notify: |this: &mut Cursor,
+                                                               event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let mut cursor = Cursor::from_ptr(cursor_ptr);
         let mut event = tablet_tool_events::ButtonEvent::from_ptr(event as _);
         let compositor = &mut *COMPOSITOR_PTR;
 
+        let prev_cursor_lock = cursor.get_lock();
         compositor.lock.set(true);
         cursor.set_lock(true);
         cursor_handler.on_tablet_tool_button(compositor, &mut cursor, &mut event);
-        cursor.set_lock(false);
+        cursor.set_lock(prev_cursor_lock);
         compositor.lock.set(false);
 
         Box::into_raw(cursor);
@@ -360,6 +368,11 @@ impl Cursor {
     unsafe fn set_lock(&self, val: bool) {
         let counter = &(*((*self.data.0).data as *mut CursorState)).counter;
         counter.as_ref().store(val, Ordering::Release);
+    }
+
+    unsafe fn get_lock(&self) -> bool {
+        (*((*self.data.0).data as *mut CursorState)).counter
+                                                    .load(Ordering::Relaxed)
     }
 
     /// Attach this cursor to an output layout.

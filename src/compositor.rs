@@ -2,9 +2,10 @@
 //! See examples for documentation on how to use this struct.
 
 use libc;
-use std::{env, ptr, any::Any, cell::UnsafeCell, ffi::CStr};
+use std::{env, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr};
 
 use {DataDeviceManager, SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
+use errors::{HandleErr, HandleResult};
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               WlShellManager, WlShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
@@ -86,7 +87,11 @@ pub struct Compositor {
     /// The DnD manager
     data_device_manager: Option<DataDeviceManager>,
     /// The error from the panic, if there was one.
-    panic_error: Option<Box<Any + Send>>
+    panic_error: Option<Box<Any + Send>>,
+    /// Lock used to borrow the compositor globally.
+    /// Should always be set before passing a reference to the compositor
+    /// in a callback.
+    pub(crate) lock: Cell<bool>
 }
 
 pub struct CompositorBuilder {
@@ -313,7 +318,8 @@ impl CompositorBuilder {
                          server_decoration_manager,
                          renderer,
                          xwayland,
-                         panic_error: None }
+                         panic_error: None,
+                         lock: Cell::new(false) }
         }
     }
 }
@@ -398,6 +404,30 @@ pub fn terminate() {
     unsafe {
         if COMPOSITOR_PTR != 0 as _ {
             (*COMPOSITOR_PTR).terminate();
+        }
+    }
+}
+
+/// Runs a function with the compositor as an argument.
+///
+/// Note this will fail if you are within a wayland callback because at that
+/// time the compositor is provided to you.
+///
+/// This method is only useful if you are trying to operate on the compositor
+/// state while not in the wayland event loop.
+pub fn with_compositor<F, R>(func: F) -> HandleResult<R>
+    where F: FnOnce(&mut Compositor) -> R
+{
+    unsafe {
+        if COMPOSITOR_PTR.is_null() {
+            return Err(HandleErr::AlreadyDropped)
+        }
+        let compositor = &mut *COMPOSITOR_PTR;
+        if compositor.lock.get() {
+            return Err(HandleErr::AlreadyBorrowed)
+        } else {
+            compositor.lock.set(true);
+            Ok(func(compositor))
         }
     }
 }

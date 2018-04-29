@@ -21,7 +21,10 @@ wayland_listener!(XWaylandManager, Box<XWaylandManagerHandler>, [
     unsafe {
         let manager = &mut this.data;
         let compositor = &mut *COMPOSITOR_PTR;
-        manager.on_ready(compositor)
+
+        compositor.lock.set(true);
+        manager.on_ready(compositor);
+        compositor.lock.set(false);
     };
     new_surface_listener => new_surface_notify: |this: &mut XWaylandManager,
                                                  data: *mut libc::c_void,|
@@ -29,7 +32,10 @@ wayland_listener!(XWaylandManager, Box<XWaylandManagerHandler>, [
         let manager = &mut this.data;
         let surface = data as *mut wlr_xwayland_surface;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         // TODO Pass in the new surface from the data
         manager.new_surface(compositor);
+        compositor.lock.set(false);
     };
 ]);
