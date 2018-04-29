@@ -1,7 +1,7 @@
 use libc::c_int;
 use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::{wl_display, wlr_compositor, wlr_xwayland, wlr_xwayland_create,
-                  wlr_xwayland_destroy, pid_t, wl_client};
+use wlroots_sys::{pid_t, wl_client, wl_display, wlr_compositor, wlr_xwayland, wlr_xwayland_create,
+                  wlr_xwayland_destroy};
 
 use super::{XWaylandManager, XWaylandManagerHandler};
 
@@ -16,14 +16,14 @@ impl XWaylandServer {
                              manager: Box<XWaylandManagerHandler>)
                              -> Self {
         let xwayland = wlr_xwayland_create(display, compositor);
+        if xwayland.is_null() {
+            panic!("Could not start XWayland server")
+        }
         let mut manager = XWaylandManager::new(manager);
         wl_signal_add(&mut (*xwayland).events.ready as *mut _ as _,
                       manager.on_ready_listener() as *mut _ as _);
         wl_signal_add(&mut (*xwayland).events.new_surface as *mut _ as _,
                       manager.new_surface_listener() as *mut _ as _);
-        if xwayland.is_null() {
-            panic!("Could not start XWayland server")
-        }
         XWaylandServer { xwayland, manager }
     }
 
@@ -45,7 +45,7 @@ impl XWaylandServer {
     }
 
     pub fn wm_fd(&self) -> [c_int; 2] {
-        unsafe {(*self.xwayland).wm_fd }
+        unsafe { (*self.xwayland).wm_fd }
     }
 
     pub fn wl_client(&self) -> *mut wl_client {
