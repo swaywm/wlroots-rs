@@ -95,9 +95,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let pointer_grab = &mut *(event as *mut PointerGrab);
         let mut seat = Seat::from_ptr(seat_ptr);
-         handler.pointer_grabbed(compositor,
-                                                    &mut seat,
-                                                    pointer_grab);
+
+        seat.set_lock(true);
+        handler.pointer_grabbed(compositor, &mut seat, pointer_grab);
+        seat.set_lock(false);
+
         Box::into_raw(seat);
     };
 
@@ -108,9 +110,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let pointer_grab = &mut *(event as *mut PointerGrab);
         let mut seat = Seat::from_ptr(seat_ptr);
-         handler.pointer_released(compositor,
-                                                     &mut seat,
-                                                     pointer_grab);
+
+        seat.set_lock(true);
+        handler.pointer_released(compositor, &mut seat, pointer_grab);
+        seat.set_lock(false);
+
         Box::into_raw(seat);
     };
     keyboard_grab_begin_listener => keyboard_grab_begin_notify: |this: &mut Seat,
@@ -120,9 +124,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let keyboard_grab = &mut *(event as *mut KeyboardGrab);
         let mut seat = Seat::from_ptr(seat_ptr);
-         handler.keyboard_grabbed(compositor,
-                                                         &mut seat,
-                                                         keyboard_grab);
+
+        seat.set_lock(true);
+        handler.keyboard_grabbed(compositor, &mut seat, keyboard_grab);
+        seat.set_lock(false);
+
         Box::into_raw(seat);
     };
     keyboard_grab_end_listener => keyboard_grab_end_notify: |this: &mut Seat,
@@ -132,9 +138,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let keyboard_grab = &mut *(event as *mut KeyboardGrab);
         let mut seat = Seat::from_ptr(seat_ptr);
-         handler.keyboard_released(compositor,
-                                                          &mut seat,
-                                                          keyboard_grab);
+
+        seat.set_lock(true);
+        handler.keyboard_released(compositor, &mut seat, keyboard_grab);
+        seat.set_lock(false);
+
         Box::into_raw(seat);
     };
     touch_grab_begin_listener => touch_grab_begin_notify: |this: &mut Seat,
@@ -144,9 +152,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let touch_grab = &mut *(event as *mut TouchGrab);
         let mut seat = Seat::from_ptr(seat_ptr);
-        handler.touch_grabbed(compositor,
-                              &mut seat,
-                                                      touch_grab);
+
+        seat.set_lock(true);
+        handler.touch_grabbed(compositor, &mut seat, touch_grab);
+        seat.set_lock(false);
+
         Box::into_raw(seat);
     };
     touch_grab_end_listener => touch_grab_end_notify: |this: &mut Seat,
@@ -156,9 +166,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         let compositor = &mut *COMPOSITOR_PTR;
         let touch_grab = &mut *(event as *mut TouchGrab);
         let mut seat = Seat::from_ptr(seat_ptr);
-         handler.touch_released(compositor,
-                                &mut seat,
-                                                       touch_grab);
+
+        seat.set_lock(true);
+        handler.touch_released(compositor, &mut seat, touch_grab);
+        seat.set_lock(false);
+
         Box::into_raw(seat);
     };
     request_set_cursor_listener => request_set_cursor_notify: |this: &mut Seat,
@@ -169,8 +181,10 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         let event_ptr = event_ptr as *mut wlr_seat_pointer_request_set_cursor_event;
         let mut event = SetCursorEvent::from_ptr(event_ptr);
         let mut seat = Seat::from_ptr(seat_ptr);
-         handler.cursor_set(compositor, &mut seat,
-                                                   &mut event);
+        seat.set_lock(true);
+        handler.cursor_set(compositor, &mut seat, &mut event);
+        seat.set_lock(false);
+
         Box::into_raw(seat);
     };
     selection_listener => selection_notify: |this: &mut Seat, _event: *mut libc::c_void,|
@@ -178,7 +192,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         let mut seat = Seat::from_ptr(seat_ptr);
-         handler.received_selection(compositor, &mut seat);
+
+        seat.set_lock(true);
+        handler.received_selection(compositor, &mut seat);
+        seat.set_lock(false);
+
         Box::into_raw(seat);
     };
     primary_selection_listener => primary_selection_notify: |this: &mut Seat,
@@ -187,7 +205,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         let mut seat = Seat::from_ptr(seat_ptr);
+
+        seat.set_lock(true);
         handler.primary_selection(compositor, &mut seat);
+        seat.set_lock(false);
+
         Box::into_raw(seat);
     };
     destroy_listener => destroy_notify: |this: &mut Seat, _event: *mut libc::c_void,|
@@ -199,7 +221,11 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
         }
         let compositor = &mut *COMPOSITOR_PTR;
         let mut seat = Seat::from_ptr(seat_ptr);
+
+        seat.set_lock(true);
         handler.destroy(compositor, &mut seat);
+        seat.set_lock(false);
+
         // NOTE Destructor is already being run,
         // otherwise this would be a double free.
         Box::into_raw(seat);
@@ -264,6 +290,16 @@ impl Seat {
             SeatHandle { seat: self.data.0,
                          handle }
         }
+    }
+
+    /// Manually set the lock used to determine if a double-borrow is
+    /// occuring on this structure.
+    ///
+    /// # Panics
+    /// Panics when trying to set the lock on an upgraded handle.
+    unsafe fn set_lock(&self, val: bool) {
+        let counter = &(*((*self.data.0).data as *mut SeatState)).counter;
+        counter.as_ref().store(val, Ordering::Release);
     }
 
     /// Get the name of the seat.
