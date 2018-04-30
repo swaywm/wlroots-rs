@@ -427,7 +427,9 @@ pub fn with_compositor<F, R>(func: F) -> HandleResult<R>
             return Err(HandleErr::AlreadyBorrowed)
         } else {
             compositor.lock.set(true);
-            Ok(func(compositor))
+            let res = Ok(func(compositor));
+            compositor.lock.set(false);
+            res
         }
     }
 }
