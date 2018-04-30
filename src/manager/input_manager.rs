@@ -120,12 +120,13 @@ pub trait InputManagerHandler {
 
 wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
     add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
+        let compositor = &mut *COMPOSITOR_PTR;
+        compositor.lock.set(true);
         let data = data as *mut wlr_input_device;
         let remove_listener = this.remove_listener()  as *mut _ as _;
         let (ref mut inputs, ref mut manager) = this.data;
         use self::wlr_input_device_type::*;
         let mut dev = InputDevice::from_ptr(data);
-        let compositor = &mut *COMPOSITOR_PTR;
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             match dev.dev_type() {
                 WLR_INPUT_DEVICE_KEYBOARD => {
@@ -261,10 +262,12 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
             }
             manager.input_added(compositor, &mut dev)
         }));
-        wl_signal_add(&mut (*dev.as_ptr()).events.destroy as *mut _ as _,
-                      remove_listener);
         match res {
-            Ok(_) => {},
+            Ok(_) => {
+                compositor.lock.set(false);
+                wl_signal_add(&mut (*dev.as_ptr()).events.destroy as *mut _ as _,
+                              remove_listener);
+            },
             // NOTE
             // Either Wayland or wlroots does not handle failure to set up input correctly.
             // Calling wl_display_terminate does not work if input is incorrectly set up.
@@ -283,6 +286,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
             return;
         }
         let compositor = &mut *COMPOSITOR_PTR;
+        compositor.lock.set(true);
         manager.input_removed(compositor, &mut InputDevice::from_ptr(data));
         // Remove user output data
         let find_index = inputs.iter()
@@ -355,6 +359,7 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                 }
             }
         }
+        compositor.lock.set(false);
     };
 ]);
 

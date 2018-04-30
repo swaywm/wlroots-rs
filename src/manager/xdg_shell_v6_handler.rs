@@ -68,94 +68,121 @@ wayland_listener!(XdgV6Shell, (XdgV6ShellSurface, Surface, Box<XdgV6ShellHandler
     commit_listener => commit_notify: |this: &mut XdgV6Shell, _data: *mut libc::c_void,| unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         shell_surface.set_lock(true);
         surface.set_lock(true);
         manager.on_commit(compositor, surface, shell_surface);
         shell_surface.set_lock(false);
         surface.set_lock(false);
+        compositor.lock.set(false);
     };
     ping_timeout_listener => ping_timeout_notify: |this: &mut XdgV6Shell,
                                                    _data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         shell_surface.set_lock(true);
         surface.set_lock(true);
         manager.ping_timeout(compositor, surface, shell_surface);
         shell_surface.set_lock(false);
         surface.set_lock(false);
+        compositor.lock.set(false);
     };
     new_popup_listener => new_popup_notify: |this: &mut XdgV6Shell, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         shell_surface.set_lock(true);
         surface.set_lock(true);
         manager.new_popup(compositor, surface, shell_surface);
         shell_surface.set_lock(false);
         surface.set_lock(false);
+        compositor.lock.set(false);
     };
     maximize_listener => maximize_notify: |this: &mut XdgV6Shell, _event: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         shell_surface.set_lock(true);
         surface.set_lock(true);
         manager.maximize_request(compositor, surface, shell_surface);
         shell_surface.set_lock(false);
         surface.set_lock(false);
+        compositor.lock.set(false);
     };
     fullscreen_listener => fullscreen_notify: |this: &mut XdgV6Shell, event: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         let mut event = SetFullscreenEvent::from_ptr(event as _);
+
+        compositor.lock.set(true);
         shell_surface.set_lock(true);
         surface.set_lock(true);
         manager.fullscreen_request(compositor, surface, shell_surface, &mut event);
         shell_surface.set_lock(false);
         surface.set_lock(false);
+        compositor.lock.set(false);
     };
     minimize_listener => minimize_notify: |this: &mut XdgV6Shell, _event: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         shell_surface.set_lock(true);
         surface.set_lock(true);
         manager.minimize_request(compositor, surface, shell_surface);
         shell_surface.set_lock(false);
         surface.set_lock(false);
+        compositor.lock.set(false);
     };
     move_listener => move_notify: |this: &mut XdgV6Shell, event: *mut libc::c_void,| unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         let mut event = MoveEvent::from_ptr(event as _);
+
+        compositor.lock.set(true);
         shell_surface.set_lock(true);
         surface.set_lock(true);
         manager.move_request(compositor, surface, shell_surface, &mut event);
         shell_surface.set_lock(false);
         surface.set_lock(false);
+        compositor.lock.set(false);
     };
     resize_listener => resize_notify: |this: &mut XdgV6Shell, event: *mut libc::c_void,| unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         let mut event = ResizeEvent::from_ptr(event as _);
+
+        compositor.lock.set(true);
         shell_surface.set_lock(true);
         surface.set_lock(true);
         manager.resize_request(compositor, surface, shell_surface, &mut event);
         shell_surface.set_lock(false);
         surface.set_lock(false);
+        compositor.lock.set(false);
     };
     show_window_menu_listener => show_window_menu_notify: |this: &mut XdgV6Shell,
                                                            event: *mut libc::c_void,| unsafe {
         let (ref mut shell_surface, ref mut surface, ref mut manager) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
         let mut event = ShowWindowMenuEvent::from_ptr(event as _);
+
+        compositor.lock.set(true);
         shell_surface.set_lock(true);
         surface.set_lock(true);
         manager.show_window_menu_request(compositor, surface, shell_surface, &mut event);
         shell_surface.set_lock(false);
         surface.set_lock(false);
+        compositor.lock.set(false);
     };
 ]);
 

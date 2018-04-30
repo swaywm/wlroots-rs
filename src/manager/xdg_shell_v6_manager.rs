@@ -43,9 +43,13 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
             }
         };
         let mut shell_surface = XdgV6ShellSurface::new(data, state);
+
+        compositor.lock.set(true);
         shell_surface.set_lock(true);
         let new_surface_res = manager.new_surface(compositor, &mut shell_surface);
         shell_surface.set_lock(false);
+        compositor.lock.set(false);
+
         if let Some(shell_surface_handler) = new_surface_res {
 
             let mut shell_surface = XdgV6Shell::new((shell_surface,

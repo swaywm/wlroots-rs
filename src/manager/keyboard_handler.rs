@@ -29,36 +29,44 @@ wayland_listener!(KeyboardWrapper, (Keyboard, Box<KeyboardHandler>), [
         let xkb_state = (*keyboard.as_ptr()).xkb_state;
         let mut key = KeyEvent::new(data as *mut wlr_event_keyboard_key, xkb_state);
 
+        compositor.lock.set(true);
         keyboard.set_lock(true);
         keyboard_handler.on_key(compositor, keyboard, &mut key);
         keyboard.set_lock(false);
+        compositor.lock.set(false);
     };
     modifiers_listener => modifiers_notify: |this: &mut KeyboardWrapper, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut keyboard, ref mut keyboard_handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
 
+        compositor.lock.set(true);
         keyboard.set_lock(true);
         keyboard_handler.modifiers(compositor, keyboard);
         keyboard.set_lock(false);
+        compositor.lock.set(false);
     };
     keymap_listener => keymap_notify: |this: &mut KeyboardWrapper, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut keyboard, ref mut keyboard_handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
 
+        compositor.lock.set(true);
         keyboard.set_lock(true);
         keyboard_handler.keymap(compositor, keyboard);
         keyboard.set_lock(false);
+        compositor.lock.set(false);
     };
    repeat_listener => repeat_notify: |this: &mut KeyboardWrapper, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut keyboard, ref mut keyboard_handler) = this.data;
         let compositor = &mut *COMPOSITOR_PTR;
 
+        compositor.lock.set(true);
         keyboard.set_lock(true);
         keyboard_handler.repeat_info(compositor, keyboard);
         keyboard.set_lock(false);
+        compositor.lock.set(false);
     };
 ]);
 

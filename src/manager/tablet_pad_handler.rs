@@ -21,27 +21,36 @@ wayland_listener!(TabletPadWrapper, (TabletPad, Box<TabletPadHandler>), [
         let (ref mut pad, ref mut handler) = this.data;
         let event = ButtonEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         pad.set_lock(true);
         handler.on_button(compositor, pad, &event);
         pad.set_lock(false);
+        compositor.lock.set(false);
     };
     strip_listener => strip_notify: |this: &mut TabletPadWrapper, data: *mut libc::c_void,|
     unsafe {
         let (ref mut pad, ref mut handler) = this.data;
         let event = StripEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         pad.set_lock(true);
         handler.on_strip(compositor, pad, &event);
         pad.set_lock(false);
+        compositor.lock.set(false);
     };
     ring_listener => ring_notify: |this: &mut TabletPadWrapper, data: *mut libc::c_void,|
     unsafe {
         let (ref mut pad, ref mut handler) = this.data;
         let event = RingEvent::from_ptr(data as *mut _);
         let compositor = &mut *COMPOSITOR_PTR;
+
+        compositor.lock.set(true);
         pad.set_lock(true);
         handler.on_ring(compositor, pad, &event);
         pad.set_lock(false);
+        compositor.lock.set(false);
     };
 ]);
 

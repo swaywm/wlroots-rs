@@ -92,6 +92,24 @@ impl Drop for GenericRenderer {
 }
 
 impl<'output> Renderer<'output> {
+    /// Create a texture using this renderer.
+    pub fn create_texture_from_pixels(&mut self,
+                                      format: wl_shm_format,
+                                      stride: u32,
+                                      width: u32,
+                                      height: u32,
+                                      data: &[u8])
+                                      -> Option<Texture> {
+        unsafe {
+            create_texture_from_pixels(self.renderer,
+                                       format,
+                                       stride,
+                                       width,
+                                       height,
+                                       data.as_ptr() as _)
+        }
+    }
+
     pub fn clear(&mut self, float: [f32; 4]) {
         unsafe { wlr_renderer_clear(self.renderer, float.as_ptr()) }
     }

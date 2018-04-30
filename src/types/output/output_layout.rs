@@ -54,7 +54,14 @@ wayland_listener!(OutputLayout, (*mut wlr_output_layout, Box<OutputLayoutHandler
         let layout_output = OutputLayoutOutput{layout_output, phantom: PhantomData};
         let compositor = &mut *COMPOSITOR_PTR;
         let mut output_layout = OutputLayout::from_ptr(output_ptr);
+
+        let prev_output_layout_lock = output_layout.get_lock();
+        compositor.lock.set(true);
+        output_layout.set_lock(true);
         manager.output_added(compositor, &mut output_layout, layout_output);
+        output_layout.set_lock(prev_output_layout_lock);
+        compositor.lock.set(false);
+
         Box::into_raw(output_layout);
     };
     output_remove_listener => output_remove_notify: |this: &mut OutputLayout,
@@ -65,7 +72,14 @@ wayland_listener!(OutputLayout, (*mut wlr_output_layout, Box<OutputLayoutHandler
         let layout_output = OutputLayoutOutput { layout_output, phantom: PhantomData};
         let compositor = &mut *COMPOSITOR_PTR;
         let mut output_layout = OutputLayout::from_ptr(output_ptr);
+
+        let prev_output_layout_lock = output_layout.get_lock();
+        compositor.lock.set(true);
+        output_layout.set_lock(true);
         manager.output_removed(compositor, &mut output_layout, layout_output);
+        output_layout.set_lock(prev_output_layout_lock);
+        compositor.lock.set(false);
+
         Box::into_raw(output_layout);
     };
     change_listener => change_notify: |this: &mut OutputLayout, data: *mut libc::c_void,|
@@ -75,7 +89,14 @@ wayland_listener!(OutputLayout, (*mut wlr_output_layout, Box<OutputLayoutHandler
         let layout_output = OutputLayoutOutput { layout_output, phantom: PhantomData};
         let compositor = &mut *COMPOSITOR_PTR;
         let mut output_layout = OutputLayout::from_ptr(output_ptr);
+
+        let prev_output_layout_lock = output_layout.get_lock();
+        compositor.lock.set(true);
+        output_layout.set_lock(true);
         manager.on_change(compositor, &mut output_layout, layout_output);
+        output_layout.set_lock(prev_output_layout_lock);
+        compositor.lock.set(false);
+
         Box::into_raw(output_layout);
     };
 ]);
@@ -314,6 +335,22 @@ impl OutputLayout {
             OutputLayoutHandle { layout: self.data.0,
                                  handle }
         }
+    }
+
+    /// Manually set the lock used to determine if a double-borrow is
+    /// occuring on this structure.
+    ///
+    /// # Panics
+    /// Panics when trying to set the lock on an upgraded handle.
+    unsafe fn set_lock(&self, val: bool) {
+        let counter = &(*((*self.data.0).data as *mut OutputLayoutState)).counter;
+        counter.as_ref().set(val);
+    }
+
+    unsafe fn get_lock(&self) -> bool {
+        (*((*self.data.0).data as *mut OutputLayoutState)).counter
+                                                          .as_ref()
+                                                          .get()
     }
 }
 
