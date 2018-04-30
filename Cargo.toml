@@ -1,5 +1,5 @@
 [workspace]
-members = ["wlroots-sys", "rootston", "example-config"]
+members = ["wlroots-sys"]
 
 [package]
 name = "wlroots"
