@@ -334,8 +334,7 @@ impl Seat {
     }
 
     unsafe fn get_lock(&self) -> bool {
-        (*((*self.data.0).data as *mut SeatState)).counter
-                                                  .get()
+        (*((*self.data.0).data as *mut SeatState)).counter.get()
     }
 
     /// Get the name of the seat.
