@@ -27,7 +27,7 @@ pub mod render;
 pub mod utils;
 mod xwayland;
 
-pub use self::compositor::{terminate, with_compositor, Compositor, CompositorBuilder,
+pub use self::compositor::{terminate, Compositor, CompositorBuilder, CompositorHandle,
                            CompositorHandler};
 pub use self::events::{key_events, seat_events, tablet_pad_events, tablet_tool_events,
                        touch_events, wl_shell_events,
