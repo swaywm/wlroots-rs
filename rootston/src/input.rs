@@ -149,12 +149,8 @@ impl InputManager {
                         }
                     }
                 }
-            })?;
-            //                                         Some(cursor)
-            //                                     })
-            //                                .ok()?;
-            //                          Some(seat)
-            //                      })?;
+                Ok(())
+            })??;
         }
 
         // configure device to output mappings
