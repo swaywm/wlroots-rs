@@ -17,7 +17,7 @@ pub struct TabletPad {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `TabletPadHandle`.
-    liveliness: Option<Rc<Cell<bool>>>,
+    liveliness: Rc<Cell<bool>>,
     /// The device that refers to this tablet pad.
     device: InputDevice,
     /// Underlying tablet state
@@ -49,7 +49,7 @@ impl TabletPad {
         match (*device).type_ {
             WLR_INPUT_DEVICE_TABLET_PAD => {
                 let pad = (*device).__bindgen_anon_1.tablet_pad;
-                Some(TabletPad { liveliness: Some(Rc::new(Cell::new(false))),
+                Some(TabletPad { liveliness: Rc::new(Cell::new(false)),
                                  device: InputDevice::from_ptr(device),
                                  pad })
             }
@@ -58,7 +58,10 @@ impl TabletPad {
     }
 
     unsafe fn from_handle(handle: &TabletPadHandle) -> HandleResult<Self> {
-        Ok(TabletPad { liveliness: None,
+        let liveliness = handle.handle
+                               .upgrade()
+                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(TabletPad { liveliness,
                        device: handle.input_device()?.clone(),
                        pad: handle.as_ptr() })
     }
@@ -76,9 +79,7 @@ impl TabletPad {
     /// If this `TabletPad` is a previously upgraded `TabletPad`,
     /// then this function will panic.
     pub fn weak_reference(&self) -> TabletPadHandle {
-        let arc = self.liveliness.as_ref()
-                      .expect("Cannot downgrade previously upgraded TabletPadHandle!");
-        TabletPadHandle { handle: Rc::downgrade(arc),
+        TabletPadHandle { handle: Rc::downgrade(&self.liveliness),
                           // NOTE Rationale for cloning:
                           // We can't use the tablet tool handle unless the tablet tool is alive,
                           // which means the device pointer is still alive.
@@ -89,18 +90,16 @@ impl TabletPad {
 
 impl Drop for TabletPad {
     fn drop(&mut self) {
-        if let Some(liveliness) = self.liveliness.as_ref() {
-            if Rc::strong_count(liveliness) != 1 {
-                return
-            }
-            wlr_log!(L_DEBUG, "Dropped TabletPad {:p}", self.pad);
-            let weak_count = Rc::weak_count(liveliness);
-            if weak_count > 0 {
-                wlr_log!(L_DEBUG,
-                         "Still {} weak pointers to TabletPad {:p}",
-                         weak_count,
-                         self.pad);
-            }
+        if Rc::strong_count(&self.liveliness) != 1 {
+            return
+        }
+        wlr_log!(L_DEBUG, "Dropped TabletPad {:p}", self.pad);
+        let weak_count = Rc::weak_count(&self.liveliness);
+        if weak_count > 0 {
+            wlr_log!(L_DEBUG,
+                     "Still {} weak pointers to TabletPad {:p}",
+                     weak_count,
+                     self.pad);
         }
     }
 }

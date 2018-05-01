@@ -36,7 +36,7 @@ pub struct Keyboard {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `KeyboardHandle`.
-    liveliness: Option<Rc<Cell<bool>>>,
+    liveliness: Rc<Cell<bool>>,
     /// The device that refers to this keyboard.
     device: InputDevice,
     /// The underlying keyboard data.
@@ -73,7 +73,7 @@ impl Keyboard {
                 let state = Box::new(KeyboardState { handle,
                                                      device: InputDevice::from_ptr(device) });
                 (*keyboard).data = Box::into_raw(state) as *mut _;
-                Some(Keyboard { liveliness: Some(liveliness),
+                Some(Keyboard { liveliness,
                                 device: InputDevice::from_ptr(device),
                                 keyboard })
             }
@@ -82,7 +82,10 @@ impl Keyboard {
     }
 
     unsafe fn from_handle(handle: &KeyboardHandle) -> HandleResult<Self> {
-        Ok(Keyboard { liveliness: None,
+        let liveliness = handle.handle
+                               .upgrade()
+                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Keyboard { liveliness,
                       device: handle.input_device()?.clone(),
                       keyboard: handle.as_ptr() })
     }
@@ -192,9 +195,7 @@ impl Keyboard {
     /// If this `Keyboard` is a previously upgraded `KeyboardHandle`,
     /// then this function will panic.
     pub fn weak_reference(&self) -> KeyboardHandle {
-        let arc = self.liveliness.as_ref()
-                      .expect("Cannot downgrade previously upgraded KeyboardHandle!");
-        KeyboardHandle { handle: Rc::downgrade(arc),
+        KeyboardHandle { handle: Rc::downgrade(&self.liveliness),
                          // NOTE Rationale for cloning:
                          // We can't use the keyboard handle unless the keyboard is alive,
                          // which means the device pointer is still alive.
@@ -205,22 +206,17 @@ impl Keyboard {
 
 impl Drop for Keyboard {
     fn drop(&mut self) {
-        match self.liveliness {
-            None => {}
-            Some(ref liveliness) => {
-                if Rc::strong_count(liveliness) == 1 {
-                    wlr_log!(L_DEBUG, "Dropped Keyboard {:p}", self.keyboard);
-                    unsafe {
-                        let _ = Box::from_raw((*self.keyboard).data as *mut KeyboardState);
-                    }
-                    let weak_count = Rc::weak_count(liveliness);
-                    if weak_count > 0 {
-                        wlr_log!(L_DEBUG,
-                                 "Still {} weak pointers to Keyboard {:p}",
-                                 weak_count,
-                                 self.keyboard);
-                    }
-                }
+        if Rc::strong_count(&self.liveliness) == 1 {
+            wlr_log!(L_DEBUG, "Dropped Keyboard {:p}", self.keyboard);
+            unsafe {
+                let _ = Box::from_raw((*self.keyboard).data as *mut KeyboardState);
+            }
+            let weak_count = Rc::weak_count(&self.liveliness);
+            if weak_count > 0 {
+                wlr_log!(L_DEBUG,
+                         "Still {} weak pointers to Keyboard {:p}",
+                         weak_count,
+                         self.keyboard);
             }
         }
     }
