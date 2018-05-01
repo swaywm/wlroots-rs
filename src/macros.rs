@@ -226,7 +226,7 @@ macro_rules! compositor_data {
 ///
 /// ```rust,no_run
 /// with_handles!([(compositor: {compositor}),
-///            (output: {&mut result.output_handle})] => {
+///    (output: {&mut result.output_handle})] => {
 ///    ...
 /// })
 /// ```
@@ -235,8 +235,8 @@ macro_rules! compositor_data {
 ///
 /// ```rust,no_run
 /// with_handles!([(shell: {shell_handle}),
-///            // Notice how we use the previous result to get the surface.
-///            (surface: {shell.surface_handle})] => {
+///    // Notice how we use the previous result to get the surface.
+///    (surface: {shell.surface_handle})] => {
 ///    ...
 /// })
 /// ```
