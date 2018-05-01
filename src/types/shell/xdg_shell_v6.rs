@@ -194,17 +194,6 @@ impl XdgV6ShellSurface {
                                   },
                                   shell_surface: self.shell_surface }
     }
-
-    /// Manually set the lock used to determine if a double-borrow is
-    /// occuring on this structure.
-    ///
-    /// # Panics
-    /// Panics when trying to set the lock on an upgraded handle.
-    pub(crate) unsafe fn set_lock(&self, val: bool) {
-        self.liveliness.as_ref()
-            .expect("Tried to set lock on borrowed XdgV6ShellSurface")
-            .set(val);
-    }
 }
 
 impl XdgV6ShellSurfaceHandle {

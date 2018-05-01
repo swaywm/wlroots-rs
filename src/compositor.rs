@@ -18,11 +18,11 @@ use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_
 use wlroots_sys::wayland_server::sys::wl_display_init_shm;
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
-pub static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
+pub(crate) static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
 pub trait CompositorHandler {
     /// Callback that's triggered when a surface is provided to the compositor.
-    fn new_surface(&mut self, &mut Compositor, &mut SurfaceHandle) {}
+    fn new_surface(&mut self, CompositorHandle, &mut SurfaceHandle) {}
 
     /// Callback that's triggered during shutdown.
     fn on_shutdown(&mut self) {}
@@ -33,7 +33,7 @@ wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
                                                  surface: *mut libc::c_void,|
     unsafe {
         let handler = &mut this.data;
-        let compositor = &mut *COMPOSITOR_PTR;
+        let compositor = (&mut *COMPOSITOR_PTR).weak_reference();
         let mut surface = SurfaceHandle::from_ptr(surface as _);
         handler.new_surface(compositor, &mut surface);
     };
@@ -500,6 +500,20 @@ pub fn terminate() {
     unsafe {
         if COMPOSITOR_PTR != 0 as _ {
             (*COMPOSITOR_PTR).terminate();
+        }
+    }
+}
+
+/// Gets a handle to the compositor.
+///
+/// If the compositor has not started running yet, or if it has stopped,
+/// then this function will return None.
+pub fn compositor_handle() -> Option<CompositorHandle> {
+    unsafe {
+        if COMPOSITOR_PTR.is_null() {
+            None
+        } else {
+            Some((&mut *COMPOSITOR_PTR).weak_reference())
         }
     }
 }

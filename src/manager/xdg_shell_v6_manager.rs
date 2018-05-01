@@ -6,18 +6,19 @@ use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface_v6, wlr_xdg_surface_v6_role::*};
 
 use super::xdg_shell_v6_handler::XdgV6Shell;
-use {Surface, XdgV6Popup, XdgV6ShellHandler, XdgV6ShellState::*, XdgV6ShellSurface, XdgV6TopLevel};
-use compositor::{Compositor, COMPOSITOR_PTR};
+use {Surface, XdgV6Popup, XdgV6ShellHandler, XdgV6ShellState::*, XdgV6ShellSurface,
+     XdgV6ShellSurfaceHandle, XdgV6TopLevel};
+use compositor::{compositor_handle, CompositorHandle};
 
 pub trait XdgV6ShellManagerHandler {
     /// Callback that is triggered when a new XDG shell v6 surface appears.
     fn new_surface(&mut self,
-                   &mut Compositor,
-                   &mut XdgV6ShellSurface)
+                   CompositorHandle,
+                   XdgV6ShellSurfaceHandle)
                    -> Option<Box<XdgV6ShellHandler>>;
 
     /// Callback that is triggered when an XDG shell v6 surface is destroyed.
-    fn surface_destroyed(&mut self, &mut Compositor, &mut XdgV6ShellSurface);
+    fn surface_destroyed(&mut self, CompositorHandle, XdgV6ShellSurfaceHandle);
 }
 
 wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManagerHandler>), [
@@ -26,8 +27,11 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
         let remove_listener = this.remove_listener() as *mut _ as _;
         let (ref mut shells, ref mut manager) = this.data;
         let data = data as *mut wlr_xdg_surface_v6;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
         wlr_log!(L_DEBUG, "New xdg_shell_v6_surface request {:p}", data);
-        let compositor = &mut *COMPOSITOR_PTR;
         let surface = Surface::new((*data).surface);
         let state = unsafe {
             match (*data).role {
@@ -42,13 +46,10 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                 }
             }
         };
-        let mut shell_surface = XdgV6ShellSurface::new(data, state);
+        let shell_surface = XdgV6ShellSurface::new(data, state);
 
-        compositor.lock.set(true);
-        shell_surface.set_lock(true);
-        let new_surface_res = manager.new_surface(compositor, &mut shell_surface);
-        shell_surface.set_lock(false);
-        compositor.lock.set(false);
+        let new_surface_res = manager.new_surface(compositor,
+                                                  shell_surface.weak_reference());
 
         if let Some(shell_surface_handler) = new_surface_res {
 
@@ -68,10 +69,12 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                           shell_surface.ping_timeout_listener() as _);
             wl_signal_add(&mut (*data).events.new_popup as *mut _ as _,
                           shell_surface.new_popup_listener() as _);
-            let events = match shell_surface.surface_mut().state() {
-                None | Some(&mut Popup(_)) => None,
-                Some(&mut TopLevel(ref mut toplevel)) => Some((*toplevel.as_ptr()).events)
-            };
+            let events = run_handles!([(shell_surface: {shell_surface.surface_mut()})] => {
+                match shell_surface.state() {
+                    None | Some(&mut Popup(_)) => None,
+                    Some(&mut TopLevel(ref mut toplevel)) => Some((*toplevel.as_ptr()).events)
+                }
+            }).expect("Cannot borrow xdg shell surface");
             if let Some(mut events) = events {
                 wl_signal_add(&mut events.request_maximize as *mut _ as _,
                               shell_surface.maximize_listener() as _);
@@ -94,11 +97,13 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
     unsafe {
         let (ref mut shells, ref mut manager) = this.data;
         let data = data as *mut wlr_xdg_surface_v6;
-        let compositor = &mut *COMPOSITOR_PTR;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
         if let Some(shell) = shells.iter_mut().find(|shell| shell.surface_ptr() == data) {
             let mut shell_surface = shell.surface_mut();
-            shell_surface.set_lock(true);
-            manager.surface_destroyed(compositor, &mut shell_surface);
+            manager.surface_destroyed(compositor, shell_surface);
         }
         if let Some(index) = shells.iter().position(|shell| shell.surface_ptr() == data) {
             let mut removed_shell = shells.remove(index);

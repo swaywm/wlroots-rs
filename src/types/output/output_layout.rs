@@ -14,7 +14,8 @@ use wlroots_sys::{wlr_output_effective_resolution, wlr_output_layout, wlr_output
 
 use errors::{HandleErr, HandleResult};
 
-use {Area, Compositor, Origin, Output, OutputHandle, compositor::COMPOSITOR_PTR};
+use {Area, Origin, Output, OutputHandle};
+use compositor::{compositor_handle, CompositorHandle};
 
 struct OutputLayoutState {
     /// A counter that will always have a strong count of 1.
@@ -29,38 +30,42 @@ struct OutputLayoutState {
 pub trait OutputLayoutHandler {
     /// Callback that's triggered when an output is added to the output layout.
     fn output_added<'this>(&'this mut self,
-                           &mut Compositor,
-                           &mut OutputLayout,
+                           CompositorHandle,
+                           OutputLayoutHandle,
                            OutputLayoutOutput<'this>) {
     }
 
     /// Callback that's triggered when an output is removed from the output
     /// layout.
     fn output_removed<'this>(&'this mut self,
-                             &mut Compositor,
-                             &mut OutputLayout,
+                             CompositorHandle,
+                             OutputLayoutHandle,
                              OutputLayoutOutput<'this>) {
     }
 
     /// Callback that's triggered when the layout changes.
-    fn on_change<'this>(&mut self, &mut Compositor, &mut OutputLayout, OutputLayoutOutput<'this>) {}
+    fn on_change<'this>(&mut self,
+                        CompositorHandle,
+                        OutputLayoutHandle,
+                        OutputLayoutOutput<'this>) {
+    }
 }
 
 wayland_listener!(OutputLayout, (*mut wlr_output_layout, Box<OutputLayoutHandler>), [
     output_add_listener => output_add_notify: |this: &mut OutputLayout, data: *mut libc::c_void,|
     unsafe {
         let (output_ptr, ref mut manager) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
         let layout_output = data as *mut wlr_output_layout_output;
         let layout_output = OutputLayoutOutput{layout_output, phantom: PhantomData};
-        let compositor = &mut *COMPOSITOR_PTR;
-        let mut output_layout = OutputLayout::from_ptr(output_ptr);
+        let output_layout = OutputLayout::from_ptr(output_ptr);
 
-        let prev_output_layout_lock = output_layout.get_lock();
-        compositor.lock.set(true);
-        output_layout.set_lock(true);
-        manager.output_added(compositor, &mut output_layout, layout_output);
-        output_layout.set_lock(prev_output_layout_lock);
-        compositor.lock.set(false);
+        manager.output_added(compositor,
+                             output_layout.weak_reference(),
+                             layout_output);
 
         Box::into_raw(output_layout);
     };
@@ -68,34 +73,34 @@ wayland_listener!(OutputLayout, (*mut wlr_output_layout, Box<OutputLayoutHandler
                                                      data: *mut libc::c_void,|
     unsafe {
         let (output_ptr, ref mut manager) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
         let layout_output = data as *mut wlr_output_layout_output;
         let layout_output = OutputLayoutOutput { layout_output, phantom: PhantomData};
-        let compositor = &mut *COMPOSITOR_PTR;
-        let mut output_layout = OutputLayout::from_ptr(output_ptr);
+        let output_layout = OutputLayout::from_ptr(output_ptr);
 
-        let prev_output_layout_lock = output_layout.get_lock();
-        compositor.lock.set(true);
-        output_layout.set_lock(true);
-        manager.output_removed(compositor, &mut output_layout, layout_output);
-        output_layout.set_lock(prev_output_layout_lock);
-        compositor.lock.set(false);
+        manager.output_removed(compositor,
+                               output_layout.weak_reference(),
+                               layout_output);
 
         Box::into_raw(output_layout);
     };
     change_listener => change_notify: |this: &mut OutputLayout, data: *mut libc::c_void,|
     unsafe {
         let (output_ptr, ref mut manager) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
         let layout_output = data as *mut wlr_output_layout_output;
         let layout_output = OutputLayoutOutput { layout_output, phantom: PhantomData};
-        let compositor = &mut *COMPOSITOR_PTR;
-        let mut output_layout = OutputLayout::from_ptr(output_ptr);
+        let output_layout = OutputLayout::from_ptr(output_ptr);
 
-        let prev_output_layout_lock = output_layout.get_lock();
-        compositor.lock.set(true);
-        output_layout.set_lock(true);
-        manager.on_change(compositor, &mut output_layout, layout_output);
-        output_layout.set_lock(prev_output_layout_lock);
-        compositor.lock.set(false);
+        manager.on_change(compositor,
+                          output_layout.weak_reference(),
+                          layout_output);
 
         Box::into_raw(output_layout);
     };
@@ -335,22 +340,6 @@ impl OutputLayout {
             OutputLayoutHandle { layout: self.data.0,
                                  handle }
         }
-    }
-
-    /// Manually set the lock used to determine if a double-borrow is
-    /// occuring on this structure.
-    ///
-    /// # Panics
-    /// Panics when trying to set the lock on an upgraded handle.
-    unsafe fn set_lock(&self, val: bool) {
-        let counter = &(*((*self.data.0).data as *mut OutputLayoutState)).counter;
-        counter.as_ref().set(val);
-    }
-
-    unsafe fn get_lock(&self) -> bool {
-        (*((*self.data.0).data as *mut OutputLayoutState)).counter
-                                                          .as_ref()
-                                                          .get()
     }
 }
 

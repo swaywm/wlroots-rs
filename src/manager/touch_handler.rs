@@ -2,71 +2,75 @@
 
 use libc;
 
-use compositor::{Compositor, COMPOSITOR_PTR};
+use compositor::{compositor_handle, CompositorHandle};
 use events::touch_events::{CancelEvent, DownEvent, MotionEvent, UpEvent};
-use types::input::{InputDevice, Touch};
+use types::input::{InputDevice, Touch, TouchHandle};
 
 pub trait TouchHandler {
     /// Callback that is triggered when the user starts touching the
     /// screen/input device.
-    fn on_down(&mut self, &mut Compositor, &mut Touch, &DownEvent) {}
+    fn on_down(&mut self, CompositorHandle, TouchHandle, &DownEvent) {}
 
     /// Callback that is triggered when the user stops touching the
     /// screen/input device.
-    fn on_up(&mut self, &mut Compositor, &mut Touch, &UpEvent) {}
+    fn on_up(&mut self, CompositorHandle, TouchHandle, &UpEvent) {}
 
     /// Callback that is triggered when the user moves his fingers along the
     /// screen/input device.
-    fn on_motion(&mut self, &mut Compositor, &mut Touch, &MotionEvent) {}
+    fn on_motion(&mut self, CompositorHandle, TouchHandle, &MotionEvent) {}
 
     /// Callback triggered when the touch is canceled.
-    fn on_cancel(&mut self, &mut Compositor, &mut Touch, &CancelEvent) {}
+    fn on_cancel(&mut self, CompositorHandle, TouchHandle, &CancelEvent) {}
 }
 
 wayland_listener!(TouchWrapper, (Touch, Box<TouchHandler>), [
     down_listener => down_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
-        let (ref mut touch, ref mut handler) = this.data;
+        let (ref touch, ref mut handler) = this.data;
         let event = DownEvent::from_ptr(data as *mut _);
-        let compositor = &mut *COMPOSITOR_PTR;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
 
-        compositor.lock.set(true);
-        touch.set_lock(true);
-        handler.on_down(compositor, touch, &event);
-        touch.set_lock(false);
-        compositor.lock.set(false);
+        handler.on_down(compositor,
+                        touch.weak_reference(),
+                        &event);
     };
     up_listener => up_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
-        let (ref mut touch, ref mut handler) = this.data;
+        let (ref touch, ref mut handler) = this.data;
         let event = UpEvent::from_ptr(data as *mut _);
-        let compositor = &mut *COMPOSITOR_PTR;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
 
-        compositor.lock.set(true);
-        touch.set_lock(true);
-        handler.on_up(compositor, touch, &event);
-        touch.set_lock(false);
-        compositor.lock.set(false);
+        handler.on_up(compositor,
+                      touch.weak_reference(),
+                      &event);
     };
     motion_listener => motion_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
-        let (ref mut touch, ref mut handler) = this.data;
+        let (ref touch, ref mut handler) = this.data;
         let event = MotionEvent::from_ptr(data as *mut _);
-        let compositor = &mut *COMPOSITOR_PTR;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
 
-        compositor.lock.set(true);
-        touch.set_lock(true);
-        handler.on_motion(compositor, touch, &event);
-        touch.set_lock(false);
-        compositor.lock.set(false);
+        handler.on_motion(compositor,
+                          touch.weak_reference(),
+                          &event);
     };
     cancel_listener => cancel_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
-        let (ref mut touch, ref mut handler) = this.data;
+        let (ref touch, ref mut handler) = this.data;
         let event = CancelEvent::from_ptr(data as *mut _);
-        let compositor = &mut *COMPOSITOR_PTR;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
 
-        compositor.lock.set(true);
-        touch.set_lock(true);
-        handler.on_cancel(compositor, touch, &event);
-        touch.set_lock(false);
-        compositor.lock.set(false);
+        handler.on_cancel(compositor,
+                          touch.weak_reference(),
+                          &event);
     };
 ]);
 
@@ -75,7 +79,7 @@ impl TouchWrapper {
         self.data.0.input_device()
     }
 
-    pub(crate) fn touch(&mut self) -> &mut Touch {
-        &mut self.data.0
+    pub(crate) fn touch(&mut self) -> TouchHandle {
+        self.data.0.weak_reference()
     }
 }

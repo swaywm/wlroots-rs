@@ -5,12 +5,12 @@ use std::process::Command;
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use wlroots::{project_box, Area, Capability, Compositor, CompositorBuilder, Cursor, CursorHandle,
-              CursorHandler, InputManagerHandler, Keyboard, KeyboardHandle, KeyboardHandler,
-              Origin, Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout,
-              OutputLayoutHandle, OutputLayoutHandler, OutputManagerHandler, Pointer,
-              PointerHandler, Renderer, Seat, SeatHandle, SeatHandler, Size, XCursorTheme,
-              XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState, XdgV6ShellSurface,
+use wlroots::{project_box, Area, Capability, CompositorBuilder, CompositorHandle, Cursor,
+              CursorHandle, CursorHandler, InputManagerHandler, KeyboardHandle, KeyboardHandler,
+              Origin, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
+              OutputLayout, OutputLayoutHandle, OutputLayoutHandler, OutputManagerHandler,
+              PointerHandle, PointerHandler, Renderer, Seat, SeatHandle, SeatHandler, Size,
+              XCursorTheme, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState,
               XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{ButtonEvent, MotionEvent};
@@ -57,28 +57,32 @@ impl OutputLayoutHandler for OutputLayoutEx {}
 impl XdgV6ShellHandler for XdgV6ShellHandlerEx {}
 impl XdgV6ShellManagerHandler for XdgV6ShellManager {
     fn new_surface(&mut self,
-                   compositor: &mut Compositor,
-                   shell: &mut XdgV6ShellSurface)
+                   compositor: CompositorHandle,
+                   shell: XdgV6ShellSurfaceHandle)
                    -> Option<Box<XdgV6ShellHandler>> {
-        shell.ping();
-        let state: &mut State = compositor.into();
-        state.shells.push(shell.weak_reference());
-        run_handles!([(layout: {&mut state.layout})] => {
-            for (mut output, _) in layout.outputs() {
-                run_handles!([(output: {output})] =>{
-                    output.schedule_frame()
-                }).ok();
-            }
-        }).expect("Layout was destroyed");
+        run_handles!([(compositor: {compositor}), (shell: {shell})] => {
+            shell.ping();
+            let state: &mut State = compositor.into();
+            state.shells.push(shell.weak_reference());
+            run_handles!([(layout: {&mut state.layout})] => {
+                for (mut output, _) in layout.outputs() {
+                    run_handles!([(output: {output})] =>{
+                        output.schedule_frame()
+                    }).ok();
+                }
+            }).expect("Layout was destroyed");
+        }).unwrap();
         Some(Box::new(XdgV6ShellHandlerEx))
     }
 
-    fn surface_destroyed(&mut self, compositor: &mut Compositor, shell: &mut XdgV6ShellSurface) {
-        let state: &mut State = compositor.into();
-        let weak = shell.weak_reference();
-        if let Some(index) = state.shells.iter().position(|s| *s == weak) {
-            state.shells.remove(index);
-        }
+    fn surface_destroyed(&mut self, compositor: CompositorHandle, shell: XdgV6ShellSurfaceHandle) {
+        run_handles!([(compositor: {compositor})] => {
+            let state: &mut State = compositor.into();
+            let weak = shell;
+            if let Some(index) = state.shells.iter().position(|s| *s == weak) {
+                state.shells.remove(index);
+            }
+        }).unwrap();
     }
 }
 
@@ -94,67 +98,77 @@ struct ExKeyboardHandler;
 
 impl OutputManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
-                             compositor: &mut Compositor,
+                             compositor: CompositorHandle,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
-        let result = builder.build_best_mode(ExOutput);
-        let state: &mut State = compositor.into();
-        let xcursor = state.xcursor_theme
-                           .get_cursor("left_ptr".into())
-                           .expect("Could not load left_ptr cursor");
-        let image = &xcursor.images()[0];
-        // TODO use output config if present instead of auto
-        let layout = &mut state.layout;
-        let cursor = &mut state.cursor;
-        run_handles!([(layout: {layout}), (cursor: {cursor})] => {
-            layout.add_auto(result.output);
-            cursor.attach_output_layout(layout);
-            cursor.set_cursor_image(image);
-            let (x, y) = cursor.coords();
-            // https://en.wikipedia.org/wiki/Mouse_warping
-            cursor.warp(None, x, y);
-        }).expect("Layout was destroyed");
+        let mut result = builder.build_best_mode(ExOutput);
+        run_handles!([(compositor: {compositor}), (output: {&mut result.output})] => {
+            let state: &mut State = compositor.into();
+            let xcursor = state.xcursor_theme
+                .get_cursor("left_ptr".into())
+                .expect("Could not load left_ptr cursor");
+            let image = &xcursor.images()[0];
+            // TODO use output config if present instead of auto
+            let layout = &mut state.layout;
+            let cursor = &mut state.cursor;
+            run_handles!([(layout: {layout}), (cursor: {cursor})] => {
+                layout.add_auto(output);
+                cursor.attach_output_layout(layout);
+                cursor.set_cursor_image(image);
+                let (x, y) = cursor.coords();
+                // https://en.wikipedia.org/wiki/Mouse_warping
+                cursor.warp(None, x, y);
+            }).expect("Layout was destroyed");
+        }).unwrap();
         Some(result)
     }
 }
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self, compositor: &mut Compositor, _: &mut Keyboard, key_event: &mut KeyEvent) {
-        for key in key_event.pressed_keys() {
-            if key == KEY_Escape {
-                compositor.terminate()
-            } else if key_event.key_state() == WLR_KEY_PRESSED {
-                if key == KEY_F1 {
-                    thread::spawn(move || {
-                                      Command::new("weston-terminal").output().unwrap();
-                                  });
-                    return
+    fn on_key(&mut self,
+              mut compositor: CompositorHandle,
+              _: KeyboardHandle,
+              key_event: &KeyEvent) {
+        run_handles!([(compositor: {&mut compositor})] => {
+            for key in key_event.pressed_keys() {
+                if key == KEY_Escape {
+                    compositor.terminate();
+                } else if key_event.key_state() == WLR_KEY_PRESSED {
+                    if key == KEY_F1 {
+                        thread::spawn(move || {
+                            Command::new("weston-terminal").output().unwrap();
+                        });
+                        return
+                    }
                 }
             }
-        }
-        let state: &mut State = compositor.into();
-        let mut seat_handle = state.seat_handle.clone().unwrap();
-        seat_handle.run(|seat| {
-                            seat.keyboard_notify_key(key_event.time_msec(),
-                                                     key_event.keycode(),
-                                                     key_event.key_state() as u32);
-                        })
-                   .unwrap();
+            let state: &mut State = compositor.into();
+            let mut seat_handle = state.seat_handle.clone().unwrap();
+            seat_handle.run(|seat| {
+                seat.keyboard_notify_key(key_event.time_msec(),
+                                         key_event.keycode(),
+                                         key_event.key_state() as u32);
+            })
+                .unwrap();
+        }).unwrap();
     }
 }
 
 impl PointerHandler for ExPointer {
-    fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
-        let state: &mut State = compositor.into();
-        let (delta_x, delta_y) = event.delta();
-        state.cursor
-             .run(|cursor| {
-                      cursor.move_to(event.device(), delta_x, delta_y);
-                  })
-             .unwrap();
+    fn on_motion(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &MotionEvent) {
+        run_handles!([(compositor: {compositor})] => {
+            let state: &mut State = compositor.into();
+            let (delta_x, delta_y) = event.delta();
+            state.cursor
+                .run(|cursor| {
+                    cursor.move_to(event.device(), delta_x, delta_y);
+                })
+                .unwrap();
+        }).unwrap();
     }
 
-    fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, _: &ButtonEvent) {
+    fn on_button(&mut self, compositor: CompositorHandle, _: PointerHandle, _: &ButtonEvent) {
+        run_handles!([(compositor: {compositor})] => {
         let state: &mut State = compositor.into();
         let mut seat_handle = state.seat_handle.clone().unwrap();
         let mut keyboard = state.keyboard.clone().unwrap();
@@ -183,39 +197,44 @@ impl PointerHandler for ExPointer {
                                     .unwrap();
                         })
                    .unwrap();
+        }).unwrap();
     }
 }
 
 impl OutputHandler for ExOutput {
-    fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
-        let state: &mut State = compositor.data.downcast_mut().unwrap();
-        if state.shells.len() < 1 {
-            return
-        }
-        let renderer = compositor.renderer
-                                 .as_mut()
-                                 .expect("Compositor was not loaded with a renderer");
-        render_shells(state, &mut renderer.render(output, None));
+    fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
+        run_handles!([(compositor: {compositor}), (output: {output})] => {
+            let state: &mut State = compositor.data.downcast_mut().unwrap();
+            if state.shells.len() < 1 {
+                return
+            }
+            let renderer = compositor.renderer
+                .as_mut()
+                .expect("Compositor was not loaded with a renderer");
+            render_shells(state, &mut renderer.render(output, None));
+        }).unwrap();
     }
 }
 
 impl InputManagerHandler for InputManager {
     fn pointer_added(&mut self,
-                     _: &mut Compositor,
-                     _: &mut Pointer)
+                     _: CompositorHandle,
+                     _: PointerHandle)
                      -> Option<Box<PointerHandler>> {
         Some(Box::new(ExPointer))
     }
 
     fn keyboard_added(&mut self,
-                      compositor: &mut Compositor,
-                      keyboard: &mut Keyboard)
+                      compositor: CompositorHandle,
+                      keyboard: KeyboardHandle)
                       -> Option<Box<KeyboardHandler>> {
-        let state: &mut State = compositor.into();
-        state.keyboard = Some(keyboard.weak_reference());
-        let seat_handle = state.seat_handle.clone().unwrap();
-        run_handles!([(seat: {seat_handle})] => {
-            seat.set_keyboard(keyboard.input_device());
+        run_handles!([(compositor: {compositor}), (keyboard: {keyboard})] => {
+            let state: &mut State = compositor.into();
+            state.keyboard = Some(keyboard.weak_reference());
+            let seat_handle = state.seat_handle.clone().unwrap();
+            run_handles!([(seat: {seat_handle})] => {
+                seat.set_keyboard(keyboard.input_device());
+            }).unwrap();
         }).unwrap();
         Some(Box::new(ExKeyboardHandler))
     }

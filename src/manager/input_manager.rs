@@ -9,8 +9,9 @@ use std::process::abort;
 
 use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper, TabletPadHandler,
             TabletPadWrapper, TabletToolHandler, TabletToolWrapper, TouchHandler, TouchWrapper};
-use compositor::{Compositor, COMPOSITOR_PTR};
-use types::input::{InputDevice, Keyboard, Pointer, TabletPad, TabletTool, Touch};
+use compositor::{compositor_handle, CompositorHandle};
+use types::input::{InputDevice, Keyboard, KeyboardHandle, Pointer, PointerHandle, TabletPad,
+                   TabletPadHandle, TabletTool, TabletToolHandle, Touch, TouchHandle};
 use utils::safe_as_cstring;
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -49,43 +50,43 @@ pub trait InputManagerHandler {
     ///
     /// # Panics
     /// Any panic in this function will cause the process to abort.
-    fn input_added(&mut self, &mut Compositor, &mut InputDevice) {}
+    fn input_added(&mut self, CompositorHandle, &mut InputDevice) {}
 
     /// Callback triggered when an input device is removed.
-    fn input_removed(&mut self, &mut Compositor, &mut InputDevice) {}
+    fn input_removed(&mut self, CompositorHandle, &mut InputDevice) {}
 
     /// Callback triggered when a keyboard device is added.
     ///
     /// # Panics
     /// Any panic in this function will cause the process to abort.
-    fn keyboard_added(&mut self, &mut Compositor, &mut Keyboard) -> Option<Box<KeyboardHandler>> {
+    fn keyboard_added(&mut self, CompositorHandle, KeyboardHandle) -> Option<Box<KeyboardHandler>> {
         None
     }
 
     /// Callback triggered when a keyboard device is removed.
-    fn keyboard_removed(&mut self, &mut Compositor, &mut Keyboard) {}
+    fn keyboard_removed(&mut self, CompositorHandle, KeyboardHandle) {}
 
     /// Callback triggered when a pointer device is added.
     ///
     /// # Panics
     /// Any panic in this function will cause the process to abort.
-    fn pointer_added(&mut self, &mut Compositor, &mut Pointer) -> Option<Box<PointerHandler>> {
+    fn pointer_added(&mut self, CompositorHandle, PointerHandle) -> Option<Box<PointerHandler>> {
         None
     }
 
     /// Callback triggered when a pointer device is removed.
-    fn pointer_removed(&mut self, &mut Compositor, &mut Pointer) {}
+    fn pointer_removed(&mut self, CompositorHandle, PointerHandle) {}
 
     /// Callback triggered when a touch device is added.
     ///
     /// # Panics
     /// Any panic in this function will cause the process to abort.
-    fn touch_added(&mut self, &mut Compositor, &mut Touch) -> Option<Box<TouchHandler>> {
+    fn touch_added(&mut self, CompositorHandle, TouchHandle) -> Option<Box<TouchHandler>> {
         None
     }
 
     /// Callback triggered when a touch device is removed.
-    fn touch_removed(&mut self, &mut Compositor, &mut Touch) {}
+    fn touch_removed(&mut self, CompositorHandle, TouchHandle) {}
 
     /// Callback triggered when a tablet tool is added.
     ///
@@ -93,14 +94,14 @@ pub trait InputManagerHandler {
     /// # Panics
     /// Any panic in this function will cause the process to abort.
     fn tablet_tool_added(&mut self,
-                         &mut Compositor,
-                         &mut TabletTool)
+                         CompositorHandle,
+                         TabletToolHandle)
                          -> Option<Box<TabletToolHandler>> {
         None
     }
 
     /// Callback triggered when a touch device is removed.
-    fn tablet_tool_removed(&mut self, &mut Compositor, &mut TabletTool) {}
+    fn tablet_tool_removed(&mut self, CompositorHandle, TabletToolHandle) {}
 
     /// Callback triggered when a tablet pad is added.
     ///
@@ -108,20 +109,22 @@ pub trait InputManagerHandler {
     /// # Panics
     /// Any panic in this function will cause the process to abort.
     fn tablet_pad_added(&mut self,
-                        &mut Compositor,
-                        &mut TabletPad)
+                        CompositorHandle,
+                        TabletPadHandle)
                         -> Option<Box<TabletPadHandler>> {
         None
     }
 
     /// Callback triggered when a touch device is removed.
-    fn tablet_pad_removed(&mut self, &mut Compositor, &mut TabletPad) {}
+    fn tablet_pad_removed(&mut self, CompositorHandle, TabletPadHandle) {}
 }
 
 wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
     add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
-        let compositor = &mut *COMPOSITOR_PTR;
-        compositor.lock.set(true);
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
         let data = data as *mut wlr_input_device;
         let remove_listener = this.remove_listener()  as *mut _ as _;
         let (ref mut inputs, ref mut manager) = this.data;
@@ -132,18 +135,17 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                 WLR_INPUT_DEVICE_KEYBOARD => {
                     // Boring setup that we won't make the user do
                     add_keyboard(&mut dev);
-                    let mut keyboard_handle = match Keyboard::new_from_input_device(data) {
+                    let mut keyboard = match Keyboard::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
                             wlr_log!(L_ERROR, "Device {:#?} was not a keyboard!", dev);
                             abort()
                         }
                     };
-                    keyboard_handle.set_lock(true);
-                    if let Some(keyboard_handler) = manager.keyboard_added(compositor,
-                                                                           &mut keyboard_handle) {
-                        keyboard_handle.set_lock(false);
-                        let mut keyboard = KeyboardWrapper::new((keyboard_handle,
+                    let keyboard_handle = keyboard.weak_reference();
+                    if let Some(keyboard_handler) = manager.keyboard_added(compositor.clone(),
+                                                                           keyboard_handle) {
+                        let mut keyboard = KeyboardWrapper::new((keyboard,
                                                                  keyboard_handler));
                         wl_signal_add(&mut (*dev.dev_union().keyboard).events.key as *mut _ as _,
                                     keyboard.key_listener() as *mut _ as _);
@@ -160,17 +162,17 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     }
                 },
                 WLR_INPUT_DEVICE_POINTER => {
-                    let mut pointer_handle = match Pointer::new_from_input_device(data) {
+                    let pointer = match Pointer::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
                             wlr_log!(L_ERROR, "Device {:#?} was not a pointer!", dev);
                             abort()
                         }
                     };
-                    pointer_handle.set_lock(true);
-                    if let Some(pointer) = manager.pointer_added(compositor, &mut pointer_handle) {
-                        pointer_handle.set_lock(false);
-                        let mut pointer = PointerWrapper::new((pointer_handle, pointer));
+                    let pointer_handle = pointer.weak_reference();
+                    if let Some(pointer_handler) = manager.pointer_added(compositor.clone(),
+                                                                         pointer_handle) {
+                        let mut pointer = PointerWrapper::new((pointer, pointer_handler));
                         wl_signal_add(&mut (*dev.dev_union().pointer).events.motion as *mut _ as _,
                                     pointer.motion_listener() as *mut _ as _);
                         wl_signal_add(&mut (*dev.dev_union().pointer)
@@ -185,17 +187,17 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     }
                 },
                 WLR_INPUT_DEVICE_TOUCH => {
-                    let mut touch_handle = match Touch::new_from_input_device(data) {
+                    let touch = match Touch::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
                             wlr_log!(L_ERROR, "Device {:#?} was not a touch", dev);
                             abort()
                         }
                     };
-                    touch_handle.set_lock(true);
-                    if let Some(touch) = manager.touch_added(compositor, &mut touch_handle) {
-                        touch_handle.set_lock(false);
-                        let mut touch = TouchWrapper::new((touch_handle, touch));
+                    let touch_handle = touch.weak_reference();
+                    if let Some(touch_handler) = manager.touch_added(compositor.clone(),
+                                                                     touch_handle) {
+                        let mut touch = TouchWrapper::new((touch, touch_handler));
                         wl_signal_add(&mut (*dev.dev_union().touch).events.down as *mut _ as _,
                                       touch.down_listener() as *mut _ as _);
                         wl_signal_add(&mut (*dev.dev_union().touch).events.up as *mut _ as _,
@@ -209,19 +211,18 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     }
                 },
                 WLR_INPUT_DEVICE_TABLET_TOOL => {
-                    let mut tablet_tool_handle = match TabletTool::new_from_input_device(data) {
+                    let tablet_tool = match TabletTool::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
                             wlr_log!(L_ERROR, "Device {:#?}, was not a tablet tool", dev);
                             abort()
                         }
                     };
-                    tablet_tool_handle.set_lock(true);
-                    if let Some(tablet_tool) = manager.tablet_tool_added(compositor,
-                                                                         &mut tablet_tool_handle) {
-                        tablet_tool_handle.set_lock(false);
-                        let mut tablet_tool = TabletToolWrapper::new((tablet_tool_handle,
-                                                                      tablet_tool));
+                    let tablet_tool_handle = tablet_tool.weak_reference();
+                    if let Some(tablet_tool_handler) = manager.tablet_tool_added(compositor.clone(),
+                                                                         tablet_tool_handle) {
+                        let mut tablet_tool = TabletToolWrapper::new((tablet_tool,
+                                                                      tablet_tool_handler));
                         let tool_ptr = &mut (*dev.dev_union().tablet_tool);
                         wl_signal_add(&mut tool_ptr.events.axis as *mut _ as _,
                                       tablet_tool.axis_listener() as *mut _ as _);
@@ -236,18 +237,18 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                     }
                 },
                 WLR_INPUT_DEVICE_TABLET_PAD => {
-                    let mut tablet_pad_handle = match TabletPad::new_from_input_device(data) {
+                    let tablet_pad = match TabletPad::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
                             wlr_log!(L_ERROR, "Device {:#?}, was not a tablet pad", dev);
                             abort()
                         }
                     };
-                    tablet_pad_handle.set_lock(true);
-                    if let Some(tablet_pad) = manager.tablet_pad_added(compositor,
-                                                                       &mut tablet_pad_handle) {
-                        tablet_pad_handle.set_lock(false);
-                        let mut tablet_pad = TabletPadWrapper::new((tablet_pad_handle, tablet_pad));
+                    let tablet_pad_handle = tablet_pad.weak_reference();
+                    if let Some(tablet_pad_handler) = manager.tablet_pad_added(compositor.clone(),
+                                                                       tablet_pad_handle) {
+                        let mut tablet_pad = TabletPadWrapper::new((tablet_pad,
+                                                                    tablet_pad_handler));
                         let pad_ptr = &mut (*dev.dev_union().tablet_pad);
                         wl_signal_add(&mut pad_ptr.events.button as *mut _ as _,
                                       tablet_pad.button_listener() as *mut _ as _);;
@@ -264,7 +265,6 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
         }));
         match res {
             Ok(_) => {
-                compositor.lock.set(false);
                 wl_signal_add(&mut (*dev.as_ptr()).events.destroy as *mut _ as _,
                               remove_listener);
             },
@@ -281,13 +281,11 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
     remove_listener => remove_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         let data = data as *mut wlr_input_device;
         let (ref mut inputs, ref mut manager) = this.data;
-        if COMPOSITOR_PTR.is_null() {
-            // We are shutting down, do nothing.
-            return;
-        }
-        let compositor = &mut *COMPOSITOR_PTR;
-        compositor.lock.set(true);
-        manager.input_removed(compositor, &mut InputDevice::from_ptr(data));
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+        manager.input_removed(compositor.clone(), &mut InputDevice::from_ptr(data));
         // Remove user output data
         let find_index = inputs.iter()
             .position(|input| input.input_device() == data);
@@ -359,7 +357,6 @@ wayland_listener!(InputManager, (Vec<Input>, Box<InputManagerHandler>), [
                 }
             }
         }
-        compositor.lock.set(false);
     };
 ]);
 
