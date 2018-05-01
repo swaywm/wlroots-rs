@@ -69,7 +69,7 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                           shell_surface.ping_timeout_listener() as _);
             wl_signal_add(&mut (*data).events.new_popup as *mut _ as _,
                           shell_surface.new_popup_listener() as _);
-            let events = run_handles!([(shell_surface: {shell_surface.surface_mut()})] => {
+            let events = with_handles!([(shell_surface: {shell_surface.surface_mut()})] => {
                 match shell_surface.state() {
                     None | Some(&mut Popup(_)) => None,
                     Some(&mut TopLevel(ref mut toplevel)) => Some((*toplevel.as_ptr()).events)

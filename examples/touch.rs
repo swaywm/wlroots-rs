@@ -60,7 +60,7 @@ impl KeyboardHandler for ExKeyboardHandler {
               key_event: &KeyEvent) {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
-                run_handles!([(compositor: {&mut compositor})] => {
+                with_handles!([(compositor: {&mut compositor})] => {
                     compositor.terminate()
                 }).unwrap();
             }
@@ -70,7 +70,7 @@ impl KeyboardHandler for ExKeyboardHandler {
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
-        run_handles!([(compositor: {compositor}), (output: {output})] => {
+        with_handles!([(compositor: {compositor}), (output: {output})] => {
             let renderer = compositor.renderer.as_mut().unwrap();
             let state: &mut State = (&mut compositor.data).downcast_mut().unwrap();
             // NOTE gl functions will probably always be unsafe.
@@ -91,7 +91,7 @@ impl OutputHandler for ExOutput {
 
 impl TouchHandler for TouchHandlerEx {
     fn on_down(&mut self, compositor: CompositorHandle, _: TouchHandle, event: &DownEvent) {
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let (x, y) = event.location();
             let point = TouchPoint { touch_id: event.touch_id(),
@@ -103,7 +103,7 @@ impl TouchHandler for TouchHandlerEx {
     }
 
     fn on_up(&mut self, compositor: CompositorHandle, _: TouchHandle, event: &UpEvent) {
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             wlr_log!(L_ERROR,
                     "Removing {:?} from {:#?}",
@@ -120,7 +120,7 @@ impl TouchHandler for TouchHandlerEx {
     }
 
     fn on_motion(&mut self, compositor: CompositorHandle, _: TouchHandle, event: &MotionEvent) {
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let (x, y) = event.location();
             wlr_log!(L_ERROR, "New location: {:?}", (x, y));

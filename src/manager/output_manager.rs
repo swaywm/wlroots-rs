@@ -68,7 +68,7 @@ impl<'output> OutputBuilder<'output> {
     pub fn build_best_mode<T: OutputHandler + 'static>(mut self,
                                                        data: T)
                                                        -> OutputBuilderResult<'output> {
-        run_handles!([(output: {&mut self.output})] => {
+        with_handles!([(output: {&mut self.output})] => {
             output.choose_best_mode();
         }).expect("Output was borrowed");
         OutputBuilderResult { output: self.output,
@@ -156,11 +156,11 @@ wayland_listener!(OutputManager, (Vec<Box<UserOutput>>, Box<OutputManagerHandler
         // We get it from the list so that we can get the Rc'd `Output`, because there's
         // no way to re-construct that using just the raw pointer.
         if let Some(output) = outputs.iter_mut().find(|output| output.output_ptr() == data) {
-            let res = run_handles!([(output: {output.output_mut()})] => {
+            let res = with_handles!([(output: {output.output_mut()})] => {
                 manager.output_removed(compositor, OutputDestruction(output.weak_reference()));
                 // NOTE We don't remove the lock because we are removing it
                 if let Some(layout) = output.layout() {
-                    match run_handles!([(layout: {layout})] => {
+                    match with_handles!([(layout: {layout})] => {
                         layout.remove(output)
                     }) {
                         Ok(_) | Err(HandleErr::AlreadyDropped) => {},

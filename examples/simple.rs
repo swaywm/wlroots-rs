@@ -28,7 +28,7 @@ impl KeyboardHandler for ExKeyboardHandler {
               keyboard: KeyboardHandle,
               key_event: &KeyEvent) {
         let keys = key_event.pressed_keys();
-        run_handles!([(keyboard: {keyboard}),
+        with_handles!([(keyboard: {keyboard}),
                       (compositor: {compositor})] => {
             wlr_log!(L_DEBUG,
                      "Got key event. Keys: {:?}. Modifiers: {}",
@@ -81,7 +81,7 @@ impl OutputHandler for ExOutput {
         }
         self.last_frame = now;
         // NOTE gl functions will probably always be unsafe.
-        run_handles!([(output: {output})] => {
+        with_handles!([(output: {output})] => {
             unsafe {
                 output.make_current();
                 gl::ClearColor(self.color[0], self.color[1], self.color[2], 1.0);

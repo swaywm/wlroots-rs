@@ -71,7 +71,7 @@ impl OutputManagerHandler for OutputManager {
                              -> Option<OutputBuilderResult<'output>> {
         let output = ExOutput;
         let mut res = builder.build_best_mode(output);
-        run_handles!([(compositor: {compositor}), (output: {&mut res.output})] => {
+        with_handles!([(compositor: {compositor}), (output: {&mut res.output})] => {
             let compositor_data: &mut CompositorState = compositor.into();
             output.transform(compositor_data.rotation);
         }).unwrap();
@@ -81,7 +81,7 @@ impl OutputManagerHandler for OutputManager {
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, mut compositor: CompositorHandle, mut output: OutputHandle) {
-        run_handles!([(compositor: {&mut compositor}), (output: {&mut output})] => {
+        with_handles!([(compositor: {&mut compositor}), (output: {&mut output})] => {
             let (width, height) = output.effective_resolution();
             let renderer = compositor.renderer
                                     .as_mut()
@@ -128,7 +128,7 @@ impl KeyboardHandler for KeyboardManager {
     fn on_key(&mut self, compositor: CompositorHandle, _: KeyboardHandle, key_event: &KeyEvent) {
         let keys = key_event.pressed_keys();
 
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             for key in keys {
                 match key {
                     keysyms::KEY_Escape => compositor.terminate(),

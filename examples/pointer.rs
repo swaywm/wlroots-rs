@@ -57,7 +57,7 @@ impl OutputManagerHandler for OutputManager {
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
         let mut result = builder.build_best_mode(ExOutput);
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let layout = &mut state.layout;
             let cursor = &mut state.cursor;
@@ -66,7 +66,7 @@ impl OutputManagerHandler for OutputManager {
                 .expect("Could not load left_ptr cursor");
             let image = &xcursor.images()[0];
             // TODO use output config if present instead of auto
-            run_handles!([(layout: {layout}),
+            with_handles!([(layout: {layout}),
                           (cursor: {cursor}),
                           (output: {&mut result.output})] => {
                 layout.add_auto(output);
@@ -83,7 +83,7 @@ impl OutputManagerHandler for OutputManager {
 
 impl KeyboardHandler for ExKeyboardHandler {
     fn on_key(&mut self, compositor: CompositorHandle, _: KeyboardHandle, key_event: &KeyEvent) {
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             for key in key_event.pressed_keys() {
                 if key == KEY_Escape {
                     compositor.terminate()
@@ -95,7 +95,7 @@ impl KeyboardHandler for ExKeyboardHandler {
 
 impl PointerHandler for ExPointer {
     fn on_motion(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &MotionEvent) {
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let (delta_x, delta_y) = event.delta();
             state.cursor
@@ -105,7 +105,7 @@ impl PointerHandler for ExPointer {
     }
 
     fn on_button(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &ButtonEvent) {
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             if event.state() == WLR_BUTTON_RELEASED {
                 state.color = state.default_color;
@@ -117,7 +117,7 @@ impl PointerHandler for ExPointer {
     }
 
     fn on_axis(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &AxisEvent) {
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             for color_byte in &mut state.default_color[..3] {
                 *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
@@ -135,7 +135,7 @@ impl PointerHandler for ExPointer {
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
-        run_handles!([(compositor: {compositor}), (output: {output})] => {
+        with_handles!([(compositor: {compositor}), (output: {output})] => {
             let state: &mut State = compositor.into();
             // NOTE gl functions will probably always be unsafe.
             unsafe {
@@ -153,7 +153,7 @@ impl InputManagerHandler for InputManager {
                      compositor: CompositorHandle,
                      pointer: PointerHandle)
                      -> Option<Box<PointerHandler>> {
-        run_handles!([(compositor: {compositor}), (pointer: {pointer})] => {
+        with_handles!([(compositor: {compositor}), (pointer: {pointer})] => {
             let state: &mut State = compositor.into();
             state.cursor
                 .run(|cursor| cursor.attach_input_device(pointer.input_device()))

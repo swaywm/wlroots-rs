@@ -211,8 +211,38 @@ macro_rules! compositor_data {
     }
 }
 
+/// A convenience macro designed for use with Handle types.
+///
+/// This allows you to avoid the rightward drift of death that is often found
+/// with heavily nested callback systems.
+///
+/// Any `HandleResult`s are flattened and the first one encountered is immediately
+/// returned before any of the `$body` code is executed.
+///
+/// Order of evaluation is from left to right. It is possible to refer to the previous
+/// result, as commonly found in Lisp's `let*` macro.
+///
+/// An example of simple use:
+///
+/// ```rust,no_run
+/// with_handles!([(compositor: {compositor}),
+///            (output: {&mut result.output_handle})] => {
+///    ...
+/// })
+/// ```
+///
+/// A more complex use:
+///
+/// ```rust,no_run
+/// with_handles!([(shell: {shell_handle}),
+///            // Notice how we use the previous result to get the surface.
+///            (surface: {shell.surface_handle})] => {
+///    ...
+/// })
+/// ```
+///
 #[macro_export]
-macro_rules! run_handles {
+macro_rules! with_handles {
     ([($handle_name: ident: $unhandle_name: block)] => $body: block) => {
         $unhandle_name.run(|$handle_name| {
             $body
@@ -222,12 +252,12 @@ macro_rules! run_handles {
       ($handle_name2: ident: $unhandle_name2: block),
       $($rest: tt)*] => $body: block) => {
         $unhandle_name1.run(|$handle_name1| {
-            run_handles!([($handle_name2: $unhandle_name2), $($rest)*] => $body)
+            with_handles!([($handle_name2: $unhandle_name2), $($rest)*] => $body)
         }).and_then(|n: $crate::HandleResult<_>| n)
     };
     ([($handle_name: ident: $unhandle_name: block), $($rest: tt)*] => $body: block) => {
         $unhandle_name.run(|$handle_name| {
-            run_handles!([$($rest)*] => $body)
+            with_handles!([$($rest)*] => $body)
         }).and_then(|n: $crate::HandleResult<_>| n)
     };
 }

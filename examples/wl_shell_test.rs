@@ -65,12 +65,12 @@ impl WlShellManagerHandler for WlShellManager {
                    shell: WlShellSurfaceHandle,
                    _: SurfaceHandle)
                    -> Option<Box<WlShellHandler>> {
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             state.shells.push(shell);
-            run_handles!([(layout: {&mut state.layout})] => {
+            with_handles!([(layout: {&mut state.layout})] => {
                 for (mut output, _) in layout.outputs() {
-                    run_handles!([(output: {output})] => {
+                    with_handles!([(output: {output})] => {
                         output.schedule_frame()
                     }).ok();
                 }
@@ -96,7 +96,7 @@ impl OutputManagerHandler for OutputManager {
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
         let mut result = builder.build_best_mode(ExOutput);
-        run_handles!([(compositor: {compositor}), (output: {&mut result.output})] => {
+        with_handles!([(compositor: {compositor}), (output: {&mut result.output})] => {
             let state: &mut State = compositor.into();
             let xcursor = state.xcursor_theme
                             .get_cursor("left_ptr".into())
@@ -104,7 +104,7 @@ impl OutputManagerHandler for OutputManager {
             let layout = &mut state.layout;
             let cursor = &mut state.cursor;
             let image = &xcursor.images()[0];
-            run_handles!([(layout: {layout}), (cursor: {cursor})] => {
+            with_handles!([(layout: {layout}), (cursor: {cursor})] => {
                 layout.add_auto(output);
                 cursor.attach_output_layout(layout);
                 cursor.set_cursor_image(image.into());
@@ -124,7 +124,7 @@ impl KeyboardHandler for ExKeyboardHandler {
               key_event: &KeyEvent) {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
-                run_handles!([(compositor: {&mut compositor})] => {
+                with_handles!([(compositor: {&mut compositor})] => {
                     compositor.terminate()
                 }).unwrap();
             }
@@ -265,7 +265,7 @@ impl PointerHandler for ExPointer {
                  mut compositor: CompositorHandle,
                  _: PointerHandle,
                  event: &MotionEvent) {
-        run_handles!([(compositor: {&mut compositor})] => {
+        with_handles!([(compositor: {&mut compositor})] => {
             let state: &mut State = compositor.into();
             let (delta_x, delta_y) = event.delta();
             state.cursor
@@ -278,7 +278,7 @@ impl PointerHandler for ExPointer {
     }
 
     fn on_button(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &ButtonEvent) {
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             if event.state() == WLR_BUTTON_RELEASED {
                 state.color = state.default_color;
@@ -290,7 +290,7 @@ impl PointerHandler for ExPointer {
     }
 
     fn on_axis(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &AxisEvent) {
-        run_handles!([(compositor: {compositor})] => {
+        with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             for color_byte in &mut state.default_color[..3] {
                 *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
@@ -308,7 +308,7 @@ impl PointerHandler for ExPointer {
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
-        run_handles!([(compositor: {compositor}), (output: {output})] => {
+        with_handles!([(compositor: {compositor}), (output: {output})] => {
             let state: &mut State = compositor.data.downcast_mut().unwrap();
             if state.shells.len() < 1 {
                 return
@@ -357,7 +357,7 @@ fn main() {
 fn render_shells(state: &mut State, renderer: &mut Renderer) {
     let shells = state.shells.clone();
     for mut shell in shells {
-        run_handles!([(shell: {shell}),
+        with_handles!([(shell: {shell}),
                       (surface: {shell.surface()}),
                       (layout: {&mut state.layout})] => {
             let (width, height) = surface.current_state().size();
