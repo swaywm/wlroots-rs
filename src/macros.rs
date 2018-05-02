@@ -224,7 +224,7 @@ macro_rules! compositor_data {
 ///
 /// An example of simple use:
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// with_handles!([(compositor: {compositor}),
 ///    (output: {&mut result.output_handle})] => {
 ///    ...
@@ -233,7 +233,7 @@ macro_rules! compositor_data {
 ///
 /// A more complex use:
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// with_handles!([(shell: {shell_handle}),
 ///    // Notice how we use the previous result to get the surface.
 ///    (surface: {shell.surface_handle})] => {

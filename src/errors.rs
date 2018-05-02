@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fmt;
 
 /// The result of trying to upgrade a handle, either using `run` or
-/// `run_handles!`.
+/// `with_handles!`.
 pub type HandleResult<T> = Result<T, HandleErr>;
 
 /// The types of ways upgrading a handle can fail.
