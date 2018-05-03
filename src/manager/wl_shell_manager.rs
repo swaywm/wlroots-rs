@@ -5,16 +5,16 @@ use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_wl_shell_surface;
 
 use super::wl_shell_handler::WlShell;
-use {Surface, WlShellHandler, WlShellSurface};
-use compositor::{Compositor, COMPOSITOR_PTR};
+use {Surface, SurfaceHandle, WlShellHandler, WlShellSurface, WlShellSurfaceHandle};
+use compositor::{compositor_handle, CompositorHandle};
 
 /// Handles making new Wayland shells as reported by clients.
 pub trait WlShellManagerHandler {
     /// Callback that is triggerde when a new wayland shell surface appears.
     fn new_surface(&mut self,
-                   &mut Compositor,
-                   &mut WlShellSurface,
-                   &mut Surface)
+                   CompositorHandle,
+                   WlShellSurfaceHandle,
+                   SurfaceHandle)
                    -> Option<Box<WlShellHandler>>;
 }
 
@@ -23,17 +23,16 @@ wayland_listener!(WlShellManager, Box<WlShellManagerHandler>, [
         let manager = &mut this.data;
         let data = data as *mut wlr_wl_shell_surface;
         wlr_log!(L_DEBUG, "New wl_shell_surface request {:p}", data);
-        let compositor = &mut *COMPOSITOR_PTR;
-        let mut surface = Surface::new((*data).surface);
-        let mut shell_surface = WlShellSurface::new(data);
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+        let surface = Surface::new((*data).surface);
+        let shell_surface = WlShellSurface::new(data);
 
-        compositor.lock.set(true);
-        surface.set_lock(true);
-        shell_surface.set_lock(true);
-        let new_surface_res = manager.new_surface(compositor, &mut shell_surface, &mut surface);
-        compositor.lock.set(false);
-        surface.set_lock(false);
-        shell_surface.set_lock(false);
+        let new_surface_res = manager.new_surface(compositor,
+                                                  shell_surface.weak_reference(),
+                                                  surface.weak_reference());
 
         if let Some(shell_surface_handler) = new_surface_res {
             let mut shell_surface = WlShell::new((shell_surface, surface, shell_surface_handler));

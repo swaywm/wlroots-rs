@@ -43,7 +43,7 @@ pub struct Output {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `OutputHandle`.
-    liveliness: Option<Rc<Cell<bool>>>,
+    liveliness: Rc<Cell<bool>>,
     /// The tracker for damage on the output.
     damage: ManuallyDrop<OutputDamage>,
     /// The output ptr that refers to this `Output`
@@ -93,7 +93,7 @@ impl Output {
                                            damage: damage.as_ptr(),
                                            layout_handle: None });
         (*output).data = Box::into_raw(state) as *mut _;
-        Output { liveliness: Some(liveliness),
+        Output { liveliness,
                  damage,
                  output }
     }
@@ -441,28 +441,18 @@ impl Output {
     /// If this `Output` is a previously upgraded `OutputHandle`,
     /// then this function will panic.
     pub fn weak_reference(&self) -> OutputHandle {
-        let arc = self.liveliness.as_ref()
-                      .expect("Cannot downgrade a previously upgraded OutputHandle");
-        OutputHandle { handle: Rc::downgrade(arc),
+        OutputHandle { handle: Rc::downgrade(&self.liveliness),
                        damage: unsafe { self.damage.as_ptr() },
                        output: self.output }
     }
 
-    unsafe fn from_handle(handle: &OutputHandle) -> Self {
-        Output { liveliness: None,
-                 damage: ManuallyDrop::new(OutputDamage::from_ptr(handle.damage)),
-                 output: handle.as_ptr() }
-    }
-
-    /// Manually set the lock used to determine if a double-borrow is
-    /// occuring on this structure.
-    ///
-    /// # Panics
-    /// Panics when trying to set the lock on an upgraded handle.
-    pub(crate) unsafe fn set_lock(&self, val: bool) {
-        self.liveliness.as_ref()
-            .expect("Tried to set lock on borrowed Output")
-            .set(val);
+    unsafe fn from_handle(handle: &OutputHandle) -> HandleResult<Self> {
+        let liveliness = handle.handle
+                               .upgrade()
+                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Output { liveliness,
+                    damage: ManuallyDrop::new(OutputDamage::from_ptr(handle.damage)),
+                    output: handle.as_ptr() })
     }
 }
 
@@ -475,22 +465,17 @@ impl Drop for Output {
         // NOTE
         // We do _not_ need to call wlr_output_damage_detroy for the output,
         // that is handled automatically by the listeners in wlroots.
-        match self.liveliness {
-            None => return,
-            Some(ref liveliness) => {
-                if Rc::strong_count(liveliness) == 1 {
-                    wlr_log!(L_DEBUG, "Dropped output {:p}", self.output);
-                    let weak_count = Rc::weak_count(liveliness);
-                    if weak_count > 0 {
-                        wlr_log!(L_DEBUG,
-                                 "Still {} weak pointers to Output {:p}",
-                                 weak_count,
-                                 self.output);
-                    }
-                } else {
-                    return
-                }
+        if Rc::strong_count(&self.liveliness) == 1 {
+            wlr_log!(L_DEBUG, "Dropped output {:p}", self.output);
+            let weak_count = Rc::weak_count(&self.liveliness);
+            if weak_count > 0 {
+                wlr_log!(L_DEBUG,
+                         "Still {} weak pointers to Output {:p}",
+                         weak_count,
+                         self.output);
             }
+        } else {
+            return
         }
         // TODO Move back up in the some after NLL is a thing.
         unsafe {
@@ -539,7 +524,7 @@ impl OutputHandle {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                let output = Output::from_handle(self);
+                let output = Output::from_handle(self)?;
                 if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }

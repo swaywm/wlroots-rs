@@ -8,12 +8,12 @@ extern crate wlroots;
 use std::thread;
 use std::time::Duration;
 
-use wlroots::{project_box, Area, Compositor, CompositorBuilder, Cursor, CursorHandle,
-              CursorHandler, InputManagerHandler, Keyboard, KeyboardHandler, Origin, Output,
-              OutputBuilder, OutputBuilderResult, OutputHandler, OutputLayout, OutputLayoutHandle,
-              OutputLayoutHandler, OutputManagerHandler, Pointer, PointerHandler, Renderer, Seat,
-              SeatHandler, Size, Surface, WlShellHandler, WlShellManagerHandler, WlShellSurface,
-              WlShellSurfaceHandle, XCursorTheme};
+use wlroots::{project_box, Area, CompositorBuilder, CompositorHandle, Cursor, CursorHandle,
+              CursorHandler, InputManagerHandler, KeyboardHandle, KeyboardHandler, Origin,
+              OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler, OutputLayout,
+              OutputLayoutHandle, OutputLayoutHandler, OutputManagerHandler, PointerHandle,
+              PointerHandler, Renderer, Seat, SeatHandler, Size, SurfaceHandle, WlShellHandler,
+              WlShellManagerHandler, WlShellSurfaceHandle, XCursorTheme};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -61,19 +61,21 @@ struct WlShellManager;
 impl WlShellHandler for WlShellHandlerEx {}
 impl WlShellManagerHandler for WlShellManager {
     fn new_surface(&mut self,
-                   compositor: &mut Compositor,
-                   shell: &mut WlShellSurface,
-                   _: &mut Surface)
+                   compositor: CompositorHandle,
+                   shell: WlShellSurfaceHandle,
+                   _: SurfaceHandle)
                    -> Option<Box<WlShellHandler>> {
-        let state: &mut State = compositor.into();
-        state.shells.push(shell.weak_reference());
-        run_handles!([(layout: {&mut state.layout})] => {
-            for (mut output, _) in layout.outputs() {
-                run_handles!([(output: {output})] => {
-                    output.schedule_frame()
-                }).ok();
-            }
-        }).expect("Layout was destroyed");
+        with_handles!([(compositor: {compositor})] => {
+            let state: &mut State = compositor.into();
+            state.shells.push(shell);
+            with_handles!([(layout: {&mut state.layout})] => {
+                for (mut output, _) in layout.outputs() {
+                    with_handles!([(output: {output})] => {
+                        output.schedule_frame()
+                    }).ok();
+                }
+            }).expect("Layout was destroyed");
+        }).unwrap();
         Some(Box::new(WlShellHandlerEx))
     }
 }
@@ -90,34 +92,41 @@ struct ExKeyboardHandler;
 
 impl OutputManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
-                             compositor: &mut Compositor,
+                             compositor: CompositorHandle,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
-        let result = builder.build_best_mode(ExOutput);
-        let state: &mut State = compositor.into();
-        let xcursor = state.xcursor_theme
-                           .get_cursor("left_ptr".into())
-                           .expect("Could not load left_ptr cursor");
-        let layout = &mut state.layout;
-        let cursor = &mut state.cursor;
-        let image = &xcursor.images()[0];
-        run_handles!([(layout: {layout}), (cursor: {cursor})] => {
-            layout.add_auto(result.output);
-            cursor.attach_output_layout(layout);
-            cursor.set_cursor_image(image.into());
-            let (x, y) = cursor.coords();
-            // https://en.wikipedia.org/wiki/Mouse_warping
-            cursor.warp(None, x, y);
-        }).expect("Layout was destroyed");
+        let mut result = builder.build_best_mode(ExOutput);
+        with_handles!([(compositor: {compositor}), (output: {&mut result.output})] => {
+            let state: &mut State = compositor.into();
+            let xcursor = state.xcursor_theme
+                            .get_cursor("left_ptr".into())
+                            .expect("Could not load left_ptr cursor");
+            let layout = &mut state.layout;
+            let cursor = &mut state.cursor;
+            let image = &xcursor.images()[0];
+            with_handles!([(layout: {layout}), (cursor: {cursor})] => {
+                layout.add_auto(output);
+                cursor.attach_output_layout(layout);
+                cursor.set_cursor_image(image.into());
+                let (x, y) = cursor.coords();
+                // https://en.wikipedia.org/wiki/Mouse_warping
+                cursor.warp(None, x, y);
+            }).expect("Layout was destroyed");
+        }).unwrap();
         Some(result)
     }
 }
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self, compositor: &mut Compositor, _: &mut Keyboard, key_event: &mut KeyEvent) {
+    fn on_key(&mut self,
+              mut compositor: CompositorHandle,
+              _: KeyboardHandle,
+              key_event: &KeyEvent) {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
-                compositor.terminate()
+                with_handles!([(compositor: {&mut compositor})] => {
+                    compositor.terminate()
+                }).unwrap();
             }
             // TODO This is a dumb way to compare these values
             else if key_event.key_state() as u32 == 1 {
@@ -252,66 +261,77 @@ impl KeyboardHandler for ExKeyboardHandler {
 }
 
 impl PointerHandler for ExPointer {
-    fn on_motion(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &MotionEvent) {
-        let state: &mut State = compositor.into();
-        let (delta_x, delta_y) = event.delta();
-        state.cursor
-             .clone()
-             .run(|cursor| {
-                      cursor.move_to(event.device(), delta_x, delta_y);
-                  })
-             .unwrap();
+    fn on_motion(&mut self,
+                 mut compositor: CompositorHandle,
+                 _: PointerHandle,
+                 event: &MotionEvent) {
+        with_handles!([(compositor: {&mut compositor})] => {
+            let state: &mut State = compositor.into();
+            let (delta_x, delta_y) = event.delta();
+            state.cursor
+                .clone()
+                .run(|cursor| {
+                        cursor.move_to(event.device(), delta_x, delta_y);
+                    })
+                .unwrap();
+        }).unwrap();
     }
 
-    fn on_button(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &ButtonEvent) {
-        let state: &mut State = compositor.into();
-        if event.state() == WLR_BUTTON_RELEASED {
-            state.color = state.default_color;
-        } else {
-            state.color = [0.25, 0.25, 0.25, 1.0];
-            state.color[event.button() as usize % 3] = 1.0;
-        }
+    fn on_button(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &ButtonEvent) {
+        with_handles!([(compositor: {compositor})] => {
+            let state: &mut State = compositor.into();
+            if event.state() == WLR_BUTTON_RELEASED {
+                state.color = state.default_color;
+            } else {
+                state.color = [0.25, 0.25, 0.25, 1.0];
+                state.color[event.button() as usize % 3] = 1.0;
+            }
+        }).unwrap();
     }
 
-    fn on_axis(&mut self, compositor: &mut Compositor, _: &mut Pointer, event: &AxisEvent) {
-        let state: &mut State = compositor.into();
-        for color_byte in &mut state.default_color[..3] {
-            *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
-            if *color_byte > 1.0 {
-                *color_byte = 1.0
+    fn on_axis(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &AxisEvent) {
+        with_handles!([(compositor: {compositor})] => {
+            let state: &mut State = compositor.into();
+            for color_byte in &mut state.default_color[..3] {
+                *color_byte += if event.delta() > 0.0 { -0.05 } else { 0.05 };
+                if *color_byte > 1.0 {
+                    *color_byte = 1.0
+                }
+                if *color_byte < 0.0 {
+                    *color_byte = 0.0
+                }
             }
-            if *color_byte < 0.0 {
-                *color_byte = 0.0
-            }
-        }
-        state.color = state.default_color.clone()
+            state.color = state.default_color.clone()
+        }).unwrap();
     }
 }
 
 impl OutputHandler for ExOutput {
-    fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
-        let state: &mut State = compositor.data.downcast_mut().unwrap();
-        if state.shells.len() < 1 {
-            return
-        }
-        let renderer = compositor.renderer
-                                 .as_mut()
-                                 .expect("Compositor was not loaded with a renderer");
-        render_shells(state, &mut renderer.render(output, None));
+    fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
+        with_handles!([(compositor: {compositor}), (output: {output})] => {
+            let state: &mut State = compositor.data.downcast_mut().unwrap();
+            if state.shells.len() < 1 {
+                return
+            }
+            let renderer = compositor.renderer
+                                    .as_mut()
+                                    .expect("Compositor was not loaded with a renderer");
+            render_shells(state, &mut renderer.render(output, None));
+        }).unwrap();
     }
 }
 
 impl InputManagerHandler for InputManager {
     fn pointer_added(&mut self,
-                     _: &mut Compositor,
-                     _: &mut Pointer)
+                     _: CompositorHandle,
+                     _: PointerHandle)
                      -> Option<Box<PointerHandler>> {
         Some(Box::new(ExPointer))
     }
 
     fn keyboard_added(&mut self,
-                      _: &mut Compositor,
-                      _: &mut Keyboard)
+                      _: CompositorHandle,
+                      _: KeyboardHandle)
                       -> Option<Box<KeyboardHandler>> {
         Some(Box::new(ExKeyboardHandler))
     }
@@ -337,7 +357,7 @@ fn main() {
 fn render_shells(state: &mut State, renderer: &mut Renderer) {
     let shells = state.shells.clone();
     for mut shell in shells {
-        run_handles!([(shell: {shell}),
+        with_handles!([(shell: {shell}),
                       (surface: {shell.surface()}),
                       (layout: {&mut state.layout})] => {
             let (width, height) = surface.current_state().size();

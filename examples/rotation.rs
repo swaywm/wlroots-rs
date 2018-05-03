@@ -4,8 +4,9 @@ extern crate wlroots;
 use std::env;
 use std::time::Instant;
 
-use wlroots::{Compositor, CompositorBuilder, InputManagerHandler, Keyboard, KeyboardHandler,
-              Output, OutputBuilder, OutputBuilderResult, OutputHandler, OutputManagerHandler};
+use wlroots::{CompositorBuilder, CompositorHandle, InputManagerHandler, KeyboardHandle,
+              KeyboardHandler, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
+              OutputManagerHandler};
 use wlroots::key_events::KeyEvent;
 use wlroots::render::{Texture, TextureFormat};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -65,73 +66,80 @@ struct KeyboardManager;
 
 impl OutputManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
-                             compositor: &mut Compositor,
+                             compositor: CompositorHandle,
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
-        let compositor_data: &mut CompositorState = compositor.into();
         let output = ExOutput;
-        let res = builder.build_best_mode(output);
-        res.output.transform(compositor_data.rotation);
+        let mut res = builder.build_best_mode(output);
+        with_handles!([(compositor: {compositor}), (output: {&mut res.output})] => {
+            let compositor_data: &mut CompositorState = compositor.into();
+            output.transform(compositor_data.rotation);
+        }).unwrap();
         Some(res)
     }
 }
 
 impl OutputHandler for ExOutput {
-    fn on_frame(&mut self, compositor: &mut Compositor, output: &mut Output) {
-        let (width, height) = output.effective_resolution();
-        let renderer = compositor.renderer
-                                 .as_mut()
-                                 .expect("Compositor was not loaded with gles2 renderer");
-        let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
-        let now = Instant::now();
-        let delta = now.duration_since(compositor_data.last_frame);
-        let seconds_delta = delta.as_secs() as f32;
-        let nano_delta = delta.subsec_nanos() as u64;
-        let ms = (seconds_delta * 1000.0) + nano_delta as f32 / 1000000.0;
-        let seconds = ms / 1000.0;
-        let transform_matrix = output.transform_matrix();
-        let mut renderer = renderer.render(output, None);
-        let cat_texture = compositor_data.cat_texture.as_ref().unwrap();
-        for y in StepRange(-128 + compositor_data.y_offs as i32, height, 128) {
-            for x in StepRange(-128 + compositor_data.x_offs as i32, width, 128) {
-                renderer.render_texture(&cat_texture, transform_matrix, x, y, 1.0);
+    fn on_frame(&mut self, mut compositor: CompositorHandle, mut output: OutputHandle) {
+        with_handles!([(compositor: {&mut compositor}), (output: {&mut output})] => {
+            let (width, height) = output.effective_resolution();
+            let renderer = compositor.renderer
+                                    .as_mut()
+                                    .expect("Compositor was not loaded with gles2 renderer");
+            let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut()
+                .unwrap();
+            let now = Instant::now();
+            let delta = now.duration_since(compositor_data.last_frame);
+            let seconds_delta = delta.as_secs() as f32;
+            let nano_delta = delta.subsec_nanos() as u64;
+            let ms = (seconds_delta * 1000.0) + nano_delta as f32 / 1000000.0;
+            let seconds = ms / 1000.0;
+            let transform_matrix = output.transform_matrix();
+            let mut renderer = renderer.render(output, None);
+            let cat_texture = compositor_data.cat_texture.as_ref().unwrap();
+            for y in StepRange(-128 + compositor_data.y_offs as i32, height, 128) {
+                for x in StepRange(-128 + compositor_data.x_offs as i32, width, 128) {
+                    renderer.render_texture(&cat_texture, transform_matrix, x, y, 1.0);
+                }
             }
-        }
-        compositor_data.x_offs += compositor_data.x_vel * seconds;
-        compositor_data.y_offs += compositor_data.y_vel * seconds;
-        if compositor_data.x_offs > 128.0 {
-            compositor_data.x_offs = 0.0
-        }
-        if compositor_data.y_offs > 128.0 {
-            compositor_data.y_offs = 0.0
-        }
-        compositor_data.last_frame = now;
+            compositor_data.x_offs += compositor_data.x_vel * seconds;
+            compositor_data.y_offs += compositor_data.y_vel * seconds;
+            if compositor_data.x_offs > 128.0 {
+                compositor_data.x_offs = 0.0
+            }
+            if compositor_data.y_offs > 128.0 {
+                compositor_data.y_offs = 0.0
+            }
+            compositor_data.last_frame = now;
+        }).unwrap();
     }
 }
 
 impl InputManagerHandler for InputManager {
     fn keyboard_added(&mut self,
-                      _: &mut Compositor,
-                      _: &mut Keyboard)
+                      _: CompositorHandle,
+                      _: KeyboardHandle)
                       -> Option<Box<KeyboardHandler>> {
         Some(Box::new(KeyboardManager))
     }
 }
 
 impl KeyboardHandler for KeyboardManager {
-    fn on_key(&mut self, compositor: &mut Compositor, _: &mut Keyboard, key_event: &mut KeyEvent) {
+    fn on_key(&mut self, compositor: CompositorHandle, _: KeyboardHandle, key_event: &KeyEvent) {
         let keys = key_event.pressed_keys();
 
-        for key in keys {
-            match key {
-                keysyms::KEY_Escape => compositor.terminate(),
-                keysyms::KEY_Left => update_velocities(compositor.into(), -16.0, 0.0),
-                keysyms::KEY_Right => update_velocities(compositor.into(), 16.0, 0.0),
-                keysyms::KEY_Up => update_velocities(compositor.into(), 0.0, -16.0),
-                keysyms::KEY_Down => update_velocities(compositor.into(), 0.0, 16.0),
-                _ => {}
+        with_handles!([(compositor: {compositor})] => {
+            for key in keys {
+                match key {
+                    keysyms::KEY_Escape => compositor.terminate(),
+                    keysyms::KEY_Left => update_velocities(compositor.into(), -16.0, 0.0),
+                    keysyms::KEY_Right => update_velocities(compositor.into(), 16.0, 0.0),
+                    keysyms::KEY_Up => update_velocities(compositor.into(), 0.0, -16.0),
+                    keysyms::KEY_Down => update_velocities(compositor.into(), 0.0, 16.0),
+                    _ => {}
+                }
             }
-        }
+        }).unwrap();
     }
 }
 

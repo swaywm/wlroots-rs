@@ -1,9 +1,0 @@
-[package]
-name = "rootston"
-version = "0.0.0"
-authors = ["Timidger <APragmaticPlace@gmail.com>"]
-
-[dependencies]
-rust-ini = "0.10.0"
-wlroots = { path = "../" }
-clap = "2.29.0"

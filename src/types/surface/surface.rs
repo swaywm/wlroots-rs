@@ -39,7 +39,7 @@ pub struct Surface {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `SurfaceHandle`.
-    liveliness: Option<Rc<Cell<bool>>>,
+    liveliness: Rc<Cell<bool>>,
     /// The manager of the list of subsurfaces for this surface.
     ///
     /// When the subsurface destruction event fires the manager will deal with
@@ -82,7 +82,6 @@ impl Surface {
                                                                         subsurfaces_manager:
                                                                             weak_manager }))
                           as _;
-        let liveliness = Some(liveliness);
         Surface { liveliness,
                   subsurfaces_manager,
                   surface }
@@ -230,33 +229,23 @@ impl Surface {
     /// If this `Surface` is a previously upgraded `SurfaceHandle`
     /// then this function will panic.
     pub fn weak_reference(&self) -> SurfaceHandle {
-        let arc = self.liveliness.as_ref()
-                      .expect("Cannot downgrade a previously upgraded OutputHandle");
-        SurfaceHandle { handle: Rc::downgrade(arc),
+        SurfaceHandle { handle: Rc::downgrade(&self.liveliness),
                         surface: self.surface,
                         subsurfaces_manager: Rc::downgrade(&self.subsurfaces_manager) }
     }
 
-    /// Manually set the lock used to determine if a double-borrow is
-    /// occuring on this structure.
-    ///
-    /// # Panics
-    /// Panics when trying to set the lock on an upgraded handle.
-    pub(crate) unsafe fn set_lock(&self, val: bool) {
-        self.liveliness.as_ref()
-            .expect("Tried to set lock on borrowed Surface")
-            .set(val);
-    }
-
-    unsafe fn from_handle(handle: &SurfaceHandle) -> Self {
+    unsafe fn from_handle(handle: &SurfaceHandle) -> HandleResult<Self> {
         let data = (*handle.surface).data as *mut InternalSurfaceState;
         let subsurfaces_manager = (*data).subsurfaces_manager
                                          .clone()
                                          .upgrade()
                                          .expect("Could not upgrade subsurfaces list");
-        Surface { liveliness: None,
-                  subsurfaces_manager,
-                  surface: handle.surface }
+        let liveliness = handle.handle
+                               .upgrade()
+                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Surface { liveliness,
+                     subsurfaces_manager,
+                     surface: handle.surface })
     }
 }
 
@@ -301,7 +290,7 @@ impl SurfaceHandle {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.set(true);
-                Ok(Surface::from_handle(self))
+                Surface::from_handle(self)
             })
     }
 
@@ -352,21 +341,16 @@ impl Default for SurfaceHandle {
 
 impl Drop for Surface {
     fn drop(&mut self) {
-        match self.liveliness {
-            None => return,
-            Some(ref liveliness) => {
-                if Rc::strong_count(liveliness) != 1 {
-                    return
-                }
-                wlr_log!(L_DEBUG, "Dropped surface {:p}", self.surface);
-                let weak_count = Rc::weak_count(liveliness);
-                if weak_count > 0 {
-                    wlr_log!(L_DEBUG,
-                             "Still {} weak pointers to Surface {:p}",
-                             weak_count,
-                             self.surface);
-                }
-            }
+        if Rc::strong_count(&self.liveliness) != 1 {
+            return
+        }
+        wlr_log!(L_DEBUG, "Dropped surface {:p}", self.surface);
+        let weak_count = Rc::weak_count(&self.liveliness);
+        if weak_count > 0 {
+            wlr_log!(L_DEBUG,
+                     "Still {} weak pointers to Surface {:p}",
+                     weak_count,
+                     self.surface);
         }
         unsafe {
             let _ = Box::from_raw((*self.surface).data as *mut InternalSurfaceState);

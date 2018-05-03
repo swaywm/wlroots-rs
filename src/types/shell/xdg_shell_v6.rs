@@ -45,7 +45,7 @@ pub enum XdgV6ShellState {
 
 #[derive(Debug)]
 pub struct XdgV6ShellSurface {
-    liveliness: Option<Rc<Cell<bool>>>,
+    liveliness: Rc<Cell<bool>>,
     state: Option<XdgV6ShellState>,
     shell_surface: *mut wlr_xdg_surface_v6
 }
@@ -84,7 +84,7 @@ impl XdgV6ShellSurface {
                                                   Some(ref state) => Some(state.clone())
                                               } });
         (*shell_surface).data = Box::into_raw(shell_state) as *mut _;
-        XdgV6ShellSurface { liveliness: Some(liveliness),
+        XdgV6ShellSurface { liveliness,
                             state: state,
                             shell_surface }
     }
@@ -93,10 +93,13 @@ impl XdgV6ShellSurface {
         self.shell_surface
     }
 
-    unsafe fn from_handle(handle: &XdgV6ShellSurfaceHandle) -> Self {
-        XdgV6ShellSurface { liveliness: None,
-                            state: handle.clone().state,
-                            shell_surface: handle.as_ptr() }
+    unsafe fn from_handle(handle: &XdgV6ShellSurfaceHandle) -> HandleResult<Self> {
+        let liveliness = handle.handle
+                               .upgrade()
+                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(XdgV6ShellSurface { liveliness,
+                               state: handle.clone().state,
+                               shell_surface: handle.as_ptr() })
     }
 
     /// Gets the surface used by this XDG shell.
@@ -185,25 +188,12 @@ impl XdgV6ShellSurface {
     /// If this `XdgV6ShellSurface` is a previously upgraded `XdgV6ShellSurfaceHandle`,
     /// then this function will panic.
     pub fn weak_reference(&self) -> XdgV6ShellSurfaceHandle {
-        let arc = self.liveliness.as_ref()
-                      .expect("Cannot dowgrade a previously upgraded XdgV6ShellSurfaceHandle");
-        XdgV6ShellSurfaceHandle { handle: Rc::downgrade(arc),
+        XdgV6ShellSurfaceHandle { handle: Rc::downgrade(&self.liveliness),
                                   state: match self.state {
                                       None => None,
                                       Some(ref state) => unsafe { Some(state.clone()) }
                                   },
                                   shell_surface: self.shell_surface }
-    }
-
-    /// Manually set the lock used to determine if a double-borrow is
-    /// occuring on this structure.
-    ///
-    /// # Panics
-    /// Panics when trying to set the lock on an upgraded handle.
-    pub(crate) unsafe fn set_lock(&self, val: bool) {
-        self.liveliness.as_ref()
-            .expect("Tried to set lock on borrowed XdgV6ShellSurface")
-            .set(val);
     }
 }
 
@@ -251,7 +241,7 @@ impl XdgV6ShellSurfaceHandle {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                let shell_surface = XdgV6ShellSurface::from_handle(self);
+                let shell_surface = XdgV6ShellSurface::from_handle(self)?;
                 if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }

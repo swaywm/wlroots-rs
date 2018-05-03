@@ -17,7 +17,7 @@ struct WlShellSurfaceState {
 
 #[derive(Debug)]
 pub struct WlShellSurface {
-    liveliness: Option<Rc<Cell<bool>>>,
+    liveliness: Rc<Cell<bool>>,
     shell_surface: *mut wlr_wl_shell_surface
 }
 
@@ -34,13 +34,16 @@ impl WlShellSurface {
         let liveliness = Rc::new(Cell::new(false));
         let state = Box::new(WlShellSurfaceState { handle: Rc::downgrade(&liveliness) });
         (*shell_surface).data = Box::into_raw(state) as *mut _;
-        WlShellSurface { liveliness: Some(liveliness),
+        WlShellSurface { liveliness,
                          shell_surface }
     }
 
-    unsafe fn from_handle(handle: &WlShellSurfaceHandle) -> Self {
-        WlShellSurface { liveliness: None,
-                         shell_surface: handle.as_ptr() }
+    unsafe fn from_handle(handle: &WlShellSurfaceHandle) -> HandleResult<Self> {
+        let liveliness = handle.handle
+                               .upgrade()
+                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(WlShellSurface { liveliness,
+                            shell_surface: handle.as_ptr() })
     }
 
     /// Gets the surface used by this Wayland shell.
@@ -124,21 +127,8 @@ impl WlShellSurface {
     /// If this `WlShellSurface` is a previously upgraded `WlShellSurfaceHandle`,
     /// then this function will panic.
     pub fn weak_reference(&self) -> WlShellSurfaceHandle {
-        let arc = self.liveliness.as_ref()
-                      .expect("Cannot dowgrade a previously upgraded WlShellSurfaceHandle");
-        WlShellSurfaceHandle { handle: Rc::downgrade(arc),
+        WlShellSurfaceHandle { handle: Rc::downgrade(&self.liveliness),
                                shell_surface: self.shell_surface }
-    }
-
-    /// Manually set the lock used to determine if a double-borrow is
-    /// occuring on this structure.
-    ///
-    /// # Panics
-    /// Panics when trying to set the lock on an upgraded handle.
-    pub(crate) unsafe fn set_lock(&self, val: bool) {
-        self.liveliness.as_ref()
-            .expect("Tried to set lock on borrowed WlShellSurface")
-            .set(val);
     }
 }
 
@@ -180,7 +170,7 @@ impl WlShellSurfaceHandle {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                let shell_surface = WlShellSurface::from_handle(self);
+                let shell_surface = WlShellSurface::from_handle(self)?;
                 if check.get() {
                     return Err(HandleErr::AlreadyBorrowed)
                 }

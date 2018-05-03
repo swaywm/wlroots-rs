@@ -18,7 +18,7 @@ pub struct Touch {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `TouchHandle`.
-    liveliness: Option<Rc<Cell<bool>>>,
+    liveliness: Rc<Cell<bool>>,
     /// The device that refers to this touch.
     device: InputDevice,
     /// The underlying touch data.
@@ -51,7 +51,7 @@ impl Touch {
         match (*device).type_ {
             WLR_INPUT_DEVICE_TOUCH => {
                 let touch = (*device).__bindgen_anon_1.touch;
-                Some(Touch { liveliness: Some(Rc::new(Cell::new(false))),
+                Some(Touch { liveliness: Rc::new(Cell::new(false)),
                              device: InputDevice::from_ptr(device),
                              touch })
             }
@@ -61,7 +61,10 @@ impl Touch {
 
     /// Creates an unbound `Touch` from a `TouchHandle`
     unsafe fn from_handle(handle: &TouchHandle) -> HandleResult<Self> {
-        Ok(Touch { liveliness: None,
+        let liveliness = handle.handle
+                               .upgrade()
+                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Touch { liveliness,
                    device: handle.input_device()?.clone(),
                    touch: handle.as_ptr() })
     }
@@ -83,42 +86,24 @@ impl Touch {
     /// If this `Touch` is a previously upgraded `TouchHandle`,
     /// then this function will panic.
     pub fn weak_reference(&self) -> TouchHandle {
-        let arc = self.liveliness.as_ref()
-                      .expect("Cannot downgrade a previously upgraded TouchHandle!");
-        TouchHandle { handle: Rc::downgrade(arc),
+        TouchHandle { handle: Rc::downgrade(&self.liveliness),
                       // NOTE Rationale for cloning:
                       // We can't use the keyboard handle unless the keyboard is alive,
                       // which means the device pointer is still alive.
                       device: unsafe { self.device.clone() },
                       touch: self.touch }
     }
-
-    /// Manually set the lock used to determine if a double-borrow is
-    /// occuring on this structure.
-    ///
-    /// # Panics
-    /// Panics when trying to set the lock on an upgraded handle.
-    pub(crate) unsafe fn set_lock(&self, val: bool) {
-        self.liveliness.as_ref()
-            .expect("Tried to set lock on borrowed Touch")
-            .set(val);
-    }
 }
 impl Drop for Touch {
     fn drop(&mut self) {
-        match self.liveliness {
-            None => {}
-            Some(ref liveliness) => {
-                if Rc::strong_count(liveliness) == 1 {
-                    wlr_log!(L_DEBUG, "Dropped Touch {:p}", self.touch);
-                    let weak_count = Rc::weak_count(liveliness);
-                    if weak_count > 0 {
-                        wlr_log!(L_DEBUG,
-                                 "Still {} weak pointers to Touch {:p}",
-                                 weak_count,
-                                 self.touch);
-                    }
-                }
+        if Rc::strong_count(&self.liveliness) == 1 {
+            wlr_log!(L_DEBUG, "Dropped Touch {:p}", self.touch);
+            let weak_count = Rc::weak_count(&self.liveliness);
+            if weak_count > 0 {
+                wlr_log!(L_DEBUG,
+                         "Still {} weak pointers to Touch {:p}",
+                         weak_count,
+                         self.touch);
             }
         }
     }

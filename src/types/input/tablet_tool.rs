@@ -17,7 +17,7 @@ pub struct TabletTool {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `TabletToolHandle`.
-    liveliness: Option<Rc<Cell<bool>>>,
+    liveliness: Rc<Cell<bool>>,
     /// The device that refers to this tablet tool.
     device: InputDevice,
     /// Underlying tablet state
@@ -49,7 +49,7 @@ impl TabletTool {
         match (*device).type_ {
             WLR_INPUT_DEVICE_TABLET_TOOL => {
                 let tool = (*device).__bindgen_anon_1.tablet_tool;
-                Some(TabletTool { liveliness: Some(Rc::new(Cell::new(false))),
+                Some(TabletTool { liveliness: Rc::new(Cell::new(false)),
                                   device: InputDevice::from_ptr(device),
                                   tool })
             }
@@ -58,7 +58,10 @@ impl TabletTool {
     }
 
     unsafe fn from_handle(handle: &TabletToolHandle) -> HandleResult<Self> {
-        Ok(TabletTool { liveliness: None,
+        let liveliness = handle.handle
+                               .upgrade()
+                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(TabletTool { liveliness,
                         device: handle.input_device()?.clone(),
                         tool: handle.as_ptr() })
     }
@@ -76,42 +79,27 @@ impl TabletTool {
     /// If this `TabletTool` is a previously upgraded `TabletTool`,
     /// then this function will panic.
     pub fn weak_reference(&self) -> TabletToolHandle {
-        let arc = self.liveliness.as_ref()
-                      .expect("Cannot downgrade previously upgraded TabletToolHandle!");
-        TabletToolHandle { handle: Rc::downgrade(arc),
+        TabletToolHandle { handle: Rc::downgrade(&self.liveliness),
                            // NOTE Rationale for cloning:
                            // We can't use the tablet tool handle unless the tablet tool is alive,
                            // which means the device pointer is still alive.
                            device: unsafe { self.device.clone() },
                            tool: self.tool }
     }
-
-    /// Manually set the lock used to determine if a double-borrow is
-    /// occuring on this structure.
-    ///
-    /// # Panics
-    /// Panics when trying to set the lock on an upgraded handle.
-    pub(crate) unsafe fn set_lock(&self, val: bool) {
-        self.liveliness.as_ref()
-            .expect("Tried to set lock on borrowed TabletTool")
-            .set(val)
-    }
 }
 
 impl Drop for TabletTool {
     fn drop(&mut self) {
-        if let Some(liveliness) = self.liveliness.as_ref() {
-            if Rc::strong_count(liveliness) != 1 {
-                return
-            }
-            wlr_log!(L_DEBUG, "Dropped TabletTool {:p}", self.tool);
-            let weak_count = Rc::weak_count(liveliness);
-            if weak_count > 0 {
-                wlr_log!(L_DEBUG,
-                         "Still {} weak pointers to TabletTool {:p}",
-                         weak_count,
-                         self.tool);
-            }
+        if Rc::strong_count(&self.liveliness) != 1 {
+            return
+        }
+        wlr_log!(L_DEBUG, "Dropped TabletTool {:p}", self.tool);
+        let weak_count = Rc::weak_count(&self.liveliness);
+        if weak_count > 0 {
+            wlr_log!(L_DEBUG,
+                     "Still {} weak pointers to TabletTool {:p}",
+                     weak_count,
+                     self.tool);
         }
     }
 }

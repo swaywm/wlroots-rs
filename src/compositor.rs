@@ -2,7 +2,7 @@
 //! See examples for documentation on how to use this struct.
 
 use libc;
-use std::{env, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr};
+use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{Rc, Weak}};
 
 use {DataDeviceManager, SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
 use errors::{HandleErr, HandleResult};
@@ -18,11 +18,11 @@ use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_
 use wlroots_sys::wayland_server::sys::wl_display_init_shm;
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
-pub static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
+pub(crate) static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
 pub trait CompositorHandler {
     /// Callback that's triggered when a surface is provided to the compositor.
-    fn new_surface(&mut self, &mut Compositor, &mut SurfaceHandle) {}
+    fn new_surface(&mut self, CompositorHandle, &mut SurfaceHandle) {}
 
     /// Callback that's triggered during shutdown.
     fn on_shutdown(&mut self) {}
@@ -33,7 +33,7 @@ wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
                                                  surface: *mut libc::c_void,|
     unsafe {
         let handler = &mut this.data;
-        let compositor = &mut *COMPOSITOR_PTR;
+        let compositor = (&mut *COMPOSITOR_PTR).weak_reference();
         let mut surface = SurfaceHandle::from_ptr(surface as _);
         handler.new_surface(compositor, &mut surface);
     };
@@ -45,6 +45,12 @@ wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
         handler.on_shutdown();
     };
 ]);
+
+#[derive(Debug, Clone)]
+pub struct CompositorHandle {
+    /// This ensures that this handle is still alive and not already borrowed.
+    handle: Weak<Cell<bool>>
+}
 
 #[allow(dead_code)]
 pub struct Compositor {
@@ -91,7 +97,7 @@ pub struct Compositor {
     /// Lock used to borrow the compositor globally.
     /// Should always be set before passing a reference to the compositor
     /// in a callback.
-    pub(crate) lock: Cell<bool>
+    pub(crate) lock: Rc<Cell<bool>>
 }
 
 pub struct CompositorBuilder {
@@ -300,31 +306,39 @@ impl CompositorBuilder {
                      "Running compositor on wayland display {}",
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
-            Compositor { data: Box::new(data),
-                         compositor_handler,
-                         socket_name,
-                         input_manager,
-                         output_manager,
-                         wl_shell_manager,
-                         wl_shell_global,
-                         xdg_v6_shell_manager,
-                         xdg_v6_shell_global,
-                         data_device_manager,
-                         compositor,
-                         backend,
-                         display,
-                         event_loop,
-                         shm_fd,
-                         server_decoration_manager,
-                         renderer,
-                         xwayland,
-                         panic_error: None,
-                         lock: Cell::new(false) }
+            let compositor = Compositor { data: Box::new(data),
+                                          compositor_handler,
+                                          socket_name,
+                                          input_manager,
+                                          output_manager,
+                                          wl_shell_manager,
+                                          wl_shell_global,
+                                          xdg_v6_shell_manager,
+                                          xdg_v6_shell_global,
+                                          data_device_manager,
+                                          compositor,
+                                          backend,
+                                          display,
+                                          event_loop,
+                                          shm_fd,
+                                          server_decoration_manager,
+                                          renderer,
+                                          xwayland,
+                                          panic_error: None,
+                                          lock: Rc::new(Cell::new(false)) };
+            compositor.set_lock(true);
+            compositor
         }
     }
 }
 
 impl Compositor {
+    /// Creates a weak reference to the `Compositor`.
+    pub fn weak_reference(&self) -> CompositorHandle {
+        let handle = Rc::downgrade(&self.lock);
+        CompositorHandle { handle }
+    }
+
     /// Enters the wayland event loop. Won't return until the compositor is
     /// shut off
     pub fn run(self) {
@@ -342,6 +356,7 @@ impl Compositor {
         where F: FnOnce(&Compositor)
     {
         unsafe {
+            self.set_lock(false);
             let compositor = UnsafeCell::new(self);
             if COMPOSITOR_PTR != 0 as _ {
                 // NOTE Rationale for panicking:
@@ -390,11 +405,92 @@ impl Compositor {
     pub(crate) fn save_panic_error(&mut self, error: Box<Any + Send>) {
         self.panic_error = Some(error);
     }
+
+    /// Manually set hte lock used to determine if a double-borrow is occuring on this structure.
+    ///
+    /// # Panics
+    /// Panics when trying to set the lock on an upgraded handle.
+    unsafe fn set_lock(&self, val: bool) {
+        self.lock.set(val)
+    }
 }
 
 impl Drop for Compositor {
     fn drop(&mut self) {
         unsafe { wlr_compositor_destroy(self.compositor) }
+    }
+}
+
+impl CompositorHandle {
+    /// Constructs a new `CompositorHandle` that is always invalid. Calling `run` on this
+    /// will always fail.
+    ///
+    /// This is useful for pre-filling a value before it's provided by the server, or
+    /// for mocking/testing.
+    pub fn new() -> Self {
+        CompositorHandle { handle: Weak::new() }
+    }
+
+    /// Upgrades the compositor handle to a reference to the backing `Compositor`.
+    ///
+    /// # Unsafety
+    /// To be honest this function is probably safe.
+    ///
+    /// However, the CompositorHandle will behave like the other handles in order
+    /// to reduce confusion.
+    unsafe fn upgrade(&self) -> HandleResult<&mut Compositor> {
+        self.handle.upgrade()
+            .ok_or(HandleErr::AlreadyDropped)
+            // NOTE
+            // We drop the Rc here because having two would allow a dangling
+            // pointer to exist!
+            .and_then(|check| {
+                if check.get() {
+                    return Err(HandleErr::AlreadyBorrowed)
+                }
+                if COMPOSITOR_PTR.is_null() {
+                    return Err(HandleErr::AlreadyDropped)
+                }
+                check.set(true);
+                Ok(&mut *COMPOSITOR_PTR)
+            })
+    }
+
+    /// Run a function on the referenced `Compositor`, if it still exists.
+    ///
+    /// Returns the result of the function, if successful.
+    ///
+    /// # Safety
+    /// By enforcing a rather harsh limit on the lifetime of the Compositor
+    /// to a short lived scope of an anonymous function,
+    /// this function ensures the Compositor does not live longer
+    /// than it exists.
+    ///
+    /// # Panics
+    /// This function will panic if multiple mutable borrows are detected.
+    /// This will happen if you call `upgrade` directly within this callback,
+    /// or if you run this function within the another run to the same `Output`.
+    ///
+    /// So don't nest `run` calls and everything will be ok :).
+    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
+        where F: FnOnce(&mut Compositor) -> R
+    {
+        let compositor = unsafe { self.upgrade()? };
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(compositor)));
+        self.handle.upgrade().map(|check| {
+                                      // Sanity check that it hasn't been tampered with.
+                                      if !check.get() {
+                                          wlr_log!(L_ERROR,
+                                                   "After running compositor callback, mutable \
+                                                    lock was false");
+                                          panic!("Compositor lock in incorrect state!");
+                                      }
+                                      check.set(false)
+                                  });
+        match res {
+            Ok(res) => Ok(res),
+            Err(err) => panic::resume_unwind(err)
+        }
     }
 }
 
@@ -408,28 +504,16 @@ pub fn terminate() {
     }
 }
 
-/// Runs a function with the compositor as an argument.
+/// Gets a handle to the compositor.
 ///
-/// Note this will fail if you are within a wayland callback because at that
-/// time the compositor is provided to you.
-///
-/// This method is only useful if you are trying to operate on the compositor
-/// state while not in the wayland event loop.
-pub fn with_compositor<F, R>(func: F) -> HandleResult<R>
-    where F: FnOnce(&mut Compositor) -> R
-{
+/// If the compositor has not started running yet, or if it has stopped,
+/// then this function will return None.
+pub fn compositor_handle() -> Option<CompositorHandle> {
     unsafe {
         if COMPOSITOR_PTR.is_null() {
-            return Err(HandleErr::AlreadyDropped)
-        }
-        let compositor = &mut *COMPOSITOR_PTR;
-        if compositor.lock.get() {
-            return Err(HandleErr::AlreadyBorrowed)
+            None
         } else {
-            compositor.lock.set(true);
-            let res = Ok(func(compositor));
-            compositor.lock.set(false);
-            res
+            Some((&mut *COMPOSITOR_PTR).weak_reference())
         }
     }
 }

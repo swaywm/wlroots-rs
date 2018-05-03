@@ -18,7 +18,7 @@ pub struct Subsurface {
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `SurfaceHandle`.
-    liveliness: Option<Rc<Cell<bool>>>,
+    liveliness: Rc<Cell<bool>>,
     /// The pointer to the wlroots object that wraps a wl_surface.
     subsurface: *mut wlr_subsurface
 }
@@ -36,7 +36,7 @@ pub struct SubsurfaceHandle {
 
 impl Subsurface {
     pub(crate) unsafe fn new(subsurface: *mut wlr_subsurface) -> Self {
-        let liveliness = Some(Rc::new(Cell::new(false)));
+        let liveliness = Rc::new(Cell::new(false));
         Subsurface { subsurface,
                      liveliness }
     }
@@ -85,15 +85,16 @@ impl Subsurface {
     /// If this `Subsurface` is a previously upgraded `SubsurfaceHandle`
     /// then this function will panic.
     pub fn weak_reference(&self) -> SubsurfaceHandle {
-        let arc = self.liveliness.as_ref()
-                      .expect("Cannot downgrade a previously upgraded OutputHandle");
-        SubsurfaceHandle { handle: Rc::downgrade(arc),
+        SubsurfaceHandle { handle: Rc::downgrade(&self.liveliness),
                            subsurface: self.subsurface }
     }
 
-    unsafe fn from_handle(handle: &SubsurfaceHandle) -> Self {
-        Subsurface { liveliness: None,
-                     subsurface: handle.subsurface }
+    unsafe fn from_handle(handle: &SubsurfaceHandle) -> HandleResult<Self> {
+        let liveliness = handle.handle
+                               .upgrade()
+                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Subsurface { liveliness,
+                        subsurface: handle.subsurface })
     }
 }
 
@@ -130,7 +131,7 @@ impl SubsurfaceHandle {
                     return Err(HandleErr::AlreadyBorrowed)
                 }
                 check.set(true);
-                Ok(Subsurface::from_handle(self))
+                Subsurface::from_handle(self)
             })
     }
 
