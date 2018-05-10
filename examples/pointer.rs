@@ -5,9 +5,9 @@ use wlroots::{CompositorBuilder, CompositorHandle, Cursor, CursorHandle, CursorH
               InputManagerHandler, KeyboardHandle, KeyboardHandler, OutputBuilder,
               OutputBuilderResult, OutputHandle, OutputHandler, OutputLayout, OutputLayoutHandle,
               OutputLayoutHandler, OutputManagerHandler, PointerHandle, PointerHandler,
-              XCursorTheme};
+              XCursorTheme, XCursorManager};
 use wlroots::key_events::KeyEvent;
-use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent};
+use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent, AbsoluteMotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
@@ -16,16 +16,16 @@ use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 struct State {
     color: [f32; 4],
     default_color: [f32; 4],
-    xcursor_theme: XCursorTheme,
+    xcursor_manager: XCursorManager,
     cursor: CursorHandle,
     layout: OutputLayoutHandle
 }
 
 impl State {
-    fn new(xcursor_theme: XCursorTheme, layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
+    fn new(xcursor_manager: XCursorManager, layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
-                xcursor_theme,
+                xcursor_manager,
                 cursor,
                 layout }
     }
@@ -61,17 +61,14 @@ impl OutputManagerHandler for OutputManager {
             let state: &mut State = compositor.into();
             let layout = &mut state.layout;
             let cursor = &mut state.cursor;
-            let xcursor = state.xcursor_theme
-                .get_cursor("left_ptr".into())
-                .expect("Could not load left_ptr cursor");
-            let image = &xcursor.images()[0];
+            let xcursor_manager = &mut state.xcursor_manager;
             // TODO use output config if present instead of auto
             with_handles!([(layout: {layout}),
                           (cursor: {cursor}),
                           (output: {&mut result.output})] => {
                 layout.add_auto(output);
                 cursor.attach_output_layout(layout);
-                cursor.set_cursor_image(image);
+                xcursor_manager.set_cursor_image("left_ptr", cursor);
                 let (x, y) = cursor.coords();
                 // https://en.wikipedia.org/wiki/Mouse_warping
                 cursor.warp(None, x, y);
@@ -94,6 +91,16 @@ impl KeyboardHandler for ExKeyboardHandler {
 }
 
 impl PointerHandler for ExPointer {
+    fn on_motion_absolute(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &AbsoluteMotionEvent) {
+        with_handles!([(compositor: {compositor})] => {
+            let state: &mut State = compositor.into();
+            let (x, y) = event.pos();
+            state.cursor
+                .run(|cursor| cursor.warp_absolute(event.device(), x, y))
+                .unwrap();
+        }).unwrap();
+    }
+
     fn on_motion(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &MotionEvent) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
@@ -173,11 +180,11 @@ impl InputManagerHandler for InputManager {
 fn main() {
     init_logging(L_DEBUG, None);
     let cursor = Cursor::create(Box::new(ExCursor));
-    let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
+    let xcursor_manager = XCursorManager::create(Some("default".to_string()), 24).expect("Could not create xcursor manager");
     let layout = OutputLayout::create(Box::new(OutputLayoutEx));
 
     let compositor = CompositorBuilder::new().input_manager(Box::new(InputManager))
                                              .output_manager(Box::new(OutputManager))
-                                             .build_auto(State::new(xcursor_theme, layout, cursor));
+                                             .build_auto(State::new(xcursor_manager, layout, cursor));
     compositor.run();
 }
