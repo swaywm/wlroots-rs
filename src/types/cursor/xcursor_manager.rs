@@ -1,4 +1,4 @@
-use wlroots_sys::{wlr_xcursor_manager, wlr_xcursor_manager_create, wlr_xcursor_manager_load, wlr_xcursor_manager_set_cursor_image};
+use wlroots_sys::{wlr_xcursor_manager, wlr_xcursor_manager_create, wlr_xcursor_manager_load, wlr_xcursor_manager_set_cursor_image, wlr_xcursor_manager_destroy};
 use types::Cursor;
 use std::ptr;
 use utils::safe_as_cstring;
@@ -34,5 +34,11 @@ impl XCursorManager {
         unsafe {
             wlr_xcursor_manager_set_cursor_image(self.manager, name_ptr, cursor.as_ptr());
         }
+    }
+}
+
+impl Drop for XCursorManager {
+    fn drop(&mut self) {
+        unsafe { wlr_xcursor_manager_destroy(self.manager) }
     }
 }
