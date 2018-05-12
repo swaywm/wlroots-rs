@@ -30,7 +30,7 @@ impl<'manager> XCursorManager<'manager> {
         unsafe { (*self.manager).size }
     }
 
-    pub fn get_xcursor<T: Into<Option<String>>>(&self, name: T, scale: f32) -> Option<XCursor<'manager>> {
+    pub fn get_xcursor<T: Into<Option<String>>>(&'manager self, name: T, scale: f32) -> Option<XCursor<'manager>> {
         let name_str = name.into().map(safe_as_cstring);
         let name_ptr = name_str.map(|s| s.as_ptr()).unwrap_or(ptr::null_mut());
         unsafe {
