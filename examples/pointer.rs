@@ -13,16 +13,16 @@ use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
-struct State {
+struct State<'s> {
     color: [f32; 4],
     default_color: [f32; 4],
-    xcursor_manager: XCursorManager,
+    xcursor_manager: XCursorManager<'s>,
     cursor: CursorHandle,
     layout: OutputLayoutHandle
 }
 
-impl State {
-    fn new(xcursor_manager: XCursorManager, layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
+impl<'s> State<'s> {
+    fn new(xcursor_manager: XCursorManager<'s>, layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
                 xcursor_manager,
@@ -31,7 +31,7 @@ impl State {
     }
 }
 
-compositor_data!(State);
+compositor_data!(State<'static>);
 
 struct ExCursor;
 
