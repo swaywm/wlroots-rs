@@ -5,7 +5,7 @@ use wlroots::{CompositorBuilder, CompositorHandle, Cursor, CursorHandle, CursorH
               InputManagerHandler, KeyboardHandle, KeyboardHandler, OutputBuilder,
               OutputBuilderResult, OutputHandle, OutputHandler, OutputLayout, OutputLayoutHandle,
               OutputLayoutHandler, OutputManagerHandler, PointerHandle, PointerHandler,
-              XCursorTheme, XCursorManager};
+              XCursorManager};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent, AbsoluteMotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
@@ -180,7 +180,7 @@ impl InputManagerHandler for InputManager {
 fn main() {
     init_logging(L_DEBUG, None);
     let cursor = Cursor::create(Box::new(ExCursor));
-    let xcursor_manager = XCursorManager::create(Some("default".to_string()), 24).expect("Could not create xcursor manager");
+    let xcursor_manager = XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor manager");
     let layout = OutputLayout::create(Box::new(OutputLayoutEx));
 
     let compositor = CompositorBuilder::new().input_manager(Box::new(InputManager))
