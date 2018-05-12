@@ -32,6 +32,10 @@ pub struct XCursorImage<'cursor> {
 }
 
 impl XCursorTheme {
+    pub(crate) unsafe fn new(theme: *mut wlr_xcursor_theme) -> XCursorTheme {
+        XCursorTheme { theme }
+    }
+
     /// If no name is given, defaults to "default".
     pub fn load_theme<T: Into<Option<String>>>(name: T, size: i32) -> Option<Self> {
         unsafe {

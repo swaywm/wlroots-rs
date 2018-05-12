@@ -1,15 +1,42 @@
 use wlroots_sys::{wlr_xcursor_manager, wlr_xcursor_manager_create, wlr_xcursor_manager_load,
                   wlr_xcursor_manager_set_cursor_image, wlr_xcursor_manager_destroy,
-                  wlr_xcursor_manager_get_xcursor};
-use types::{Cursor, XCursor};
+                  wlr_xcursor_manager_get_xcursor, wlr_xcursor_manager_theme};
+use types::{Cursor, XCursor, XCursorTheme};
 use std::ptr;
 use utils::safe_as_cstring;
 use std::marker::PhantomData;
 
 #[derive(Debug)]
+pub struct XCursorManagerTheme<'manager> {
+    theme: *mut wlr_xcursor_manager_theme,
+    phantom: PhantomData<XCursorManager<'manager>>
+}
+
+#[derive(Debug)]
 pub struct XCursorManager<'manager> {
     manager: *mut wlr_xcursor_manager,
     phantom: PhantomData<XCursor<'manager>>
+}
+
+impl<'manager> XCursorManagerTheme<'manager> {
+    pub(crate) fn new(theme: *mut wlr_xcursor_manager_theme) -> Self {
+        XCursorManagerTheme {
+            theme: theme,
+            phantom: PhantomData
+        }
+    }
+
+    pub fn scale(&self) -> f32 {
+        unsafe {
+            (*self.theme).scale
+        }
+    }
+
+    pub fn theme(self) -> XCursorTheme {
+        unsafe {
+            XCursorTheme::new((*self.theme).theme)
+        }
+    }
 }
 
 impl<'manager> XCursorManager<'manager> {
@@ -40,6 +67,18 @@ impl<'manager> XCursorManager<'manager> {
             } else {
                 Some(XCursor::new(xcursor))
             }
+        }
+    }
+
+    pub fn scaled_themes(&self) -> Vec<XCursorManagerTheme> {
+        unsafe {
+            let mut result = vec![];
+
+            wl_list_for_each!((*self.manager).scaled_themes, link, (theme: wlr_xcursor_manager_theme) => {
+                result.push(XCursorManagerTheme::new(theme))
+            });
+
+            result
         }
     }
 
