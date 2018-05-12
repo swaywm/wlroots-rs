@@ -68,7 +68,7 @@ impl OutputManagerHandler for OutputManager {
                           (output: {&mut result.output})] => {
                 layout.add_auto(output);
                 cursor.attach_output_layout(layout);
-                xcursor_manager.set_cursor_image("left_ptr", cursor);
+                xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
                 let (x, y) = cursor.coords();
                 // https://en.wikipedia.org/wiki/Mouse_warping
                 cursor.warp(None, x, y);
