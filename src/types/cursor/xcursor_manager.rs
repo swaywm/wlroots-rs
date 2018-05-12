@@ -82,10 +82,13 @@ impl<'manager> XCursorManager<'manager> {
         }
     }
 
-    /// returns 0 if the scaled theme was successfully loaded and 1 otherwise
-    pub fn load(&self, scale: f32) -> i32 {
+    /// returns false if the scaled theme was successfully loaded and true otherwise
+    pub fn load(&self, scale: f32) -> bool {
         unsafe {
-            wlr_xcursor_manager_load(self.manager, scale)
+            match wlr_xcursor_manager_load(self.manager, scale) {
+                0 => false,
+                _ => true
+            }
         }
     }
 
