@@ -22,6 +22,10 @@ impl XCursorManager {
         }
     }
 
+    pub fn size(&self) -> u32 {
+        unsafe { (*self.manager).size }
+    }
+
     /// returns 0 if the scaled theme was successfully loaded and 1 otherwise
     pub fn load(&self, scale: f32) -> i32 {
         unsafe {
