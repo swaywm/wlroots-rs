@@ -106,7 +106,7 @@ impl Drop for XCursorTheme {
 impl<'theme> XCursor<'theme> {
     /// NOTE this lifetime is defined by the user of the function, but it must not outlive the
     /// `XCursorManager` that hosts the xcursor.
-    pub(crate) unsafe fn new<'unbound>(xcursor: *mut wlr_xcursor) -> XCursor<'unbound> {
+    pub(crate) unsafe fn from_ptr<'unbound>(xcursor: *mut wlr_xcursor) -> XCursor<'unbound> {
         XCursor {
             xcursor,
             phantom: PhantomData

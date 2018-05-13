@@ -9,7 +9,6 @@ use wlroots::{CompositorBuilder, CompositorHandle, Cursor, CursorHandle, CursorH
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent, AbsoluteMotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
-use wlroots::wlroots_sys::gl;
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
@@ -179,7 +178,7 @@ fn main() {
     let mut cursor = Cursor::create(Box::new(ExCursor));
     let mut xcursor_manager = XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor manager");
     xcursor_manager.load(1.0);
-    cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c));
+    cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c)).unwrap();
     let layout = OutputLayout::create(Box::new(OutputLayoutEx));
 
     let compositor = CompositorBuilder::new()

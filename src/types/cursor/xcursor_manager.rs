@@ -18,7 +18,7 @@ pub struct XCursorManager {
 }
 
 impl<'manager> XCursorManagerTheme<'manager> {
-    pub(crate) fn new(theme: *mut wlr_xcursor_manager_theme) -> Self {
+    fn new(theme: *mut wlr_xcursor_manager_theme) -> Self {
         XCursorManagerTheme {
             theme: theme,
             phantom: PhantomData
@@ -64,7 +64,7 @@ impl XCursorManager {
             if xcursor.is_null() {
                 None
             } else {
-                Some(XCursor::new(xcursor))
+                Some(XCursor::from_ptr(xcursor))
             }
         }
     }
@@ -92,8 +92,9 @@ impl XCursorManager {
     }
 
     pub fn set_cursor_image(&mut self, name: String, cursor: &Cursor) {
+        let name_str = safe_as_cstring(name);
         unsafe {
-            wlr_xcursor_manager_set_cursor_image(self.manager, safe_as_cstring(name).as_ptr(), cursor.as_ptr());
+            wlr_xcursor_manager_set_cursor_image(self.manager, name_str.as_ptr(), cursor.as_ptr());
         }
     }
 }
