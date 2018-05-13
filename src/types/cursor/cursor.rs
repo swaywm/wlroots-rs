@@ -342,6 +342,10 @@ impl Cursor {
         Box::from_raw((*data).cursor)
     }
 
+    pub(crate) fn as_ptr(&self) -> *mut wlr_cursor {
+        self.data.0
+    }
+
     /// Get a weak reference to this `Cursor`.
     pub fn weak_reference(&self) -> CursorHandle {
         unsafe {

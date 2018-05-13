@@ -32,6 +32,10 @@ pub struct XCursorImage<'cursor> {
 }
 
 impl XCursorTheme {
+    pub(crate) unsafe fn new(theme: *mut wlr_xcursor_theme) -> XCursorTheme {
+        XCursorTheme { theme }
+    }
+
     /// If no name is given, defaults to "default".
     pub fn load_theme<T: Into<Option<String>>>(name: T, size: i32) -> Option<Self> {
         unsafe {
@@ -100,6 +104,15 @@ impl Drop for XCursorTheme {
 }
 
 impl<'theme> XCursor<'theme> {
+    /// NOTE this lifetime is defined by the user of the function, but it must not outlive the
+    /// `XCursorManager` that hosts the xcursor.
+    pub(crate) unsafe fn from_ptr<'unbound>(xcursor: *mut wlr_xcursor) -> XCursor<'unbound> {
+        XCursor {
+            xcursor,
+            phantom: PhantomData
+        }
+    }
+
     pub fn frame(&mut self, duration: Duration) -> c_int {
         unsafe {
             // TODO Is the correct unit of time?
