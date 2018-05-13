@@ -3,7 +3,7 @@ use wlroots_sys::{wlr_xcursor_manager, wlr_xcursor_manager_create, wlr_xcursor_m
                   wlr_xcursor_manager_get_xcursor, wlr_xcursor_manager_theme};
 use types::{Cursor, XCursor, XCursorTheme};
 use std::ptr;
-use utils::safe_as_cstring;
+use utils::{safe_as_cstring, c_to_rust_string};
 use std::marker::PhantomData;
 
 #[derive(Debug)]
@@ -49,6 +49,12 @@ impl XCursorManager {
             } else {
                 Some(XCursorManager { manager: manager })
             }
+        }
+    }
+
+    pub fn name(&self) -> String {
+        unsafe {
+            c_to_rust_string((*self.manager).name).expect("Could not parse make as UTF-8")
         }
     }
 
