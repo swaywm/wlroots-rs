@@ -58,7 +58,7 @@ impl OutputManagerHandler for OutputManager {
                              -> Option<OutputBuilderResult<'output>> {
         let mut result = builder.build_best_mode(ExOutput);
         with_handles!([(compositor: {compositor})] => {
-            let state: &mut State = compositor.into();
+            let state: &mut State = compositor.data.downcast_mut().unwrap();
             let layout = &mut state.layout;
             let cursor = &mut state.cursor;
             let xcursor_manager = &mut state.xcursor_manager;
@@ -68,6 +68,7 @@ impl OutputManagerHandler for OutputManager {
                           (output: {&mut result.output})] => {
                 layout.add_auto(output);
                 cursor.attach_output_layout(layout);
+                xcursor_manager.load(output.scale());
                 xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
                 let (x, y) = cursor.coords();
                 // https://en.wikipedia.org/wiki/Mouse_warping
@@ -143,14 +144,10 @@ impl PointerHandler for ExPointer {
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
         with_handles!([(compositor: {compositor}), (output: {output})] => {
-            let state: &mut State = compositor.into();
-            // NOTE gl functions will probably always be unsafe.
-            unsafe {
-                output.make_current();
-                gl::ClearColor(state.color[0], state.color[1], state.color[2], 1.0);
-                gl::Clear(gl::COLOR_BUFFER_BIT);
-                output.swap_buffers(None, None);
-            }
+            let state: &mut State = compositor.data.downcast_mut().unwrap();
+            let renderer = compositor.renderer.as_mut().expect("Compositor was not loaded with a renderer");
+            let mut render_context = renderer.render(output, None);
+            render_context.clear([state.color[0], state.color[1], state.color[2], 1.0]);
         }).unwrap();
     }
 }
@@ -179,11 +176,15 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let cursor = Cursor::create(Box::new(ExCursor));
-    let xcursor_manager = XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor manager");
+    let mut cursor = Cursor::create(Box::new(ExCursor));
+    let mut xcursor_manager = XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor manager");
+    xcursor_manager.load(1.0);
+    cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c));
     let layout = OutputLayout::create(Box::new(OutputLayoutEx));
 
-    let compositor = CompositorBuilder::new().input_manager(Box::new(InputManager))
+    let compositor = CompositorBuilder::new()
+                                             .gles2(true)
+                                             .input_manager(Box::new(InputManager))
                                              .output_manager(Box::new(OutputManager))
                                              .build_auto(State::new(xcursor_manager, layout, cursor));
     compositor.run();

@@ -93,9 +93,8 @@ impl<'manager> XCursorManager<'manager> {
     }
 
     pub fn set_cursor_image(&mut self, name: String, cursor: &Cursor) {
-        let name_ptr = safe_as_cstring(name).as_ptr();
         unsafe {
-            wlr_xcursor_manager_set_cursor_image(self.manager, name_ptr, cursor.as_ptr());
+            wlr_xcursor_manager_set_cursor_image(self.manager, safe_as_cstring(name).as_ptr(), cursor.as_ptr());
         }
     }
 }

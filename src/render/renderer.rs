@@ -173,12 +173,12 @@ impl<'output> Renderer<'output> {
 impl<'output> Drop for Renderer<'output> {
     fn drop(&mut self) {
         unsafe {
-            wlr_renderer_end(self.renderer);
             if let Some((mut damage, when)) = self.damage.take() {
                 self.output.swap_buffers(Some(when), Some(&mut damage));
             } else {
                 self.output.swap_buffers(None, None);
             }
+            wlr_renderer_end(self.renderer);
         }
     }
 }
