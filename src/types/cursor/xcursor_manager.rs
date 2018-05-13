@@ -9,13 +9,12 @@ use std::marker::PhantomData;
 #[derive(Debug)]
 pub struct XCursorManagerTheme<'manager> {
     theme: *mut wlr_xcursor_manager_theme,
-    phantom: PhantomData<XCursorManager<'manager>>
+    phantom: PhantomData<&'manager XCursorManager>
 }
 
 #[derive(Debug)]
-pub struct XCursorManager<'manager> {
+pub struct XCursorManager {
     manager: *mut wlr_xcursor_manager,
-    phantom: PhantomData<XCursor<'manager>>
 }
 
 impl<'manager> XCursorManagerTheme<'manager> {
@@ -39,7 +38,7 @@ impl<'manager> XCursorManagerTheme<'manager> {
     }
 }
 
-impl<'manager> XCursorManager<'manager> {
+impl XCursorManager {
     pub fn create<T: Into<Option<String>>>(name: T, size: u32) -> Option<Self> {
         unsafe {
             let name_str = name.into().map(safe_as_cstring);
@@ -48,7 +47,7 @@ impl<'manager> XCursorManager<'manager> {
             if manager.is_null() {
                 None
             } else {
-                Some(XCursorManager { manager: manager, phantom: PhantomData })
+                Some(XCursorManager { manager: manager })
             }
         }
     }
@@ -57,7 +56,7 @@ impl<'manager> XCursorManager<'manager> {
         unsafe { (*self.manager).size }
     }
 
-    pub fn get_xcursor<T: Into<Option<String>>>(&'manager self, name: T, scale: f32) -> Option<XCursor<'manager>> {
+    pub fn get_xcursor<'manager, T: Into<Option<String>>>(&'manager self, name: T, scale: f32) -> Option<XCursor<'manager>> {
         let name_str = name.into().map(safe_as_cstring);
         let name_ptr = name_str.map(|s| s.as_ptr()).unwrap_or(ptr::null_mut());
         unsafe {
@@ -70,7 +69,7 @@ impl<'manager> XCursorManager<'manager> {
         }
     }
 
-    pub fn scaled_themes(&self) -> Vec<XCursorManagerTheme> {
+    pub fn scaled_themes<'manager>(&'manager self) -> Vec<XCursorManagerTheme<'manager>> {
         unsafe {
             let mut result = vec![];
 
@@ -99,7 +98,7 @@ impl<'manager> XCursorManager<'manager> {
     }
 }
 
-impl<'manager> Drop for XCursorManager<'manager> {
+impl Drop for XCursorManager {
     fn drop(&mut self) {
         unsafe { wlr_xcursor_manager_destroy(self.manager) }
     }
