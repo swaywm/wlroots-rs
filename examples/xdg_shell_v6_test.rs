@@ -10,16 +10,16 @@ use wlroots::{project_box, Area, Capability, CompositorBuilder, CompositorHandle
               Origin, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
               OutputLayout, OutputLayoutHandle, OutputLayoutHandler, OutputManagerHandler,
               PointerHandle, PointerHandler, Renderer, Seat, SeatHandle, SeatHandler, Size,
-              XCursorTheme, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState,
+              XCursorManager, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState,
               XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
-use wlroots::pointer_events::{ButtonEvent, MotionEvent};
+use wlroots::pointer_events::{ButtonEvent, MotionEvent, AbsoluteMotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 
 struct State {
-    xcursor_theme: XCursorTheme,
+    xcursor_manager: XCursorManager,
     keyboard: Option<KeyboardHandle>,
     layout: OutputLayoutHandle,
     cursor: CursorHandle,
@@ -28,8 +28,8 @@ struct State {
 }
 
 impl State {
-    fn new(xcursor_theme: XCursorTheme, layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
-        State { xcursor_theme,
+    fn new(xcursor_manager: XCursorManager, layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
+        State { xcursor_manager,
                 layout,
                 cursor,
                 keyboard: None,
@@ -103,18 +103,16 @@ impl OutputManagerHandler for OutputManager {
                              -> Option<OutputBuilderResult<'output>> {
         let mut result = builder.build_best_mode(ExOutput);
         with_handles!([(compositor: {compositor}), (output: {&mut result.output})] => {
-            let state: &mut State = compositor.into();
-            let xcursor = state.xcursor_theme
-                .get_cursor("left_ptr".into())
-                .expect("Could not load left_ptr cursor");
-            let image = &xcursor.images()[0];
+            let state: &mut State = compositor.data.downcast_mut().unwrap();
+            let xcursor_manager = &mut state.xcursor_manager;
             // TODO use output config if present instead of auto
             let layout = &mut state.layout;
             let cursor = &mut state.cursor;
             with_handles!([(layout: {layout}), (cursor: {cursor})] => {
                 layout.add_auto(output);
                 cursor.attach_output_layout(layout);
-                cursor.set_cursor_image(image);
+                xcursor_manager.load(output.scale());
+                xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
                 let (x, y) = cursor.coords();
                 // https://en.wikipedia.org/wiki/Mouse_warping
                 cursor.warp(None, x, y);
@@ -155,6 +153,16 @@ impl KeyboardHandler for ExKeyboardHandler {
 }
 
 impl PointerHandler for ExPointer {
+    fn on_motion_absolute(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &AbsoluteMotionEvent) {
+        with_handles!([(compositor: {compositor})] => {
+            let state: &mut State = compositor.into();
+            let (x, y) = event.pos();
+            state.cursor
+                .run(|cursor| cursor.warp_absolute(event.device(), x, y))
+                .unwrap();
+        }).unwrap();
+    }
+
     fn on_motion(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &MotionEvent) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
@@ -241,8 +249,10 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let cursor = Cursor::create(Box::new(CursorEx));
-    let xcursor_theme = XCursorTheme::load_theme(None, 16).expect("Could not load theme");
+    let mut cursor = Cursor::create(Box::new(CursorEx));
+    let mut xcursor_manager = XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor manager");
+    xcursor_manager.load(1.0);
+    cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c)).unwrap();
     let layout = OutputLayout::create(Box::new(OutputLayoutEx));
 
     let mut compositor =
@@ -250,7 +260,7 @@ fn main() {
                                 .input_manager(Box::new(InputManager))
                                 .output_manager(Box::new(OutputManager))
                                 .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
-                                .build_auto(State::new(xcursor_theme, layout, cursor));
+                                .build_auto(State::new(xcursor_manager, layout, cursor));
 
     {
         let mut seat_handle =
