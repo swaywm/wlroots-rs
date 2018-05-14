@@ -177,34 +177,27 @@ impl PointerHandler for ExPointer {
 
     fn on_button(&mut self, compositor: CompositorHandle, _: PointerHandle, _: &ButtonEvent) {
         with_handles!([(compositor: {compositor})] => {
-        let state: &mut State = compositor.into();
-        let mut seat_handle = state.seat_handle.clone().unwrap();
-        let mut keyboard = state.keyboard.clone().unwrap();
-        let mut surface =
-            state.shells[0].run(|shell| {
-                                    match shell.state() {
-                                        Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
-                                            toplevel.set_activated(true);
-                                        }
-                                        _ => {}
-                                    }
+            let state: &mut State = compositor.into();
+            let seat = state.seat_handle.clone().unwrap();
+            let keyboard = state.keyboard.clone().unwrap();
+            let surface =
+                state.shells[0].run(|shell| {
+                    match shell.state() {
+                        Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
+                            toplevel.set_activated(true);
+                        }
+                        _ => {}
+                    }
 
-                                    shell.surface()
-                                })
-                           .unwrap();
-        seat_handle.run(|seat| {
-                            keyboard.run(|keyboard| {
-                                             surface.run(|surface| {
-                                                 seat.set_keyboard(keyboard.input_device());
-                                                 seat.keyboard_notify_enter(surface,
-                                                    &mut keyboard.keycodes(),
-                                                    &mut keyboard.get_modifier_masks())
-                                             })
-                                                    .unwrap();
-                                         })
-                                    .unwrap();
-                        })
-                   .unwrap();
+                    shell.surface()
+                })
+            .unwrap();
+            with_handles!([(seat: {seat}), (keyboard: {keyboard}), (surface: {surface})] => {
+                seat.set_keyboard(keyboard.input_device());
+                seat.keyboard_notify_enter(surface,
+                                           &mut keyboard.keycodes(),
+                                           &mut keyboard.get_modifier_masks());
+            }).unwrap();
         }).unwrap();
     }
 }
@@ -264,7 +257,7 @@ fn main() {
 
     {
         let mut seat_handle =
-            Seat::create(&mut compositor, "Main Seat".into(), Box::new(SeatHandlerEx));
+            Seat::create(&mut compositor, "seat0".into(), Box::new(SeatHandlerEx));
         seat_handle.run(|seat| {
                             seat.set_capabilities(Capability::all());
                         })
