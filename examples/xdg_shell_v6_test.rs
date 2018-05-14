@@ -205,13 +205,12 @@ impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
         with_handles!([(compositor: {compositor}), (output: {output})] => {
             let state: &mut State = compositor.data.downcast_mut().unwrap();
-            if state.shells.len() < 1 {
-                return
-            }
             let renderer = compositor.renderer
                 .as_mut()
                 .expect("Compositor was not loaded with a renderer");
-            render_shells(state, &mut renderer.render(output, None));
+            let mut render_context = renderer.render(output, None);
+            render_context.clear([0.25, 0.25, 0.25, 1.0]);
+            render_shells(state, &mut render_context);
         }).unwrap();
     }
 }
