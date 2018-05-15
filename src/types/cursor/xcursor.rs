@@ -107,10 +107,8 @@ impl<'theme> XCursor<'theme> {
     /// NOTE this lifetime is defined by the user of the function, but it must not outlive the
     /// `XCursorManager` that hosts the xcursor.
     pub(crate) unsafe fn from_ptr<'unbound>(xcursor: *mut wlr_xcursor) -> XCursor<'unbound> {
-        XCursor {
-            xcursor,
-            phantom: PhantomData
-        }
+        XCursor { xcursor,
+                  phantom: PhantomData }
     }
 
     pub fn frame(&mut self, duration: Duration) -> c_int {

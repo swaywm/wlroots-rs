@@ -7,7 +7,7 @@ use wlroots::{CompositorBuilder, CompositorHandle, Cursor, CursorHandle, CursorH
               OutputLayoutHandler, OutputManagerHandler, PointerHandle, PointerHandler,
               XCursorManager};
 use wlroots::key_events::KeyEvent;
-use wlroots::pointer_events::{AxisEvent, ButtonEvent, MotionEvent, AbsoluteMotionEvent};
+use wlroots::pointer_events::{AbsoluteMotionEvent, AxisEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG};
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
@@ -21,7 +21,10 @@ struct State {
 }
 
 impl State {
-    fn new(xcursor_manager: XCursorManager, layout: OutputLayoutHandle, cursor: CursorHandle) -> Self {
+    fn new(xcursor_manager: XCursorManager,
+           layout: OutputLayoutHandle,
+           cursor: CursorHandle)
+           -> Self {
         State { color: [0.25, 0.25, 0.25, 1.0],
                 default_color: [0.25, 0.25, 0.25, 1.0],
                 xcursor_manager,
@@ -91,7 +94,10 @@ impl KeyboardHandler for ExKeyboardHandler {
 }
 
 impl PointerHandler for ExPointer {
-    fn on_motion_absolute(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &AbsoluteMotionEvent) {
+    fn on_motion_absolute(&mut self,
+                          compositor: CompositorHandle,
+                          _: PointerHandle,
+                          event: &AbsoluteMotionEvent) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let (x, y) = event.pos();
@@ -144,7 +150,8 @@ impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
         with_handles!([(compositor: {compositor}), (output: {output})] => {
             let state: &mut State = compositor.data.downcast_mut().unwrap();
-            let renderer = compositor.renderer.as_mut().expect("Compositor was not loaded with a renderer");
+            let renderer = compositor.renderer.as_mut()
+                .expect("Compositor was not loaded with a renderer");
             let mut render_context = renderer.render(output, None);
             render_context.clear([state.color[0], state.color[1], state.color[2], 1.0]);
         }).unwrap();
@@ -176,15 +183,18 @@ impl InputManagerHandler for InputManager {
 fn main() {
     init_logging(L_DEBUG, None);
     let mut cursor = Cursor::create(Box::new(ExCursor));
-    let mut xcursor_manager = XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor manager");
+    let mut xcursor_manager =
+        XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor \
+                                                                  manager");
     xcursor_manager.load(1.0);
-    cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c)).unwrap();
+    cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c))
+          .unwrap();
     let layout = OutputLayout::create(Box::new(OutputLayoutEx));
 
-    let compositor = CompositorBuilder::new()
-                                             .gles2(true)
-                                             .input_manager(Box::new(InputManager))
-                                             .output_manager(Box::new(OutputManager))
-                                             .build_auto(State::new(xcursor_manager, layout, cursor));
+    let compositor =
+        CompositorBuilder::new().gles2(true)
+                                .input_manager(Box::new(InputManager))
+                                .output_manager(Box::new(OutputManager))
+                                .build_auto(State::new(xcursor_manager, layout, cursor));
     compositor.run();
 }

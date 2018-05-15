@@ -1,10 +1,10 @@
-use wlroots_sys::{wlr_xcursor_manager, wlr_xcursor_manager_create, wlr_xcursor_manager_load,
-                  wlr_xcursor_manager_set_cursor_image, wlr_xcursor_manager_destroy,
-                  wlr_xcursor_manager_get_xcursor, wlr_xcursor_manager_theme};
-use types::{Cursor, XCursor, XCursorTheme};
-use std::ptr;
-use utils::{safe_as_cstring, c_to_rust_string};
 use std::marker::PhantomData;
+use std::ptr;
+use types::{Cursor, XCursor, XCursorTheme};
+use utils::{c_to_rust_string, safe_as_cstring};
+use wlroots_sys::{wlr_xcursor_manager, wlr_xcursor_manager_create, wlr_xcursor_manager_destroy,
+                  wlr_xcursor_manager_get_xcursor, wlr_xcursor_manager_load,
+                  wlr_xcursor_manager_set_cursor_image, wlr_xcursor_manager_theme};
 
 /// An `XCursorTheme` at a particular scale factor of the base size.
 #[derive(Debug)]
@@ -18,29 +18,23 @@ pub struct XCursorManagerTheme<'manager> {
 /// with the scale factor parameter set to that output's scale factor.
 #[derive(Debug)]
 pub struct XCursorManager {
-    manager: *mut wlr_xcursor_manager,
+    manager: *mut wlr_xcursor_manager
 }
 
 impl<'manager> XCursorManagerTheme<'manager> {
     fn new(theme: *mut wlr_xcursor_manager_theme) -> Self {
-        XCursorManagerTheme {
-            theme: theme,
-            phantom: PhantomData
-        }
+        XCursorManagerTheme { theme: theme,
+                              phantom: PhantomData }
     }
 
     /// Get the scale factor of the theme.
     pub fn scale(&self) -> f32 {
-        unsafe {
-            (*self.theme).scale
-        }
+        unsafe { (*self.theme).scale }
     }
 
     /// Get the underlying `XCursorTheme` for this managed theme.
     pub fn theme(self) -> XCursorTheme {
-        unsafe {
-            XCursorTheme::new((*self.theme).theme)
-        }
+        unsafe { XCursorTheme::new((*self.theme).theme) }
     }
 }
 
@@ -61,9 +55,7 @@ impl XCursorManager {
 
     /// Get the name of the theme this `XCursorManager` manages.
     pub fn name(&self) -> String {
-        unsafe {
-            c_to_rust_string((*self.manager).name).expect("Could not parse make as UTF-8")
-        }
+        unsafe { c_to_rust_string((*self.manager).name).expect("Could not parse make as UTF-8") }
     }
 
     /// Get the base size (when scale = 1) in pixels for the theme.
@@ -73,7 +65,10 @@ impl XCursorManager {
 
     /// Retrieves a `XCursor` for the given cursor name at the given scale factor, or None if this
     /// `XCursorManager` has not loaded a cursor theme at the requested scale.
-    pub fn get_xcursor<'manager, T: Into<Option<String>>>(&'manager self, name: T, scale: f32) -> Option<XCursor<'manager>> {
+    pub fn get_xcursor<'manager, T: Into<Option<String>>>(&'manager self,
+                                                          name: T,
+                                                          scale: f32)
+                                                          -> Option<XCursor<'manager>> {
         let name_str = name.into().map(safe_as_cstring);
         let name_ptr = name_str.map(|s| s.as_ptr()).unwrap_or(ptr::null_mut());
         unsafe {
@@ -86,12 +81,15 @@ impl XCursorManager {
         }
     }
 
-    /// Get a list of all the scaled `XCursorManagerTheme`s managed by this manager.
+    /// Get a list of all the scaled `XCursorManagerTheme`s managed by this
+    /// manager.
     pub fn scaled_themes<'manager>(&'manager self) -> Vec<XCursorManagerTheme<'manager>> {
         unsafe {
             let mut result = vec![];
 
-            wl_list_for_each!((*self.manager).scaled_themes, link, (theme: wlr_xcursor_manager_theme) => {
+            wl_list_for_each!((*self.manager).scaled_themes,
+                              link,
+                              (theme: wlr_xcursor_manager_theme) => {
                 result.push(XCursorManagerTheme::new(theme))
             });
 
