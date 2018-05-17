@@ -5,12 +5,11 @@ use std::cell::Cell;
 use std::rc::{Rc, Weak};
 
 use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
-                  wlr_xdg_surface_v6_popup_get_position, wlr_xdg_surface_v6_role,
-                  wlr_xdg_surface_v6_send_close, wlr_xdg_surface_v6_surface_at,
-                  wlr_xdg_toplevel_v6, wlr_xdg_toplevel_v6_set_activated,
-                  wlr_xdg_toplevel_v6_set_fullscreen, wlr_xdg_toplevel_v6_set_maximized,
-                  wlr_xdg_toplevel_v6_set_resizing, wlr_xdg_toplevel_v6_set_size,
-                  wlr_xdg_toplevel_v6_state};
+                  wlr_xdg_surface_v6_role, wlr_xdg_surface_v6_send_close,
+                  wlr_xdg_surface_v6_surface_at, wlr_xdg_toplevel_v6,
+                  wlr_xdg_toplevel_v6_set_activated, wlr_xdg_toplevel_v6_set_fullscreen,
+                  wlr_xdg_toplevel_v6_set_maximized, wlr_xdg_toplevel_v6_set_resizing,
+                  wlr_xdg_toplevel_v6_set_size, wlr_xdg_toplevel_v6_state};
 
 use {Area, SeatHandle, SurfaceHandle};
 use errors::{HandleErr, HandleResult};
@@ -411,17 +410,6 @@ impl XdgV6Popup {
                                     -> XdgV6Popup {
         XdgV6Popup { shell_surface,
                      popup }
-    }
-
-    /// Compute the popup position in surface-local coordinates.
-    ///
-    /// Return value is in (x, y) format.
-    pub fn position(&self) -> (f64, f64) {
-        unsafe {
-            let (mut x, mut y) = (0.0, 0.0);
-            wlr_xdg_surface_v6_popup_get_position(self.shell_surface, &mut x, &mut y);
-            (x, y)
-        }
     }
 
     /// Get a handle to the base surface of the xdg tree.
