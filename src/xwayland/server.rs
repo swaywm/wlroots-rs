@@ -13,9 +13,10 @@ pub struct XWaylandServer {
 impl XWaylandServer {
     pub(crate) unsafe fn new(display: *mut wl_display,
                              compositor: *mut wlr_compositor,
-                             manager: Box<XWaylandManagerHandler>)
+                             manager: Box<XWaylandManagerHandler>,
+                             lazy: bool)
                              -> Self {
-        let xwayland = wlr_xwayland_create(display, compositor);
+        let xwayland = wlr_xwayland_create(display, compositor, lazy);
         if xwayland.is_null() {
             panic!("Could not start XWayland server")
         }

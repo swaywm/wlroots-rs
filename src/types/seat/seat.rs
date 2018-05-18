@@ -25,7 +25,8 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_dest
                   wlr_seat_touch_notify_motion, wlr_seat_touch_notify_up,
                   wlr_seat_touch_num_points, wlr_seat_touch_point_clear_focus,
                   wlr_seat_touch_point_focus, wlr_seat_touch_send_down,
-                  wlr_seat_touch_send_motion, wlr_seat_touch_send_up, wlr_seat_touch_start_grab};
+                  wlr_seat_touch_send_motion, wlr_seat_touch_send_up, wlr_seat_touch_start_grab,
+                  wlr_axis_source};
 pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
@@ -398,9 +399,14 @@ impl Seat {
     ///
     /// Compositors should use `Seat::notify_axis` to
     /// send axis events to respect pointer grabs.
-    pub fn send_axis(&self, time: Duration, orientation: wlr_axis_orientation, value: f64) {
+    pub fn send_axis(&self,
+                     time: Duration,
+                     orientation: wlr_axis_orientation,
+                     value: f64,
+                     value_discrete: i32,
+                     source: wlr_axis_source) {
         unsafe {
-            wlr_seat_pointer_send_axis(self.data.0, time.to_ms(), orientation, value);
+            wlr_seat_pointer_send_axis(self.data.0, time.to_ms(), orientation, value, value_discrete, source);
         }
     }
 
@@ -449,8 +455,10 @@ impl Seat {
     pub fn pointer_notify_axis(&self,
                                time: Duration,
                                orientation: wlr_axis_orientation,
-                               value: f64) {
-        unsafe { wlr_seat_pointer_notify_axis(self.data.0, time.to_ms(), orientation, value) }
+                               value: f64,
+                               value_discrete: i32,
+                               source: wlr_axis_source) {
+        unsafe { wlr_seat_pointer_notify_axis(self.data.0, time.to_ms(), orientation, value, value_discrete, source) }
     }
 
     /// Set this keyboard as the active keyboard for the seat.

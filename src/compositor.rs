@@ -289,7 +289,8 @@ impl CompositorBuilder {
             let xwayland = self.xwayland.and_then(|manager| {
                                                       Some(XWaylandServer::new(display as _,
                                                                                compositor,
-                                                                               manager))
+                                                                               manager,
+                                                                               false))
                                                   });
 
             // Open the socket to the Wayland server.
