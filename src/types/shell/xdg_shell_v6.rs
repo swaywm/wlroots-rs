@@ -183,7 +183,7 @@ impl XdgV6ShellSurface {
         }
     }
 
-    pub fn for_each_surface(&self, iterator: &Fn(SurfaceHandle, i32, i32)) {
+    pub fn for_each_surface(&self, iterator: &FnMut(SurfaceHandle, i32, i32)) {
         unsafe {
             extern fn c_iterator(wlr_surface: *mut wlr_surface, sx: i32, sy: i32, data: *mut c_void) {
                 unsafe {
