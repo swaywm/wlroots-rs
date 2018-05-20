@@ -30,7 +30,7 @@ mod xwayland;
 pub use self::compositor::{compositor_handle, terminate, Compositor, CompositorBuilder,
                            CompositorHandle, CompositorHandler};
 pub use self::events::{key_events, seat_events, tablet_pad_events, tablet_tool_events,
-                       touch_events, wl_shell_events,
+                       touch_events, wl_shell_events, xwayland_events,
                        pointer_events::{self, BTN_BACK, BTN_EXTRA, BTN_FORWARD, BTN_LEFT,
                                         BTN_MIDDLE, BTN_MOUSE, BTN_RIGHT, BTN_SIDE, BTN_TASK},
                        xdg_shell_v6_events};
@@ -46,7 +46,9 @@ pub use self::types::output::*;
 pub use self::types::seat::*;
 pub use self::types::shell::*;
 pub use self::types::surface::*;
-pub use self::xwayland::{XWaylandManagerHandler, XWaylandServer};
+pub use self::xwayland::{XWaylandManagerHandler, XWaylandServer, XWaylandSurface,
+                         XWaylandSurfaceHandle, XWaylandSurfaceHandler, XWaylandSurfaceHints,
+                         XWaylandSurfaceSizeHints};
 pub use key_events::Key;
 pub use wlroots_sys::{wlr_keyboard_modifiers, wlr_tablet_tool_axes, wl_shm_format::{self, *},
                       wlr_axis_orientation::{self, *}, wlr_axis_source::{self, *},

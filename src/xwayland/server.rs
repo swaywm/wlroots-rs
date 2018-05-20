@@ -1,7 +1,7 @@
 use libc::c_int;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{pid_t, wl_client, wl_display, wlr_compositor, wlr_xwayland, wlr_xwayland_create,
-                  wlr_xwayland_destroy};
+                  wlr_xwayland_destroy, wlr_xwayland_set_cursor};
 
 use super::{XWaylandManager, XWaylandManagerHandler};
 
@@ -20,7 +20,7 @@ impl XWaylandServer {
         if xwayland.is_null() {
             panic!("Could not start XWayland server")
         }
-        let mut manager = XWaylandManager::new(manager);
+        let mut manager = XWaylandManager::new((vec![], manager));
         wl_signal_add(&mut (*xwayland).events.ready as *mut _ as _,
                       manager.on_ready_listener() as *mut _ as _);
         wl_signal_add(&mut (*xwayland).events.new_surface as *mut _ as _,
@@ -51,6 +51,24 @@ impl XWaylandServer {
 
     pub fn wl_client(&self) -> *mut wl_client {
         unsafe { (*self.xwayland).client }
+    }
+
+    pub fn set_cursor(&mut self,
+                      bytes: &mut [u8],
+                      stride: u32,
+                      width: u32,
+                      height: u32,
+                      hotspot_x: i32,
+                      hotspot_y: i32) {
+        unsafe {
+            wlr_xwayland_set_cursor(self.xwayland,
+                                    bytes.as_mut_ptr(),
+                                    stride,
+                                    width,
+                                    height,
+                                    hotspot_x,
+                                    hotspot_y)
+        }
     }
 }
 
