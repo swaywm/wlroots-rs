@@ -185,12 +185,10 @@ impl XdgV6ShellSurface {
 
     pub fn for_each_surface(&self, mut iterator: &mut FnMut(SurfaceHandle, i32, i32)) {
         unsafe {
-            extern fn c_iterator(wlr_surface: *mut wlr_surface, sx: i32, sy: i32, data: *mut c_void) {
-                unsafe {
-                    let iterator = &mut *(data as *mut &mut FnMut(SurfaceHandle, i32, i32));
-                    let surface = SurfaceHandle::from_ptr(wlr_surface);
-                    iterator(surface, sx, sy);
-                }
+            unsafe extern "C" fn c_iterator(wlr_surface: *mut wlr_surface, sx: i32, sy: i32, data: *mut c_void) {
+                let iterator = &mut *(data as *mut &mut FnMut(SurfaceHandle, i32, i32));
+                let surface = SurfaceHandle::from_ptr(wlr_surface);
+                iterator(surface, sx, sy);
             }
             let iterator_ptr: *mut c_void = &mut iterator as *mut _ as *mut c_void;
             wlr_xdg_surface_v6_for_each_surface(self.shell_surface, Some(c_iterator), iterator_ptr);
