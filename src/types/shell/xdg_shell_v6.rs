@@ -9,11 +9,13 @@ use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
                   wlr_xdg_surface_v6_surface_at, wlr_xdg_toplevel_v6,
                   wlr_xdg_toplevel_v6_set_activated, wlr_xdg_toplevel_v6_set_fullscreen,
                   wlr_xdg_toplevel_v6_set_maximized, wlr_xdg_toplevel_v6_set_resizing,
-                  wlr_xdg_toplevel_v6_set_size, wlr_xdg_toplevel_v6_state};
+                  wlr_xdg_toplevel_v6_set_size, wlr_xdg_toplevel_v6_state,
+                  wlr_xdg_surface_v6_for_each_surface, wlr_surface};
 
 use {Area, SeatHandle, SurfaceHandle};
 use errors::{HandleErr, HandleResult};
 use utils::c_to_rust_string;
+use libc::c_void;
 
 /// Used internally to reclaim a handle from just a *mut wlr_xdg_surface_v6.
 struct XdgV6ShellSurfaceState {
@@ -178,6 +180,18 @@ impl XdgV6ShellSurface {
             } else {
                 Some(SurfaceHandle::from_ptr(sub_surface))
             }
+        }
+    }
+
+    pub fn for_each_surface(&self, mut iterator: &mut FnMut(SurfaceHandle, i32, i32)) {
+        unsafe {
+            unsafe extern "C" fn c_iterator(wlr_surface: *mut wlr_surface, sx: i32, sy: i32, data: *mut c_void) {
+                let iterator = &mut *(data as *mut &mut FnMut(SurfaceHandle, i32, i32));
+                let surface = SurfaceHandle::from_ptr(wlr_surface);
+                iterator(surface, sx, sy);
+            }
+            let iterator_ptr: *mut c_void = &mut iterator as *mut _ as *mut c_void;
+            wlr_xdg_surface_v6_for_each_surface(self.shell_surface, Some(c_iterator), iterator_ptr);
         }
     }
 
