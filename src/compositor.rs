@@ -94,6 +94,8 @@ pub struct Compositor {
     data_device_manager: Option<DataDeviceManager>,
     /// The error from the panic, if there was one.
     panic_error: Option<Box<Any + Send>>,
+    /// Custom function to run at shutdown (or when a panic occurs).
+    user_terminate: Option<fn()>,
     /// Lock used to borrow the compositor globally.
     /// Should always be set before passing a reference to the compositor
     /// in a callback.
@@ -109,7 +111,8 @@ pub struct CompositorBuilder {
     gles2: bool,
     server_decoration_manager: bool,
     data_device_manager: bool,
-    xwayland: Option<Box<XWaylandManagerHandler>>
+    xwayland: Option<Box<XWaylandManagerHandler>>,
+    user_terminate: Option<fn()>
 }
 
 impl CompositorBuilder {
@@ -120,12 +123,13 @@ impl CompositorBuilder {
         CompositorBuilder { gles2: false,
                             server_decoration_manager: false,
                             data_device_manager: false,
-                            xwayland: None,
                             compositor_handler: None,
                             input_manager_handler: None,
                             output_manager_handler: None,
                             wl_shell_manager_handler: None,
-                            xdg_v6_shell_manager_handler: None }
+                            xdg_v6_shell_manager_handler: None,
+                            xwayland: None,
+                            user_terminate: None }
     }
 
     /// Set the handler for global compositor callbacks.
@@ -188,6 +192,13 @@ impl CompositorBuilder {
     /// If you do not provide a handler then the xwayland server does not run.
     pub fn xwayland(mut self, xwayland: Box<XWaylandManagerHandler>) -> Self {
         self.xwayland = Some(xwayland);
+        self
+    }
+
+    /// Add a custom function to run when shutting down the compositor
+    /// or whenever a function in a callback panics.
+    pub fn custom_terminate(mut self, terminate: fn()) -> Self {
+        self.user_terminate = Some(terminate);
         self
     }
 
@@ -293,6 +304,8 @@ impl CompositorBuilder {
                                                                                false))
                                                   });
 
+            let user_terminate = self.user_terminate;
+
             // Open the socket to the Wayland server.
             let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
             if socket.is_null() {
@@ -325,6 +338,7 @@ impl CompositorBuilder {
                                           server_decoration_manager,
                                           renderer,
                                           xwayland,
+                                          user_terminate,
                                           panic_error: None,
                                           lock: Rc::new(Cell::new(false)) };
             compositor.set_lock(true);
@@ -387,7 +401,8 @@ impl Compositor {
         }
     }
 
-    pub fn terminate(&mut self) {
+    /// Shutdown the wayland server
+    fn terminate(&mut self) {
         unsafe {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
         }
@@ -495,12 +510,13 @@ impl CompositorHandle {
     }
 }
 
-/// Terminates the compositor.
-/// If one is not running, does nothing
+/// Terminates the compositor and execute any user clean up code.
 pub fn terminate() {
     unsafe {
         if COMPOSITOR_PTR != 0 as _ {
-            (*COMPOSITOR_PTR).terminate();
+            let compositor = &mut *COMPOSITOR_PTR;
+            compositor.terminate();
+            compositor.user_terminate.map(|f| f());
         }
     }
 }

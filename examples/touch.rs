@@ -54,15 +54,10 @@ impl OutputManagerHandler for OutputManager {
 }
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self,
-              mut compositor: CompositorHandle,
-              _: KeyboardHandle,
-              key_event: &KeyEvent) {
+    fn on_key(&mut self, _: CompositorHandle, _: KeyboardHandle, key_event: &KeyEvent) {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
-                with_handles!([(compositor: {&mut compositor})] => {
-                    compositor.terminate()
-                }).unwrap();
+                wlroots::terminate()
             }
         }
     }

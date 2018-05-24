@@ -23,20 +23,16 @@ struct InputManager;
 struct ExKeyboardHandler;
 
 impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self,
-              compositor: CompositorHandle,
-              keyboard: KeyboardHandle,
-              key_event: &KeyEvent) {
+    fn on_key(&mut self, _: CompositorHandle, keyboard: KeyboardHandle, key_event: &KeyEvent) {
         let keys = key_event.pressed_keys();
-        with_handles!([(keyboard: {keyboard}),
-                      (compositor: {compositor})] => {
+        with_handles!([(keyboard: {keyboard})] => {
             wlr_log!(L_DEBUG,
                      "Got key event. Keys: {:?}. Modifiers: {}",
                      keys,
                      keyboard.get_modifiers());
             for key in keys {
                 if key == KEY_Escape {
-                    compositor.terminate()
+                    wlroots::terminate()
                 }
             }
         }).unwrap();
