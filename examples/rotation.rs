@@ -131,7 +131,7 @@ impl KeyboardHandler for KeyboardManager {
         with_handles!([(compositor: {compositor})] => {
             for key in keys {
                 match key {
-                    keysyms::KEY_Escape => compositor.terminate(),
+                    keysyms::KEY_Escape => wlroots::terminate(),
                     keysyms::KEY_Left => update_velocities(compositor.into(), -16.0, 0.0),
                     keysyms::KEY_Right => update_velocities(compositor.into(), 16.0, 0.0),
                     keysyms::KEY_Up => update_velocities(compositor.into(), 0.0, -16.0),
