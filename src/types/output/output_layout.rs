@@ -411,7 +411,7 @@ impl OutputLayoutHandle {
     /// to a short lived scope of an anonymous function,
     /// this function ensures the OutputLayout does not live longer
     /// than it exists (because the lifetime is controlled by the user).
-    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
+    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut OutputLayout) -> R
     {
         let mut output_layout = unsafe { self.upgrade()? };

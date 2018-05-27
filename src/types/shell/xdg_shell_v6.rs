@@ -279,7 +279,7 @@ impl XdgV6ShellSurfaceHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
+    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut XdgV6ShellSurface) -> R
     {
         let mut xdg_surface = unsafe { self.upgrade()? };

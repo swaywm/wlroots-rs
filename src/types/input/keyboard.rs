@@ -289,7 +289,7 @@ impl KeyboardHandle {
     /// or if you run this function within the another run to the same `Output`.
     ///
     /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
+    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut Keyboard) -> R
     {
         let mut keyboard = unsafe { self.upgrade()? };
