@@ -54,6 +54,10 @@ impl InputDevice {
         unsafe { c_to_rust_string((*self.device).name) }
     }
 
+    pub fn output_name(&self) -> Option<String> {
+        unsafe { c_to_rust_string((*self.device).output_name) }
+    }
+
     /// Get the size in (width_mm, height_mm) format.
     ///
     /// These values will be 0 if it's not supported.
