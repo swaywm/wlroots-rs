@@ -135,7 +135,7 @@ impl Output {
             return
         }
         // Remove output from previous output layout.
-        if let Some(mut layout_handle) = (*output_data).layout_handle.take() {
+        if let Some(layout_handle) = (*output_data).layout_handle.take() {
             match layout_handle.run(|layout| layout.remove(self)) {
                 Ok(_) | Err(HandleErr::AlreadyDropped) => self.clear_output_layout_data(),
                 Err(HandleErr::AlreadyBorrowed) => {

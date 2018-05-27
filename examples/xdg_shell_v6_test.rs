@@ -144,7 +144,7 @@ impl KeyboardHandler for ExKeyboardHandler {
                 }
             }
             let state: &mut State = compositor.into();
-            let mut seat_handle = state.seat_handle.clone().unwrap();
+            let seat_handle = state.seat_handle.clone().unwrap();
             seat_handle.run(|seat| {
                 seat.keyboard_notify_key(key_event.time_msec(),
                                          key_event.keycode(),
@@ -248,7 +248,7 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let mut cursor = Cursor::create(Box::new(CursorEx));
+    let cursor = Cursor::create(Box::new(CursorEx));
     let mut xcursor_manager =
         XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor \
                                                                   manager");
@@ -265,7 +265,7 @@ fn main() {
                                 .build_auto(State::new(xcursor_manager, layout, cursor));
 
     {
-        let mut seat_handle =
+        let seat_handle =
             Seat::create(&mut compositor, "seat0".into(), Box::new(SeatHandlerEx));
         seat_handle.run(|seat| {
                             seat.set_capabilities(Capability::all());
