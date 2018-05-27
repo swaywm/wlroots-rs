@@ -9,12 +9,7 @@ pub use wlroots_sys::{wlr_key_state, wlr_keyboard_modifiers};
 use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex};
 use xkbcommon::xkb::ffi::{xkb_keymap, xkb_state};
 
-use InputDevice;
-
-struct KeyboardState {
-    handle: Weak<Cell<bool>>,
-    device: InputDevice
-}
+use super::input_device::{InputDevice, InputState};
 
 /// Information about repeated keypresses for a particular Keyboard.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -70,8 +65,8 @@ impl Keyboard {
                 let keyboard = (*device).__bindgen_anon_1.keyboard;
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
-                let state = Box::new(KeyboardState { handle,
-                                                     device: InputDevice::from_ptr(device) });
+                let state = Box::new(InputState { handle,
+                                                  device: InputDevice::from_ptr(device) });
                 (*keyboard).data = Box::into_raw(state) as *mut _;
                 Some(Keyboard { liveliness,
                                 device: InputDevice::from_ptr(device),
@@ -209,7 +204,7 @@ impl Drop for Keyboard {
         if Rc::strong_count(&self.liveliness) == 1 {
             wlr_log!(L_DEBUG, "Dropped Keyboard {:p}", self.keyboard);
             unsafe {
-                let _ = Box::from_raw((*self.keyboard).data as *mut KeyboardState);
+                let _ = Box::from_raw((*self.keyboard).data as *mut InputState);
             }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
@@ -241,8 +236,14 @@ impl KeyboardHandle {
 
     /// Creates an KeyboardHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
+    ///
+    /// # Panics
+    /// Panics if the wlr_keyboard wasn't allocated using `new_from_input_device`.
     pub(crate) unsafe fn from_ptr(keyboard: *mut wlr_keyboard) -> Self {
-        let data = Box::from_raw((*keyboard).data as *mut KeyboardState);
+        if (*keyboard).data.is_null() {
+            panic!("Tried to get handle to keyboard that wasn't set up properly");
+        }
+        let data = Box::from_raw((*keyboard).data as *mut InputState);
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*keyboard).data = Box::into_raw(data) as *mut _;
