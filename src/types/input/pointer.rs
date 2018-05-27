@@ -5,7 +5,7 @@ use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
-use InputDevice;
+use super::input_device::{InputDevice, InputState};
 
 #[derive(Debug)]
 pub struct Pointer {
@@ -51,7 +51,12 @@ impl Pointer {
         match (*device).type_ {
             WLR_INPUT_DEVICE_POINTER => {
                 let pointer = (*device).__bindgen_anon_1.pointer;
-                Some(Pointer { liveliness: Rc::new(Cell::new(false)),
+                let liveliness = Rc::new(Cell::new(false));
+                let handle = Rc::downgrade(&liveliness);
+                let state = Box::new(InputState { handle,
+                                                  device: InputDevice::from_ptr(device) });
+                (*pointer).data = Box::into_raw(state) as *mut _;
+                Some(Pointer { liveliness,
                                device: InputDevice::from_ptr(device),
                                pointer })
             }
@@ -99,6 +104,9 @@ impl Drop for Pointer {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) == 1 {
             wlr_log!(L_DEBUG, "Dropped Pointer {:p}", self.pointer);
+            unsafe {
+                let _ = Box::from_raw((*self.pointer).data as *mut InputState);
+            }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
                 wlr_log!(L_DEBUG,
@@ -125,6 +133,24 @@ impl PointerHandle {
                             device: InputDevice::from_ptr(ptr::null_mut()),
                             pointer: ptr::null_mut() }
         }
+    }
+
+    /// Creates a PointerHandle from the raw pointer, using the saved user
+    /// data to recreate the memory model.
+    ///
+    /// # Panics
+    /// Panics if the wlr_pointer wasn't allocated using `new_from_input_device`.
+    pub(crate) unsafe fn from_ptr(pointer: *mut wlr_pointer) -> Self {
+        if (*pointer).data.is_null() {
+            panic!("Tried to get handle to keyboard that wasn't set up properly");
+        }
+        let data = Box::from_raw((*pointer).data as *mut InputState);
+        let handle = data.handle.clone();
+        let device = data.device.clone();
+        (*pointer).data = Box::into_raw(data) as *mut _;
+        PointerHandle { handle,
+                        device,
+                        pointer }
     }
 
     /// Upgrades the pointer handle to a reference to the backing `Pointer`.

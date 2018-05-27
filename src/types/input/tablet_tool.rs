@@ -4,7 +4,7 @@ use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_tablet_tool};
 
-use InputDevice;
+use super::input_device::{InputDevice, InputState};
 
 #[derive(Debug)]
 pub struct TabletTool {
@@ -49,7 +49,12 @@ impl TabletTool {
         match (*device).type_ {
             WLR_INPUT_DEVICE_TABLET_TOOL => {
                 let tool = (*device).__bindgen_anon_1.tablet_tool;
-                Some(TabletTool { liveliness: Rc::new(Cell::new(false)),
+                let liveliness = Rc::new(Cell::new(false));
+                let handle = Rc::downgrade(&liveliness);
+                let state = Box::new(InputState { handle,
+                                                  device: InputDevice::from_ptr(device) });
+                (*tool).data = Box::into_raw(state) as *mut _;
+                Some(TabletTool { liveliness,
                                   device: InputDevice::from_ptr(device),
                                   tool })
             }
@@ -94,6 +99,9 @@ impl Drop for TabletTool {
             return
         }
         wlr_log!(L_DEBUG, "Dropped TabletTool {:p}", self.tool);
+        unsafe {
+            let _ = Box::from_raw((*self.tool).data as *mut InputState);
+        }
         let weak_count = Rc::weak_count(&self.liveliness);
         if weak_count > 0 {
             wlr_log!(L_DEBUG,
@@ -119,6 +127,24 @@ impl TabletToolHandle {
                                device: InputDevice::from_ptr(ptr::null_mut()),
                                tool: ptr::null_mut() }
         }
+    }
+
+    /// Creates an TabletToolHandle from the raw pointer, using the saved
+    /// user data to recreate the memory model.
+    ///
+    /// # Panics
+    /// Panics if the wlr_tablet_tool wasn't allocated using `new_from_input_device`.
+    pub(crate) unsafe fn from_ptr(tool: *mut wlr_tablet_tool) -> Self {
+        if (*tool).data.is_null() {
+            panic!("Tried to get handle to keyboard that wasn't set up properly");
+        }
+        let data = Box::from_raw((*tool).data as *mut InputState);
+        let handle = data.handle.clone();
+        let device = data.device.clone();
+        (*tool).data = Box::into_raw(data) as *mut _;
+        TabletToolHandle { handle,
+                      tool,
+                      device }
     }
 
     /// Upgrades the tablet tool handle to a reference to the backing `TabletTool`.

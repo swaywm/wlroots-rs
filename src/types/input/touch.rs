@@ -5,7 +5,7 @@ use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_touch};
 
-use InputDevice;
+use super::input_device::{InputDevice, InputState};
 
 #[derive(Debug)]
 pub struct Touch {
@@ -51,7 +51,12 @@ impl Touch {
         match (*device).type_ {
             WLR_INPUT_DEVICE_TOUCH => {
                 let touch = (*device).__bindgen_anon_1.touch;
-                Some(Touch { liveliness: Rc::new(Cell::new(false)),
+                let liveliness = Rc::new(Cell::new(false));
+                let handle = Rc::downgrade(&liveliness);
+                let state = Box::new(InputState { handle,
+                                                  device: InputDevice::from_ptr(device) });
+                (*touch).data = Box::into_raw(state) as *mut _;
+                Some(Touch { liveliness,
                              device: InputDevice::from_ptr(device),
                              touch })
             }
@@ -98,6 +103,9 @@ impl Drop for Touch {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) == 1 {
             wlr_log!(L_DEBUG, "Dropped Touch {:p}", self.touch);
+            unsafe {
+                let _ = Box::from_raw((*self.touch).data as *mut InputDevice);
+            }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
                 wlr_log!(L_DEBUG,
@@ -124,6 +132,24 @@ impl TouchHandle {
                           device: InputDevice::from_ptr(ptr::null_mut()),
                           touch: ptr::null_mut() }
         }
+    }
+
+    /// Creates an TouchHandle from the raw pointer, using the saved
+    /// user data to recreate the memory model.
+    ///
+    /// # Panics
+    /// Panics if the wlr_touch wasn't allocated using `new_from_input_device`.
+    pub(crate) unsafe fn from_ptr(touch: *mut wlr_touch) -> Self {
+        if (*touch).data.is_null() {
+            panic!("Tried to get handle to keyboard that wasn't set up properly");
+        }
+        let data = Box::from_raw((*touch).data as *mut InputState);
+        let handle = data.handle.clone();
+        let device = data.device.clone();
+        (*touch).data = Box::into_raw(data) as *mut _;
+        TouchHandle { handle,
+                          touch,
+                          device }
     }
 
     /// Upgrades the touch handle to a reference to the backing `Touch`.
