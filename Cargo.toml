@@ -11,8 +11,6 @@ categories = ["external-ffi-bindings", "gui"]
 license = "MIT"
 exclude = [".travis.yml"]
 
-build = "build.rs"
-
 [badges]
 travis-ci = { repository = "way-cooler/wlroots-rs/" }
 
@@ -30,9 +28,6 @@ bitflags = "1.0"
 wayland-client = { version = "0.12.*" }
 byteorder = "1"
 tempfile = "2"
-
-[build-dependencies]
-gl_generator = "0.5.0"
 
 [features]
 default = ["static", "libcap", "systemd", "elogind"]
