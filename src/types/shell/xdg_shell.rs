@@ -12,7 +12,7 @@ use wlroots_sys::{wlr_xdg_popup, wlr_xdg_surface, wlr_xdg_surface_ping,
                   wlr_xdg_toplevel_set_size, wlr_xdg_toplevel_state,
                   wlr_xdg_surface_for_each_surface, wlr_surface, wlr_xdg_surface_from_wlr_surface};
 
-use {Area, SeatHandle, SurfaceHandle};
+use {Area, SeatHandle, SurfaceHandle, Surface};
 use errors::{HandleErr, HandleResult};
 use utils::c_to_rust_string;
 use libc::c_void;
@@ -224,6 +224,18 @@ impl XdgShellSurfaceHandle {
         }
     }
 
+    /// If the surface is an XDG surface, get a handle to the XDG surface.
+    pub fn from_surface(surface: &Surface) -> Option<XdgShellSurfaceHandle> {
+        unsafe {
+            if !surface.is_xdg_surface() {
+                None
+            } else {
+                let xdg_surface_ptr = wlr_xdg_surface_from_wlr_surface(surface.as_ptr());
+                Some(XdgShellSurfaceHandle::from_ptr(xdg_surface_ptr))
+            }
+        }
+    }
+
     /// Creates a XdgShellSurfaceHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(shell_surface: *mut wlr_xdg_surface) -> Self {
@@ -423,7 +435,7 @@ impl XdgPopup {
                                     popup: *mut wlr_xdg_popup)
                                     -> XdgPopup {
         XdgPopup { shell_surface,
-                     popup }
+                   popup }
     }
 
     /// Get a handle to the base surface of the xdg tree.
@@ -432,10 +444,8 @@ impl XdgPopup {
     }
 
     /// Get a handle to the parent surface of the xdg tree.
-    pub fn parent(&self) -> XdgShellSurfaceHandle {
-        // TODO FIXME
-        // This is a hack until https://github.com/swaywm/wlroots/pull/1009 is merged
-        unsafe { XdgShellSurfaceHandle::from_ptr(wlr_xdg_surface_from_wlr_surface((*self.popup).parent)) }
+    pub fn parent(&self) -> SurfaceHandle {
+        unsafe { SurfaceHandle::from_ptr((*self.popup).parent) }
     }
 
     pub fn committed(&self) -> bool {
