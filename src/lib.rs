@@ -33,11 +33,12 @@ pub use self::events::{key_events, seat_events, tablet_pad_events, tablet_tool_e
                        touch_events, wl_shell_events, xwayland_events,
                        pointer_events::{self, BTN_BACK, BTN_EXTRA, BTN_FORWARD, BTN_LEFT,
                                         BTN_MIDDLE, BTN_MOUSE, BTN_RIGHT, BTN_SIDE, BTN_TASK},
-                       xdg_shell_v6_events};
+                       xdg_shell_v6_events, xdg_shell_events};
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
                         OutputHandler, OutputManagerHandler, PointerHandler, TabletPadHandler,
                         TabletToolHandler, TouchHandler, WlShellHandler, WlShellManagerHandler,
-                        XdgV6ShellHandler, XdgV6ShellManagerHandler};
+                        XdgV6ShellHandler, XdgV6ShellManagerHandler,
+                        XdgShellHandler, XdgShellManagerHandler};
 pub use self::types::area::*;
 pub use self::types::cursor::*;
 pub use self::types::data_device::*;

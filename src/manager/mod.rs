@@ -8,6 +8,8 @@ mod wl_shell_manager;
 mod wl_shell_handler;
 mod xdg_shell_v6_manager;
 mod xdg_shell_v6_handler;
+mod xdg_shell_manager;
+mod xdg_shell_handler;
 mod tablet_pad_handler;
 mod tablet_tool_handler;
 
@@ -24,3 +26,5 @@ pub use self::wl_shell_handler::*;
 pub use self::wl_shell_manager::*;
 pub use self::xdg_shell_v6_handler::*;
 pub use self::xdg_shell_v6_manager::*;
+pub use self::xdg_shell_handler::*;
+pub use self::xdg_shell_manager::*;
