@@ -62,6 +62,22 @@ pub trait XdgV6ShellHandler {
                                 XdgV6ShellSurfaceHandle,
                                 &ShowWindowMenuEvent) {
     }
+
+    /// Called when the surface is ready to be mapped. It should be added to the list of views at
+    /// this time.
+    fn map_request(&mut self,
+                   CompositorHandle,
+                   SurfaceHandle,
+                   XdgV6ShellSurfaceHandle) {
+    }
+
+    /// Called when the surface should be unmapped. It should be removed from the list of views at
+    /// this time, but may be remapped at a later time.
+    fn unmap_request(&mut self,
+                   CompositorHandle,
+                   SurfaceHandle,
+                   XdgV6ShellSurfaceHandle) {
+    }
 }
 
 wayland_listener!(XdgV6Shell, (XdgV6ShellSurface, Surface, Box<XdgV6ShellHandler>), [
@@ -179,6 +195,30 @@ wayland_listener!(XdgV6Shell, (XdgV6ShellSurface, Surface, Box<XdgV6ShellHandler
                                          surface.weak_reference(),
                                          shell_surface.weak_reference(),
                                          &event);
+    };
+
+    map_listener => map_notify: |this: &mut XdgV6Shell, _event: *mut libc::c_void,| unsafe {
+        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+
+        manager.map_request(compositor,
+                            surface.weak_reference(),
+                            shell_surface.weak_reference());
+    };
+
+    unmap_listener => unmap_notify: |this: &mut XdgV6Shell, _event: *mut libc::c_void,| unsafe {
+        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+
+        manager.unmap_request(compositor,
+                            surface.weak_reference(),
+                            shell_surface.weak_reference());
     };
 ]);
 

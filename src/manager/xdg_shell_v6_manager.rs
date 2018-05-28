@@ -69,6 +69,10 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                           shell_surface.ping_timeout_listener() as _);
             wl_signal_add(&mut (*data).events.new_popup as *mut _ as _,
                           shell_surface.new_popup_listener() as _);
+            wl_signal_add(&mut (*data).events.map as *mut _ as _,
+                          shell_surface.map_listener() as _);
+            wl_signal_add(&mut (*data).events.unmap as *mut _ as _,
+                          shell_surface.unmap_listener() as _);
             let events = with_handles!([(shell_surface: {shell_surface.surface_mut()})] => {
                 match shell_surface.state() {
                     None | Some(&mut Popup(_)) => None,
@@ -134,6 +138,12 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
                           &mut (*removed_shell.show_window_menu_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*removed_shell.map_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*removed_shell.unmap_listener()).link as *mut _ as _);
         }
         // TODO Remove from list using iter().position
     };
