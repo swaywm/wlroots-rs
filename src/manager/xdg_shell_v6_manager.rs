@@ -135,6 +135,5 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                           wl_list_remove,
                           &mut (*removed_shell.show_window_menu_listener()).link as *mut _ as _);
         }
-        // TODO Remove from list using iter().position
     };
 ]);
