@@ -180,7 +180,7 @@ impl InputManagerHandler for InputManager {
 
 fn main() {
     init_logging(L_DEBUG, None);
-    let mut cursor = Cursor::create(Box::new(ExCursor));
+    let cursor = Cursor::create(Box::new(ExCursor));
     let mut xcursor_manager =
         XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor \
                                                                   manager");

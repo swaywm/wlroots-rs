@@ -573,7 +573,7 @@ impl Cursor {
 
     /// Determines if we are within a valid layout.
     fn assert_layout(&self) {
-        match self.data.2.clone().map(|mut layout| layout.run(|_| ())) {
+        match self.data.2.clone().map(|layout| layout.run(|_| ())) {
             Some(Ok(())) | Some(Err(HandleErr::AlreadyBorrowed)) => {}
             None | Some(Err(_)) => panic!("Cursor was not attached to an output layout!")
         }
@@ -701,7 +701,7 @@ impl CursorHandle {
     ///
     /// So don't nest `run` calls or call this in a Cursor callback
     /// and everything will be ok :).
-    pub fn run<F, R>(&mut self, runner: F) -> HandleResult<R>
+    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
         where F: FnOnce(&mut Cursor) -> R
     {
         let mut cursor = unsafe { self.upgrade()? };
