@@ -8,13 +8,15 @@ use {DataDeviceManager, SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
 use errors::{HandleErr, HandleResult};
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
-              WlShellManager, WlShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
+              WlShellManager, WlShellManagerHandler, XdgShellManager,
+              XdgShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
 use render::GenericRenderer;
 
 use wayland_sys::server::{wl_display, wl_event_loop, signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start,
                   wlr_compositor, wlr_compositor_create, wlr_compositor_destroy, wlr_wl_shell,
-                  wlr_wl_shell_create, wlr_xdg_shell_v6, wlr_xdg_shell_v6_create};
+                  wlr_wl_shell_create, wlr_xdg_shell_v6, wlr_xdg_shell_v6_create,
+                  wlr_xdg_shell, wlr_xdg_shell_create};
 use wlroots_sys::wayland_server::sys::wl_display_init_shm;
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
@@ -64,11 +66,16 @@ pub struct Compositor {
     output_manager: Option<Box<OutputManager>>,
     /// Manager for Wayland shells.
     wl_shell_manager: Option<Box<WlShellManager>>,
+    /// Manager for stable XDG shells.
+    xdg_shell_manager: Option<Box<XdgShellManager>>,
     /// Manager for XDG shells v6.
     xdg_v6_shell_manager: Option<Box<XdgV6ShellManager>>,
     /// Pointer to wl_shell global.
     /// If wl_shell_manager is `None`, this value will be `NULL`.
     wl_shell_global: *mut wlr_wl_shell,
+    /// Pointer to the xdg_shell global.
+    /// If xdg_shell_manager is `None`, this value will be `NULL`.
+    xdg_shell_global: *mut wlr_xdg_shell,
     /// Pointer to the xdg_shell_v6 global.
     /// If xdg_v6_shell_manager is `None`, this value will be `NULL`.
     xdg_v6_shell_global: *mut wlr_xdg_shell_v6,
@@ -107,6 +114,7 @@ pub struct CompositorBuilder {
     input_manager_handler: Option<Box<InputManagerHandler>>,
     output_manager_handler: Option<Box<OutputManagerHandler>>,
     wl_shell_manager_handler: Option<Box<WlShellManagerHandler>>,
+    xdg_shell_manager_handler: Option<Box<XdgShellManagerHandler>>,
     xdg_v6_shell_manager_handler: Option<Box<XdgV6ShellManagerHandler>>,
     gles2: bool,
     server_decoration_manager: bool,
@@ -127,6 +135,7 @@ impl CompositorBuilder {
                             input_manager_handler: None,
                             output_manager_handler: None,
                             wl_shell_manager_handler: None,
+                            xdg_shell_manager_handler: None,
                             xdg_v6_shell_manager_handler: None,
                             xwayland: None,
                             user_terminate: None }
@@ -155,6 +164,13 @@ impl CompositorBuilder {
                             wl_shell_manager_handler: Box<WlShellManagerHandler>)
                             -> Self {
         self.wl_shell_manager_handler = Some(wl_shell_manager_handler);
+        self
+    }
+
+    pub fn xdg_shell_manager(mut self,
+                             xdg_shell_manager_handler: Box<XdgShellManagerHandler>)
+                             -> Self {
+        self.xdg_shell_manager_handler = Some(xdg_shell_manager_handler);
         self
     }
 
@@ -285,6 +301,17 @@ impl CompositorBuilder {
                 wl_shell_manager
             });
 
+            // Set up the xdg_shell handler and associated Wayland global,
+            // if user provided a manager for it.
+            let mut xdg_shell_global = ptr::null_mut();
+            let xdg_shell_manager = self.xdg_shell_manager_handler.map(|handler| {
+                xdg_shell_global = wlr_xdg_shell_create(display as *mut _);
+                let mut xdg_shell_manager = XdgShellManager::new((vec![], handler));
+                wl_signal_add(&mut (*xdg_shell_global).events.new_surface as *mut _ as _,
+                              xdg_shell_manager.add_listener() as *mut _ as _);
+                xdg_shell_manager
+            });
+
             // Set up the xdg_shell_v6 handler and associated Wayland global,
             // if user provided a manager for it.
             let mut xdg_v6_shell_global = ptr::null_mut();
@@ -327,6 +354,8 @@ impl CompositorBuilder {
                                           output_manager,
                                           wl_shell_manager,
                                           wl_shell_global,
+                                          xdg_shell_manager,
+                                          xdg_shell_global,
                                           xdg_v6_shell_manager,
                                           xdg_v6_shell_global,
                                           data_device_manager,

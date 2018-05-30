@@ -7,7 +7,8 @@ use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_surface,
                   wlr_surface_has_buffer, wlr_surface_point_accepts_input, wlr_surface_send_enter,
-                  wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_surface_at};
+                  wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_surface_at,
+                  wlr_surface_is_xdg_surface};
 
 use super::{Subsurface, SubsurfaceHandle, SubsurfaceManager, SurfaceState};
 use Output;
@@ -157,6 +158,14 @@ impl Surface {
     /// local coordinates.
     pub fn accepts_input(&self, sx: c_double, sy: c_double) -> bool {
         unsafe { wlr_surface_point_accepts_input(self.surface, sx, sy) }
+    }
+
+    /// Determines if this surface is an XDG surface.
+    ///
+    /// This is really only useful for getting the parent of popups from stable XDG
+    /// shell surfaces.
+    pub fn is_xdg_surface(&self) -> bool {
+        unsafe { wlr_surface_is_xdg_surface(self.surface) }
     }
 
     /// Find a subsurface within this surface at the surface-local coordinates.
