@@ -18,8 +18,15 @@ impl SetCursorEvent {
     }
 
     /// Get the surface that is providing the cursor to the seat.
-    pub fn surface(&self) -> SurfaceHandle {
-        unsafe { SurfaceHandle::from_ptr((*self.event).surface) }
+    pub fn surface(&self) -> Option<SurfaceHandle> {
+        unsafe {
+            let surface = (*self.event).surface;
+            if surface.is_null() {
+                None
+            } else {
+                SurfaceHandle::from_ptr(surface)
+            }
+        }
     }
 
     pub fn serial(&self) -> u32 {
