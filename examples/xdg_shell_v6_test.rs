@@ -57,7 +57,18 @@ struct OutputLayoutEx;
 
 impl OutputLayoutHandler for OutputLayoutEx {}
 
-impl XdgV6ShellHandler for XdgV6ShellHandlerEx {}
+impl XdgV6ShellHandler for XdgV6ShellHandlerEx {
+    fn destroyed(&mut self, compositor: CompositorHandle, shell: XdgV6ShellSurfaceHandle) {
+        with_handles!([(compositor: {compositor})] => {
+            let state: &mut State = compositor.into();
+            let weak = shell;
+            if let Some(index) = state.shells.iter().position(|s| *s == weak) {
+                state.shells.remove(index);
+            }
+        }).unwrap();
+    }
+}
+
 impl XdgV6ShellManagerHandler for XdgV6ShellManager {
     fn new_surface(&mut self,
                    compositor: CompositorHandle,
@@ -76,16 +87,6 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
             }).expect("Layout was destroyed");
         }).unwrap();
         Some(Box::new(XdgV6ShellHandlerEx))
-    }
-
-    fn surface_destroyed(&mut self, compositor: CompositorHandle, shell: XdgV6ShellSurfaceHandle) {
-        with_handles!([(compositor: {compositor})] => {
-            let state: &mut State = compositor.into();
-            let weak = shell;
-            if let Some(index) = state.shells.iter().position(|s| *s == weak) {
-                state.shells.remove(index);
-            }
-        }).unwrap();
     }
 }
 

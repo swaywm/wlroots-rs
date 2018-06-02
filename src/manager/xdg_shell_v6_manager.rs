@@ -1,10 +1,10 @@
 //! Manager for XDG shell v6 client.
 
 use libc;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface_v6, wlr_xdg_surface_v6_role::*};
 
+use types::shell::XdgV6ShellSurfaceState;
 use super::xdg_shell_v6_handler::XdgV6Shell;
 use {XdgV6Popup, XdgV6ShellHandler, XdgV6ShellState::*, XdgV6ShellSurface,
      XdgV6ShellSurfaceHandle, XdgV6TopLevel};
@@ -16,16 +16,12 @@ pub trait XdgV6ShellManagerHandler {
                    CompositorHandle,
                    XdgV6ShellSurfaceHandle)
                    -> Option<Box<XdgV6ShellHandler>>;
-
-    /// Callback that is triggered when an XDG shell v6 surface is destroyed.
-    fn surface_destroyed(&mut self, CompositorHandle, XdgV6ShellSurfaceHandle);
 }
 
-wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManagerHandler>), [
+wayland_listener!(XdgV6ShellManager, Box<XdgV6ShellManagerHandler>, [
     add_listener => add_notify: |this: &mut XdgV6ShellManager, data: *mut libc::c_void,|
     unsafe {
-        let remove_listener = this.remove_listener() as *mut _ as _;
-        let (ref mut shells, ref mut manager) = this.data;
+        let ref mut manager = this.data;
         let data = data as *mut wlr_xdg_surface_v6;
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -54,14 +50,10 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
 
             let mut shell_surface = XdgV6Shell::new((shell_surface, shell_surface_handler));
 
-            // Hook the destroy event into this manager.
             wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
-                          remove_listener);
-
-            // Hook the commit signal from the surface into the shell handler.
+                          shell_surface.destroy_listener() as _);
             wl_signal_add(&mut (*(*data).surface).events.commit as *mut _ as _,
                           shell_surface.commit_listener() as _);
-
             wl_signal_add(&mut (*data).events.ping_timeout as *mut _ as _,
                           shell_surface.ping_timeout_listener() as _);
             wl_signal_add(&mut (*data).events.new_popup as *mut _ as _,
@@ -91,56 +83,8 @@ wayland_listener!(XdgV6ShellManager, (Vec<Box<XdgV6Shell>>, Box<XdgV6ShellManage
                               shell_surface.show_window_menu_listener() as _);
             }
 
-            shells.push(shell_surface);
-        }
-    };
-    remove_listener => remove_notify: |this: &mut XdgV6ShellManager, data: *mut libc::c_void,|
-    unsafe {
-        let (ref mut shells, ref mut manager) = this.data;
-        let data = data as *mut wlr_xdg_surface_v6;
-        let compositor = match compositor_handle() {
-            Some(handle) => handle,
-            None => return
-        };
-        if let Some(shell) = shells.iter_mut().find(|shell| shell.surface_ptr() == data) {
-            let mut shell_surface = shell.surface_mut();
-            manager.surface_destroyed(compositor, shell_surface);
-        }
-        if let Some(index) = shells.iter().position(|shell| shell.surface_ptr() == data) {
-            let mut removed_shell = shells.remove(index);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.commit_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.ping_timeout_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.new_popup_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.maximize_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.fullscreen_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.minimize_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.move_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.resize_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.show_window_menu_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.map_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*removed_shell.unmap_listener()).link as *mut _ as _);
+            let shell_data = (*data).data as *mut XdgV6ShellSurfaceState;
+            (*shell_data).shell = Box::into_raw(shell_surface);
         }
     };
 ]);

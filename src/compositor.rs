@@ -308,7 +308,7 @@ impl CompositorBuilder {
             let mut xdg_shell_global = ptr::null_mut();
             let xdg_shell_manager = self.xdg_shell_manager_handler.map(|handler| {
                 xdg_shell_global = wlr_xdg_shell_create(display as *mut _);
-                let mut xdg_shell_manager = XdgShellManager::new((vec![], handler));
+                let mut xdg_shell_manager = XdgShellManager::new(handler);
                 wl_signal_add(&mut (*xdg_shell_global).events.new_surface as *mut _ as _,
                               xdg_shell_manager.add_listener() as *mut _ as _);
                 xdg_shell_manager
@@ -319,7 +319,7 @@ impl CompositorBuilder {
             let mut xdg_v6_shell_global = ptr::null_mut();
             let xdg_v6_shell_manager = self.xdg_v6_shell_manager_handler.map(|handler| {
                 xdg_v6_shell_global = wlr_xdg_shell_v6_create(display as *mut _);
-                let mut xdg_v6_shell_manager = XdgV6ShellManager::new((vec![], handler));
+                let mut xdg_v6_shell_manager = XdgV6ShellManager::new(handler);
                 wl_signal_add(&mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
                               xdg_v6_shell_manager.add_listener() as *mut _ as _);
                 xdg_v6_shell_manager
