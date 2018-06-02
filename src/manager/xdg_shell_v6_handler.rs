@@ -246,10 +246,6 @@ wayland_listener!(XdgV6Shell, (XdgV6ShellSurface, Box<XdgV6ShellHandler>), [
 ]);
 
 impl XdgV6Shell {
-    pub(crate) unsafe fn surface_ptr(&self) -> *mut wlr_xdg_surface_v6 {
-        self.data.0.as_ptr()
-    }
-
     pub(crate) fn surface_mut(&mut self) -> XdgV6ShellSurfaceHandle {
         self.data.0.weak_reference()
     }

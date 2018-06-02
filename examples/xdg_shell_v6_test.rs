@@ -11,7 +11,7 @@ use wlroots::{project_box, Area, Capability, CompositorBuilder, CompositorHandle
               OutputLayout, OutputLayoutHandle, OutputLayoutHandler, OutputManagerHandler,
               PointerHandle, PointerHandler, Renderer, Seat, SeatHandle, SeatHandler, Size,
               XCursorManager, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState,
-              XdgV6ShellSurfaceHandle};
+              XdgV6ShellSurfaceHandle, SurfaceHandler, SurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AbsoluteMotionEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, L_DEBUG, current_time};
@@ -69,11 +69,19 @@ impl XdgV6ShellHandler for XdgV6ShellHandlerEx {
     }
 }
 
+struct SurfaceEx;
+
+impl SurfaceHandler for SurfaceEx {
+    fn on_commit(&mut self, _: CompositorHandle, surface: SurfaceHandle) {
+        wlr_log!(L_DEBUG, "Commiting for surface {:?}", surface);
+    }
+}
+
 impl XdgV6ShellManagerHandler for XdgV6ShellManager {
     fn new_surface(&mut self,
                    compositor: CompositorHandle,
                    shell: XdgV6ShellSurfaceHandle)
-                   -> Option<Box<XdgV6ShellHandler>> {
+                   -> Option<(Box<XdgV6ShellHandler>, Box<SurfaceHandler>)> {
         with_handles!([(compositor: {compositor}), (shell: {shell})] => {
             shell.ping();
             let state: &mut State = compositor.into();
@@ -86,7 +94,7 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                 }
             }).expect("Layout was destroyed");
         }).unwrap();
-        Some(Box::new(XdgV6ShellHandlerEx))
+        Some((Box::new(XdgV6ShellHandlerEx), Box::new(SurfaceEx)))
     }
 }
 

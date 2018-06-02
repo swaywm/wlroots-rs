@@ -93,10 +93,6 @@ impl XdgV6ShellSurface {
                             shell_surface }
     }
 
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_xdg_surface_v6 {
-        self.shell_surface
-    }
-
     unsafe fn from_handle(handle: &XdgV6ShellSurfaceHandle) -> HandleResult<Self> {
         let liveliness = handle.handle
                                .upgrade()

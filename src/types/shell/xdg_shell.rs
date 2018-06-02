@@ -94,10 +94,6 @@ impl XdgShellSurface {
                           shell_surface }
     }
 
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_xdg_surface {
-        self.shell_surface
-    }
-
     unsafe fn from_handle(handle: &XdgShellSurfaceHandle) -> HandleResult<Self> {
         let liveliness = handle.handle
                                .upgrade()

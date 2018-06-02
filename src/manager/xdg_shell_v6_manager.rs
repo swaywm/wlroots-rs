@@ -4,9 +4,9 @@ use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface_v6, wlr_xdg_surface_v6_role::*};
 
-use types::shell::XdgV6ShellSurfaceState;
+use types::{shell::XdgV6ShellSurfaceState, surface::InternalSurfaceState};
 use super::xdg_shell_v6_handler::XdgV6Shell;
-use {XdgV6Popup, XdgV6ShellHandler, XdgV6ShellState::*, XdgV6ShellSurface,
+use {SurfaceHandler, XdgV6Popup, XdgV6ShellHandler, XdgV6ShellState::*, XdgV6ShellSurface,
      XdgV6ShellSurfaceHandle, XdgV6TopLevel};
 use compositor::{compositor_handle, CompositorHandle};
 
@@ -15,7 +15,7 @@ pub trait XdgV6ShellManagerHandler {
     fn new_surface(&mut self,
                    CompositorHandle,
                    XdgV6ShellSurfaceHandle)
-                   -> Option<Box<XdgV6ShellHandler>>;
+                   -> Option<(Box<XdgV6ShellHandler>, Box<SurfaceHandler>)>;
 }
 
 wayland_listener!(XdgV6ShellManager, Box<XdgV6ShellManagerHandler>, [
@@ -46,9 +46,11 @@ wayland_listener!(XdgV6ShellManager, Box<XdgV6ShellManagerHandler>, [
         let new_surface_res = manager.new_surface(compositor,
                                                   shell_surface.weak_reference());
 
-        if let Some(shell_surface_handler) = new_surface_res {
+        if let Some((shell_surface_handler, surface_handler)) = new_surface_res {
 
             let mut shell_surface = XdgV6Shell::new((shell_surface, shell_surface_handler));
+            let surface_state = (*(*data).surface).data as *mut InternalSurfaceState;
+            (*(*surface_state).surface).data().1 = surface_handler;
 
             wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
                           shell_surface.destroy_listener() as _);

@@ -42,7 +42,6 @@ wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
         let compositor = (&mut *COMPOSITOR_PTR).weak_reference();
         let surface = Surface::new(surface_ptr);
         handler.new_surface(compositor.clone(), surface.weak_reference());
-        // TODO Not ()
         let mut internal_surface = InternalSurface::new((surface, Box::new(())));
         wl_signal_add(&mut (*surface_ptr).events.commit as *mut _ as _,
                       internal_surface.on_commit_listener() as _);

@@ -27,8 +27,7 @@ pub trait SurfaceHandler {
     fn on_destroy(&mut self, CompositorHandle, SurfaceHandle) {}
 }
 
-// TODO remove
-impl SurfaceHandler for (){}
+impl SurfaceHandler for () {}
 
 wayland_listener!(InternalSurface, (Surface, Box<SurfaceHandler>), [
     on_commit_listener => on_commit_notify: |this: &mut InternalSurface, _data: *mut libc::c_void,|
@@ -65,6 +64,12 @@ wayland_listener!(InternalSurface, (Surface, Box<SurfaceHandler>), [
         Box::<InternalSurface>::from_raw((*surface_state_ptr).surface);
     };
 ]);
+
+impl InternalSurface {
+    pub(crate) unsafe fn data(&mut self) -> &mut (Surface, Box<SurfaceHandler>) {
+        &mut self.data
+    }
+}
 
 /// The state stored in the wlr_surface user data.
 pub(crate) struct InternalSurfaceState {
@@ -418,7 +423,7 @@ impl Drop for Surface {
                      self.surface);
         }
         unsafe {
-            let state = Box::from_raw((*self.surface).data as *mut InternalSurfaceState);
+            Box::from_raw((*self.surface).data as *mut InternalSurfaceState);
         }
     }
 }
