@@ -24,7 +24,7 @@ impl SetCursorEvent {
             if surface.is_null() {
                 None
             } else {
-                SurfaceHandle::from_ptr(surface)
+                Some(SurfaceHandle::from_ptr(surface))
             }
         }
     }
