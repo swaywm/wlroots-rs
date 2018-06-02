@@ -14,7 +14,7 @@ use wlroots::{project_box, Area, Capability, CompositorBuilder, CompositorHandle
               XdgV6ShellSurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AbsoluteMotionEvent, ButtonEvent, MotionEvent};
-use wlroots::utils::{init_logging, L_DEBUG};
+use wlroots::utils::{init_logging, L_DEBUG, current_time};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 
@@ -301,10 +301,7 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                                          .transform_matrix());
                 renderer.render_texture_with_matrix(&surface.texture(),
                                                     matrix);
-                let start = SystemTime::now();
-                let now = start.duration_since(UNIX_EPOCH)
-                    .expect("Time went backwards");
-                surface.send_frame_done(now);
+                surface.send_frame_done(current_time());
             }
         }).unwrap();
     }
