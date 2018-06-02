@@ -90,7 +90,6 @@ wayland_listener!(XdgV6Shell, (XdgV6ShellSurface, Box<XdgV6ShellHandler>), [
         };
         manager.destroyed(compositor, shell_surface.weak_reference());
         let surface_ptr = data as *mut wlr_xdg_surface_v6;
-        wlr_log!(L_ERROR, "DESTROYED {:p}", surface_ptr);
         let shell_state_ptr = (*surface_ptr).data as *mut XdgV6ShellSurfaceState;
         Box::from_raw((*shell_state_ptr).shell);
     };

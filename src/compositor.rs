@@ -6,6 +6,7 @@ use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{R
 
 use {DataDeviceManager, Surface, SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
 use errors::{HandleErr, HandleResult};
+use types::surface::{InternalSurface, InternalSurfaceState};
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               XdgShellManager,
@@ -36,35 +37,22 @@ wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
     new_surface_listener => new_surface_notify: |this: &mut InternalCompositor,
                                                  surface_ptr: *mut libc::c_void,|
     unsafe {
-        let destroy_listener = this.surface_destroy_listener() as *mut _ as _;
         let handler = &mut this.data;
         let surface_ptr = surface_ptr as _;
         let compositor = (&mut *COMPOSITOR_PTR).weak_reference();
         let surface = Surface::new(surface_ptr);
         handler.new_surface(compositor.clone(), surface.weak_reference());
-        with_handles!([(compositor: {compositor})] => {
-            compositor.surfaces.push(surface);
-            wl_signal_add(&mut (*surface_ptr).events.destroy as *mut _ as _,
-                          destroy_listener);
-        }).unwrap();
+        // TODO Not ()
+        let mut internal_surface = InternalSurface::new((surface, Box::new(())));
+        wl_signal_add(&mut (*surface_ptr).events.commit as *mut _ as _,
+                      internal_surface.on_commit_listener() as _);
+        wl_signal_add(&mut (*surface_ptr).events.new_subsurface as *mut _ as _,
+                      internal_surface.new_subsurface_listener() as _);
+        wl_signal_add(&mut (*surface_ptr).events.destroy as *mut _ as _,
+                        internal_surface.on_destroy_listener() as _);
+        let surface_data = (*surface_ptr).data as *mut InternalSurfaceState;
+        (*surface_data).surface = Box::into_raw(internal_surface);
     };
-    surface_destroy_listener => surface_destroy_notify: |_this: &mut InternalCompositor,
-                                                         surface_ptr: *mut libc::c_void,|
-    unsafe {
-        let surface_ptr = surface_ptr as _;
-        let compositor = match compositor_handle() {
-            Some(handle) => handle,
-            None => return
-        };
-        with_handles!([(compositor: {compositor})] => {
-            let find_index = compositor.surfaces.iter().position(|s| s.as_ptr() == surface_ptr);
-            if let Some(index) = find_index {
-                compositor.surfaces.remove(index);
-            }
-        }).unwrap();
-
-    };
-
     shutdown_listener => shutdown_notify: |this: &mut InternalCompositor,
                                            _data: *mut libc::c_void,|
     unsafe {
