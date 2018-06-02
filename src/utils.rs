@@ -5,6 +5,8 @@ use std::os::raw::c_char;
 use std::process::exit;
 use std::time::Duration;
 
+use libc::{clock_gettime, CLOCK_MONOTONIC, timespec};
+
 use wlroots_sys::{__va_list_tag, log_importance_t, wlr_log_init};
 pub use wlroots_sys::log_importance_t::*;
 
@@ -106,5 +108,15 @@ pub(crate) unsafe fn handle_unwind<T>(res: ::std::thread::Result<T>) {
             (&mut *::compositor::COMPOSITOR_PTR).save_panic_error(err);
             ::compositor::terminate()
         }
+    }
+}
+
+/// Get the current time as a duration suitable for `surface.send_frame_done()` and synthetic seat
+/// events.
+pub fn current_time() -> Duration {
+    unsafe {
+        let mut ts = timespec{tv_sec: 0, tv_nsec: 0};
+        clock_gettime(CLOCK_MONOTONIC, &mut ts);
+        Duration::new(ts.tv_sec as u64, ts.tv_nsec as u32)
     }
 }
