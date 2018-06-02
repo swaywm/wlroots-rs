@@ -2,10 +2,32 @@
 
 use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 
+use libc;
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_subsurface;
 
 use super::{SurfaceHandle, SurfaceState};
+use compositor::{compositor_handle, CompositorHandle};
 use errors::{HandleErr, HandleResult};
+
+pub trait SubsurfaceHandler {
+    fn on_destroy(&mut self, CompositorHandle, SubsurfaceHandle) {}
+}
+
+wayland_listener!(InternalSubsurface, (Subsurface, Box<SubsurfaceHandler>), [
+    on_destroy_listener => on_destroy_notify: |this: &mut InternalSubsurface,
+                                               data: *mut libc::c_void,|
+    unsafe {
+        let (ref mut subsurface, ref mut manager) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+        let subsurface_ptr = data as *mut wlr_subsurface;
+        manager.on_destroy(compositor, subsurface.weak_reference());
+        Box::from_raw((*subsurface_ptr).data as *mut InternalSubsurface);
+    };
+]);
 
 #[derive(Debug)]
 pub struct Subsurface {
@@ -177,5 +199,15 @@ impl SubsurfaceHandle {
 impl Default for SubsurfaceHandle {
     fn default() -> Self {
         SubsurfaceHandle::new()
+    }
+}
+
+impl Drop for InternalSubsurface {
+    fn drop(&mut self) {
+        unsafe {
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*self.on_destroy_listener()).link as *mut _ as _);
+        }
     }
 }

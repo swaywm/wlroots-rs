@@ -10,7 +10,8 @@ use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_su
                   wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_surface_at,
                   wlr_surface_is_xdg_surface};
 
-use super::{Subsurface, SubsurfaceHandle, SubsurfaceManager, SurfaceState};
+use super::{Subsurface, SubsurfaceHandle, SubsurfaceHandler, SubsurfaceManager, SurfaceState,
+            InternalSubsurface};
 use compositor::{compositor_handle, CompositorHandle};
 use Output;
 use errors::{HandleErr, HandleResult};
@@ -18,11 +19,11 @@ use render::Texture;
 use utils::c_to_rust_string;
 
 pub trait SurfaceHandler {
-    // TODO Does this have data?
     fn on_commit(&mut self, CompositorHandle, SurfaceHandle) {}
 
-    // TODO new subsurface as argument
-    fn new_subsurface(&mut self, CompositorHandle, SurfaceHandle) {}
+    fn new_subsurface(&mut self, CompositorHandle, SurfaceHandle, SubsurfaceHandle) -> Option<Box<SubsurfaceHandler>> {
+        None
+    }
 
     fn on_destroy(&mut self, CompositorHandle, SurfaceHandle) {}
 }
@@ -47,7 +48,16 @@ wayland_listener!(InternalSurface, (Surface, Box<SurfaceHandler>), [
             Some(handle) => handle,
             None => return
         };
-        manager.new_subsurface(compositor, surface.weak_reference());
+        let subsurface_ptr = data as *mut wlr_subsurface;
+        let subsurface = Subsurface::new(subsurface_ptr);
+        if let Some(subsurface_handler) = manager.new_subsurface(compositor,
+                                                                surface.weak_reference(),
+                                                                subsurface.weak_reference()) {
+            let mut internal_subsurface = InternalSubsurface::new((subsurface, subsurface_handler));
+            wl_signal_add(&mut (*subsurface_ptr).events.destroy as *mut _ as _,
+                          internal_subsurface.on_destroy_listener() as _);
+            (*subsurface_ptr).data = Box::into_raw(internal_subsurface) as *mut _;
+        }
     };
     on_destroy_listener => on_destroy_notify: |this: &mut InternalSurface, data: *mut libc::c_void,|
     unsafe {

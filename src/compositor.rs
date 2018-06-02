@@ -230,7 +230,8 @@ impl CompositorBuilder {
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = wlr_backend_autocreate(display as *mut _);
+            // TODO Make optional
+            let backend = wlr_backend_autocreate(display as *mut _, None);
             if backend.is_null() {
                 // NOTE Rationale for panicking:
                 // * Won't be in C land just yet, so it's safe to panic
