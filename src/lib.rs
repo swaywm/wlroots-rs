@@ -26,7 +26,9 @@ pub mod extensions;
 pub mod render;
 pub mod utils;
 mod xwayland;
+mod backend;
 
+pub use self::backend::*;
 pub use self::compositor::{compositor_handle, terminate, Compositor, CompositorBuilder,
                            CompositorHandle, CompositorHandler};
 pub use self::events::{key_events, seat_events, tablet_pad_events, tablet_tool_events,
