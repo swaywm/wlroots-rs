@@ -108,8 +108,6 @@ pub struct Compositor {
     data_device_manager: Option<DataDeviceManager>,
     /// The error from the panic, if there was one.
     panic_error: Option<Box<Any + Send>>,
-    /// List of surfaces. This is managed by the compositor.
-    surfaces: Vec<Surface>,
     /// Custom function to run at shutdown (or when a panic occurs).
     user_terminate: Option<fn()>,
     /// Lock used to borrow the compositor globally.
@@ -356,7 +354,6 @@ impl CompositorBuilder {
                                           renderer,
                                           xwayland,
                                           user_terminate,
-                                          surfaces: Vec::new(),
                                           panic_error: None,
                                           lock: Rc::new(Cell::new(false)) };
             compositor.set_lock(true);
