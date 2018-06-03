@@ -15,10 +15,13 @@ use wlroots_sys::{wlr_xdg_popup, wlr_xdg_surface, wlr_xdg_surface_ping,
 use {Area, SeatHandle, SurfaceHandle, Surface};
 use errors::{HandleErr, HandleResult};
 use utils::c_to_rust_string;
+use manager::XdgShell;
 use libc::c_void;
 
 /// Used internally to reclaim a handle from just a *mut wlr_xdg_surface.
-struct XdgShellSurfaceState {
+pub(crate) struct XdgShellSurfaceState {
+    /// Pointer to the backing storage.
+    pub(crate) shell: *mut XdgShell,
     handle: Weak<Cell<bool>>,
     shell_state: Option<XdgShellState>
 }
@@ -79,19 +82,16 @@ impl XdgShellSurface {
         (*shell_surface).data = ptr::null_mut();
         let liveliness = Rc::new(Cell::new(false));
         let shell_state =
-            Box::new(XdgShellSurfaceState { handle: Rc::downgrade(&liveliness),
-                                              shell_state: match state {
-                                                  None => None,
-                                                  Some(ref state) => Some(state.clone())
-                                              } });
+            Box::new(XdgShellSurfaceState { shell: ptr::null_mut(),
+                                            handle: Rc::downgrade(&liveliness),
+                                            shell_state: match state {
+                                                None => None,
+                                                Some(ref state) => Some(state.clone())
+                                            } });
         (*shell_surface).data = Box::into_raw(shell_state) as *mut _;
         XdgShellSurface { liveliness,
-                            state: state,
-                            shell_surface }
-    }
-
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_xdg_surface {
-        self.shell_surface
+                          state: state,
+                          shell_surface }
     }
 
     unsafe fn from_handle(handle: &XdgShellSurfaceHandle) -> HandleResult<Self> {

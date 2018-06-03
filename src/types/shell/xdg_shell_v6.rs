@@ -15,10 +15,12 @@ use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
 use {Area, SeatHandle, SurfaceHandle};
 use errors::{HandleErr, HandleResult};
 use utils::c_to_rust_string;
+use manager::XdgV6Shell;
 use libc::c_void;
 
 /// Used internally to reclaim a handle from just a *mut wlr_xdg_surface_v6.
-struct XdgV6ShellSurfaceState {
+pub(crate) struct XdgV6ShellSurfaceState {
+    pub(crate) shell: *mut XdgV6Shell,
     handle: Weak<Cell<bool>>,
     shell_state: Option<XdgV6ShellState>
 }
@@ -79,7 +81,8 @@ impl XdgV6ShellSurface {
         (*shell_surface).data = ptr::null_mut();
         let liveliness = Rc::new(Cell::new(false));
         let shell_state =
-            Box::new(XdgV6ShellSurfaceState { handle: Rc::downgrade(&liveliness),
+            Box::new(XdgV6ShellSurfaceState { shell: ptr::null_mut(),
+                                              handle: Rc::downgrade(&liveliness),
                                               shell_state: match state {
                                                   None => None,
                                                   Some(ref state) => Some(state.clone())
@@ -88,10 +91,6 @@ impl XdgV6ShellSurface {
         XdgV6ShellSurface { liveliness,
                             state: state,
                             shell_surface }
-    }
-
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_xdg_surface_v6 {
-        self.shell_surface
     }
 
     unsafe fn from_handle(handle: &XdgV6ShellSurfaceHandle) -> HandleResult<Self> {
@@ -227,6 +226,9 @@ impl XdgV6ShellSurfaceHandle {
     /// Creates a XdgV6ShellSurfaceHandle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(shell_surface: *mut wlr_xdg_surface_v6) -> Self {
+        if shell_surface.is_null() {
+            panic!("shell surface was null")
+        }
         let data = (*shell_surface).data as *mut XdgV6ShellSurfaceState;
         if data.is_null() {
             panic!("Cannot construct handle from a shell surface that has not been set up!");

@@ -2,10 +2,12 @@
 
 use libc;
 
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_xdg_surface;
 
-use {Surface, SurfaceHandle, XdgShellSurface, XdgShellSurfaceHandle};
+use {SurfaceHandle, XdgShellSurface, XdgShellSurfaceHandle};
 use compositor::{compositor_handle, CompositorHandle};
+use types::shell::XdgShellSurfaceState;
 use xdg_shell_events::{MoveEvent, ResizeEvent, SetFullscreenEvent, ShowWindowMenuEvent};
 
 /// Handles events from the client stable XDG shells.
@@ -15,7 +17,7 @@ pub trait XdgShellHandler {
 
     /// Called when the wayland shell is destroyed (e.g by the user)
 
-    fn destroy(&mut self, CompositorHandle, SurfaceHandle, XdgShellSurfaceHandle) {}
+    fn destroyed(&mut self, CompositorHandle, XdgShellSurfaceHandle) {}
 
     /// Called when the ping request timed out.
     ///
@@ -64,58 +66,74 @@ pub trait XdgShellHandler {
     }
 }
 
-wayland_listener!(XdgShell, (XdgShellSurface, Surface, Box<XdgShellHandler>), [
+wayland_listener!(XdgShell, (XdgShellSurface, Box<XdgShellHandler>), [
+    destroy_listener => destroy_notify: |this: &mut XdgShell, data: *mut libc::c_void,| unsafe {
+        let (ref shell_surface, ref mut manager) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+        manager.destroyed(compositor, shell_surface.weak_reference());
+        let surface_ptr = data as *mut wlr_xdg_surface;
+        let shell_state_ptr = (*surface_ptr).data as *mut XdgShellSurfaceState;
+        Box::from_raw((*shell_state_ptr).shell);
+    };
     commit_listener => commit_notify: |this: &mut XdgShell, _data: *mut libc::c_void,| unsafe {
-        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = this.data;
+        let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
         };
 
         manager.on_commit(compositor,
-                          surface.weak_reference(),
+                          surface,
                           shell_surface.weak_reference());
     };
     ping_timeout_listener => ping_timeout_notify: |this: &mut XdgShell,
                                                    _data: *mut libc::c_void,|
     unsafe {
-        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = this.data;
+        let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
         };
 
         manager.ping_timeout(compositor,
-                             surface.weak_reference(),
+                             surface,
                              shell_surface.weak_reference());
     };
     new_popup_listener => new_popup_notify: |this: &mut XdgShell, _data: *mut libc::c_void,|
     unsafe {
-        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = this.data;
+        let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
         };
 
         manager.new_popup(compositor,
-                          surface.weak_reference(),
+                          surface,
                           shell_surface.weak_reference());
     };
     maximize_listener => maximize_notify: |this: &mut XdgShell, _event: *mut libc::c_void,|
     unsafe {
-        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = this.data;
+        let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
         };
 
         manager.maximize_request(compositor,
-                                 surface.weak_reference(),
+                                 surface,
                                  shell_surface.weak_reference());
     };
     fullscreen_listener => fullscreen_notify: |this: &mut XdgShell, event: *mut libc::c_void,|
     unsafe {
-        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = this.data;
+        let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
@@ -123,24 +141,26 @@ wayland_listener!(XdgShell, (XdgShellSurface, Surface, Box<XdgShellHandler>), [
         let event = SetFullscreenEvent::from_ptr(event as _);
 
         manager.fullscreen_request(compositor,
-                                   surface.weak_reference(),
+                                   surface,
                                    shell_surface.weak_reference(),
                                    &event);
     };
     minimize_listener => minimize_notify: |this: &mut XdgShell, _event: *mut libc::c_void,|
     unsafe {
-        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = this.data;
+        let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
         };
 
         manager.minimize_request(compositor,
-                                 surface.weak_reference(),
+                                 surface,
                                  shell_surface.weak_reference());
     };
     move_listener => move_notify: |this: &mut XdgShell, event: *mut libc::c_void,| unsafe {
-        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = this.data;
+        let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
@@ -148,12 +168,13 @@ wayland_listener!(XdgShell, (XdgShellSurface, Surface, Box<XdgShellHandler>), [
         let event = MoveEvent::from_ptr(event as _);
 
         manager.move_request(compositor,
-                             surface.weak_reference(),
+                             surface,
                              shell_surface.weak_reference(),
                              &event);
     };
     resize_listener => resize_notify: |this: &mut XdgShell, event: *mut libc::c_void,| unsafe {
-        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = this.data;
+        let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
@@ -161,14 +182,15 @@ wayland_listener!(XdgShell, (XdgShellSurface, Surface, Box<XdgShellHandler>), [
         let event = ResizeEvent::from_ptr(event as _);
 
         manager.resize_request(compositor,
-                               surface.weak_reference(),
+                               surface,
                                shell_surface.weak_reference(),
                                &event);
     };
     show_window_menu_listener => show_window_menu_notify: |this: &mut XdgShell,
                                                            event: *mut libc::c_void,|
     unsafe {
-        let (ref shell_surface, ref surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = this.data;
+        let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
@@ -176,18 +198,48 @@ wayland_listener!(XdgShell, (XdgShellSurface, Surface, Box<XdgShellHandler>), [
         let event = ShowWindowMenuEvent::from_ptr(event as _);
 
         manager.show_window_menu_request(compositor,
-                                         surface.weak_reference(),
+                                         surface,
                                          shell_surface.weak_reference(),
                                          &event);
     };
 ]);
 
 impl XdgShell {
-    pub(crate) unsafe fn surface_ptr(&self) -> *mut wlr_xdg_surface {
-        self.data.0.as_ptr()
-    }
-
     pub(crate) fn surface_mut(&mut self) -> XdgShellSurfaceHandle {
         self.data.0.weak_reference()
+    }
+}
+
+impl Drop for XdgShell {
+    fn drop(&mut self) {
+        unsafe {
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                        wl_list_remove,
+                        &mut (*self.commit_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                        wl_list_remove,
+                        &mut (*self.ping_timeout_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                        wl_list_remove,
+                        &mut (*self.new_popup_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                        wl_list_remove,
+                        &mut (*self.maximize_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                        wl_list_remove,
+                        &mut (*self.fullscreen_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                        wl_list_remove,
+                        &mut (*self.minimize_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                        wl_list_remove,
+                        &mut (*self.move_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                        wl_list_remove,
+                        &mut (*self.resize_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                        wl_list_remove,
+                        &mut (*self.show_window_menu_listener()).link as *mut _ as _);
+        }
     }
 }

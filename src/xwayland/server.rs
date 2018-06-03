@@ -20,7 +20,7 @@ impl XWaylandServer {
         if xwayland.is_null() {
             panic!("Could not start XWayland server")
         }
-        let mut manager = XWaylandManager::new((vec![], manager));
+        let mut manager = XWaylandManager::new(manager);
         wl_signal_add(&mut (*xwayland).events.ready as *mut _ as _,
                       manager.on_ready_listener() as *mut _ as _);
         wl_signal_add(&mut (*xwayland).events.new_surface as *mut _ as _,

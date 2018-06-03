@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use libc::c_double;
+use libc::{self, c_double};
 use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}, time::Duration};
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -10,14 +10,81 @@ use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_su
                   wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_surface_at,
                   wlr_surface_is_xdg_surface};
 
-use super::{Subsurface, SubsurfaceHandle, SubsurfaceManager, SurfaceState};
+use super::{Subsurface, SubsurfaceHandle, SubsurfaceHandler, SubsurfaceManager, SurfaceState,
+            InternalSubsurface};
+use compositor::{compositor_handle, CompositorHandle};
 use Output;
 use errors::{HandleErr, HandleResult};
 use render::Texture;
 use utils::c_to_rust_string;
 
+pub trait SurfaceHandler {
+    fn on_commit(&mut self, CompositorHandle, SurfaceHandle) {}
+
+    fn new_subsurface(&mut self, CompositorHandle, SurfaceHandle, SubsurfaceHandle) -> Option<Box<SubsurfaceHandler>> {
+        None
+    }
+
+    fn on_destroy(&mut self, CompositorHandle, SurfaceHandle) {}
+}
+
+impl SurfaceHandler for () {}
+
+wayland_listener!(InternalSurface, (Surface, Box<SurfaceHandler>), [
+    on_commit_listener => on_commit_notify: |this: &mut InternalSurface, _data: *mut libc::c_void,|
+    unsafe {
+        let (ref mut surface, ref mut manager) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+        manager.on_commit(compositor, surface.weak_reference());
+    };
+    new_subsurface_listener => new_listener_notify: |this: &mut InternalSurface,
+                                                     data: *mut libc::c_void,|
+    unsafe {
+        let (ref mut surface, ref mut manager) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+        let subsurface_ptr = data as *mut wlr_subsurface;
+        let subsurface = Subsurface::new(subsurface_ptr);
+        if let Some(subsurface_handler) = manager.new_subsurface(compositor,
+                                                                surface.weak_reference(),
+                                                                subsurface.weak_reference()) {
+            let mut internal_subsurface = InternalSubsurface::new((subsurface, subsurface_handler));
+            wl_signal_add(&mut (*subsurface_ptr).events.destroy as *mut _ as _,
+                          internal_subsurface.on_destroy_listener() as _);
+            (*subsurface_ptr).data = Box::into_raw(internal_subsurface) as *mut _;
+        }
+    };
+    on_destroy_listener => on_destroy_notify: |this: &mut InternalSurface, data: *mut libc::c_void,|
+    unsafe {
+        let (ref mut surface, ref mut manager) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+        manager.on_destroy(compositor, surface.weak_reference());
+        let surface_ptr = data as *mut wlr_surface;
+        let surface_state_ptr = (*surface_ptr).data as *mut InternalSurfaceState;
+        // NOTE that wlroots cleans up the wlr_surface properly (so the Surface drop is called).
+        // This just insures we clean up our listeners.
+        Box::<InternalSurface>::from_raw((*surface_state_ptr).surface);
+    };
+]);
+
+impl InternalSurface {
+    pub(crate) unsafe fn data(&mut self) -> &mut (Surface, Box<SurfaceHandler>) {
+        &mut self.data
+    }
+}
+
 /// The state stored in the wlr_surface user data.
-struct InternalSurfaceState {
+pub(crate) struct InternalSurfaceState {
+    /// Pointer to the backing storage of the surface.
+    pub(crate) surface: *mut InternalSurface,
     /// Used to reconstruct a SurfaceHandle from just an *mut wlr_surface.
     handle: Weak<Cell<bool>>,
     /// Weak reference to the manager for the list of subsurfaces.
@@ -79,10 +146,11 @@ impl Surface {
         let handle = Rc::downgrade(&liveliness);
         let subsurfaces_manager = Rc::new(Surface::create_manager(surface));
         let weak_manager = Rc::downgrade(&subsurfaces_manager);
-        (*surface).data = Box::into_raw(Box::new(InternalSurfaceState { handle,
+        (*surface).data = Box::into_raw(Box::new(InternalSurfaceState { surface: ptr::null_mut(),
+                                                                        handle,
                                                                         subsurfaces_manager:
-                                                                            weak_manager }))
-                          as _;
+                                                                        weak_manager }))
+            as _;
         Surface { liveliness,
                   subsurfaces_manager,
                   surface }
@@ -275,6 +343,9 @@ impl SurfaceHandle {
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(surface: *mut wlr_surface) -> Self {
         let data = (*surface).data as *mut InternalSurfaceState;
+        if data.is_null() {
+            panic!("Surface has not been set up");
+        }
         let handle = (*data).handle.clone();
         let subsurfaces_manager = (*data).subsurfaces_manager.clone();
         SurfaceHandle { handle,
@@ -362,18 +433,23 @@ impl Drop for Surface {
                      self.surface);
         }
         unsafe {
-            let _ = Box::from_raw((*self.surface).data as *mut InternalSurfaceState);
-            let manager =
-                Rc::into_raw(self.subsurfaces_manager.clone()) as *mut Box<SubsurfaceManager>;
+            Box::from_raw((*self.surface).data as *mut InternalSurfaceState);
+        }
+    }
+}
+
+impl Drop for InternalSurface {
+    fn drop(&mut self) {
+        unsafe {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
-                          &mut (*(*manager).subsurface_created_listener()).link as *mut _ as _);
-            for _ in &mut (*manager).subsurfaces() {
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                              wl_list_remove,
-                              &mut (*(*manager).subsurface_destroyed_listener()).link as *mut _
-                              as _);
-            }
+                          &mut (*self.on_commit_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*self.new_subsurface_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*self.on_destroy_listener()).link as *mut _ as _);
         }
     }
 }

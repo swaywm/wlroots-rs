@@ -4,8 +4,9 @@
 use libc;
 use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{Rc, Weak}};
 
-use {DataDeviceManager, SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
+use {DataDeviceManager, Surface, SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
 use errors::{HandleErr, HandleResult};
+use types::surface::{InternalSurface, InternalSurfaceState};
 use extensions::server_decoration::ServerDecorationManager;
 use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
               XdgShellManager,
@@ -24,26 +25,37 @@ pub(crate) static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
 pub trait CompositorHandler {
     /// Callback that's triggered when a surface is provided to the compositor.
-    fn new_surface(&mut self, CompositorHandle, &mut SurfaceHandle) {}
+    fn new_surface(&mut self, CompositorHandle, SurfaceHandle) {}
 
     /// Callback that's triggered during shutdown.
     fn on_shutdown(&mut self) {}
 }
 
+impl CompositorHandler for () {}
+
 wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
     new_surface_listener => new_surface_notify: |this: &mut InternalCompositor,
-                                                 surface: *mut libc::c_void,|
+                                                 surface_ptr: *mut libc::c_void,|
     unsafe {
         let handler = &mut this.data;
+        let surface_ptr = surface_ptr as _;
         let compositor = (&mut *COMPOSITOR_PTR).weak_reference();
-        let mut surface = SurfaceHandle::from_ptr(surface as _);
-        handler.new_surface(compositor, &mut surface);
+        let surface = Surface::new(surface_ptr);
+        handler.new_surface(compositor.clone(), surface.weak_reference());
+        let mut internal_surface = InternalSurface::new((surface, Box::new(())));
+        wl_signal_add(&mut (*surface_ptr).events.commit as *mut _ as _,
+                      internal_surface.on_commit_listener() as _);
+        wl_signal_add(&mut (*surface_ptr).events.new_subsurface as *mut _ as _,
+                      internal_surface.new_subsurface_listener() as _);
+        wl_signal_add(&mut (*surface_ptr).events.destroy as *mut _ as _,
+                        internal_surface.on_destroy_listener() as _);
+        let surface_data = (*surface_ptr).data as *mut InternalSurfaceState;
+        (*surface_data).surface = Box::into_raw(internal_surface);
     };
     shutdown_listener => shutdown_notify: |this: &mut InternalCompositor,
                                            _data: *mut libc::c_void,|
     unsafe {
         let handler = &mut this.data;
-        assert!(COMPOSITOR_PTR.is_null(), "COMPOSITOR_PTR was not NULL!");
         handler.on_shutdown();
     };
 ]);
@@ -216,7 +228,8 @@ impl CompositorBuilder {
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = wlr_backend_autocreate(display as *mut _);
+            // TODO Make optional
+            let backend = wlr_backend_autocreate(display as *mut _, None);
             if backend.is_null() {
                 // NOTE Rationale for panicking:
                 // * Won't be in C land just yet, so it's safe to panic
@@ -250,7 +263,8 @@ impl CompositorBuilder {
             };
 
             // Set up compositor handler, if the user provided it.
-            let compositor_handler = self.compositor_handler.map(|handler| {
+            let compositor_handler = self.compositor_handler.or_else(|| Some(Box::new(())));
+            let compositor_handler = compositor_handler.map(|handler| {
                 let mut compositor_handler = InternalCompositor::new(handler);
                 wl_signal_add(&mut (*compositor).events.new_surface as *mut _ as _,
                               compositor_handler.new_surface_listener() as *mut _ as _);
@@ -280,7 +294,7 @@ impl CompositorBuilder {
             let mut xdg_shell_global = ptr::null_mut();
             let xdg_shell_manager = self.xdg_shell_manager_handler.map(|handler| {
                 xdg_shell_global = wlr_xdg_shell_create(display as *mut _);
-                let mut xdg_shell_manager = XdgShellManager::new((vec![], handler));
+                let mut xdg_shell_manager = XdgShellManager::new(handler);
                 wl_signal_add(&mut (*xdg_shell_global).events.new_surface as *mut _ as _,
                               xdg_shell_manager.add_listener() as *mut _ as _);
                 xdg_shell_manager
@@ -291,7 +305,7 @@ impl CompositorBuilder {
             let mut xdg_v6_shell_global = ptr::null_mut();
             let xdg_v6_shell_manager = self.xdg_v6_shell_manager_handler.map(|handler| {
                 xdg_v6_shell_global = wlr_xdg_shell_v6_create(display as *mut _);
-                let mut xdg_v6_shell_manager = XdgV6ShellManager::new((vec![], handler));
+                let mut xdg_v6_shell_manager = XdgV6ShellManager::new(handler);
                 wl_signal_add(&mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
                               xdg_v6_shell_manager.add_listener() as *mut _ as _);
                 xdg_v6_shell_manager
