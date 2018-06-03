@@ -3,7 +3,6 @@ extern crate wlroots;
 
 use std::process::Command;
 use std::thread;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use wlroots::{project_box, Area, Capability, CompositorBuilder, CompositorHandle, Cursor,
               CursorHandle, CursorHandler, InputManagerHandler, KeyboardHandle, KeyboardHandler,
