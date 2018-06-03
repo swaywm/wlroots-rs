@@ -11,7 +11,7 @@ use compositor::{compositor_handle, CompositorHandle};
 use errors::{HandleErr, HandleResult};
 
 pub trait SubsurfaceHandler {
-    fn on_destroy(&mut self, CompositorHandle, SubsurfaceHandle) {}
+    fn on_destroy(&mut self, CompositorHandle, SubsurfaceHandle, SurfaceHandle) {}
 }
 
 wayland_listener!(InternalSubsurface, (Subsurface, Box<SubsurfaceHandler>), [
@@ -19,12 +19,13 @@ wayland_listener!(InternalSubsurface, (Subsurface, Box<SubsurfaceHandler>), [
                                                data: *mut libc::c_void,|
     unsafe {
         let (ref mut subsurface, ref mut manager) = this.data;
+        let subsurface_ptr = data as *mut wlr_subsurface;
+        let surface = SurfaceHandle::from_ptr((*subsurface_ptr).surface);
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
         };
-        let subsurface_ptr = data as *mut wlr_subsurface;
-        manager.on_destroy(compositor, subsurface.weak_reference());
+        manager.on_destroy(compositor, subsurface.weak_reference(), surface);
         Box::from_raw((*subsurface_ptr).data as *mut InternalSubsurface);
     };
 ]);
