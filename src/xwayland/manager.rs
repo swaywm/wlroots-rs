@@ -19,9 +19,7 @@ pub trait XWaylandManagerHandler {
     fn new_surface(&mut self,
                    CompositorHandle,
                    XWaylandSurfaceHandle)
-                   -> Option<(Box<XWaylandSurfaceHandler>, Box<SurfaceHandler>)> {
-        None
-    }
+                   -> (Option<Box<XWaylandSurfaceHandler>>, Option<Box<SurfaceHandler>>);
 }
 
 wayland_listener!(XWaylandManager, Box<XWaylandManagerHandler>, [
@@ -46,10 +44,12 @@ wayland_listener!(XWaylandManager, Box<XWaylandManagerHandler>, [
         };
         let shell_surface = XWaylandSurface::new(surface_ptr);
         let res = manager.new_surface(compositor, shell_surface.weak_reference());
-        if let Some((xwayland_handler, surface_handler)) = res {
+        if let (Some(xwayland_handler), surface_handler) = res {
             let mut shell = XWaylandShell::new((shell_surface, xwayland_handler));
             let surface_state = (*(*surface_ptr).surface).data as *mut InternalSurfaceState;
-            (*(*surface_state).surface).data().1 = surface_handler;
+            if let Some(surface_handler) = surface_handler {
+                (*(*surface_state).surface).data().1 = surface_handler;
+            }
 
 
             wl_signal_add(&mut (*surface_ptr).events.destroy as *mut _ as _,

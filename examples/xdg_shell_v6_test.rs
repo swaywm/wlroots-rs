@@ -81,7 +81,7 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
     fn new_surface(&mut self,
                    compositor: CompositorHandle,
                    shell: XdgV6ShellSurfaceHandle)
-                   -> Option<(Box<XdgV6ShellHandler>, Box<SurfaceHandler>)> {
+                   -> (Option<Box<XdgV6ShellHandler>>, Option<Box<SurfaceHandler>>) {
         with_handles!([(compositor: {compositor}), (shell: {shell})] => {
             shell.ping();
             let state: &mut State = compositor.into();
@@ -94,7 +94,7 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                 }
             }).expect("Layout was destroyed");
         }).unwrap();
-        Some((Box::new(XdgV6ShellHandlerEx), Box::new(SurfaceEx)))
+        (Some(Box::new(XdgV6ShellHandlerEx)), Some(Box::new(SurfaceEx)))
     }
 }
 

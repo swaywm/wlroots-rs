@@ -15,7 +15,7 @@ pub trait XdgV6ShellManagerHandler {
     fn new_surface(&mut self,
                    CompositorHandle,
                    XdgV6ShellSurfaceHandle)
-                   -> Option<(Box<XdgV6ShellHandler>, Box<SurfaceHandler>)>;
+                   -> (Option<Box<XdgV6ShellHandler>>, Option<Box<SurfaceHandler>>);
 }
 
 wayland_listener!(XdgV6ShellManager, Box<XdgV6ShellManagerHandler>, [
@@ -46,11 +46,13 @@ wayland_listener!(XdgV6ShellManager, Box<XdgV6ShellManagerHandler>, [
         let new_surface_res = manager.new_surface(compositor,
                                                   shell_surface.weak_reference());
 
-        if let Some((shell_surface_handler, surface_handler)) = new_surface_res {
+        if let (Some(shell_surface_handler), surface_handler) = new_surface_res {
 
             let mut shell_surface = XdgV6Shell::new((shell_surface, shell_surface_handler));
             let surface_state = (*(*data).surface).data as *mut InternalSurfaceState;
-            (*(*surface_state).surface).data().1 = surface_handler;
+            if let Some(surface_handler) = surface_handler {
+                (*(*surface_state).surface).data().1 = surface_handler;
+            }
 
             wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
                           shell_surface.destroy_listener() as _);
