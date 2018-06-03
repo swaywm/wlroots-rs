@@ -68,6 +68,7 @@ impl XdgV6ShellHandler for XdgV6ShellHandlerEx {
     }
 }
 
+
 struct SurfaceEx;
 
 impl SurfaceHandler for SurfaceEx {
@@ -113,32 +114,35 @@ impl OutputManagerHandler for OutputManager {
                              builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
         let mut result = builder.build_best_mode(ExOutput);
-        with_handles!([(compositor: {compositor}), (output: {&mut result.output})] => {
+        dehandle!(
+            @compositor = {compositor}?;
+            @output = {&mut result.output}?;
             let state: &mut State = compositor.data.downcast_mut().unwrap();
             let xcursor_manager = &mut state.xcursor_manager;
             // TODO use output config if present instead of auto
             let layout = &mut state.layout;
             let cursor = &mut state.cursor;
-            with_handles!([(layout: {layout}), (cursor: {cursor})] => {
-                layout.add_auto(output);
-                cursor.attach_output_layout(layout);
-                xcursor_manager.load(output.scale());
-                xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
-                let (x, y) = cursor.coords();
-                // https://en.wikipedia.org/wiki/Mouse_warping
-                cursor.warp(None, x, y);
-            }).expect("Layout was destroyed");
-        }).unwrap();
+            @layout = {layout}?;
+            @cursor = {cursor}?;
+            layout.add_auto(output);
+            cursor.attach_output_layout(layout);
+            xcursor_manager.load(output.scale());
+            xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
+            let (x, y) = cursor.coords();
+            // https://en.wikipedia.org/wiki/Mouse_warping
+            cursor.warp(None, x, y)
+        ).unwrap().unwrap().unwrap().unwrap();
         Some(result)
     }
 }
 
 impl KeyboardHandler for ExKeyboardHandler {
     fn on_key(&mut self,
-              mut compositor: CompositorHandle,
+              compositor: CompositorHandle,
               _: KeyboardHandle,
               key_event: &KeyEvent) {
-        with_handles!([(compositor: {&mut compositor})] => {
+        dehandle!(
+            @compositor = {compositor}?;
             for key in key_event.pressed_keys() {
                 if key == KEY_Escape {
                     wlroots::terminate();
@@ -150,16 +154,15 @@ impl KeyboardHandler for ExKeyboardHandler {
                         return
                     }
                 }
-            }
+            };
             let state: &mut State = compositor.into();
             let seat_handle = state.seat_handle.clone().unwrap();
             seat_handle.run(|seat| {
                 seat.keyboard_notify_key(key_event.time_msec(),
                                          key_event.keycode(),
                                          key_event.key_state() as u32);
-            })
-                .unwrap();
-        }).unwrap();
+            }).unwrap()
+        ).unwrap();
     }
 }
 
@@ -168,65 +171,63 @@ impl PointerHandler for ExPointer {
                           compositor: CompositorHandle,
                           _: PointerHandle,
                           event: &AbsoluteMotionEvent) {
-        with_handles!([(compositor: {compositor})] => {
+        dehandle!(
+            @compositor = {compositor}?;
             let state: &mut State = compositor.into();
             let (x, y) = event.pos();
-            state.cursor
-                .run(|cursor| cursor.warp_absolute(event.device(), x, y))
-                .unwrap();
-        }).unwrap();
+            @cursor = {&state.cursor}?;
+            cursor.warp_absolute(event.device(), x, y)
+        ).unwrap().unwrap();
     }
 
     fn on_motion(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &MotionEvent) {
-        with_handles!([(compositor: {compositor})] => {
+        dehandle!(
+            @compositor = {compositor}?;
             let state: &mut State = compositor.into();
             let (delta_x, delta_y) = event.delta();
-            state.cursor
-                .run(|cursor| {
-                    cursor.move_to(event.device(), delta_x, delta_y);
-                })
-                .unwrap();
-        }).unwrap();
+            @cursor = {&state.cursor}?;
+            cursor.move_to(event.device(), delta_x, delta_y)
+        ).unwrap().unwrap();
     }
 
     fn on_button(&mut self, compositor: CompositorHandle, _: PointerHandle, _: &ButtonEvent) {
-        with_handles!([(compositor: {compositor})] => {
+        dehandle!(
+            @compositor = {compositor}?;
             let state: &mut State = compositor.into();
             let seat = state.seat_handle.clone().unwrap();
             let keyboard = state.keyboard.clone().unwrap();
-            let surface =
-                state.shells[0].run(|shell| {
-                    match shell.state() {
-                        Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
-                            toplevel.set_activated(true);
-                        }
-                        _ => {}
-                    }
-
-                    shell.surface()
-                })
-            .unwrap();
-            with_handles!([(seat: {seat}), (keyboard: {keyboard}), (surface: {surface})] => {
-                seat.set_keyboard(keyboard.input_device());
-                seat.keyboard_notify_enter(surface,
-                                           &mut keyboard.keycodes(),
-                                           &mut keyboard.get_modifier_masks());
-            }).unwrap();
-        }).unwrap();
+            @shell = {&state.shells[0]}?;
+            match shell.state() {
+                Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
+                    toplevel.set_activated(true);
+                }
+                _ => {}
+            };
+            let surface = shell.surface();
+            @seat = {seat}?;
+            @keyboard = {keyboard}?;
+            @surface = {surface}?;
+            seat.set_keyboard(keyboard.input_device());
+            seat.keyboard_notify_enter(surface,
+                                       &mut keyboard.keycodes(),
+                                       &mut keyboard.get_modifier_masks())
+        ).unwrap().unwrap().unwrap().unwrap().unwrap();
     }
 }
 
 impl OutputHandler for ExOutput {
     fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
-        with_handles!([(compositor: {compositor}), (output: {output})] => {
+        dehandle!(
+            @compositor = {compositor}?;
+            @output = {output}?;
             let state: &mut State = compositor.data.downcast_mut().unwrap();
             let renderer = compositor.renderer
                 .as_mut()
                 .expect("Compositor was not loaded with a renderer");
             let mut render_context = renderer.render(output, None);
             render_context.clear([0.25, 0.25, 0.25, 1.0]);
-            render_shells(state, &mut render_context);
-        }).unwrap();
+            render_shells(state, &mut render_context)
+        ).unwrap().unwrap();
     }
 }
 
@@ -242,14 +243,14 @@ impl InputManagerHandler for InputManager {
                       compositor: CompositorHandle,
                       keyboard: KeyboardHandle)
                       -> Option<Box<KeyboardHandler>> {
-        with_handles!([(compositor: {compositor}), (keyboard: {keyboard})] => {
+        dehandle!(
+            @compositor = {compositor}?;
+            @keyboard = {keyboard}?;
             let state: &mut State = compositor.into();
             state.keyboard = Some(keyboard.weak_reference());
-            let seat_handle = state.seat_handle.clone().unwrap();
-            with_handles!([(seat: {seat_handle})] => {
-                seat.set_keyboard(keyboard.input_device());
-            }).unwrap();
-        }).unwrap();
+            @seat = {state.seat_handle.as_ref().unwrap()}?;
+            seat.set_keyboard(keyboard.input_device())
+        ).unwrap().unwrap().unwrap();
         Some(Box::new(ExKeyboardHandler))
     }
 }
@@ -289,9 +290,10 @@ fn main() {
 fn render_shells(state: &mut State, renderer: &mut Renderer) {
     let shells = state.shells.clone();
     for mut shell in shells {
-        with_handles!([(shell: {shell}),
-                      (surface: {shell.surface()}),
-                      (layout: {&mut state.layout})] => {
+        dehandle!(
+            @shell = {shell}?;
+            @surface = {shell.surface()}?;
+            @layout = {&state.layout}?;
             let (width, height) = surface.current_state().size();
             let (render_width, render_height) =
                 (width * renderer.output.scale() as i32,
@@ -310,7 +312,8 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                 renderer.render_texture_with_matrix(&surface.texture(),
                                                     matrix);
                 surface.send_frame_done(current_time());
-            }
-        }).unwrap();
+            };
+            ()
+        ).unwrap().unwrap().unwrap();
     }
 }

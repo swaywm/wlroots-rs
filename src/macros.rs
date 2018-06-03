@@ -261,3 +261,42 @@ macro_rules! with_handles {
         }).and_then(|n: $crate::HandleResult<_>| n)
     };
 }
+
+/// An even more convenient macro for use with Handle types.
+///
+/// This allows you to avoid rightward drift from having handles nested inside
+/// each other.
+///
+/// Any `HandleResult`s are flattened and the first one encountered is immediantly
+/// returned.
+///
+/// Note that unlike `with_handles` it is possible for some of the code to execute
+/// before a `HandleErr` is returned. At each @ line there's the possibility
+/// it will return an Error early.
+///
+/// To make this more clear, it is mandated that a ? is appended to each of these lines.
+///
+/// Here is some code using `with_handles`:
+#[macro_export]
+macro_rules! dehandle {
+    (@$handle_name: ident = $unhandle_name: block?; $($rest: tt)+) => {
+        with_handles!([($handle_name: $unhandle_name)] => {
+            dehandle!($($rest)+)
+        })
+    };
+    ($line: expr; $($rest: tt)*) => {
+        {
+            $line;
+            dehandle!($($rest)*)
+        }
+    };
+    ($line: stmt; $($rest: tt)*) => {
+        {
+            $line;
+            dehandle!($($rest)*)
+        }
+    };
+    ($line: expr) => {
+        $line
+    };
+}
