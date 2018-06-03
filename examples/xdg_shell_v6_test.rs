@@ -82,18 +82,19 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
                    compositor: CompositorHandle,
                    shell: XdgV6ShellSurfaceHandle)
                    -> (Option<Box<XdgV6ShellHandler>>, Option<Box<SurfaceHandler>>) {
-        with_handles!([(compositor: {compositor}), (shell: {shell})] => {
+        dehandle!(
+            @compositor = {compositor}?;
+            @shell = {shell}?;
             shell.ping();
             let state: &mut State = compositor.into();
             state.shells.push(shell.weak_reference());
-            with_handles!([(layout: {&mut state.layout})] => {
-                for (mut output, _) in layout.outputs() {
-                    with_handles!([(output: {output})] =>{
-                        output.schedule_frame()
-                    }).ok();
-                }
-            }).expect("Layout was destroyed");
-        }).unwrap();
+            @layout = {&state.layout}?;
+            for (mut output, _) in layout.outputs() {
+                with_handles!([(output: {output})] =>{
+                    output.schedule_frame()
+                }).ok();
+            }
+        ).unwrap().unwrap().unwrap();
         (Some(Box::new(XdgV6ShellHandlerEx)), Some(Box::new(SurfaceEx)))
     }
 }
