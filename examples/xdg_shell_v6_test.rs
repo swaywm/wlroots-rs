@@ -89,10 +89,9 @@ impl XdgV6ShellManagerHandler for XdgV6ShellManager {
             let state: &mut State = compositor.into();
             state.shells.push(shell.weak_reference());
             @layout = {&state.layout}?;
-            for (mut output, _) in layout.outputs() {
-                with_handles!([(output: {output})] =>{
-                    output.schedule_frame()
-                }).ok();
+            for (mut output, _) in layout.outputs() => {
+                @output = {output}?;
+                output.schedule_frame()
             }
         ).unwrap().unwrap().unwrap();
         (Some(Box::new(XdgV6ShellHandlerEx)), Some(Box::new(SurfaceEx)))

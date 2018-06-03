@@ -279,23 +279,69 @@ macro_rules! with_handles {
 /// Here is some code using `with_handles`:
 #[macro_export]
 macro_rules! dehandle {
+    // Handles going into an extra scope
+    ({$($b: tt)*}) => {
+        #[allow(unused_must_use)]
+        {dehandle!($($b)*)}
+    };
+    // Handles going into an extra scope with more things after it
+    ({$($b: tt)*} $($rest: tt)*) => {{
+        #[allow(unused_must_use)]
+        {dehandle!($($b)*)};
+        dehandle!($($rest)*)
+    }};
+    // While loop, nothing after it
+    (while $_: expr => {$($b: tt)*}) => {{
+        #[allow(unused_must_use)]
+        while $_ {
+            dehandle!($($b)*);
+        }
+    }};
+    // While loop, more stuff after it
+    (while $_: expr => {$($b: tt)*} $($rest: tt)*) => {{
+        #[allow(unused_must_use)]
+        while $_ {
+            dehandle!($($b)*);
+        }
+        dehandle!($($rest)*)
+    }};
+
+    // For loop, nothing after it
+    (for $_: pat in $__: expr => {$($b: tt)*}) => {{
+        #[allow(unused_must_use)]
+        for $_ in $__ {
+            dehandle!($($b)*);
+        }
+    }};
+    // For loop, more stuff after it
+    (for $_: pat in $__: expr => {$($b: tt)*} $($rest: tt)*) => {{
+        #[allow(unused_must_use)]
+        for $_ in $__ {
+            dehandle!($($b)*);
+        }
+        dehandle!($($rest)*)
+    }};
+    // @unhandle = {handle}?;
     (@$handle_name: ident = $unhandle_name: block?; $($rest: tt)+) => {
         with_handles!([($handle_name: $unhandle_name)] => {
             dehandle!($($rest)+)
         })
     };
+    // General expressions
     ($line: expr; $($rest: tt)*) => {
         {
             $line;
             dehandle!($($rest)*)
         }
     };
+    // General lines
     ($line: stmt; $($rest: tt)*) => {
         {
             $line;
             dehandle!($($rest)*)
         }
     };
+    // Result of the dehandle block
     ($line: expr) => {
         $line
     };
