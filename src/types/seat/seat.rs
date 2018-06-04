@@ -26,12 +26,13 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_dest
                   wlr_seat_touch_num_points, wlr_seat_touch_point_clear_focus,
                   wlr_seat_touch_point_focus, wlr_seat_touch_send_down,
                   wlr_seat_touch_send_motion, wlr_seat_touch_send_up, wlr_seat_touch_start_grab,
-                  wlr_axis_source};
+                  wlr_axis_source, wlr_drag_icon};
 pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
 use {wlr_keyboard_modifiers, InputDevice, KeyboardGrab, KeyboardHandle, PointerGrab, Surface,
-     TouchGrab, TouchId, TouchPoint, events::seat_events::SetCursorEvent};
+     TouchGrab, TouchId, TouchPoint, events::seat_events::SetCursorEvent, SurfaceHandler, DragIconHandle, DragIcon};
+use manager::DragIconHandler;
 use compositor::{compositor_handle, Compositor, CompositorHandle};
 use errors::{HandleErr, HandleResult};
 use utils::{c_to_rust_string, safe_as_cstring};
@@ -86,6 +87,12 @@ pub trait SeatHandler {
 
     /// The seat is being destroyed.
     fn destroy(&mut self, CompositorHandle, SeatHandle) {}
+
+    /// A new drag icon has been created.
+    fn new_drag_icon(&mut self, CompositorHandle, SeatHandle, DragIconHandle) -> (Option<Box<DragIconHandler>>, Option<Box<SurfaceHandler>>) {
+        println!("@@ NEW DRAG ICON");
+        (None, None)
+    }
 }
 
 wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
@@ -237,6 +244,22 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
 
         Box::into_raw(seat);
     };
+    new_drag_icon_listener => new_drag_icon_notify: |this: &mut Seat, data: *mut libc::c_void,|
+    unsafe {
+        let (seat_ptr, ref mut handler) = this.data;
+        let data = data as *mut wlr_drag_icon;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+        let seat = Seat::from_ptr(seat_ptr);
+
+        let drag_icon = DragIcon::new(data);
+
+        // TODO: call `new_drag_icon` on the handler and do something with the result
+
+        println!("New drag icon request {:p}", data);
+    };
     destroy_listener => destroy_notify: |this: &mut Seat, _event: *mut libc::c_void,|
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
@@ -285,6 +308,8 @@ impl Seat {
                           res.selection_listener() as *mut _ as _);
             wl_signal_add(&mut (*seat).events.primary_selection as *mut _ as _,
                           res.primary_selection_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.new_drag_icon as *mut _ as _,
+                          res.new_drag_icon_listener() as *mut _ as _);
             wl_signal_add(&mut (*seat).events.destroy as *mut _ as _,
                           res.destroy_listener() as *mut _ as _);
             let counter = Rc::new(Cell::new(false));
@@ -770,6 +795,9 @@ impl Drop for Seat {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
                           &mut (*manager.primary_selection_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*manager.new_drag_icon_listener()).link as *mut _ as _);
             wlr_seat_destroy(seat_ptr);
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
