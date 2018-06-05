@@ -262,7 +262,7 @@ impl Seat {
                   -> SeatHandle {
         unsafe {
             let name = safe_as_cstring(name);
-            let seat = wlr_seat_create(compositor.display() as _, name.as_ptr());
+            let seat = wlr_seat_create(compositor.display as _, name.as_ptr());
             if seat.is_null() {
                 panic!("Could not allocate a wlr_seat");
             }

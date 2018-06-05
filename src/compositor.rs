@@ -4,7 +4,8 @@
 use libc;
 use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{Rc, Weak}};
 
-use {DataDeviceManager, Surface, SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
+use {UnsafeRenderSetupFunction, Backend, MultiBackend, DataDeviceManager, Surface,
+     SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
 use errors::{HandleErr, HandleResult};
 use types::surface::{InternalSurface, InternalSurfaceState};
 use extensions::server_decoration::ServerDecorationManager;
@@ -14,7 +15,7 @@ use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHan
 use render::GenericRenderer;
 
 use wayland_sys::server::{wl_display, wl_event_loop, signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
-use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wlr_backend_destroy, wlr_backend_start,
+use wlroots_sys::{wlr_backend_destroy, wlr_backend_start,
                   wlr_compositor, wlr_compositor_create, wlr_compositor_destroy,
                   wlr_xdg_shell_v6, wlr_xdg_shell_v6_create,
                   wlr_xdg_shell, wlr_xdg_shell_create};
@@ -89,11 +90,11 @@ pub struct Compositor {
     /// Pointer to the wlr_compositor.
     compositor: *mut wlr_compositor,
     /// Pointer to the wlroots backend in use.
-    backend: *mut wlr_backend,
+    backend: Backend,
     /// Pointer to the wayland display.
-    display: *mut wl_display,
+    pub display: *mut wl_display,
     /// Pointer to the event loop.
-    event_loop: *mut wl_event_loop,
+    pub event_loop: *mut wl_event_loop,
     /// Shared memory buffer file descriptor.
     shm_fd: i32,
     /// Name of the Wayland socket that we are binding to.
@@ -116,6 +117,7 @@ pub struct Compositor {
     pub(crate) lock: Rc<Cell<bool>>
 }
 
+#[derive(Default)]
 pub struct CompositorBuilder {
     compositor_handler: Option<Box<CompositorHandler>>,
     input_manager_handler: Option<Box<InputManagerHandler>>,
@@ -123,6 +125,7 @@ pub struct CompositorBuilder {
     xdg_shell_manager_handler: Option<Box<XdgShellManagerHandler>>,
     xdg_v6_shell_manager_handler: Option<Box<XdgV6ShellManagerHandler>>,
     gles2: bool,
+    render_setup_function: Option<UnsafeRenderSetupFunction>,
     server_decoration_manager: bool,
     data_device_manager: bool,
     xwayland: Option<Box<XWaylandManagerHandler>>,
@@ -134,16 +137,7 @@ impl CompositorBuilder {
     ///
     /// Unless otherwise noted, each option is `false`/`None`.
     pub fn new() -> Self {
-        CompositorBuilder { gles2: false,
-                            server_decoration_manager: false,
-                            data_device_manager: false,
-                            compositor_handler: None,
-                            input_manager_handler: None,
-                            output_manager_handler: None,
-                            xdg_shell_manager_handler: None,
-                            xdg_v6_shell_manager_handler: None,
-                            xwayland: None,
-                            user_terminate: None }
+        CompositorBuilder::default()
     }
 
     /// Set the handler for global compositor callbacks.
@@ -215,6 +209,12 @@ impl CompositorBuilder {
         self
     }
 
+    /// Give an unsafe function to setup the renderer instead of the default renderer.
+    pub unsafe fn render_setup_function(mut self, func: UnsafeRenderSetupFunction) -> Self {
+        self.render_setup_function = Some(func);
+        self
+    }
+
     /// Makes a new compositor that handles the setup of the graphical backend
     /// (e.g, Wayland, X11, or DRM).
     ///
@@ -228,15 +228,9 @@ impl CompositorBuilder {
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            // TODO Make optional
-            let backend = wlr_backend_autocreate(display as *mut _, None);
-            if backend.is_null() {
-                // NOTE Rationale for panicking:
-                // * Won't be in C land just yet, so it's safe to panic
-                // * Can always be returned in a Result instead, but for now
-                //   if you auto create it's assumed you can't recover.
-                panic!("Could not auto-create backend");
-            }
+            let backend = Backend::Multi(MultiBackend::auto_create(display as *mut _,
+                                                                   self.render_setup_function));
+
             // Set up shared memory buffer for Wayland clients.
             let shm_fd = wl_display_init_shm(display as *mut _);
             // Create optional extensions.
@@ -252,7 +246,7 @@ impl CompositorBuilder {
             };
             let compositor;
             let renderer = if self.gles2 {
-                let gles2 = GenericRenderer::gles2_renderer(backend);
+                let gles2 = GenericRenderer::gles2_renderer(backend.as_ptr());
                 // Set up wlr_compositor
                 let gles2_ptr = gles2.as_ptr();
                 compositor = wlr_compositor_create(display as *mut _, gles2_ptr);
@@ -276,7 +270,7 @@ impl CompositorBuilder {
             // Set up input manager, if the user provided it.
             let input_manager = self.input_manager_handler.map(|handler| {
                 let mut input_manager = InputManager::new(handler);
-                wl_signal_add(&mut (*backend).events.new_input as *mut _ as _,
+                wl_signal_add(&mut (*backend.as_ptr()).events.new_input as *mut _ as _,
                               input_manager.add_listener() as *mut _ as _);
                 input_manager
             });
@@ -284,7 +278,7 @@ impl CompositorBuilder {
             // Set up output manager, if the user provided it.
             let output_manager = self.output_manager_handler.map(|handler| {
                 let mut output_manager = OutputManager::new(handler);
-                wl_signal_add(&mut (*backend).events.new_output as *mut _ as _,
+                wl_signal_add(&mut (*backend.as_ptr()).events.new_output as *mut _ as _,
                               output_manager.add_listener() as *mut _ as _);
                 output_manager
             });
@@ -396,8 +390,8 @@ impl Compositor {
             }
             COMPOSITOR_PTR = compositor.get();
             wlr_log!(L_INFO, "Starting compositor");
-            if !wlr_backend_start((*compositor.get()).backend) {
-                wlr_backend_destroy((*compositor.get()).backend);
+            if !wlr_backend_start((*compositor.get()).backend.as_ptr()) {
+                wlr_backend_destroy((*compositor.get()).backend.as_ptr());
                 // NOTE Rationale for panicking:
                 // * Won't be in C land just yet, so it's safe to panic
                 // * Can always be returned in a Result instead, but for now
@@ -423,12 +417,9 @@ impl Compositor {
         }
     }
 
-    pub unsafe fn display(&self) -> *mut wl_display {
-        self.display
-    }
-
-    pub unsafe fn event_loop(&self) -> *mut wl_event_loop {
-        self.event_loop
+    /// Get a reference to the currently running backend.
+    pub fn backend(&self) -> &Backend {
+        &self.backend
     }
 
     /// Saves the panic error information in the compositor, to be re-thrown

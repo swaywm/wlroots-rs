@@ -27,7 +27,8 @@ pub enum Backend {
 }
 
 impl Backend {
-    pub(crate) unsafe fn new(backend: *mut wlr_backend) -> Self {
+    /// Create a backend from a `*mut wlr_backend`.
+    pub unsafe fn from_backend(backend: *mut wlr_backend) -> Self {
         if wlr_backend_is_wl(backend) {
             Backend::Wayland(WaylandBackend{ backend })
         } else if wlr_backend_is_x11(backend) {
@@ -40,6 +41,16 @@ impl Backend {
             Backend::Multi(MultiBackend{ backend })
         } else {
             panic!("Unknown backend {:p}", backend)
+        }
+    }
+
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_backend {
+        match *self {
+            Backend::Wayland(WaylandBackend { backend }) |
+            Backend::X11(X11Backend { backend }) |
+            Backend::DRM(DRMBackend { backend }) |
+            Backend::Headless(HeadlessBackend { backend }) |
+            Backend::Multi(MultiBackend { backend }) => backend
         }
     }
 }
