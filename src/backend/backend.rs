@@ -14,9 +14,10 @@
 
 use libc;
 use wlroots_sys::{self, wlr_backend, wlr_backend_is_wl, wlr_backend_is_x11,
-                  wlr_backend_is_drm, wlr_backend_is_headless, wlr_backend_is_multi};
+                  wlr_backend_is_drm, wlr_backend_is_headless, wlr_backend_is_multi,
+                  wlr_backend_is_libinput};
 
-use super::{WaylandBackend, X11Backend, DRMBackend, HeadlessBackend, MultiBackend};
+use super::{WaylandBackend, X11Backend, DRMBackend, HeadlessBackend, MultiBackend, LibInputBackend};
 
 /// A custom function to set up the renderer.
 pub type UnsafeRenderSetupFunction = unsafe extern "C" fn(*mut wlroots_sys::wlr_egl,
@@ -32,6 +33,7 @@ pub enum Backend {
     X11(X11Backend),
     DRM(DRMBackend),
     Headless(HeadlessBackend),
+    LibInput(LibInputBackend),
     Multi(MultiBackend)
 }
 
@@ -48,6 +50,8 @@ impl Backend {
             Backend::Headless(HeadlessBackend{ backend })
         } else if wlr_backend_is_multi(backend) {
             Backend::Multi(MultiBackend{ backend })
+        } else if wlr_backend_is_libinput(backend) {
+            Backend::LibInput(LibInputBackend { backend })
         } else {
             panic!("Unknown backend {:p}", backend)
         }
@@ -59,7 +63,8 @@ impl Backend {
             Backend::X11(X11Backend { backend }) |
             Backend::DRM(DRMBackend { backend }) |
             Backend::Headless(HeadlessBackend { backend }) |
-            Backend::Multi(MultiBackend { backend }) => backend
+            Backend::Multi(MultiBackend { backend }) |
+            Backend::LibInput(LibInputBackend { backend }) => backend
         }
     }
 }
