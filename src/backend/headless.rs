@@ -30,11 +30,9 @@ impl HeadlessBackend {
     }
 
 
-    // TODO Specify the real function to use to get the pixels.
-
     /// Create a new headless output backed by an in-memory EGL framebuffer.
     ///
-    /// You can read pixels from this framebuffer via `wlr_renderer_read_pixels`
+    /// You can read pixels from this framebuffer via `Renderer::read_pixels`
     /// but it is otherwise not displayed.
     pub fn add_output(&self, width: libc::c_uint, height: libc::c_uint) -> Option<OutputHandle> {
         unsafe {
