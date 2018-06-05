@@ -12,7 +12,7 @@ mod xdg_shell_handler;
 mod tablet_pad_handler;
 mod tablet_tool_handler;
 
-pub use self::drag_icon_handler::DragIconHandler;
+pub use self::drag_icon_handler::{DragIconHandler, DragIconListener};
 pub use self::input_manager::{InputManager, InputManagerHandler};
 pub use self::keyboard_handler::{KeyboardHandler, KeyboardWrapper};
 pub use self::output_handler::{OutputHandler, UserOutput};

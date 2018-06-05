@@ -23,14 +23,6 @@ wayland_listener!(DragIconListener, (DragIcon, Box<DragIconHandler>), [
     };
 ]);
 
-/*
-impl DragIconListener {
-    pub(crate) fn drag_icon_mut(&mut self) -> DragIconHandle {
-        self.data.0.weak_reference()
-    }
-}
-*/
-
 impl Drop for DragIconListener {
     fn drop(&mut self) {
         unsafe {

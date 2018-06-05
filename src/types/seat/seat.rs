@@ -4,6 +4,7 @@
 //! TODO This module could really use some examples, as the API surface is huge.
 
 use std::{fmt, panic, ptr, cell::Cell, rc::{Rc, Weak}, time::Duration};
+use types::surface::InternalSurfaceState;
 
 use libc;
 use wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
@@ -31,8 +32,8 @@ pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
 use {wlr_keyboard_modifiers, InputDevice, KeyboardGrab, KeyboardHandle, PointerGrab, Surface,
-     TouchGrab, TouchId, TouchPoint, events::seat_events::SetCursorEvent, SurfaceHandler, DragIconHandle, DragIcon};
-use manager::DragIconHandler;
+     TouchGrab, TouchId, TouchPoint, events::seat_events::SetCursorEvent, SurfaceHandler, DragIconHandle, DragIcon, DragIconHandler};
+use manager::DragIconListener;
 use compositor::{compositor_handle, Compositor, CompositorHandle};
 use errors::{HandleErr, HandleResult};
 use utils::{c_to_rust_string, safe_as_cstring};
@@ -90,7 +91,6 @@ pub trait SeatHandler {
 
     /// A new drag icon has been created.
     fn new_drag_icon(&mut self, CompositorHandle, SeatHandle, DragIconHandle) -> (Option<Box<DragIconHandler>>, Option<Box<SurfaceHandler>>) {
-        println!("@@ NEW DRAG ICON");
         (None, None)
     }
 }
@@ -256,9 +256,24 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
 
         let drag_icon = DragIcon::new(data);
 
-        // TODO: call `new_drag_icon` on the handler and do something with the result
+        let (drag_icon_handler, surface_handler) =
+            handler.new_drag_icon(compositor, seat.weak_reference(), drag_icon.weak_reference());
+
+        if let Some(surface_handler) = surface_handler {
+            let surface_state = (*(*data).surface).data as *mut InternalSurfaceState;
+            (*(*surface_state).surface).data().1 = surface_handler;
+        }
+
+        if let Some(drag_icon_handler) = drag_icon_handler {
+            let mut listener = DragIconListener::new((drag_icon, drag_icon_handler));
+            wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
+                          listener.destroy_listener() as _);
+            wl_signal_add(&mut (*data).events.map as *mut _ as _,
+                          listener.map_listener() as _);
+        }
 
         println!("New drag icon request {:p}", data);
+        Box::into_raw(seat);
     };
     destroy_listener => destroy_notify: |this: &mut Seat, _event: *mut libc::c_void,|
     unsafe {
