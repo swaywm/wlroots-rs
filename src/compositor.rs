@@ -4,7 +4,8 @@
 use libc;
 use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{Rc, Weak}};
 
-use {UnsafeRenderSetupFunction, Backend, MultiBackend, DataDeviceManager, Surface,
+use {UnsafeRenderSetupFunction, Backend, MultiBackend, WaylandBackend,
+     DataDeviceManager, Surface,
      SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
 use errors::{HandleErr, HandleResult};
 use types::surface::{InternalSurface, InternalSurfaceState};
@@ -127,6 +128,7 @@ pub struct CompositorBuilder {
     gles2: bool,
     render_setup_function: Option<UnsafeRenderSetupFunction>,
     server_decoration_manager: bool,
+    wayland_remote: Option<String>,
     data_device_manager: bool,
     xwayland: Option<Box<XWaylandManagerHandler>>,
     user_terminate: Option<fn()>
@@ -230,7 +232,41 @@ impl CompositorBuilder {
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
             let backend = Backend::Multi(MultiBackend::auto_create(display as *mut _,
                                                                    self.render_setup_function));
+            self.finish_build(data, display, event_loop, backend)
+        }
+    }
 
+    /// Set the name of the Wayland remote socket. (e.g. `wayland-0`, which is usually the default).
+    pub fn wayland_remote(mut self, remote: String) -> Self {
+        self.wayland_remote = Some(remote);
+        self
+    }
+
+    /// Creates the compositor using an already running Wayland instance as a backend.
+    ///
+    /// The instance starts with no outputs.
+    pub fn build_wayland<D>(mut self, data: D) -> Compositor
+        where D: Any + 'static
+    {
+        unsafe {
+            let display =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
+            let event_loop =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
+            let backend = Backend::Wayland(WaylandBackend::new(display as *mut _,
+                                                               self.wayland_remote.take(),
+                                                               self.render_setup_function));
+            self.finish_build(data, display, event_loop, backend)
+        }
+    }
+
+    unsafe fn finish_build<D>(self,
+                              data: D,
+                              display: *mut wl_display,
+                              event_loop: *mut wl_event_loop,
+                              backend: Backend)
+                              -> Compositor
+        where D: Any + 'static {
             // Set up shared memory buffer for Wayland clients.
             let shm_fd = wl_display_init_shm(display as *mut _);
             // Create optional extensions.
@@ -352,7 +388,6 @@ impl CompositorBuilder {
                                           lock: Rc::new(Cell::new(false)) };
             compositor.set_lock(true);
             compositor
-        }
     }
 }
 
