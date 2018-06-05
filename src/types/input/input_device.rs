@@ -25,7 +25,7 @@ pub(crate) struct InputState {
 /// Wrapper for wlr_input_device
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct InputDevice {
-    device: *mut wlr_input_device
+    pub(crate) device: *mut wlr_input_device
 }
 
 impl InputDevice {

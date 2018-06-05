@@ -5,7 +5,7 @@ use libc;
 use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{Rc, Weak}};
 
 use {UnsafeRenderSetupFunction, Backend, MultiBackend, WaylandBackend,
-     DataDeviceManager, Surface, X11Backend, DRMBackend,
+     DataDeviceManager, Surface, X11Backend, DRMBackend, HeadlessBackend,
      SurfaceHandle, XWaylandManagerHandler, XWaylandServer, Session};
 use errors::{HandleErr, HandleResult};
 use types::surface::{InternalSurface, InternalSurfaceState};
@@ -303,6 +303,20 @@ impl CompositorBuilder {
                                                        gpu_fd,
                                                        parent,
                                                        self.render_setup_function));
+            self.finish_build(data, display, event_loop, backend)
+        }
+    }
+
+    pub fn build_headless<D>(self, data: D) -> Compositor
+        where D: Any + 'static
+    {
+        unsafe {
+            let display =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
+            let event_loop =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
+            let backend = Backend::Headless(HeadlessBackend::new(display as *mut _,
+                                                                 self.render_setup_function));
             self.finish_build(data, display, event_loop, backend)
         }
     }
