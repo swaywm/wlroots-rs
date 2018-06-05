@@ -17,16 +17,18 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
                   wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
                   wlr_output_swap_buffers, wlr_output_transformed_resolution};
 
-use {OutputLayoutHandle, OutputMode};
+use manager::UserOutput;
 use errors::{HandleErr, HandleResult};
 use utils::c_to_rust_string;
+use {OutputLayoutHandle, OutputMode};
 
 pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;
 
 use {Origin, OutputDamage, PixmanRegion, Size, Surface, SurfaceHandle};
 
-struct OutputState {
+pub(crate) struct OutputState {
+    pub(crate) output: *mut UserOutput,
     handle: Weak<Cell<bool>>,
     damage: *mut wlr_output_damage,
     layout_handle: Option<OutputLayoutHandle>
@@ -89,7 +91,8 @@ impl Output {
         let liveliness = Rc::new(Cell::new(false));
         let handle = Rc::downgrade(&liveliness);
         let damage = ManuallyDrop::new(OutputDamage::new(output));
-        let state = Box::new(OutputState { handle,
+        let state = Box::new(OutputState { output: ptr::null_mut(),
+                                           handle,
                                            damage: damage.as_ptr(),
                                            layout_handle: None });
         (*output).data = Box::into_raw(state) as *mut _;

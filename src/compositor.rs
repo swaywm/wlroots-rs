@@ -283,7 +283,7 @@ impl CompositorBuilder {
 
             // Set up output manager, if the user provided it.
             let output_manager = self.output_manager_handler.map(|handler| {
-                let mut output_manager = OutputManager::new((vec![], handler));
+                let mut output_manager = OutputManager::new(handler);
                 wl_signal_add(&mut (*backend).events.new_output as *mut _ as _,
                               output_manager.add_listener() as *mut _ as _);
                 output_manager
