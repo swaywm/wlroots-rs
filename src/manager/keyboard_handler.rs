@@ -1,8 +1,10 @@
 //! Handler for keyboards
 
 use libc;
+use wlroots_sys::wlr_input_device;
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
-use {InputDevice, Keyboard, KeyboardHandle};
+use {Keyboard, KeyboardHandle};
 use compositor::{compositor_handle, CompositorHandle};
 use events::key_events::KeyEvent;
 
@@ -20,9 +22,40 @@ pub trait KeyboardHandler {
 
     /// Callback that is triggered when repeat info is updated.
     fn repeat_info(&mut self, CompositorHandle, KeyboardHandle) {}
+
+    /// Callback that is triggered when the keyboard is destroyed.
+    fn destroyed(&mut self, CompositorHandle, KeyboardHandle) {}
 }
 
 wayland_listener!(KeyboardWrapper, (Keyboard, Box<KeyboardHandler>), [
+    on_destroy_listener => on_destroy_notify: |this: &mut KeyboardWrapper, data: *mut libc::c_void,|
+    unsafe {
+        let input_device_ptr = data as *mut wlr_input_device;
+        {
+            let (ref mut keyboard, ref mut keyboard_handler) = this.data;
+            let compositor = match compositor_handle() {
+                Some(handle) => handle,
+                None => return
+            };
+            keyboard_handler.destroyed(compositor, keyboard.weak_reference());
+        }
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.on_destroy_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.key_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.modifiers_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.keymap_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.repeat_listener()).link as *mut _ as _);
+        Box::from_raw((*input_device_ptr).data as *mut KeyboardWrapper);
+    };
     key_listener => key_notify: |this: &mut KeyboardWrapper, data: *mut libc::c_void,| unsafe {
         let (ref mut keyboard, ref mut keyboard_handler) = this.data;
         let compositor = match compositor_handle() {
@@ -65,13 +98,3 @@ wayland_listener!(KeyboardWrapper, (Keyboard, Box<KeyboardHandler>), [
         keyboard_handler.repeat_info(compositor, keyboard.weak_reference());
     };
 ]);
-
-impl KeyboardWrapper {
-    pub(crate) fn input_device(&self) -> &InputDevice {
-        self.data.0.input_device()
-    }
-
-    pub(crate) fn keyboard(&self) -> KeyboardHandle {
-        self.data.0.weak_reference()
-    }
-}

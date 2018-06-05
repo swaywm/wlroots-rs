@@ -1,10 +1,12 @@
 //! Handler for touch input
 
 use libc;
+use wlroots_sys::wlr_input_device;
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
 use compositor::{compositor_handle, CompositorHandle};
 use events::touch_events::{CancelEvent, DownEvent, MotionEvent, UpEvent};
-use types::input::{InputDevice, Touch, TouchHandle};
+use types::input::{Touch, TouchHandle};
 
 pub trait TouchHandler {
     /// Callback that is triggered when the user starts touching the
@@ -21,9 +23,40 @@ pub trait TouchHandler {
 
     /// Callback triggered when the touch is canceled.
     fn on_cancel(&mut self, CompositorHandle, TouchHandle, &CancelEvent) {}
+
+    /// Callback that is triggered when the touch is destroyed.
+    fn destroyed(&mut self, CompositorHandle, TouchHandle) {}
 }
 
 wayland_listener!(TouchWrapper, (Touch, Box<TouchHandler>), [
+    on_destroy_listener => on_destroy_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,|
+    unsafe {
+        let input_device_ptr = data as *mut wlr_input_device;
+        {
+            let (ref mut touch, ref mut touch_handler) = this.data;
+            let compositor = match compositor_handle() {
+                Some(handle) => handle,
+                None => return
+            };
+            touch_handler.destroyed(compositor, touch.weak_reference());
+        }
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.on_destroy_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.down_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.up_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.motion_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.cancel_listener()).link as *mut _ as _);
+        Box::from_raw((*input_device_ptr).data as *mut TouchWrapper);
+    };
     down_listener => down_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
         let (ref touch, ref mut handler) = this.data;
         let event = DownEvent::from_ptr(data as *mut _);
@@ -73,13 +106,3 @@ wayland_listener!(TouchWrapper, (Touch, Box<TouchHandler>), [
                           &event);
     };
 ]);
-
-impl TouchWrapper {
-    pub(crate) fn input_device(&self) -> &InputDevice {
-        self.data.0.input_device()
-    }
-
-    pub(crate) fn touch(&mut self) -> TouchHandle {
-        self.data.0.weak_reference()
-    }
-}

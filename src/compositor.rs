@@ -275,7 +275,7 @@ impl CompositorBuilder {
 
             // Set up input manager, if the user provided it.
             let input_manager = self.input_manager_handler.map(|handler| {
-                let mut input_manager = InputManager::new((vec![], handler));
+                let mut input_manager = InputManager::new(handler);
                 wl_signal_add(&mut (*backend).events.new_input as *mut _ as _,
                               input_manager.add_listener() as *mut _ as _);
                 input_manager

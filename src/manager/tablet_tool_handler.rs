@@ -1,9 +1,12 @@
 //! Handler for tablet tools
 
-use {InputDevice, TabletTool, TabletToolHandle};
+use libc;
+use wlroots_sys::wlr_input_device;
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+
+use {TabletTool, TabletToolHandle};
 use compositor::{compositor_handle, CompositorHandle};
 use events::tablet_tool_events::{AxisEvent, ButtonEvent, ProximityEvent, TipEvent};
-use libc;
 
 pub trait TabletToolHandler {
     /// Callback that is triggered when an axis event fires
@@ -19,9 +22,40 @@ pub trait TabletToolHandler {
 
     /// Callback that is triggered when a button is pressed on the tablet tool.
     fn on_button(&mut self, CompositorHandle, TabletToolHandle, &ButtonEvent) {}
+
+    /// Callback that is triggered when a tablet tool is destroyed.
+    fn destroyed(&mut self, CompositorHandle, TabletToolHandle) {}
 }
 
 wayland_listener!(TabletToolWrapper, (TabletTool, Box<TabletToolHandler>), [
+    on_destroy_listener => on_destroy_notify: |this: &mut TabletToolWrapper, data: *mut libc::c_void,|
+    unsafe {
+        let input_device_ptr = data as *mut wlr_input_device;
+        {
+            let (ref mut tool, ref mut tablet_tool_handler) = this.data;
+            let compositor = match compositor_handle() {
+                Some(handle) => handle,
+                None => return
+            };
+            tablet_tool_handler.destroyed(compositor, tool.weak_reference());
+        }
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.on_destroy_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.axis_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.proximity_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.tip_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.button_listener()).link as *mut _ as _);
+        Box::from_raw((*input_device_ptr).data as *mut TabletToolWrapper);
+    };
     axis_listener => axis_notify: |this: &mut TabletToolWrapper, data: *mut libc::c_void,| unsafe {
         let (ref tool, ref mut handler) = this.data;
         let event = AxisEvent::from_ptr(data as *mut _);
@@ -74,13 +108,3 @@ wayland_listener!(TabletToolWrapper, (TabletTool, Box<TabletToolHandler>), [
                           &event);
     };
 ]);
-
-impl TabletToolWrapper {
-    pub(crate) fn input_device(&self) -> &InputDevice {
-        self.data.0.input_device()
-    }
-
-    pub fn tablet_tool(&mut self) -> TabletToolHandle {
-        self.data.0.weak_reference()
-    }
-}
