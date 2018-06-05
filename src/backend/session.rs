@@ -8,4 +8,8 @@ impl Session {
     pub(crate) unsafe fn from_ptr(session: *mut wlr_session) -> Self {
         Session { session }
     }
+
+    pub unsafe fn as_ptr(&self) -> *mut wlr_session {
+        self.session
+    }
 }

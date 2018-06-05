@@ -5,8 +5,8 @@ use libc;
 use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{Rc, Weak}};
 
 use {UnsafeRenderSetupFunction, Backend, MultiBackend, WaylandBackend,
-     DataDeviceManager, Surface, X11Backend,
-     SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
+     DataDeviceManager, Surface, X11Backend, DRMBackend,
+     SurfaceHandle, XWaylandManagerHandler, XWaylandServer, Session};
 use errors::{HandleErr, HandleResult};
 use types::surface::{InternalSurface, InternalSurfaceState};
 use extensions::server_decoration::ServerDecorationManager;
@@ -281,6 +281,28 @@ impl CompositorBuilder {
             let backend = Backend::Wayland(WaylandBackend::new(display as *mut _,
                                                                self.wayland_remote.take(),
                                                                self.render_setup_function));
+            self.finish_build(data, display, event_loop, backend)
+        }
+    }
+
+    pub unsafe fn build_drm<D>(self,
+                               data: D,
+                               session: Session,
+                               gpu_fd: libc::c_int,
+                               parent: Option<DRMBackend>)
+                               -> Compositor
+        where D: Any + 'static
+    {
+        unsafe {
+            let display =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
+            let event_loop =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
+            let backend = Backend::DRM(DRMBackend::new(display as *mut _,
+                                                       session,
+                                                       gpu_fd,
+                                                       parent,
+                                                       self.render_setup_function));
             self.finish_build(data, display, event_loop, backend)
         }
     }

@@ -57,14 +57,14 @@ impl WaylandBackend {
     }
 
     /// True if the given input device is a wlr_wl_input_device.
-    pub fn is_wl_input_device(&self, input_device: InputDevice) -> bool {
+    pub fn is_wl_input_device(&self, input_device: &InputDevice) -> bool {
         unsafe {
             wlr_input_device_is_wl(input_device.as_ptr())
         }
     }
 
     /// True if the given output is a wlr_wl_output.
-    pub fn is_wl_output_device(&self, output: Output) -> bool {
+    pub fn is_wl_output_device(&self, output: &Output) -> bool {
         unsafe {
             wlr_output_is_wl(output.as_ptr())
         }

@@ -42,13 +42,13 @@ impl X11Backend {
         }
     }
 
-    pub fn is_x11_input_device(&self, input_device: InputDevice) -> bool {
+    pub fn is_x11_input_device(&self, input_device: &InputDevice) -> bool {
         unsafe {
             wlr_input_device_is_x11(input_device.as_ptr())
         }
     }
 
-    pub fn is_x11_output_device(&self, output: Output) -> bool {
+    pub fn is_x11_output_device(&self, output: &Output) -> bool {
         unsafe {
             wlr_output_is_x11(output.as_ptr())
         }

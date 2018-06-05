@@ -40,13 +40,14 @@ impl MultiBackend {
         wlr_multi_backend_remove(self.backend, backend)
     }
 
-    pub fn wlr_multi_get_session(&self) -> Session {
+    pub fn wlr_multi_get_session(&self) -> Option<Session> {
         unsafe {
             let session = wlr_multi_get_session(self.backend);
             if session.is_null() {
-                panic!("Session was null");
+                None
+            } else {
+                Some(Session::from_ptr(session))
             }
-            Session::from_ptr(session)
         }
     }
 
