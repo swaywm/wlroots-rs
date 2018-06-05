@@ -25,13 +25,13 @@ impl WaylandBackend {
     /// default)
     pub unsafe fn new(display: *mut wl_display,
                       remote: Option<String>,
-                      render_setup_func: Option<UnsafeRenderSetupFunction> )
+                      render_setup_func: Option<UnsafeRenderSetupFunction>)
                       -> Self {
         let remote_cstr = remote.map(|remote| safe_as_cstring(remote));
         let remote_ptr = remote_cstr.map(|s| s.as_ptr()).unwrap_or_else(|| ptr::null_mut());
         let backend = wlr_wl_backend_create(display, remote_ptr, render_setup_func);
         if backend.is_null() {
-            panic!("Could not auto construct backend");
+            panic!("Could not construct Wayland backend");
         }
         WaylandBackend { backend }
     }

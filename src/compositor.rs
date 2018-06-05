@@ -5,7 +5,7 @@ use libc;
 use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{Rc, Weak}};
 
 use {UnsafeRenderSetupFunction, Backend, MultiBackend, WaylandBackend,
-     DataDeviceManager, Surface,
+     DataDeviceManager, Surface, X11Backend,
      SurfaceHandle, XWaylandManagerHandler, XWaylandServer};
 use errors::{HandleErr, HandleResult};
 use types::surface::{InternalSurface, InternalSurfaceState};
@@ -129,6 +129,7 @@ pub struct CompositorBuilder {
     render_setup_function: Option<UnsafeRenderSetupFunction>,
     server_decoration_manager: bool,
     wayland_remote: Option<String>,
+    x11_display: Option<String>,
     data_device_manager: bool,
     xwayland: Option<Box<XWaylandManagerHandler>>,
     user_terminate: Option<fn()>
@@ -236,10 +237,34 @@ impl CompositorBuilder {
         }
     }
 
-    /// Set the name of the Wayland remote socket. (e.g. `wayland-0`, which is usually the default).
+    /// Set the name of the Wayland remote socket to connect to when using the Wayland backend.
+    ///
+    /// (e.g. `wayland-0`, which is usually the default).
     pub fn wayland_remote(mut self, remote: String) -> Self {
         self.wayland_remote = Some(remote);
         self
+    }
+
+    /// Set the name of the X11 display socket to be used to connect to a running X11 instance for
+    /// the backend.
+    pub fn x11_display(mut self, remote: String) -> Self {
+        self.x11_display = Some(remote);
+        self
+    }
+
+    pub fn build_x11<D>(mut self, data: D) -> Compositor
+        where D: Any + 'static
+    {
+        unsafe {
+            let display =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
+            let event_loop =
+                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
+            let backend = Backend::X11(X11Backend::new(display as *mut _,
+                                                       self.x11_display.take(),
+                                                       self.render_setup_function));
+            self.finish_build(data, display, event_loop, backend)
+        }
     }
 
     /// Creates the compositor using an already running Wayland instance as a backend.
