@@ -11,6 +11,9 @@ pub trait DragIconHandler {
     /// Called when the drag icon is ready to be displayed.
     fn on_map(&mut self, CompositorHandle, DragIconHandle);
 
+    /// Called when the drag icon should no longer be displayed
+    fn on_unmap(&mut self, CompositorHandle, DragIconHandle);
+
     /// Called when the drag icon is about to be destroyed.
     fn destroyed(&mut self, CompositorHandle, DragIconHandle);
 }
@@ -35,6 +38,14 @@ wayland_listener!(DragIconListener, (DragIcon, Box<DragIconHandler>), [
         };
         handler.on_map(compositor, drag_icon.weak_reference());
     };
+    unmap_listener => unmap_notify: |this: &mut DragIconListener, data: *mut libc::c_void,| unsafe {
+        let (ref drag_icon, ref mut handler) = this.data;
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+        handler.on_unmap(compositor, drag_icon.weak_reference());
+    };
 ]);
 
 impl Drop for DragIconListener {
@@ -46,6 +57,9 @@ impl Drop for DragIconListener {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
                           &mut (*self.map_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*self.unmap_listener()).link as *mut _ as _);
         }
     }
 }
