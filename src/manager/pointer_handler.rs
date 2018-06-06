@@ -1,8 +1,10 @@
 //! Handler for pointers
 
 use libc;
+use wlroots_sys::wlr_input_device;
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
-use {InputDevice, Pointer, PointerHandle};
+use {Pointer, PointerHandle};
 use compositor::{compositor_handle, CompositorHandle};
 use events::pointer_events::{AbsoluteMotionEvent, AxisEvent, ButtonEvent, MotionEvent};
 
@@ -17,11 +19,42 @@ pub trait PointerHandler {
     /// Callback that is triggered when the buttons on the pointer are pressed.
     fn on_button(&mut self, CompositorHandle, PointerHandle, &ButtonEvent) {}
 
-    /// Callback that is triggerde when an axis event fires
+    /// Callback that is triggered when an axis event fires.
     fn on_axis(&mut self, CompositorHandle, PointerHandle, &AxisEvent) {}
+
+    /// Callback that is triggered when the pointer is destroyed.
+    fn destroyed(&mut self, CompositorHandle, PointerHandle) {}
 }
 
 wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
+    on_destroy_listener => on_destroy_notify: |this: &mut PointerWrapper, data: *mut libc::c_void,|
+    unsafe {
+        let input_device_ptr = data as *mut wlr_input_device;
+        {
+            let (ref mut pointer, ref mut pointer_handler) = this.data;
+            let compositor = match compositor_handle() {
+                Some(handle) => handle,
+                None => return
+            };
+            pointer_handler.destroyed(compositor, pointer.weak_reference());
+        }
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.on_destroy_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.button_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.motion_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.motion_absolute_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.axis_listener()).link as *mut _ as _);
+        Box::from_raw((*input_device_ptr).data as *mut PointerWrapper);
+    };
     button_listener => key_notify: |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
         let pointer = &mut this.data.0;
         let event = ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button);
@@ -65,13 +98,3 @@ wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
         this.data.1.on_axis(compositor, pointer.weak_reference(), &event);
     };
 ]);
-
-impl PointerWrapper {
-    pub(crate) fn input_device(&self) -> &InputDevice {
-        self.data.0.input_device()
-    }
-
-    pub(crate) fn pointer(&mut self) -> PointerHandle {
-        self.data.0.weak_reference()
-    }
-}

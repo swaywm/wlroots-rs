@@ -1,6 +1,8 @@
 //! Handler for outputs
 
-use {Output, OutputHandle};
+use {Output, OutputHandle, OutputState};
+use errors::HandleErr;
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use compositor::{compositor_handle, CompositorHandle};
 use libc;
 use wlroots_sys::wlr_output;
@@ -26,9 +28,61 @@ pub trait OutputHandler {
 
     /// Called every time the buffers need to be swapped on an output.
     fn needs_swap(&mut self, CompositorHandle, OutputHandle) {}
+
+    /// Called when an output is destroyed (e.g. unplugged).
+    fn destroyed(&mut self, CompositorHandle, OutputHandle) {}
 }
 
 wayland_listener!(UserOutput, (Output, Box<OutputHandler>), [
+    on_destroy_listener => on_destroy_notify: |this: &mut UserOutput, data: *mut libc::c_void,|
+    unsafe {
+        let output_ptr = data as *mut wlr_output;
+        {
+            let (ref mut output, ref mut manager) = this.data;
+            let compositor = match compositor_handle() {
+                Some(handle) => handle,
+                None => return
+            };
+            manager.destroyed(compositor, output.weak_reference());
+            // NOTE Remove the output from the output if there is one.
+            if let Some(layout) = output.layout() {
+                match with_handles!([(layout: {layout})] => {
+                    layout.remove(output)
+                }) {
+                    Ok(_) | Err(HandleErr::AlreadyDropped) => {},
+                    Err(HandleErr::AlreadyBorrowed) => {
+                        panic!("Tried to remove layout from output, but the output layout is already borrowed!");
+                    }
+                }
+            }
+        }
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.on_destroy_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.frame_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.mode_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.enable_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.scale_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.transform_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.swap_buffers_listener()).link as *mut _ as _);
+        ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                      wl_list_remove,
+                      &mut (*this.need_swap_listener()).link as *mut _ as _);
+        let output_data = (*output_ptr).data as *mut OutputState;
+        Box::from_raw((*output_data).output as *mut UserOutput);
+    };
     frame_listener => frame_notify: |this: &mut UserOutput, _output: *mut libc::c_void,| unsafe {
         let (ref output, ref mut manager) = this.data;
         let compositor = match compositor_handle() {
@@ -99,13 +153,3 @@ wayland_listener!(UserOutput, (Output, Box<OutputHandler>), [
         manager.needs_swap(compositor, output.weak_reference());
     };
 ]);
-
-impl UserOutput {
-    pub(crate) fn output_mut(&mut self) -> OutputHandle {
-        self.data.0.weak_reference()
-    }
-
-    pub(crate) unsafe fn output_ptr(&self) -> *mut wlr_output {
-        self.data.0.as_ptr()
-    }
-}
