@@ -270,6 +270,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
                           listener.destroy_listener() as _);
             wl_signal_add(&mut (*data).events.map as *mut _ as _,
                           listener.map_listener() as _);
+            Box::into_raw(listener);
         }
 
         println!("New drag icon request {:p}", data);
