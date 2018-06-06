@@ -5,6 +5,8 @@ use std::panic;
 use errors::{HandleErr, HandleResult};
 use DragIconHandler;
 
+use {SurfaceHandle};
+
 #[derive(Debug)]
 pub struct DragIcon {
     liveliness: Rc<Cell<bool>>,
@@ -23,6 +25,37 @@ impl DragIcon {
             liveliness,
             drag_icon
         }
+    }
+
+    /// Get a handle for the surface associated with this drag icon
+    pub fn surface(&mut self) -> SurfaceHandle {
+        unsafe {
+            let surface = (*self.drag_icon).surface;
+			if surface.is_null() {
+				panic!("drag icon had a null surface!");
+			}
+			SurfaceHandle::from_ptr(surface)
+        }
+    }
+
+    /// The position to place the surface of the drag icon relative to the cursor position
+	pub fn position(&mut self) -> (i32, i32) {
+        unsafe { ((*self.drag_icon).sx, (*self.drag_icon).sy) }
+	}
+
+    /// Whether or not to display the drag icon
+    pub fn mapped(&mut self) -> bool {
+        unsafe { (*self.drag_icon).mapped }
+    }
+
+    /// Whether or not this drag icon comes from a pointer-drive dnd operation
+    pub fn is_pointer(&mut self) -> bool {
+        unsafe { (*self.drag_icon).is_pointer }
+    }
+
+    /// If this is a touch-driven dnd operation, the id of the touch point that started it
+    pub fn touch_id(&mut self) -> i32 {
+        unsafe { (*self.drag_icon).touch_id }
     }
 
     unsafe fn from_handle(handle: &DragIconHandle) -> HandleResult<Self> {
