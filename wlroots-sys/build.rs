@@ -123,7 +123,11 @@ fn meson() {
         println!("cargo:rustc-link-lib=static=wl_protos");
     }
 
-    meson::build("wlroots", build_path_str);
+    if Path::new("wlroots").exists() {
+        meson::build("wlroots", build_path_str);
+    } else {
+        panic!("The `wlroots` submodule does not exist");
+    }
 }
 
 /// Gets the unstable and stable protocols in /usr/share-wayland-protocols and
