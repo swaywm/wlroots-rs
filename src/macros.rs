@@ -277,6 +277,41 @@ macro_rules! with_handles {
 /// To make this more clear, it is mandated that a ? is appended to each of these lines.
 ///
 /// Here is some code using `with_handles`:
+///
+/// ```no_run,no_run,ignore
+/// with_handles!([(compositor: {compositor})] => {
+///     let state: &mut State = compositor.into();
+///     with_handles!([(shell: {&state.shell_handle})] => {
+///         // Do stuff with shell
+///     }).unwrap();
+/// }).unwrap();
+/// ```
+///
+/// Here is that some code using `dehandle!`
+/// ```no_run,no_run,ignore
+///dehandle!(
+///    @compositor = {compositor_handle}?;
+///    let state: &mut State = compositor.into()
+///    @shell = {&state.shell_handle}?;
+///    // do stuff with shell
+///).unwrap().unwrap();
+///```
+///
+///
+/// Now here is that same code in dehandle! but this time without the ? error handling:
+/// ```no_run,no_run,ignore
+///dehandle!(
+///    @compositor = {compositor_handle};
+///    let state: &mut State = compositor.into()
+///    @shell = {&state.shell_handle};
+///    // do stuff with shell
+///);
+///```
+///
+/// If an error occurs in the `@` lines with out the `?` it will panic with
+/// an ok-ish stacktrace and an error message pointing out exactly which one
+/// failed (e.g. it would say unwrapping `{&state.shell_handle}` and
+/// placing the result in `shell` failed)
 #[macro_export]
 macro_rules! dehandle {
     // Handles going into an extra scope
