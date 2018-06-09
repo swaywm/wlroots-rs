@@ -7,6 +7,7 @@
 #include <wlr/backend/multi.h>
 #include <wlr/backend/session.h>
 #include <wlr/backend/wayland.h>
+#include <wlr/backend/headless.h>
 #include <wlr/backend/x11.h>
 #include <wlr/backend/session/interface.h>
 
