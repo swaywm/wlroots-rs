@@ -32,17 +32,19 @@ impl DragIcon {
     pub fn surface(&mut self) -> SurfaceHandle {
         unsafe {
             let surface = (*self.drag_icon).surface;
-			if surface.is_null() {
-				panic!("drag icon had a null surface!");
-			}
-			SurfaceHandle::from_ptr(surface)
+            if surface.is_null() {
+                panic!("drag icon had a null surface!");
+            }
+            SurfaceHandle::from_ptr(surface)
         }
     }
 
     /// The position to place the surface of the drag icon relative to the cursor position
-	pub fn position(&mut self) -> (i32, i32) {
+    ///
+    /// Return value is in (sx, sy) format.
+    pub fn position(&mut self) -> (i32, i32) {
         unsafe { ((*self.drag_icon).sx, (*self.drag_icon).sy) }
-	}
+    }
 
     /// Whether or not to display the drag icon
     pub fn mapped(&mut self) -> bool {
@@ -73,6 +75,11 @@ impl DragIcon {
             drag_icon: self.drag_icon
         }
     }
+}
+
+pub(crate) struct DragIconState {
+    pub(crate) handle: Weak<Cell<bool>>,
+    pub(crate) drag_icon: *mut wlr_drag_icon
 }
 
 #[derive(Debug, Clone)]
@@ -154,9 +161,4 @@ impl DragIconHandle {
     unsafe fn as_ptr(&self) -> *mut wlr_drag_icon {
         self.drag_icon
     }
-}
-
-pub(crate) struct DragIconState {
-    pub(crate) handle: Weak<Cell<bool>>,
-    pub(crate) drag_icon: *mut wlr_drag_icon
 }

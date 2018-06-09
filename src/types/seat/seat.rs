@@ -252,12 +252,12 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
             Some(handle) => handle,
             None => return
         };
-        let seat = Seat::from_ptr(seat_ptr);
+        let seat = SeatHandle::from_ptr(seat_ptr);
 
         let drag_icon = DragIcon::new(data);
 
         let (drag_icon_handler, surface_handler) =
-            handler.new_drag_icon(compositor, seat.weak_reference(), drag_icon.weak_reference());
+            handler.new_drag_icon(compositor, seat, drag_icon.weak_reference());
 
         if let Some(surface_handler) = surface_handler {
             let surface_state = (*(*data).surface).data as *mut InternalSurfaceState;
@@ -274,9 +274,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
                           listener.unmap_listener() as _);
             Box::into_raw(listener);
         }
-
-        println!("New drag icon request {:p}", data);
-        Box::into_raw(seat);
+        wlr_log!(L_DEBUG, "New drag icon request {:p}", data);
     };
     destroy_listener => destroy_notify: |this: &mut Seat, _event: *mut libc::c_void,|
     unsafe {
