@@ -321,6 +321,13 @@ macro_rules! dehandle {
         }
         dehandle!($($rest)*)
     }};
+    // @unhandle = {handle};
+    // This one will automatically unwrap the result.
+    (@$handle_name: ident = $unhandle_name: block; $($rest: tt)+) => {
+        with_handles!([($handle_name: $unhandle_name)] => {
+            dehandle!($($rest)+)
+        }).expect(concat!("Could not upgrade ", stringify!(unhandle_name), " and set the result to ", stringify!(handle_name)));
+    };
     // @unhandle = {handle}?;
     (@$handle_name: ident = $unhandle_name: block?; $($rest: tt)+) => {
         with_handles!([($handle_name: $unhandle_name)] => {
