@@ -183,14 +183,16 @@ impl XdgShellSurface {
         }
     }
 
-    pub fn for_each_surface(&self, mut iterator: &mut FnMut(SurfaceHandle, i32, i32)) {
+    pub fn for_each_surface<F>(&self, mut iterator: F)
+            where F: FnMut(SurfaceHandle, i32, i32) {
+        let mut iterator_ref: &mut FnMut(SurfaceHandle, i32, i32) = &mut iterator;
         unsafe {
             unsafe extern "C" fn c_iterator(wlr_surface: *mut wlr_surface, sx: i32, sy: i32, data: *mut c_void) {
-                let iterator = &mut *(data as *mut &mut FnMut(SurfaceHandle, i32, i32));
+                let iterator_fn = &mut *(data as *mut &mut FnMut(SurfaceHandle, i32, i32));
                 let surface = SurfaceHandle::from_ptr(wlr_surface);
-                iterator(surface, sx, sy);
+                iterator_fn(surface, sx, sy);
             }
-            let iterator_ptr: *mut c_void = &mut iterator as *mut _ as *mut c_void;
+            let iterator_ptr: *mut c_void = &mut iterator_ref as *mut _ as *mut c_void;
             wlr_xdg_surface_for_each_surface(self.shell_surface, Some(c_iterator), iterator_ptr);
         }
     }
