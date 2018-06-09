@@ -66,20 +66,25 @@ pub trait XdgShellHandler {
     }
 }
 
-wayland_listener!(XdgShell, (XdgShellSurface, Box<XdgShellHandler>), [
+wayland_listener!(XdgShell, (XdgShellSurface, Option<Box<XdgShellHandler>>), [
     destroy_listener => destroy_notify: |this: &mut XdgShell, data: *mut libc::c_void,| unsafe {
         let (ref shell_surface, ref mut manager) = this.data;
         let compositor = match compositor_handle() {
             Some(handle) => handle,
             None => return
         };
-        manager.destroyed(compositor, shell_surface.weak_reference());
+        if let Some(ref mut manager) = manager.as_mut() {
+            manager.destroyed(compositor, shell_surface.weak_reference());
+        }
         let surface_ptr = data as *mut wlr_xdg_surface;
         let shell_state_ptr = (*surface_ptr).data as *mut XdgShellSurfaceState;
         Box::from_raw((*shell_state_ptr).shell);
     };
     commit_listener => commit_notify: |this: &mut XdgShell, _data: *mut libc::c_void,| unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -93,7 +98,10 @@ wayland_listener!(XdgShell, (XdgShellSurface, Box<XdgShellHandler>), [
     ping_timeout_listener => ping_timeout_notify: |this: &mut XdgShell,
                                                    _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -106,7 +114,10 @@ wayland_listener!(XdgShell, (XdgShellSurface, Box<XdgShellHandler>), [
     };
     new_popup_listener => new_popup_notify: |this: &mut XdgShell, _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -119,7 +130,10 @@ wayland_listener!(XdgShell, (XdgShellSurface, Box<XdgShellHandler>), [
     };
     maximize_listener => maximize_notify: |this: &mut XdgShell, _event: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -132,7 +146,10 @@ wayland_listener!(XdgShell, (XdgShellSurface, Box<XdgShellHandler>), [
     };
     fullscreen_listener => fullscreen_notify: |this: &mut XdgShell, event: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -147,7 +164,10 @@ wayland_listener!(XdgShell, (XdgShellSurface, Box<XdgShellHandler>), [
     };
     minimize_listener => minimize_notify: |this: &mut XdgShell, _event: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -159,7 +179,10 @@ wayland_listener!(XdgShell, (XdgShellSurface, Box<XdgShellHandler>), [
                                  shell_surface.weak_reference());
     };
     move_listener => move_notify: |this: &mut XdgShell, event: *mut libc::c_void,| unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -173,7 +196,10 @@ wayland_listener!(XdgShell, (XdgShellSurface, Box<XdgShellHandler>), [
                              &event);
     };
     resize_listener => resize_notify: |this: &mut XdgShell, event: *mut libc::c_void,| unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -189,7 +215,10 @@ wayland_listener!(XdgShell, (XdgShellSurface, Box<XdgShellHandler>), [
     show_window_menu_listener => show_window_menu_notify: |this: &mut XdgShell,
                                                            event: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,

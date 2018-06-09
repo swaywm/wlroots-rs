@@ -43,46 +43,45 @@ wayland_listener!(XWaylandManager, Box<XWaylandManagerHandler>, [
             None => return
         };
         let shell_surface = XWaylandSurface::new(surface_ptr);
-        let res = manager.new_surface(compositor, shell_surface.weak_reference());
-        if let (Some(xwayland_handler), surface_handler) = res {
-            let mut shell = XWaylandShell::new((shell_surface, xwayland_handler));
-            let surface_state = (*(*surface_ptr).surface).data as *mut InternalSurfaceState;
-            if let Some(surface_handler) = surface_handler {
-                (*(*surface_state).surface).data().1 = surface_handler;
-            }
-
-
-            wl_signal_add(&mut (*surface_ptr).events.destroy as *mut _ as _,
-                          shell.destroy_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.request_configure as *mut _ as _,
-                          shell.request_configure_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.request_move as *mut _ as _,
-                          shell.request_move_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.request_resize as *mut _ as _,
-                          shell.request_resize_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.request_maximize as *mut _ as _,
-                          shell.request_maximize_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.request_fullscreen as *mut _ as _,
-                          shell.request_fullscreen_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.map as *mut _ as _,
-                          shell.map_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.unmap as *mut _ as _,
-                          shell.unmap_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.set_title as *mut _ as _,
-                          shell.set_title_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.set_class as *mut _ as _,
-                          shell.set_class_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.set_parent as *mut _ as _,
-                          shell.set_parent_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.set_pid as *mut _ as _,
-                          shell.set_pid_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.set_window_type as *mut _ as _,
-                          shell.set_window_type_listener() as *mut _ as _);
-            wl_signal_add(&mut (*surface_ptr).events.ping_timeout as *mut _ as _,
-                          shell.ping_timeout_listener() as *mut _ as _);
-            let shell_data = (*surface_ptr).data as *mut XWaylandSurfaceState;
-            (*shell_data).shell = Box::into_raw(shell);
+        let (xwayland_handler, surface_handler) =
+        manager.new_surface(compositor, shell_surface.weak_reference());
+        let mut shell = XWaylandShell::new((shell_surface, xwayland_handler));
+        let surface_state = (*(*surface_ptr).surface).data as *mut InternalSurfaceState;
+        if let Some(surface_handler) = surface_handler {
+            (*(*surface_state).surface).data().1 = surface_handler;
         }
+
+
+        wl_signal_add(&mut (*surface_ptr).events.destroy as *mut _ as _,
+                        shell.destroy_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.request_configure as *mut _ as _,
+                        shell.request_configure_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.request_move as *mut _ as _,
+                        shell.request_move_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.request_resize as *mut _ as _,
+                        shell.request_resize_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.request_maximize as *mut _ as _,
+                        shell.request_maximize_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.request_fullscreen as *mut _ as _,
+                        shell.request_fullscreen_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.map as *mut _ as _,
+                        shell.map_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.unmap as *mut _ as _,
+                        shell.unmap_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.set_title as *mut _ as _,
+                        shell.set_title_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.set_class as *mut _ as _,
+                        shell.set_class_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.set_parent as *mut _ as _,
+                        shell.set_parent_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.set_pid as *mut _ as _,
+                        shell.set_pid_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.set_window_type as *mut _ as _,
+                        shell.set_window_type_listener() as *mut _ as _);
+        wl_signal_add(&mut (*surface_ptr).events.ping_timeout as *mut _ as _,
+                        shell.ping_timeout_listener() as *mut _ as _);
+        let shell_data = (*surface_ptr).data as *mut XWaylandSurfaceState;
+        (*shell_data).shell = Box::into_raw(shell);
         // TODO Pass in the new surface from the data
     };
 ]);

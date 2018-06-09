@@ -60,10 +60,13 @@ pub trait XWaylandSurfaceHandler {
     fn ping_timeout(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
 }
 
-wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>), [
+wayland_listener!(XWaylandShell, (XWaylandSurface, Option<Box<XWaylandSurfaceHandler>>), [
     destroy_listener => destroy_notify: |this: &mut XWaylandShell, data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -77,7 +80,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     request_configure_listener => request_configure_notify: |this: &mut XWaylandShell,
                                                              data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -92,7 +98,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     request_move_listener => request_move_notify: |this: &mut XWaylandShell,
                                                    data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -107,7 +116,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     request_resize_listener => request_resize_notify: |this: &mut XWaylandShell,
                                                        data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -122,7 +134,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     request_maximize_listener => request_maximize_notify: |this: &mut XWaylandShell,
                                                            _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -135,7 +150,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     request_fullscreen_listener => request_fullscreen_notify: |this: &mut XWaylandShell,
                                                                _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -147,7 +165,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     };
     map_listener => map_notify: |this: &mut XWaylandShell, _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -159,7 +180,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     };
     unmap_listener => unmap_notify: |this: &mut XWaylandShell, _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -171,7 +195,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     };
     set_title_listener => set_title_notify: |this: &mut XWaylandShell, _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -183,7 +210,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     };
     set_class_listener => set_class_notify: |this: &mut XWaylandShell, _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -195,7 +225,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     };
     set_parent_listener => set_parent_notify: |this: &mut XWaylandShell, _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -207,7 +240,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     };
     set_pid_listener => set_pid_notify: |this: &mut XWaylandShell, _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -220,7 +256,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     set_window_type_listener => set_window_type_notify: |this: &mut XWaylandShell,
                                                          _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -233,7 +272,10 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Box<XWaylandSurfaceHandler>),
     ping_timeout_listener => ping_timeout_notify: |this: &mut XWaylandShell,
                                                    _data: *mut libc::c_void,|
     unsafe {
-        let (ref mut shell_surface, ref mut manager) = this.data;
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
         let surface = shell_surface.surface();
         let compositor = match compositor_handle() {
             Some(handle) => handle,
