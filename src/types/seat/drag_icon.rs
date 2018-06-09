@@ -4,7 +4,6 @@ use std::rc::{Rc, Weak};
 use std::hash::{Hash, Hasher};
 use std::panic;
 use errors::{HandleErr, HandleResult};
-use DragIconHandler;
 
 use {SurfaceHandle};
 
@@ -17,10 +16,7 @@ pub struct DragIcon {
 impl DragIcon {
     pub(crate) unsafe fn new(drag_icon: *mut wlr_drag_icon) -> Self {
         let liveliness = Rc::new(Cell::new(false));
-        let state = Box::new(DragIconState {
-            handle: Rc::downgrade(&liveliness),
-            drag_icon
-        });
+        let state = Box::new(DragIconState { handle: Rc::downgrade(&liveliness) });
         (*drag_icon).data = Box::into_raw(state) as *mut _;
         DragIcon {
             liveliness,
@@ -61,6 +57,14 @@ impl DragIcon {
         unsafe { (*self.drag_icon).touch_id }
     }
 
+    /// Creates a weak reference to a `DragIcon`.
+    pub fn weak_reference(&self) -> DragIconHandle {
+        DragIconHandle {
+            handle: Rc::downgrade(&self.liveliness),
+            drag_icon: self.drag_icon
+        }
+    }
+
     unsafe fn from_handle(handle: &DragIconHandle) -> HandleResult<Self> {
         let liveliness = handle.handle
                                .upgrade()
@@ -68,18 +72,10 @@ impl DragIcon {
         Ok(DragIcon { liveliness,
                       drag_icon: handle.as_ptr() })
     }
-
-    pub fn weak_reference(&self) -> DragIconHandle {
-        DragIconHandle {
-            handle: Rc::downgrade(&self.liveliness),
-            drag_icon: self.drag_icon
-        }
-    }
 }
 
 pub(crate) struct DragIconState {
-    pub(crate) handle: Weak<Cell<bool>>,
-    pub(crate) drag_icon: *mut wlr_drag_icon
+    handle: Weak<Cell<bool>>
 }
 
 #[derive(Debug, Clone)]
@@ -103,6 +99,7 @@ impl Hash for DragIconHandle {
 }
 
 impl DragIconHandle {
+    #[allow(unused)]
     pub(crate) unsafe fn from_ptr(drag_icon: *mut wlr_drag_icon) -> Self {
         if drag_icon.is_null() {
             panic!("drag icon was null");

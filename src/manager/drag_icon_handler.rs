@@ -4,7 +4,7 @@ use libc;
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use compositor::{compositor_handle};
-use {SurfaceHandle, CompositorHandle, DragIcon, DragIconHandle};
+use {CompositorHandle, DragIcon, DragIconHandle};
 
 /// Handles events from the wlr drag icon
 pub trait DragIconHandler {
@@ -19,7 +19,7 @@ pub trait DragIconHandler {
 }
 
 wayland_listener!(DragIconListener, (DragIcon, Box<DragIconHandler>), [
-    destroy_listener => destroy_notify: |this: &mut DragIconListener, data: *mut libc::c_void,| unsafe {
+    destroy_listener => destroy_notify: |this: &mut DragIconListener, _data: *mut libc::c_void,| unsafe {
         {
             let (ref drag_icon, ref mut handler) = this.data;
             let compositor = match compositor_handle() {
@@ -30,7 +30,7 @@ wayland_listener!(DragIconListener, (DragIcon, Box<DragIconHandler>), [
         }
         Box::from_raw(this);
     };
-    map_listener => map_notify: |this: &mut DragIconListener, data: *mut libc::c_void,| unsafe {
+    map_listener => map_notify: |this: &mut DragIconListener, _data: *mut libc::c_void,| unsafe {
         let (ref drag_icon, ref mut handler) = this.data;
         let compositor = match compositor_handle() {
             Some(handle) => handle,
@@ -38,7 +38,7 @@ wayland_listener!(DragIconListener, (DragIcon, Box<DragIconHandler>), [
         };
         handler.on_map(compositor, drag_icon.weak_reference());
     };
-    unmap_listener => unmap_notify: |this: &mut DragIconListener, data: *mut libc::c_void,| unsafe {
+    unmap_listener => unmap_notify: |this: &mut DragIconListener, _data: *mut libc::c_void,| unsafe {
         let (ref drag_icon, ref mut handler) = this.data;
         let compositor = match compositor_handle() {
             Some(handle) => handle,
