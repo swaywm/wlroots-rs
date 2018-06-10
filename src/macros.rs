@@ -261,3 +261,130 @@ macro_rules! with_handles {
         }).and_then(|n: $crate::HandleResult<_>| n)
     };
 }
+
+/// An even more convenient macro for use with Handle types.
+///
+/// This allows you to avoid rightward drift from having handles nested inside
+/// each other.
+///
+/// Any `HandleResult`s are flattened and the first one encountered is immediantly
+/// returned.
+///
+/// Note that unlike `with_handles` it is possible for some of the code to execute
+/// before a `HandleErr` is returned. At each @ line there's the possibility
+/// it will return an Error early.
+///
+/// To make this more clear, it is mandated that a ? is appended to each of these lines.
+///
+/// Here is some code using `with_handles`:
+///
+/// ```no_run,no_run,ignore
+/// with_handles!([(compositor: {compositor})] => {
+///     let state: &mut State = compositor.into();
+///     with_handles!([(shell: {&state.shell_handle})] => {
+///         // Do stuff with shell
+///     }).unwrap();
+/// }).unwrap();
+/// ```
+///
+/// Here is that some code using `dehandle!`
+/// ```no_run,no_run,ignore
+///dehandle!(
+///    @compositor = {compositor_handle}?;
+///    let state: &mut State = compositor.into()
+///    @shell = {&state.shell_handle}?;
+///    // do stuff with shell
+///).unwrap().unwrap();
+///```
+///
+///
+/// Now here is that same code in dehandle! but this time without the ? error handling:
+/// ```no_run,no_run,ignore
+///dehandle!(
+///    @compositor = {compositor_handle};
+///    let state: &mut State = compositor.into()
+///    @shell = {&state.shell_handle};
+///    // do stuff with shell
+///);
+///```
+///
+/// If an error occurs in the `@` lines with out the `?` it will panic with
+/// an ok-ish stacktrace and an error message pointing out exactly which one
+/// failed (e.g. it would say unwrapping `{&state.shell_handle}` and
+/// placing the result in `shell` failed)
+#[macro_export]
+macro_rules! dehandle {
+    // Handles going into an extra scope
+    ({$($b: tt)*}) => {
+        #[allow(unused_must_use)]
+        {dehandle!($($b)*)}
+    };
+    // Handles going into an extra scope with more things after it
+    ({$($b: tt)*} $($rest: tt)*) => {{
+        #[allow(unused_must_use)]
+        {dehandle!($($b)*)};
+        dehandle!($($rest)*)
+    }};
+    // While loop, nothing after it
+    (while $_: expr => {$($b: tt)*}) => {{
+        #[allow(unused_must_use)]
+        while $_ {
+            dehandle!($($b)*);
+        }
+    }};
+    // While loop, more stuff after it
+    (while $_: expr => {$($b: tt)*} $($rest: tt)*) => {{
+        #[allow(unused_must_use)]
+        while $_ {
+            dehandle!($($b)*);
+        }
+        dehandle!($($rest)*)
+    }};
+
+    // For loop, nothing after it
+    (for $_: pat in $__: expr => {$($b: tt)*}) => {{
+        #[allow(unused_must_use)]
+        for $_ in $__ {
+            dehandle!($($b)*);
+        }
+    }};
+    // For loop, more stuff after it
+    (for $_: pat in $__: expr => {$($b: tt)*} $($rest: tt)*) => {{
+        #[allow(unused_must_use)]
+        for $_ in $__ {
+            dehandle!($($b)*);
+        }
+        dehandle!($($rest)*)
+    }};
+    // @unhandle = {handle};
+    // This one will automatically unwrap the result.
+    (@$handle_name: ident = $unhandle_name: block; $($rest: tt)+) => {
+        with_handles!([($handle_name: $unhandle_name)] => {
+            dehandle!($($rest)+)
+        }).expect(concat!("Could not upgrade ", stringify!(unhandle_name), " and set the result to ", stringify!(handle_name)));
+    };
+    // @unhandle = {handle}?;
+    (@$handle_name: ident = $unhandle_name: block?; $($rest: tt)+) => {
+        with_handles!([($handle_name: $unhandle_name)] => {
+            dehandle!($($rest)+)
+        })
+    };
+    // General expressions
+    ($line: expr; $($rest: tt)*) => {
+        {
+            $line;
+            dehandle!($($rest)*)
+        }
+    };
+    // General lines
+    ($line: stmt; $($rest: tt)*) => {
+        {
+            $line;
+            dehandle!($($rest)*)
+        }
+    };
+    // Result of the dehandle block
+    ($line: expr) => {
+        $line
+    };
+}
