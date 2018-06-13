@@ -1,6 +1,7 @@
-use libc::{int16_t, uint16_t, uint32_t};
+use libc::{int16_t, uint16_t};
 use wlroots_sys::{wlr_xwayland_move_event, wlr_xwayland_resize_event,
                   wlr_xwayland_surface_configure_event};
+use utils::Edges;
 
 use XWaylandSurfaceHandle;
 
@@ -84,7 +85,13 @@ impl ResizeEvent {
     }
 
     /// Get the resize edge information for the resize action.
-    pub fn edges(&self) -> uint32_t {
-        unsafe { (*self.event).edges }
+    pub fn edges(&self) -> Edges {
+        unsafe {
+            let edges_bits = (*self.event).edges;
+            match Edges::from_bits(edges_bits) {
+                Some(edges) => edges,
+                None => panic!("got invalid edges: {}", edges_bits)
+            }
+        }
     }
 }

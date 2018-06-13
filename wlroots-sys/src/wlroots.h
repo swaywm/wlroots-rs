@@ -46,6 +46,7 @@
 
 /// Util includes
 #include <wlr/util/log.h>
+#include <wlr/util/edges.h>
 
 /// Misc includes
 #include <xcursor.h>
