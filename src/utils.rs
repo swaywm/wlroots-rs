@@ -120,3 +120,16 @@ pub fn current_time() -> Duration {
         Duration::new(ts.tv_sec as u64, ts.tv_nsec as u32)
     }
 }
+
+extern crate bitflags;
+use wlroots_sys::{wlr_edges};
+
+bitflags! {
+    pub struct Edges: u32 {
+        const WLR_EDGE_NONE = wlr_edges::WLR_EDGE_NONE as u32;
+        const WLR_EDGE_TOP = wlr_edges::WLR_EDGE_TOP as u32;
+        const WLR_EDGE_BOTTOM = wlr_edges::WLR_EDGE_BOTTOM as u32;
+        const WLR_EDGE_LEFT = wlr_edges::WLR_EDGE_LEFT as u32;
+        const WLR_EDGE_RIGHT = wlr_edges::WLR_EDGE_RIGHT as u32;
+    }
+}

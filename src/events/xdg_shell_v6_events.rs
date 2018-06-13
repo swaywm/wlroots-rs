@@ -5,6 +5,7 @@ use wlroots_sys::{wlr_xdg_toplevel_v6_move_event, wlr_xdg_toplevel_v6_resize_eve
                   wlr_xdg_toplevel_v6_show_window_menu_event};
 
 use {OutputHandle, XdgV6ShellSurfaceHandle};
+use utils::Edges;
 
 /// Event that triggers when the surface has been moved in coordinate space.
 #[derive(Debug, PartialEq, Eq)]
@@ -64,8 +65,14 @@ impl ResizeEvent {
         unsafe { (*self.event).serial }
     }
 
-    pub fn edges(&self) -> u32 {
-        unsafe { (*self.event).edges }
+    pub fn edges(&self) -> Edges {
+        unsafe {
+            let edges_bits = (*self.event).edges;
+            match Edges::from_bits(edges_bits) {
+                Some(edges) => edges,
+                None => panic!("got invalid edges: {}", edges_bits)
+            }
+        }
     }
 }
 

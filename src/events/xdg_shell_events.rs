@@ -3,6 +3,7 @@
 use wlroots_sys::{wlr_xdg_toplevel_move_event, wlr_xdg_toplevel_resize_event,
                   wlr_xdg_toplevel_set_fullscreen_event,
                   wlr_xdg_toplevel_show_window_menu_event};
+use utils::Edges;
 
 use {OutputHandle, XdgShellSurfaceHandle};
 
@@ -64,8 +65,14 @@ impl ResizeEvent {
         unsafe { (*self.event).serial }
     }
 
-    pub fn edges(&self) -> u32 {
-        unsafe { (*self.event).edges }
+    pub fn edges(&self) -> Edges {
+        unsafe {
+            let edges_bits = (*self.event).edges;
+            match Edges::from_bits(edges_bits) {
+                Some(edges) => edges,
+                None => panic!("got invalid edges: {}", edges_bits)
+            }
+        }
     }
 }
 
