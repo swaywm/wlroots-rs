@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use libc::{clock_gettime, CLOCK_MONOTONIC, timespec};
 
-use wlroots_sys::{__va_list_tag, log_importance_t, wlr_log_init};
+use wlroots_sys::{__va_list_tag, log_importance_t, wlr_log_init, wlr_edges};
 pub use wlroots_sys::log_importance_t::*;
 
 static mut RUST_LOGGING_FN: LogCallback = dummy_callback;
@@ -120,9 +120,6 @@ pub fn current_time() -> Duration {
         Duration::new(ts.tv_sec as u64, ts.tv_nsec as u32)
     }
 }
-
-extern crate bitflags;
-use wlroots_sys::{wlr_edges};
 
 bitflags! {
     pub struct Edges: u32 {
