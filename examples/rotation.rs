@@ -33,7 +33,7 @@ impl Iterator for StepRange {
 }
 
 struct CompositorState {
-    cat_texture: Option<Texture>,
+    cat_texture: Option<Texture<'static>>,
     rotation: wl_output_transform,
     last_frame: Instant,
     x_offs: f32,

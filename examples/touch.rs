@@ -21,7 +21,7 @@ struct TouchPoint {
 }
 
 struct State {
-    cat_texture: Option<Texture>,
+    cat_texture: Option<Texture<'static>>,
     touch_points: Vec<TouchPoint>
 }
 
