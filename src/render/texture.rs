@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use libc::c_int;
 use wlroots_sys::{wl_shm_format, wlr_texture, wlr_texture_get_size};
 
@@ -73,14 +75,19 @@ impl Into<wl_shm_format> for TextureFormat {
     }
 }
 
-#[derive(Debug)]
-pub struct Texture {
-    texture: *mut wlr_texture
+#[derive(Debug, Eq, PartialEq, Hash)]
+/// A wrapper for a wlr_texture.
+///
+/// For textures created from `GenericRenderer::create_texture_from_pixels`, the lifetime
+/// will be `'static` because the memory will be owned by the user.
+pub struct Texture<'surface> {
+    texture: *mut wlr_texture,
+    phantom: PhantomData<&'surface ()>
 }
 
-impl Texture {
-    pub(crate) unsafe fn from_ptr(texture: *mut wlr_texture) -> Self {
-        Texture { texture }
+impl <'surface> Texture<'surface> {
+    pub(crate) unsafe fn from_ptr<'unbound>(texture: *mut wlr_texture) -> Texture<'unbound> {
+        Texture { texture, phantom: PhantomData }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_texture {
