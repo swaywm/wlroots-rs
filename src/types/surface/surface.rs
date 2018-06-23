@@ -202,7 +202,7 @@ impl Surface {
     }
 
     /// Get the texture of this surface.
-    pub fn texture(&self) -> Texture {
+    pub fn texture<'surface>(&'surface self) -> Texture<'surface> {
         unsafe { Texture::from_ptr((*self.surface).texture) }
     }
 

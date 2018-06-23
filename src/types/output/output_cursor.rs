@@ -125,7 +125,7 @@ impl OutputCursor {
 
     /// Gets the texture for the cursor, if a software cursor is used without a
     /// surface.
-    pub fn texture(&self) -> Option<Texture> {
+    pub fn texture<'surface>(&'surface self) -> Option<Texture<'surface>> {
         unsafe {
             let texture = (*self.cursor).texture;
             if texture.is_null() {

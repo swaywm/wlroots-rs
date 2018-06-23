@@ -10,7 +10,7 @@ use wlroots_sys::{wl_shm_format, wlr_backend, wlr_backend_get_renderer,
                   wlr_render_ellipse_with_matrix, wlr_render_quad_with_matrix, wlr_render_rect,
                   wlr_render_texture, wlr_render_texture_with_matrix, wlr_renderer,
                   wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
-                  wlr_texture_from_pixels};
+                  wlr_texture_from_pixels, wlr_texture_destroy};
 
 /// A generic interface for rendering to the screen.
 ///
@@ -43,6 +43,15 @@ impl GenericRenderer {
         GenericRenderer { renderer }
     }
 
+    /// Drops a texture that was created explicitly through the renderer.
+    ///
+    /// This must be done before rendering has begun, which is why this is here.
+    pub fn drop_texture(&self, texture: Texture<'static>) {
+        unsafe {
+            wlr_texture_destroy(texture.as_ptr());
+        }
+    }
+
     /// Make the `Renderer` state machine type.
     ///
     /// This automatically makes the given output the current output.
@@ -69,7 +78,7 @@ impl GenericRenderer {
                                       width: u32,
                                       height: u32,
                                       data: &[u8])
-                                      -> Option<Texture> {
+                                      -> Option<Texture<'static>> {
         unsafe {
             create_texture_from_pixels(self.renderer,
                                        format,
@@ -99,7 +108,7 @@ impl<'output> Renderer<'output> {
                                       width: u32,
                                       height: u32,
                                       data: &[u8])
-                                      -> Option<Texture> {
+                                      -> Option<Texture<'static>> {
         unsafe {
             create_texture_from_pixels(self.renderer,
                                        format,
@@ -190,7 +199,7 @@ unsafe fn create_texture_from_pixels(renderer: *mut wlr_renderer,
                                      height: u32,
                                      // TODO Slice of u8? It's a void*, hmm
                                      data: *const c_void)
-                                     -> Option<Texture> {
+                                     -> Option<Texture<'static>> {
     let texture = wlr_texture_from_pixels(renderer, format, stride, width, height, data);
     if texture.is_null() {
         None
