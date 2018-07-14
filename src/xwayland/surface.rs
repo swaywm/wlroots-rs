@@ -571,7 +571,7 @@ impl XWaylandSurfaceHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running XWaylandSurface callback, \
                                                     mutable lock was false for: {:?}",
                                                    wl_shell_surface);

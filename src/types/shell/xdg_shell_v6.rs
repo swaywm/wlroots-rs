@@ -291,7 +291,7 @@ impl XdgV6ShellSurfaceHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running XdgV6ShellSurface callback, \
                                                     mutable lock was false for: {:?}",
                                                    xdg_surface);

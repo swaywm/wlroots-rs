@@ -6,7 +6,7 @@ use wlroots::{CompositorBuilder, CompositorHandle, InputManagerHandler, Keyboard
               OutputManagerHandler, Texture, TextureFormat, TouchHandle, TouchHandler};
 use wlroots::key_events::KeyEvent;
 use wlroots::touch_events::{DownEvent, MotionEvent, UpEvent};
-use wlroots::utils::{init_logging, L_DEBUG};
+use wlroots::utils::{init_logging, WLR_DEBUG};
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 const CAT_WIDTH: u32 = 128;
@@ -92,7 +92,7 @@ impl TouchHandler for TouchHandlerEx {
             let point = TouchPoint { touch_id: event.touch_id(),
                                     x: x,
                                     y: y };
-            wlr_log!(L_ERROR, "New touch point at {:?}", point);
+            wlr_log!(WLR_ERROR, "New touch point at {:?}", point);
             state.touch_points.push(point)
         }).unwrap();
     }
@@ -100,7 +100,7 @@ impl TouchHandler for TouchHandlerEx {
     fn on_up(&mut self, compositor: CompositorHandle, _: TouchHandle, event: &UpEvent) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
-            wlr_log!(L_ERROR,
+            wlr_log!(WLR_ERROR,
                     "Removing {:?} from {:#?}",
                     event.touch_id(),
                     state.touch_points);
@@ -118,7 +118,7 @@ impl TouchHandler for TouchHandlerEx {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let (x, y) = event.location();
-            wlr_log!(L_ERROR, "New location: {:?}", (x, y));
+            wlr_log!(WLR_ERROR, "New location: {:?}", (x, y));
             for touch_point in &mut state.touch_points {
                 if touch_point.touch_id == event.touch_id() {
                     touch_point.x = x;
@@ -143,7 +143,7 @@ impl InputManagerHandler for InputManager {
 }
 
 fn main() {
-    init_logging(L_DEBUG, None);
+    init_logging(WLR_DEBUG, None);
     let mut compositor = CompositorBuilder::new().gles2(true)
                                                  .input_manager(Box::new(InputManager))
                                                  .output_manager(Box::new(OutputManager))

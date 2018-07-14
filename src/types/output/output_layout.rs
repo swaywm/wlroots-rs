@@ -211,7 +211,7 @@ impl OutputLayout {
             let layout_handle = self.weak_reference();
             output.set_output_layout(Some(layout_handle));
             wlr_output_layout_add_auto(self.data.0, output.as_ptr());
-            wlr_log!(L_DEBUG, "Added {:?} to {:?}", output, self);
+            wlr_log!(WLR_DEBUG, "Added {:?} to {:?}", output, self);
         }
     }
 
@@ -293,7 +293,7 @@ impl OutputLayout {
     ///
     /// If the output was not in the layout, does nothing.
     pub fn remove(&mut self, output: &mut Output) {
-        wlr_log!(L_DEBUG, "Removing {:?} from {:?}", output, self);
+        wlr_log!(WLR_DEBUG, "Removing {:?} from {:?}", output, self);
         unsafe {
             output.clear_output_layout_data();
             wlr_output_layout_remove(self.data.0, output.as_ptr());
@@ -419,7 +419,7 @@ impl OutputLayoutHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running OutputLayout callback, mutable \
                                                     lock was false for: {:?}",
                                                    output_layout);

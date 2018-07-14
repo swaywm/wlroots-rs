@@ -27,7 +27,7 @@ wayland_listener!(XdgV6ShellManager, Box<XdgV6ShellManagerHandler>, [
             Some(handle) => handle,
             None => return
         };
-        wlr_log!(L_DEBUG, "New xdg_shell_v6_surface request {:p}", data);
+        wlr_log!(WLR_DEBUG, "New xdg_shell_v6_surface request {:p}", data);
         let state = unsafe {
             match (*data).role {
                 WLR_XDG_SURFACE_V6_ROLE_NONE => None,

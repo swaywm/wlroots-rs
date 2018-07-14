@@ -202,13 +202,13 @@ impl Keyboard {
 impl Drop for Keyboard {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) == 1 {
-            wlr_log!(L_DEBUG, "Dropped Keyboard {:p}", self.keyboard);
+            wlr_log!(WLR_DEBUG, "Dropped Keyboard {:p}", self.keyboard);
             unsafe {
                 let _ = Box::from_raw((*self.keyboard).data as *mut InputState);
             }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
-                wlr_log!(L_DEBUG,
+                wlr_log!(WLR_DEBUG,
                          "Still {} weak pointers to Keyboard {:p}",
                          weak_count,
                          self.keyboard);
@@ -298,7 +298,7 @@ impl KeyboardHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running keyboard callback, mutable \
                                                     lock was false for: {:?}",
                                                    keyboard);

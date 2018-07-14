@@ -8,7 +8,7 @@ use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_surface,
                   wlr_surface_has_buffer, wlr_surface_point_accepts_input, wlr_surface_send_enter,
                   wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_surface_at,
-                  wlr_surface_is_xdg_surface};
+                  wlr_surface_is_xdg_surface, wlr_surface_get_texture};
 
 use super::{Subsurface, SubsurfaceHandle, SubsurfaceHandler, SubsurfaceManager, SurfaceState,
             InternalSubsurface};
@@ -202,13 +202,23 @@ impl Surface {
     }
 
     /// Get the texture of this surface.
-    pub fn texture<'surface>(&'surface self) -> Texture<'surface> {
-        unsafe { Texture::from_ptr((*self.surface).texture) }
+    ///
+    /// Returns None if no buffer is currently attached or if something went
+    /// wrong with uploading the buffer.
+    pub fn texture<'surface>(&'surface self) -> Option<Texture<'surface>> {
+        unsafe {
+            let texture_ptr = wlr_surface_get_texture(self.surface);
+            if texture_ptr.is_null() {
+                None
+            } else {
+                Some(Texture::from_ptr(texture_ptr))
+            }
+        }
     }
 
     /// Get the lifetime bound role (if one exists) for this surface.
     pub fn role(&self) -> Option<String> {
-        unsafe { c_to_rust_string((*self.surface).role) }
+        unsafe { c_to_rust_string((*(*self.surface).role).name) }
     }
 
     /// Whether or not this surface currently has an attached buffer.
@@ -290,7 +300,7 @@ impl Surface {
 
     /// Get the matrix used to convert the internal byte buffer to use in the
     /// surface.
-    pub fn buffer_to_surface_matrix(&self) -> [f32; 9] {
+    /*pub fn buffer_to_surface_matrix(&self) -> [f32; 9] {
         unsafe { (*self.surface).buffer_to_surface_matrix }
     }
 
@@ -299,6 +309,7 @@ impl Surface {
     pub fn surface_to_buffer_matrix(&self) -> [f32; 9] {
         unsafe { (*self.surface).surface_to_buffer_matrix }
     }
+    */
 
     /// Creates a weak reference to a `Surface`.
     ///
@@ -398,7 +409,7 @@ impl SurfaceHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running surface callback, mutable lock \
                                                     was false for: {:?}",
                                                    surface);
@@ -424,10 +435,10 @@ impl Drop for Surface {
         if Rc::strong_count(&self.liveliness) != 1 {
             return
         }
-        wlr_log!(L_DEBUG, "Dropped surface {:p}", self.surface);
+        wlr_log!(WLR_DEBUG, "Dropped surface {:p}", self.surface);
         let weak_count = Rc::weak_count(&self.liveliness);
         if weak_count > 0 {
-            wlr_log!(L_DEBUG,
+            wlr_log!(WLR_DEBUG,
                      "Still {} weak pointers to Surface {:p}",
                      weak_count,
                      self.surface);

@@ -49,14 +49,14 @@ macro_rules! c_str {
 /// Possible values for `verb`:
 ///
 /// * L_SILENT
-/// * L_INFO
-/// * L_DEBUG
-/// * L_ERROR
+/// * WLR_INFO
+/// * WLR_DEBUG
+/// * WLR_ERROR
 #[macro_export]
 macro_rules! wlr_log {
     ($verb: expr, $($msg:tt)*) => {{
         use $crate::wlroots_sys::_wlr_log;
-        use $crate::wlroots_sys::log_importance_t::*;
+        use $crate::wlroots_sys::wlr_log_importance::*;
         use ::std::ffi::CString;
         unsafe {
             let fmt = CString::new(format!($($msg)*))
@@ -202,7 +202,7 @@ macro_rules! compositor_data {
             fn from(compositor: &'a mut $crate::Compositor) -> &'a mut $struct_name {
                 &mut *compositor.data.downcast_mut::<$struct_name>()
                     .unwrap_or_else(|| {
-                        wlr_log!(L_ERROR, "Could not cast compositor state to {:#?}",
+                        wlr_log!(WLR_ERROR, "Could not cast compositor state to {:#?}",
                                  stringify!($struct_name));
                         panic!("Could not cast compositor state to correct value")
                     })

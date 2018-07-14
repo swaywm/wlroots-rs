@@ -96,7 +96,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
                     let mut keyboard = match Keyboard::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
-                            wlr_log!(L_ERROR, "Device {:#?} was not a keyboard!", dev);
+                            wlr_log!(WLR_ERROR, "Device {:#?} was not a keyboard!", dev);
                             abort()
                         }
                     };
@@ -124,7 +124,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
                     let pointer = match Pointer::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
-                            wlr_log!(L_ERROR, "Device {:#?} was not a pointer!", dev);
+                            wlr_log!(WLR_ERROR, "Device {:#?} was not a pointer!", dev);
                             abort()
                         }
                     };
@@ -150,7 +150,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
                     let touch = match Touch::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
-                            wlr_log!(L_ERROR, "Device {:#?} was not a touch", dev);
+                            wlr_log!(WLR_ERROR, "Device {:#?} was not a touch", dev);
                             abort()
                         }
                     };
@@ -175,7 +175,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
                     let tablet_tool = match TabletTool::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
-                            wlr_log!(L_ERROR, "Device {:#?}, was not a tablet tool", dev);
+                            wlr_log!(WLR_ERROR, "Device {:#?}, was not a tablet tool", dev);
                             abort()
                         }
                     };
@@ -202,7 +202,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
                     let tablet_pad = match TabletPad::new_from_input_device(data) {
                         Some(dev) => dev,
                         None => {
-                            wlr_log!(L_ERROR, "Device {:#?}, was not a tablet pad", dev);
+                            wlr_log!(WLR_ERROR, "Device {:#?}, was not a tablet pad", dev);
                             abort()
                         }
                     };
@@ -247,11 +247,11 @@ pub(crate) unsafe fn add_keyboard(dev: &mut InputDevice) {
     let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT").unwrap_or("".into()));
     let variant = safe_as_cstring(env::var("XKB_DEFAULT_VARIANT").unwrap_or("".into()));
     let options = safe_as_cstring(env::var("XKB_DEFAULT_OPTIONS").unwrap_or("".into()));
-    wlr_log!(L_DEBUG, "Using xkb rules: {:?}", rules);
-    wlr_log!(L_DEBUG, "Using xkb model: {:?}", model);
-    wlr_log!(L_DEBUG, "Using xkb layout: {:?}", layout);
-    wlr_log!(L_DEBUG, "Using xkb variant: {:?}", variant);
-    wlr_log!(L_DEBUG, "Using xkb options: {:?}", options);
+    wlr_log!(WLR_DEBUG, "Using xkb rules: {:?}", rules);
+    wlr_log!(WLR_DEBUG, "Using xkb model: {:?}", model);
+    wlr_log!(WLR_DEBUG, "Using xkb layout: {:?}", layout);
+    wlr_log!(WLR_DEBUG, "Using xkb variant: {:?}", variant);
+    wlr_log!(WLR_DEBUG, "Using xkb options: {:?}", options);
     let rules = xkb_rule_names { rules: rules.into_raw(),
                                  model: model.into_raw(),
                                  layout: layout.into_raw(),

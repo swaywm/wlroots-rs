@@ -274,7 +274,7 @@ wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
                           listener.unmap_listener() as _);
             Box::into_raw(listener);
         }
-        wlr_log!(L_DEBUG, "New drag icon request {:p}", data);
+        wlr_log!(WLR_DEBUG, "New drag icon request {:p}", data);
     };
     destroy_listener => destroy_notify: |this: &mut Seat, _event: *mut libc::c_void,|
     unsafe {
@@ -895,7 +895,7 @@ impl SeatHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running seat callback, mutable lock \
                                                     was false for {:p}",
                                                    seat_ptr);

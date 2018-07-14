@@ -81,7 +81,7 @@ impl Subsurface {
     /// Get the cached state of the sub surface.
     pub fn cached_state<'surface>(&'surface self) -> Option<SurfaceState<'surface>> {
         unsafe {
-            if (*self.subsurface).cached.is_null() {
+            if (*self.subsurface).has_cache {
                 None
             } else {
                 Some(SurfaceState::new((*self.subsurface).cached))
@@ -182,7 +182,7 @@ impl SubsurfaceHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running subsurface callback, mutable \
                                                     lock was false for: {:?}",
                                                    subsurface);

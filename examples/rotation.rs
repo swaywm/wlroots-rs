@@ -9,7 +9,7 @@ use wlroots::{CompositorBuilder, CompositorHandle, InputManagerHandler, Keyboard
               OutputManagerHandler};
 use wlroots::key_events::KeyEvent;
 use wlroots::render::{Texture, TextureFormat};
-use wlroots::utils::{init_logging, L_DEBUG};
+use wlroots::utils::{init_logging, WLR_DEBUG};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
 
@@ -149,7 +149,7 @@ fn update_velocities(compositor: &mut CompositorState, x_diff: f32, y_diff: f32)
 }
 
 fn main() {
-    init_logging(L_DEBUG, None);
+    init_logging(WLR_DEBUG, None);
     use wl_output_transform::*;
     let mut args = env::args();
     args.next();

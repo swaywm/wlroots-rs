@@ -102,13 +102,13 @@ impl Touch {
 impl Drop for Touch {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) == 1 {
-            wlr_log!(L_DEBUG, "Dropped Touch {:p}", self.touch);
+            wlr_log!(WLR_DEBUG, "Dropped Touch {:p}", self.touch);
             unsafe {
                 let _ = Box::from_raw((*self.touch).data as *mut InputDevice);
             }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
-                wlr_log!(L_DEBUG,
+                wlr_log!(WLR_DEBUG,
                          "Still {} weak pointers to Touch {:p}",
                          weak_count,
                          self.touch);
@@ -167,7 +167,7 @@ impl TouchHandle {
             .and_then(|check| {
                 let touch = Touch::from_handle(self)?;
                 if check.get() {
-                    wlr_log!(L_ERROR, "Double mutable borrows on {:?}", touch);
+                    wlr_log!(WLR_ERROR, "Double mutable borrows on {:?}", touch);
                     panic!("Double mutable borrows detected");
                 }
                 check.set(true);
@@ -199,7 +199,7 @@ impl TouchHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running touch callback, mutable lock \
                                                     was false for: {:?}",
                                                    touch);

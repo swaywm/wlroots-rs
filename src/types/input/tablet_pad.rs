@@ -98,13 +98,13 @@ impl Drop for TabletPad {
         if Rc::strong_count(&self.liveliness) != 1 {
             return
         }
-        wlr_log!(L_DEBUG, "Dropped TabletPad {:p}", self.pad);
+        wlr_log!(WLR_DEBUG, "Dropped TabletPad {:p}", self.pad);
         unsafe {
             let _ = Box::from_raw((*self.pad).data as *mut InputState);
         }
         let weak_count = Rc::weak_count(&self.liveliness);
         if weak_count > 0 {
-            wlr_log!(L_DEBUG,
+            wlr_log!(WLR_DEBUG,
                      "Still {} weak pointers to TabletPad {:p}",
                      weak_count,
                      self.pad);
@@ -193,7 +193,7 @@ impl TabletPadHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running tablet tool callback, mutable \
                                                     lock was false for: {:?}",
                                                    pad);

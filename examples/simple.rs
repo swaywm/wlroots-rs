@@ -7,7 +7,7 @@ use wlroots::{CompositorBuilder, CompositorHandle, InputManagerHandler, Keyboard
               KeyboardHandler, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
               OutputManagerHandler};
 use wlroots::key_events::KeyEvent;
-use wlroots::utils::{init_logging, L_DEBUG};
+use wlroots::utils::{init_logging, WLR_DEBUG};
 use wlroots::wlroots_sys::gl;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
@@ -26,7 +26,7 @@ impl KeyboardHandler for ExKeyboardHandler {
     fn on_key(&mut self, _: CompositorHandle, keyboard: KeyboardHandle, key_event: &KeyEvent) {
         let keys = key_event.pressed_keys();
         with_handles!([(keyboard: {keyboard})] => {
-            wlr_log!(L_DEBUG,
+            wlr_log!(WLR_DEBUG,
                      "Got key event. Keys: {:?}. Modifiers: {}",
                      keys,
                      keyboard.get_modifiers());
@@ -89,7 +89,7 @@ impl OutputHandler for ExOutput {
 }
 
 fn main() {
-    init_logging(L_DEBUG, None);
+    init_logging(WLR_DEBUG, None);
     CompositorBuilder::new().input_manager(Box::new(InputManager))
                             .output_manager(Box::new(OutputManager))
                             .build_auto(())

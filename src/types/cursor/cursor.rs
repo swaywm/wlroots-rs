@@ -492,7 +492,7 @@ impl Cursor {
             None => unsafe { wlr_cursor_map_to_output(self.data.0, ptr::null_mut()) },
             Some(output) => {
                 if !self.output_in_output_layout(output.weak_reference()) {
-                    wlr_log!(L_ERROR, "Tried to map output not in the OutputLayout");
+                    wlr_log!(WLR_ERROR, "Tried to map output not in the OutputLayout");
                     return
                 }
                 unsafe { wlr_cursor_map_to_output(self.data.0, output.as_ptr()) }
@@ -519,7 +519,7 @@ impl Cursor {
             },
             Some(output) => {
                 if !self.output_in_output_layout(output.weak_reference()) {
-                    wlr_log!(L_ERROR,
+                    wlr_log!(WLR_ERROR,
                              "Tried to map input to an output not in the OutputLayout");
                     return
                 }
@@ -603,7 +603,7 @@ impl Cursor {
 
 impl Drop for Cursor {
     fn drop(&mut self) {
-        wlr_log!(L_DEBUG, "Dropped {:?}", self);
+        wlr_log!(WLR_DEBUG, "Dropped {:?}", self);
         let cursor_ptr = self.data.0;
         unsafe {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
@@ -711,7 +711,7 @@ impl CursorHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running cursor callback, mutable lock \
                                                     was false for {:p}",
                                                    cursor_ptr);

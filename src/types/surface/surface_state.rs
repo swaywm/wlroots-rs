@@ -35,7 +35,7 @@ pub enum InvalidState {
 /// Surface state as reported by wlroots.
 #[derive(Debug)]
 pub struct SurfaceState<'surface> {
-    state: *mut wlr_surface_state,
+    state: wlr_surface_state,
     phantom: PhantomData<&'surface Surface>
 }
 
@@ -45,7 +45,7 @@ impl<'surface> SurfaceState<'surface> {
     /// # Safety
     /// Since we rely on the surface providing a valid surface state,
     /// this function is marked unsafe.
-    pub(crate) unsafe fn new(state: *mut wlr_surface_state) -> SurfaceState<'surface> {
+    pub(crate) unsafe fn new(state: wlr_surface_state) -> SurfaceState<'surface> {
         SurfaceState { state,
                        phantom: PhantomData }
     }
@@ -54,10 +54,10 @@ impl<'surface> SurfaceState<'surface> {
     ///
     /// # Panics
     /// If the invalid state is in an undefined state, this will panic.
-    pub fn invalid(&self) -> InvalidState {
+    pub fn committed(&self) -> InvalidState {
         use InvalidState::*;
         unsafe {
-            match (*self.state).invalid {
+            match self.state.committed {
                 1 => Buffer,
                 2 => SurfaceDamage,
                 4 => BufferDamage,
@@ -68,69 +68,62 @@ impl<'surface> SurfaceState<'surface> {
                 128 => SubsurfacePosition,
                 256 => FrameCallbackList,
                 invalid => {
-                    wlr_log!(L_ERROR, "Invalid invalid state {}", invalid);
+                    wlr_log!(WLR_ERROR, "Invalid invalid state {}", invalid);
                     panic!("Invalid invalid state in wlr_surface_state")
                 }
             }
         }
     }
 
-    /// Get the position of the surface.
+    /// Get the position of the surface relative to the previous position.
     ///
-    /// Return value is in (sx, sy) format.
+    /// Return value is in (dx, dy) format.
     pub fn position(&self) -> (i32, i32) {
-        unsafe { ((*self.state).sx, (*self.state).sy) }
-    }
-
-    /// Get the position of the subsurface.
-    ///
-    /// Retrun value is in (x, y) format.
-    pub fn subsurface_position(&self) -> (i32, i32) {
-        unsafe { ((*self.state).subsurface_position.x, (*self.state).subsurface_position.y) }
+        unsafe { (self.state.dx, self.state.dy) }
     }
 
     /// Get the size of the sub surface.
     ///
     /// Return value is in (width, height) format.
     pub fn size(&self) -> (c_int, c_int) {
-        unsafe { ((*self.state).width, (*self.state).height) }
+        unsafe { (self.state.width, self.state.height) }
     }
 
     /// Get the size of the buffer.
     ///
     /// Return value is iw (width, height) format.
     pub fn buffer_size(&self) -> (c_int, c_int) {
-        unsafe { ((*self.state).buffer_width, (*self.state).buffer_height) }
+        unsafe { (self.state.buffer_width, self.state.buffer_height) }
     }
 
     /// Get the scale applied to the surface.
     pub fn scale(&self) -> i32 {
-        unsafe { (*self.state).scale }
+        unsafe { self.state.scale }
     }
 
     /// Get the output transform applied to the surface.
     pub fn transform(&self) -> wl_output_transform {
-        unsafe { (*self.state).transform }
+        unsafe { self.state.transform }
     }
 
     /// Gets the buffer of the surface.
     pub unsafe fn buffer(&self) -> *mut wl_resource {
-        (*self.state).buffer
+        self.state.buffer_resource
     }
 
     pub unsafe fn surface_damage(&self) -> PixmanRegion {
-        PixmanRegion { region: (*self.state).surface_damage }
+        PixmanRegion { region: self.state.surface_damage }
     }
 
     pub unsafe fn buffer_damage(&self) -> PixmanRegion {
-        PixmanRegion { region: (*self.state).buffer_damage }
+        PixmanRegion { region: self.state.buffer_damage }
     }
 
     pub unsafe fn opaque(&self) -> PixmanRegion {
-        PixmanRegion { region: (*self.state).opaque }
+        PixmanRegion { region: self.state.opaque }
     }
 
     pub unsafe fn input(&self) -> PixmanRegion {
-        PixmanRegion { region: (*self.state).input }
+        PixmanRegion { region: self.state.input }
     }
 }

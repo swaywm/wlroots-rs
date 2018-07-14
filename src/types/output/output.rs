@@ -176,7 +176,7 @@ impl Output {
             let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_list_length, modes as _);
             if length > 0 {
                 // TODO Better logging
-                wlr_log!(L_DEBUG, "output added {:?}", self);
+                wlr_log!(WLR_DEBUG, "output added {:?}", self);
                 let first_mode_ptr: *mut wlr_output_mode;
                 first_mode_ptr =
                     container_of!(&mut (*(*modes).prev) as *mut _, wlr_output_mode, link);
@@ -469,10 +469,10 @@ impl Drop for Output {
         // We do _not_ need to call wlr_output_damage_detroy for the output,
         // that is handled automatically by the listeners in wlroots.
         if Rc::strong_count(&self.liveliness) == 1 {
-            wlr_log!(L_DEBUG, "Dropped output {:p}", self.output);
+            wlr_log!(WLR_DEBUG, "Dropped output {:p}", self.output);
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
-                wlr_log!(L_DEBUG,
+                wlr_log!(WLR_DEBUG,
                          "Still {} weak pointers to Output {:p}",
                          weak_count,
                          self.output);
@@ -560,7 +560,7 @@ impl OutputHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running output callback, mutable lock \
                                                     was false for: {:?}",
                                                    output);

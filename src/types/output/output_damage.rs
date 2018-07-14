@@ -151,7 +151,7 @@ impl OutputDamage {
 
 impl Drop for OutputDamage {
     fn drop(&mut self) {
-        wlr_log!(L_DEBUG, "Dropped OutputDamage {:p}", self.damage);
+        wlr_log!(WLR_DEBUG, "Dropped OutputDamage {:p}", self.damage);
         unsafe {
             wlr_output_damage_destroy(self.damage);
         }

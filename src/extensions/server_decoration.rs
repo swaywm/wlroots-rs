@@ -22,7 +22,7 @@ impl ServerDecorationManager {
     }
 
     pub fn set_default_mode(&mut self, mode: ServerDecorationMode) {
-        wlr_log!(L_INFO, "New server decoration mode: {:?}", mode);
+        wlr_log!(WLR_INFO, "New server decoration mode: {:?}", mode);
         unsafe { wlr_server_decoration_manager_set_default_mode(self.manager, mode.to_raw()) }
     }
 }

@@ -141,7 +141,7 @@ impl DragIconHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running DragIcon callback, \
                                                     mutable lock was false for: {:?}",
                                                    drag_icon);

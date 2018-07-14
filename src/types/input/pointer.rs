@@ -103,13 +103,13 @@ impl Pointer {
 impl Drop for Pointer {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) == 1 {
-            wlr_log!(L_DEBUG, "Dropped Pointer {:p}", self.pointer);
+            wlr_log!(WLR_DEBUG, "Dropped Pointer {:p}", self.pointer);
             unsafe {
                 let _ = Box::from_raw((*self.pointer).data as *mut InputState);
             }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
-                wlr_log!(L_DEBUG,
+                wlr_log!(WLR_DEBUG,
                          "Still {} weak pointers to Pointer {:p}",
                          weak_count,
                          self.pointer);
@@ -168,7 +168,7 @@ impl PointerHandle {
             .and_then(|check| {
                 let pointer = Pointer::from_handle(self)?;
                 if check.get() {
-                    wlr_log!(L_ERROR, "Double mutable borrows on {:?}", pointer);
+                    wlr_log!(WLR_ERROR, "Double mutable borrows on {:?}", pointer);
                     panic!("Double mutable borrows detected");
                 }
                 check.set(true);
@@ -200,7 +200,7 @@ impl PointerHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running pointer callback, mutable lock \
                                                     was false for: {:?}",
                                                    pointer);

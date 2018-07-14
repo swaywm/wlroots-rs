@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use libc::{clock_gettime, CLOCK_MONOTONIC, timespec};
 
-use wlroots_sys::{__va_list_tag, log_importance_t, wlr_log_init, wlr_edges};
-pub use wlroots_sys::log_importance_t::*;
+use wlroots_sys::{__va_list_tag, wlr_log_init, wlr_edges};
+pub use wlroots_sys::wlr_log_importance::{self, *};
 
 static mut RUST_LOGGING_FN: LogCallback = dummy_callback;
 
@@ -17,7 +17,7 @@ static mut RUST_LOGGING_FN: LogCallback = dummy_callback;
 pub type LogCallback = fn(LogVerbosity, String);
 
 /// How verbose you want the logging. Lower levels prints more.
-pub type LogVerbosity = log_importance_t;
+pub type LogVerbosity = wlr_log_importance;
 
 /// Initialize wlroots logging at a certain level of verbosity with
 /// an optional callback that will be called for every log.
@@ -43,7 +43,7 @@ fn dummy_callback(_: LogVerbosity, _: String) {}
 
 /// Real hook into the logging callback, calls the real user-supplied callback
 /// with nice Rust inputs.
-unsafe extern "C" fn log_callback(importance: log_importance_t,
+unsafe extern "C" fn log_callback(importance: wlr_log_importance,
                                   fmt: *const c_char,
                                   _va_list: *mut __va_list_tag) {
     RUST_LOGGING_FN(importance,
@@ -75,7 +75,7 @@ pub fn safe_as_cstring<S>(string: S) -> CString
     match CString::new(string) {
         Ok(string) => string,
         Err(err) => {
-            wlr_log!(L_ERROR,
+            wlr_log!(WLR_ERROR,
                      "Error occured while trying to convert a Rust string to a C string {:?}",
                      err);
             exit(1)

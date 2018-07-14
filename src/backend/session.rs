@@ -52,7 +52,7 @@ impl <'session> Session<'session> {
         unsafe { (*self.session).vtnr }
     }
 
-    pub fn seat(&self) -> [c_char; 8] {
+    pub fn seat(&self) -> [c_char; 256] {
         unsafe { (*self.session).seat }
     }
 

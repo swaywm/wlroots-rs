@@ -13,7 +13,7 @@ use wlroots::{project_box, Area, Capability, CompositorBuilder, CompositorHandle
               XdgV6ShellSurfaceHandle, SurfaceHandler, SurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AbsoluteMotionEvent, ButtonEvent, MotionEvent};
-use wlroots::utils::{init_logging, L_DEBUG, current_time};
+use wlroots::utils::{init_logging, WLR_DEBUG, current_time};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 
@@ -73,7 +73,7 @@ struct SurfaceEx;
 
 impl SurfaceHandler for SurfaceEx {
     fn on_commit(&mut self, _: CompositorHandle, surface: SurfaceHandle) {
-        wlr_log!(L_DEBUG, "Commiting for surface {:?}", surface);
+        wlr_log!(WLR_DEBUG, "Commiting for surface {:?}", surface);
     }
 }
 
@@ -256,7 +256,7 @@ impl InputManagerHandler for InputManager {
 }
 
 fn main() {
-    init_logging(L_DEBUG, None);
+    init_logging(WLR_DEBUG, None);
     let cursor = Cursor::create(Box::new(CursorEx));
     let mut xcursor_manager =
         XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor \
@@ -309,8 +309,9 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                                          0.0,
                                          renderer.output
                                          .transform_matrix());
-                renderer.render_texture_with_matrix(&surface.texture(),
-                                                    matrix);
+                if let Some(texture) = surface.texture().as_ref() {
+                    renderer.render_texture_with_matrix(texture, matrix);
+                }
                 surface.send_frame_done(current_time());
             };
             ()

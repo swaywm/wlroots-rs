@@ -422,7 +422,7 @@ impl CompositorBuilder {
                 panic!("Unable to open wayland socket");
             }
             let socket_name = CStr::from_ptr(socket).to_string_lossy().into_owned();
-            wlr_log!(L_DEBUG,
+            wlr_log!(WLR_DEBUG,
                      "Running compositor on wayland display {}",
                      socket_name);
             env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
@@ -485,7 +485,7 @@ impl Compositor {
                 panic!("A compositor is already running!")
             }
             COMPOSITOR_PTR = compositor.get();
-            wlr_log!(L_INFO, "Starting compositor");
+            wlr_log!(WLR_INFO, "Starting compositor");
             if !wlr_backend_start((*compositor.get()).backend.as_ptr()) {
                 wlr_backend_destroy((*compositor.get()).backend.as_ptr());
                 // NOTE Rationale for panicking:
@@ -598,7 +598,7 @@ impl CompositorHandle {
         self.handle.upgrade().map(|check| {
                                       // Sanity check that it hasn't been tampered with.
                                       if !check.get() {
-                                          wlr_log!(L_ERROR,
+                                          wlr_log!(WLR_ERROR,
                                                    "After running compositor callback, mutable \
                                                     lock was false");
                                           panic!("Compositor lock in incorrect state!");
