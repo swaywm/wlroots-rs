@@ -17,7 +17,7 @@ fn main() {
     let protocol_header_path =
         generate_protocol_headers().expect("Could not generate header files for wayland protocols");
     let target_dir = env::var("OUT_DIR").expect("$OUT_DIR not set!");
-    let generated = bindgen::builder()
+    let mut builder = bindgen::builder()
         .derive_debug(true)
         .derive_default(true)
         .generate_comments(true)
@@ -43,8 +43,11 @@ fn main() {
         .hide_type("FP_INFINITE")
         .hide_type("FP_ZERO")
         .hide_type("FP_SUBNORMAL")
-        .hide_type("FP_NORMAL")
-        .generate().unwrap();
+        .hide_type("FP_NORMAL");
+    if cfg!(feature = "unstable-features") {
+        builder = builder.clang_arg("-DWLR_USE_UNSTABLE");
+    }
+    let generated = builder.generate().unwrap();
 
     println!("cargo:rustc-link-lib=dylib=X11");
     println!("cargo:rustc-link-lib=dylib=X11-xcb");
