@@ -87,7 +87,7 @@ impl InputDevice {
                     InputHandle::Touch(TouchHandle::from_ptr(touch_ptr))
                 },
                 WLR_INPUT_DEVICE_TABLET_TOOL => {
-                    let tablet_tool_ptr = (*self.device).__bindgen_anon_1.tablet_tool;
+                    let tablet_tool_ptr = (*self.device).__bindgen_anon_1.tablet;
                     InputHandle::TabletTool(TabletToolHandle::from_ptr(tablet_tool_ptr))
                 },
                 WLR_INPUT_DEVICE_TABLET_PAD => {

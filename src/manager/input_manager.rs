@@ -184,7 +184,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
                                                                          tablet_tool_handle) {
                         let mut tablet_tool = TabletToolWrapper::new((tablet_tool,
                                                                       tablet_tool_handler));
-                        let tool_ptr = &mut (*dev.dev_union().tablet_tool);
+                        let tool_ptr = &mut (*dev.dev_union().tablet);
                         wl_signal_add(&mut tool_ptr.events.axis as *mut _ as _,
                                       tablet_tool.axis_listener() as *mut _ as _);
                         wl_signal_add(&mut tool_ptr.events.proximity as *mut _ as _,

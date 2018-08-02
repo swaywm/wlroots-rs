@@ -2,7 +2,7 @@
 use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 
 use errors::{HandleErr, HandleResult};
-use wlroots_sys::{wlr_input_device, wlr_tablet_tool};
+use wlroots_sys::{wlr_input_device, wlr_tablet};
 
 use super::input_device::{InputDevice, InputState};
 
@@ -21,7 +21,7 @@ pub struct TabletTool {
     /// The device that refers to this tablet tool.
     device: InputDevice,
     /// Underlying tablet state
-    tool: *mut wlr_tablet_tool
+    tool: *mut wlr_tablet
 }
 
 #[derive(Debug)]
@@ -33,7 +33,7 @@ pub struct TabletToolHandle {
     /// The device that refers to this tablet_tool.
     device: InputDevice,
     /// The underlying tablet state
-    tool: *mut wlr_tablet_tool
+    tool: *mut wlr_tablet
 }
 
 impl TabletTool {
@@ -48,7 +48,7 @@ impl TabletTool {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_TABLET_TOOL => {
-                let tool = (*device).__bindgen_anon_1.tablet_tool;
+                let tool = (*device).__bindgen_anon_1.tablet;
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
                 let state = Box::new(InputState { handle,
@@ -133,8 +133,8 @@ impl TabletToolHandle {
     /// user data to recreate the memory model.
     ///
     /// # Panics
-    /// Panics if the wlr_tablet_tool wasn't allocated using `new_from_input_device`.
-    pub(crate) unsafe fn from_ptr(tool: *mut wlr_tablet_tool) -> Self {
+    /// Panics if the wlr_tablet wasn't allocated using `new_from_input_device`.
+    pub(crate) unsafe fn from_ptr(tool: *mut wlr_tablet) -> Self {
         if (*tool).data.is_null() {
             panic!("Tried to get handle to keyboard that wasn't set up properly");
         }
@@ -215,8 +215,8 @@ impl TabletToolHandle {
         }
     }
 
-    /// Gets the wlr_tablet_tool associated with this TabletToolHandle.
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_tablet_tool {
+    /// Gets the wlr_tablet associated with this TabletToolHandle.
+    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_tablet {
         self.tool
     }
 }
