@@ -1,14 +1,10 @@
 extern crate bindgen;
-extern crate gcc;
-extern crate gl_generator;
 #[cfg(feature = "static")]
 extern crate meson;
 extern crate pkg_config;
 extern crate wayland_scanner;
 
-use gl_generator::{Api, Fallbacks, Profile, Registry, StaticGenerator};
-use std::{env, io};
-use std::fs::{self, File};
+use std::{env, io, fs};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -83,12 +79,6 @@ fn main() {
     generated.write_to_file("src/gen.rs").unwrap();
 
     generate_protocols();
-
-    // Example Khronos building stuff
-    let mut file = File::create(&Path::new(&target_dir).join("bindings.rs")).unwrap();
-    Registry::new(Api::Gl, (4, 5), Profile::Core, Fallbacks::All, [])
-        .write_bindings(StaticGenerator, &mut file)
-        .unwrap();
 }
 
 #[cfg(not(feature = "static"))]
@@ -186,6 +176,7 @@ fn generate_protocols() {
                                                                      protocol.1)));
     }
 }
+
 fn link_optional_libs() {
     if cfg!(feature = "libcap") && pkg_config::probe_library("libcap").is_ok() {
         println!("cargo:rustc-link-lib=dylib=cap");
