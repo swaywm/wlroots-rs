@@ -30,8 +30,9 @@ byteorder = "1"
 tempfile = "2"
 
 [features]
-default = ["static", "libcap", "systemd", "elogind"]
+default = ["static", "libcap", "systemd", "elogind", "unstable-features"]
 static = ["wlroots-sys/static"]
 libcap = ["wlroots-sys/libcap"]
 systemd = ["wlroots-sys/systemd"]
 elogind = ["wlroots-sys/elogind"]
+unstable-features = ["wlroots-sys/unstable-features"]
