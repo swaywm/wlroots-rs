@@ -292,8 +292,8 @@ impl Surface {
             // FIXME
             // This is converting from a u64 -> i64
             // Something bad could happen!
-            let when = timespec { tv_sec: duration.as_secs() as i64,
-                                  tv_nsec: duration.subsec_nanos() as i64 };
+            let when = timespec { tv_sec: duration.as_secs() as libc::clock_t,
+                                  tv_nsec: duration.subsec_nanos() as libc::clock_t };
             wlr_surface_send_frame_done(self.surface, &when);
         }
     }

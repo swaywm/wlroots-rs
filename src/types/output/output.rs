@@ -7,7 +7,7 @@ use std::mem::ManuallyDrop;
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 
-use libc::{c_float, c_int};
+use libc::{c_float, c_int, clock_t};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wlr_output,
                   wlr_output_damage, wlr_output_effective_resolution, wlr_output_enable,
@@ -320,8 +320,8 @@ impl Output {
               U: Into<Option<&'a mut PixmanRegion>>
     {
         let when = when.into().map(|duration| {
-                                       timespec { tv_sec: duration.as_secs() as i64,
-                                                  tv_nsec: duration.subsec_nanos() as i64 }
+                                       timespec { tv_sec: duration.as_secs() as clock_t,
+                                                  tv_nsec: duration.subsec_nanos() as clock_t }
                                    });
         let when_ptr =
             when.map(|mut duration| &mut duration as *mut _).unwrap_or_else(|| ptr::null_mut());

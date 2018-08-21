@@ -1,4 +1,4 @@
-use libc::{c_int, c_uint};
+use libc::{c_int, c_uint, clock_t};
 use std::{mem, ptr, time::Duration};
 use wlroots_sys::{timespec, wlr_output, wlr_output_damage, wlr_output_damage_add,
                   wlr_output_damage_add_box, wlr_output_damage_add_whole,
@@ -118,8 +118,8 @@ impl OutputDamage {
     {
         unsafe {
             let when = when.into().map(|duration| {
-                                           timespec { tv_sec: duration.as_secs() as i64,
-                                                      tv_nsec: duration.subsec_nanos() as i64 }
+                                           timespec { tv_sec: duration.as_secs() as clock_t,
+                                                      tv_nsec: duration.subsec_nanos() as clock_t }
                                        });
             let when_ptr =
                 when.map(|mut duration| &mut duration as *mut _).unwrap_or_else(|| ptr::null_mut());
