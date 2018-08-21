@@ -40,7 +40,7 @@ macro_rules! wl_list_for_each {
 #[macro_export]
 macro_rules! c_str {
     ($s:expr) => {
-        concat!($s, "\0").as_ptr() as *const i8
+        concat!($s, "\0").as_ptr() as *const ::libc::c_char
     }
 }
 
