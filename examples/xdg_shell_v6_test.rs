@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate wlroots;
+extern crate libc;
 
 use std::process::Command;
 use std::thread;
