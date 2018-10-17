@@ -23,6 +23,7 @@ wayland-sys = { version = "0.9.*", features = ["client", "dlopen", "server",] }
 lazy_static = "0.2"
 xkbcommon = "0.3"
 bitflags = "1.0"
+vsprintf = "1.0.1"
 
 [dev-dependencies]
 wayland-client = { version = "0.12.*" }
