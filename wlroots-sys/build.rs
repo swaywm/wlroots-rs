@@ -133,8 +133,9 @@ fn generate_protocol_headers() -> io::Result<PathBuf> {
     let output_dir_str = env::var("OUT_DIR").unwrap();
     let out_path: PathBuf = format!("{}/wayland-protocols", output_dir_str).into();
     fs::create_dir(&out_path).ok();
-    let protocols = fs::read_dir("/usr/share/wayland-protocols/stable")?
-        .chain(fs::read_dir("/usr/share/wayland-protocols/unstable")?);
+    let protocols_prefix = pkg_config::get_variable("wayland-protocols", "prefix").unwrap();
+    let protocols = fs::read_dir(format!("{}/share/wayland-protocols/stable", protocols_prefix))?
+        .chain(fs::read_dir(format!("{}/share/wayland-protocols/unstable", protocols_prefix))?);
     for entry in protocols {
         let entry = entry?;
         for entry in fs::read_dir(entry.path())? {
