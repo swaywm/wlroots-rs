@@ -16,3 +16,8 @@ If you don't want to compile against wlroots statically, add the `--no-default-f
 
 # Examples
 See [the examples directory](https://github.com/swaywm/wlroots-rs/tree/master/examples) for basic examples using this library and at [Way Cooler the primary user of this library](https://github.com/way-cooler/way-cooler).
+
+You can run an example using the following command:
+```bash
+cargo run --example <name of the example>
+```
