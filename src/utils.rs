@@ -5,10 +5,11 @@ use std::os::raw::c_char;
 use std::process::exit;
 use std::time::Duration;
 
-use libc::{clock_gettime, CLOCK_MONOTONIC, timespec};
+use libc::{clock_gettime, timespec, CLOCK_MONOTONIC};
+use vsprintf::vsprintf;
 
-use wlroots_sys::{__va_list_tag, wlr_log_init, wlr_edges};
 pub use wlroots_sys::wlr_log_importance::{self, *};
+use wlroots_sys::{__va_list_tag, wlr_edges, wlr_log_init};
 
 static mut RUST_LOGGING_FN: LogCallback = dummy_callback;
 
@@ -45,9 +46,11 @@ fn dummy_callback(_: LogVerbosity, _: String) {}
 /// with nice Rust inputs.
 unsafe extern "C" fn log_callback(importance: wlr_log_importance,
                                   fmt: *const c_char,
-                                  _va_list: *mut __va_list_tag) {
-    RUST_LOGGING_FN(importance,
-                    c_to_rust_string(fmt).unwrap_or_else(|| "".into()))
+                                  va_list: *mut __va_list_tag) {
+    let message = vsprintf(fmt, va_list).unwrap_or_else(|_| {
+        c_to_rust_string(fmt).unwrap_or_else(|| "".into())
+    });
+    RUST_LOGGING_FN(importance, message);
 }
 
 /// Trait to convert something to mili seconds.

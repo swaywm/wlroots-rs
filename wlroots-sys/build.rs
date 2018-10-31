@@ -56,7 +56,6 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=xcb-shm");
     println!("cargo:rustc-link-lib=dylib=xcb-icccm");
     println!("cargo:rustc-link-lib=dylib=xcb-xkb");
-    println!("cargo:rustc-link-lib=dylib=xcb-errors");
     println!("cargo:rustc-link-lib=dylib=wayland-egl");
     println!("cargo:rustc-link-lib=dylib=wayland-client");
     println!("cargo:rustc-link-lib=dylib=wayland-server");
@@ -188,5 +187,8 @@ fn link_optional_libs() {
     }
     if cfg!(feature = "elogind") && pkg_config::probe_library("elogind").is_ok() {
         println!("cargo:rustc-link-lib=dylib=elogind");
+    }
+    if pkg_config::probe_library("xcb-errors").is_ok() {
+       println!("cargo:rustc-link-lib=dylib=xcb-errors");
     }
 }
