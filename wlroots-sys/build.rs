@@ -104,6 +104,7 @@ fn meson() {
         println!("cargo:rustc-link-search=native={}/xwayland/",
                  build_path_str);
         println!("cargo:rustc-link-search=native={}/backend/", build_path_str);
+        println!("cargo:rustc-link-search=native={}/backend/x11", build_path_str);
         println!("cargo:rustc-link-search=native={}/render/", build_path_str);
 
         println!("cargo:rustc-link-lib=static=wlr_util");
@@ -111,8 +112,8 @@ fn meson() {
         println!("cargo:rustc-link-lib=static=wlr_xcursor");
         println!("cargo:rustc-link-lib=static=wlr_xwayland");
         println!("cargo:rustc-link-lib=static=wlr_backend");
+        println!("cargo:rustc-link-lib=static=wlr_backend_x11");
         println!("cargo:rustc-link-lib=static=wlr_render");
-        // wayland protocols
         println!("cargo:rustc-link-lib=static=wl_protos");
     }
 

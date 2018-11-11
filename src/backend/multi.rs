@@ -1,7 +1,7 @@
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wl_display, wlr_multi_backend_add,
-                  wlr_multi_backend_remove, wlr_multi_is_empty, wlr_multi_get_session};
+                  wlr_multi_backend_remove, wlr_multi_is_empty};
 
-use super::{Session, UnsafeRenderSetupFunction};
+use super::UnsafeRenderSetupFunction;
 
 /// When multiple backends are running or when the compositor writer doesn't care and
 /// just used the auto create option in the `CompositorBuilder`.
@@ -38,17 +38,6 @@ impl MultiBackend {
     /// Doesn't check if that backend is valid.
     pub unsafe fn remove_backend(&self, backend: *mut wlr_backend) {
         wlr_multi_backend_remove(self.backend, backend)
-    }
-
-    pub fn wlr_multi_get_session(&self) -> Option<Session> {
-        unsafe {
-            let session = wlr_multi_get_session(self.backend);
-            if session.is_null() {
-                None
-            } else {
-                Some(Session::from_ptr(session))
-            }
-        }
     }
 
     pub fn is_empty(&self) -> bool {

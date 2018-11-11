@@ -35,13 +35,6 @@ impl DragIcon {
         }
     }
 
-    /// The position to place the surface of the drag icon relative to the cursor position
-    ///
-    /// Return value is in (sx, sy) format.
-    pub fn position(&mut self) -> (i32, i32) {
-        unsafe { ((*self.drag_icon).sx, (*self.drag_icon).sy) }
-    }
-
     /// Whether or not to display the drag icon
     pub fn mapped(&mut self) -> bool {
         unsafe { (*self.drag_icon).mapped }
