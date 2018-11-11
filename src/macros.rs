@@ -40,7 +40,7 @@ macro_rules! wl_list_for_each {
 #[macro_export]
 macro_rules! c_str {
     ($s:expr) => {
-        concat!($s, "\0").as_ptr() as *const ::libc::c_char
+        concat!($s, "\0").as_ptr() as *const $crate::libc::c_char
     }
 }
 
@@ -177,7 +177,7 @@ macro_rules! wayland_listener {
 
             $($(pub(crate) unsafe extern "C" fn $listener_func(listener:
                                                         *mut $crate::wlroots_sys::wl_listener,
-                                                        data: *mut libc::c_void) {
+                                                        data: *mut $crate::libc::c_void) {
                 let manager: &mut $struct_name = &mut (*container_of!(listener,
                                                                       $struct_name,
                                                                       $listener));

@@ -9,7 +9,7 @@
 #[macro_use]
 extern crate bitflags;
 extern crate lazy_static;
-extern crate libc;
+pub extern crate libc;
 extern crate vsprintf;
 #[macro_use]
 pub extern crate wayland_sys;
