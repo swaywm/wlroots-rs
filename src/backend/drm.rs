@@ -1,8 +1,7 @@
 use std::ptr;
 
 use libc;
-use wlroots_sys::{wlr_backend, wl_display, wlr_drm_backend_create, wlr_output_is_drm,
-                  wlr_drm_backend_get_session};
+use wlroots_sys::{wlr_backend, wl_display, wlr_drm_backend_create, wlr_output_is_drm};
 
 use Output;
 use super::{UnsafeRenderSetupFunction, Session};
@@ -51,16 +50,6 @@ impl DRMBackend {
     pub fn output_is_drm(&self, output: &Output) -> bool {
         unsafe {
             wlr_output_is_drm(output.as_ptr())
-        }
-    }
-
-    pub fn session(&self) -> Session {
-        unsafe {
-            let session_ptr = wlr_drm_backend_get_session(self.backend);
-            if session_ptr.is_null() {
-                panic!("Session was null");
-            }
-            Session::from_ptr(session_ptr)
         }
     }
 

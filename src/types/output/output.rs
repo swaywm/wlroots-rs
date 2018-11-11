@@ -401,17 +401,17 @@ impl Output {
     }
 
     /// Enables or disables an output.
-    pub fn enable(&mut self, enable: bool) {
+    pub fn enable(&mut self, enable: bool) -> bool {
         unsafe { wlr_output_enable(self.output, enable) }
     }
 
     /// Sets the gamma based on the size.
-    pub fn set_gamma(&mut self, size: u32, mut r: u16, mut g: u16, mut b: u16) {
+    pub fn set_gamma(&mut self, size: usize, mut r: u16, mut g: u16, mut b: u16) -> bool {
         unsafe { wlr_output_set_gamma(self.output, size, &mut r, &mut g, &mut b) }
     }
 
     /// Get the gamma size.
-    pub fn get_gamma_size(&self) -> u32 {
+    pub fn get_gamma_size(&self) -> usize {
         unsafe { wlr_output_get_gamma_size(self.output) }
     }
 

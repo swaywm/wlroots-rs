@@ -34,10 +34,6 @@ impl <'session> Device<'session> {
 }
 
 impl <'session> Session<'session> {
-    pub(crate) unsafe fn from_ptr(session: *mut wlr_session) -> Self {
-        Session { session, phantom: PhantomData }
-    }
-
 	  /// Signal for when the session becomes active/inactive.
     /// It's called when we swap virtual terminal.
     pub fn session_signal(&self) -> wl_signal {
