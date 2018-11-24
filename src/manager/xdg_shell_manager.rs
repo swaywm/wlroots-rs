@@ -60,6 +60,10 @@ wayland_listener!(XdgShellManager, Box<XdgShellManagerHandler>, [
                         shell_surface.ping_timeout_listener() as _);
         wl_signal_add(&mut (*data).events.new_popup as *mut _ as _,
                         shell_surface.new_popup_listener() as _);
+        wl_signal_add(&mut (*data).events.map as *mut _ as _,
+                        shell_surface.map_listener() as _);
+        wl_signal_add(&mut (*data).events.unmap as *mut _ as _,
+                        shell_surface.unmap_listener() as _);
         let events = with_handles!([(shell_surface: {shell_surface.surface_mut()})] => {
             match shell_surface.state() {
                 None | Some(&mut Popup(_)) => None,

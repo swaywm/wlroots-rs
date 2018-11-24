@@ -64,6 +64,22 @@ pub trait XdgShellHandler {
                                 XdgShellSurfaceHandle,
                                 &ShowWindowMenuEvent) {
     }
+
+    /// Called when the surface is ready to be mapped. It should be added to the list of views at
+    /// this time.
+    fn map_request(&mut self,
+                   CompositorHandle,
+                   SurfaceHandle,
+                   XdgShellSurfaceHandle) {
+    }
+
+    /// Called when the surface should be unmapped. It should be removed from the list of views at
+    /// this time, but may be remapped at a later time.
+    fn unmap_request(&mut self,
+                   CompositorHandle,
+                   SurfaceHandle,
+                   XdgShellSurfaceHandle) {
+    }
 }
 
 wayland_listener!(XdgShell, (XdgShellSurface, Option<Box<XdgShellHandler>>), [
@@ -231,6 +247,38 @@ wayland_listener!(XdgShell, (XdgShellSurface, Option<Box<XdgShellHandler>>), [
                                          shell_surface.weak_reference(),
                                          &event);
     };
+
+    map_listener => map_notify: |this: &mut XdgShell, _event: *mut libc::c_void,| unsafe {
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
+        let surface = shell_surface.surface();
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+
+        manager.map_request(compositor,
+                            surface,
+                            shell_surface.weak_reference());
+    };
+
+    unmap_listener => unmap_notify: |this: &mut XdgShell, _event: *mut libc::c_void,| unsafe {
+        let (ref mut shell_surface, ref mut manager) = match &mut this.data {
+            (_, None) => return,
+            (ss, Some(manager)) => (ss, manager)
+        };
+        let surface = shell_surface.surface();
+        let compositor = match compositor_handle() {
+            Some(handle) => handle,
+            None => return
+        };
+
+        manager.unmap_request(compositor,
+                              surface,
+                              shell_surface.weak_reference());
+    };
 ]);
 
 impl XdgShell {
@@ -269,6 +317,12 @@ impl Drop for XdgShell {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                         wl_list_remove,
                         &mut (*self.show_window_menu_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*self.map_listener()).link as *mut _ as _);
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_list_remove,
+                          &mut (*self.unmap_listener()).link as *mut _ as _);
         }
     }
 }
