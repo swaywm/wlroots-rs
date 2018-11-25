@@ -326,33 +326,69 @@ macro_rules! dehandle {
         dehandle!($($rest)*)
     }};
     // While loop, nothing after it
-    (while $_: expr => {$($b: tt)*}) => {{
+    (while $_: tt $b: block) => {{
         #[allow(unused_must_use)]
         while $_ {
-            dehandle!($($b)*);
+            dehandle!($b)
         }
     }};
     // While loop, more stuff after it
-    (while $_: expr => {$($b: tt)*} $($rest: tt)*) => {{
+    (while $_: tt => $b: block $($rest: tt)*) => {{
         #[allow(unused_must_use)]
         while $_ {
-            dehandle!($($b)*);
+            dehandle!($b)
         }
         dehandle!($($rest)*)
     }};
-
+    // if, nothing after it
+    (if $_: tt {$($b: tt)*}) => {{
+        if $_ {
+            dehandle!($($b)*)
+        }
+    }};
+    // if, else after it
+    (if $_: tt {$($b: tt)*} else {$($bb: tt)*} $($rest: tt)*) => {{
+        if $_ {
+            dehandle!($($b)*)
+        } else {
+            dehandle!($($bb)*)
+        }
+        dehandle!($($rest)*)
+    }};
+    // if, arbitrary stuff after it
+    (if $_: tt {$($b: tt)*} $($rest: tt)*) => {{
+        if $_ {
+            dehandle!($($b)*)
+        }
+        dehandle!($($rest)*)
+    }};
     // For loop, nothing after it
     (for $_: pat in $__: expr => {$($b: tt)*}) => {{
         #[allow(unused_must_use)]
         for $_ in $__ {
-            dehandle!($($b)*);
+            dehandle!($($b)*)
         }
     }};
     // For loop, more stuff after it
     (for $_: pat in $__: expr => {$($b: tt)*} $($rest: tt)*) => {{
         #[allow(unused_must_use)]
         for $_ in $__ {
-            dehandle!($($b)*);
+            dehandle!($($b)*)
+        }
+        dehandle!($($rest)*)
+    }};
+    // if let, nothing after it
+    (if let $_: pat = $__: expr => $($b: tt)*) => {{
+        #[allow(unused_must_use)]
+        if let $_ = $__ {
+            dehandle!($($b)*)
+        }
+    }};
+    // if let, more stuff after it
+    (if let $_: pat = $__: expr => {$($b: tt)*} $($rest: tt)*) => {{
+        #[allow(unused_must_use)]
+        if let $_ = $__ {
+            dehandle!($($b)*)
         }
         dehandle!($($rest)*)
     }};
@@ -364,27 +400,24 @@ macro_rules! dehandle {
         }).expect(concat!("Could not upgrade ", stringify!($unhandle_name), " and set the result to ", stringify!($handle_name)));
     };
     // @unhandle = {handle}?;
-    (@$handle_name: ident = $unhandle_name: block?; $($rest: tt)+) => {
+    (@$handle_name: ident = $unhandle_name: block?; $($rest: tt)+) => {{
         with_handles!([($handle_name: $unhandle_name)] => {
             dehandle!($($rest)+)
         })
-    };
+    }};
     // General expressions
-    ($line: expr; $($rest: tt)*) => {
-        {
+    ($line: expr; $($rest: tt)*) => {{
             $line;
             dehandle!($($rest)*)
-        }
-    };
+
+    }};
     // General lines
-    ($line: stmt; $($rest: tt)*) => {
-        {
+    ($line: stmt; $($rest: tt)*) => {{
             $line;
             dehandle!($($rest)*)
-        }
-    };
+    }};
     // Result of the dehandle block
-    ($line: expr) => {
+    ($line: expr) => {{
         $line
-    };
+    }};
 }
