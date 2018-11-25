@@ -5,7 +5,8 @@ use libc::{self, size_t, int16_t, uint16_t};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{pid_t, wl_event_source, wlr_xwayland_surface, xcb_atom_t, xcb_window_t};
 
-use {SurfaceHandle, XWaylandSurfaceHints, XWaylandSurfaceSizeHints};
+use {SurfaceHandle, SurfaceHandler, XWaylandSurfaceHints, XWaylandSurfaceSizeHints};
+use types::surface::InternalSurfaceState;
 use compositor::{compositor_handle, CompositorHandle};
 use errors::{HandleErr, HandleResult};
 use events::xwayland_events::{ConfigureEvent, MoveEvent, ResizeEvent};
@@ -13,51 +14,51 @@ use utils::c_to_rust_string;
 
 pub trait XWaylandSurfaceHandler {
     /// Called when the XWayland surface is destroyed (e.g by the user).
-    fn destroyed(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn destroyed(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 
     /// Called when the XWayland surface wants to be configured.
     fn on_configure(&mut self,
                     CompositorHandle,
-                    SurfaceHandle,
+                    Option<SurfaceHandle>,
                     XWaylandSurfaceHandle,
                     &ConfigureEvent) {
     }
 
     /// Called when the XWayland surface wants to move.
-    fn on_move(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle, &MoveEvent) {}
+    fn on_move(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle, &MoveEvent) {}
 
     /// Called when the XWayland surface wants to be resized.
-    fn on_resize(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle, &ResizeEvent) {}
+    fn on_resize(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle, &ResizeEvent) {}
 
     /// Called when the XWayland surface wants to be maximized.
-    fn on_maximize(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn on_maximize(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 
     /// Called when the XWayland surface wants to be fullscreen.
-    fn on_fullscreen(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn on_fullscreen(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 
-    fn on_map(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn on_map(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) -> Option<Box<SurfaceHandler>> { None }
 
-    fn on_unmap(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn on_unmap(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 
     /// Called when the title has been set on the XWayland surface.
-    fn title_set(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn title_set(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 
     /// Called when the class has been set on the XWayland surface.
-    fn class_set(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn class_set(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 
     /// Called when the parent has been set on the XWayland surface.
-    fn parent_set(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn parent_set(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 
     /// Called when the PID has been set on the XWayland surface.
-    fn pid_set(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn pid_set(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 
     /// Called when the window type has been set on the XWayland surface.
-    fn window_type_set(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn window_type_set(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 
     /// Called when the ping request timed out.
     ///
     /// This usually indicates something is wrong with the client.
-    fn ping_timeout(&mut self, CompositorHandle, SurfaceHandle, XWaylandSurfaceHandle) {}
+    fn ping_timeout(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 }
 
 wayland_listener!(XWaylandShell, (XWaylandSurface, Option<Box<XWaylandSurfaceHandler>>), [
@@ -174,9 +175,15 @@ wayland_listener!(XWaylandShell, (XWaylandSurface, Option<Box<XWaylandSurfaceHan
             Some(handle) => handle,
             None => return
         };
-        manager.on_map(compositor,
-                            surface,
-                            shell_surface.weak_reference());
+        let surface_handler = manager.on_map(compositor,
+                                             surface,
+                                             shell_surface.weak_reference());
+
+        if let Some(surface_handler) = surface_handler {
+            let surface_state = (*(*shell_surface.shell_surface).surface).data as *mut InternalSurfaceState;
+            (*(*surface_state).surface).data().1 = surface_handler;
+        }
+
     };
     unmap_listener => unmap_notify: |this: &mut XWaylandShell, _data: *mut libc::c_void,|
     unsafe {
@@ -346,9 +353,18 @@ impl XWaylandSurface {
         unsafe { (*self.shell_surface).surface_id }
     }
 
-    /// Get the Wayland surface associated with this XWaylandSurface.
-    pub fn surface(&self) -> SurfaceHandle {
-        unsafe { SurfaceHandle::from_ptr((*self.shell_surface).surface) }
+    /// Get the Wayland surface associated with this XWaylandSurface. If the shell surface is not
+    /// mapped, then it has no surface, and this will return None.
+    pub fn surface(&self) -> Option<SurfaceHandle> {
+        unsafe {
+            let surface = (*self.shell_surface).surface;
+
+            if surface.is_null() {
+                None
+            } else {
+                Some(SurfaceHandle::from_ptr((*self.shell_surface).surface))
+            }
+        }
     }
 
     /// Get the coordinates of the window.
