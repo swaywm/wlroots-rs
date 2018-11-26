@@ -5,6 +5,7 @@ use wlroots_sys::{pid_t, wl_client, wl_display, wlr_compositor, wlr_xwayland, wl
 
 use super::{XWaylandManager, XWaylandManagerHandler};
 
+#[allow(dead_code)]
 pub struct XWaylandServer {
     xwayland: *mut wlr_xwayland,
     manager: Box<XWaylandManager>
