@@ -74,19 +74,21 @@ impl Args {
 ///                       compositor_handle: CompositorHandle,
 ///                       keyboard: KeyboardHandle)
 ///                       -> Option<Box<Keyboard Handler>> {
-///         use compositor_handle as compositor;
-///         let keyboard = keyboard;
-///         use compositor as compositor;
-///         use keyboard as keyboard;
-///         let server: &mut ::Server = compositor.into();
-///         server.keyboards.push(keyboard.weak_reference());
-///         // Now that we have at least one keyboard, update the seat capabilities.
-///         let server_seat = &server.seat.seat;
-///         use server_seat as seat;
-///         let mut capabilities = seat.capabilities();
-///         capabilities.insert(Capability::Keyboard);
-///         seat.set_capabilities(capabilities);
-///         seat.set_keyboard(keyboard.input_device());
+///         {
+///             use compositor_handle as compositor;
+///             use keyboard as keyboard;
+///             let server: &mut ::Server = compositor.into();
+///             server.keyboards.push(keyboard.weak_reference());
+///             // Now that we have at least one keyboard, update the seat capabilities.
+///             let server_seat = &server.seat.seat;
+///             use server_seat as seat;
+///             let mut capabilities = seat.capabilities();
+///             capabilities.insert(Capability::Keyboard);
+///             seat.set_capabilities(capabilities);
+///             seat.set_keyboard(keyboard.input_device());
+///         }
+///         // Due to some weird closure inference rules, this has to be outside
+///         // of the above block.
 ///         Some(Box::new(::Keyboard))
 ///     }
 /// }
