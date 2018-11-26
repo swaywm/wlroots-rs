@@ -95,6 +95,9 @@ impl Args {
 pub fn wlroots_dehandle(args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemFn);
     let mut args = parse_macro_input!(args as Args);
+    if args.vars.len() == 0 {
+        panic!("wlroots_dehandle requires at least one argument")
+    }
     let output = args.fold_item_fn(input);
     for (arg, seen) in args.vars {
         if !seen {
