@@ -9,10 +9,9 @@ use std::collections::HashSet;
 
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
-use syn::{Block, DeriveInput, ItemFn, Stmt, Expr, Pat, Local,
+use syn::{ItemFn, Stmt, UseTree, ItemUse, Item,
           parse::{self, Parse, ParseStream},
-          punctuated::Punctuated,
-          fold::Fold};
+          punctuated::Punctuated};
 
 /// Parses a list of variable names separated by commas
 ///
@@ -37,19 +36,23 @@ impl Parse for Args {
 }
 
 impl Args {
-    fn is_handle(&self, p: &Punctuated<Pat, Token![|]>) -> bool {
-        if p.len() != 1 {
-            return false;
-        }
-        match p[0] {
-            Pat::Ident(ref p) => self.vars.contains(&p.ident),
-            _ => false
-        }
+    // TODO Pop and then report error if not all used
+    fn is_handle(&self, name: Ident) -> bool {
+        self.vars.contains(&name)
     }
 }
 
 /// Attribute to automatically call the `run` method on handles with the
 /// remaining block of code.
+///
+/// The name of the variable you want to use as the upgraded handle should be
+/// provided as an argument to the attribute. It does not need to be the same
+/// as the handle variable.
+///
+/// The syntax in the code should be `use $handle as $upgraded_handle`.
+/// E.g the variable in the code that stores the handle should go on the
+/// **left** and the variable you used in the attribute declaration should
+/// go on the **right**.
 ///
 /// # Example
 ///
@@ -60,15 +63,15 @@ impl Args {
 ///                       compositor: CompositorHandle,
 ///                       keyboard: KeyboardHandle)
 ///                       -> Option<Box<Keyboard Handler>> {
-///         let compositor = compositor;
+///         use compositor as compositor;
 ///         let keyboard = keyboard;
-///         //dehandle!(compositor, compositor);
-///         //dehandle!(keyboard, keyboard);
+///         use compositor as compositor;
+///         use keyboard as keyboard;
 ///         let server: &mut ::Server = compositor.into();
 ///         server.keyboards.push(keyboard.weak_reference());
 ///         // Now that we have at least one keyboard, update the seat capabilities.
-///         //dehandle!(seat, &server.seat.seat);
 ///         let seat = &server.seat.seat;
+///         use seat as seat;
 ///         let mut capabilities = seat.capabilities();
 ///         capabilities.insert(Capability::Keyboard);
 ///         seat.set_capabilities(capabilities);
@@ -90,27 +93,26 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &Args) -> Vec<Stmt> {
     let mut output = vec![];
     let mut inner = None;
     while let Some(stmt) = input.next().cloned() {
-        match stmt {
-            Stmt::Local(local) => {
-                if local.init.is_some() && args.is_handle(&local.pats) {
-                    inner = Some(local.clone());
-                    break;
-                } else {
-                    output.push(Stmt::Local(local.clone()));
+        use {Stmt::Item, Item::Use, UseTree::Rename};
+        match stmt.clone() {
+            Item(Use(ItemUse { tree: Rename(use_stmt), ..})) => {
+                if args.is_handle(use_stmt.ident.clone()) {
+                    inner = Some((use_stmt.ident, use_stmt.rename));
+                    break
                 }
-            }
-            _ => output.push(stmt.clone())
+                output.push(stmt)
+            },
+            _ => output.push(stmt)
         }
     }
-    if let Some(inner) = inner {
-        let (_, init_expr) = inner.init
-            .expect("Let statement had no init expression");
-        let var_name = inner.pats;
+    if let Some((handle, dehandle)) = inner {
         let inner_output = build_block(input, args);
         let inner_block = parse_quote!(
-            (#init_expr).run(|#var_name|{
+            (#handle).run(|#dehandle|{
                 #(#inner_output)*
-            }).expect(concat!("Could not upgrade ", stringify!(#var_name)));
+            }).expect(concat!("Could not upgrade handle ",
+                              stringify!(#handle), " to ",
+                              stringify!(#dehandle)));
         );
         output.push(inner_block);
     }
