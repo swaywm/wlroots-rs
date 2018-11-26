@@ -16,13 +16,11 @@ use syn::{ItemFn, Stmt, UseTree, ItemUse, Item, Block, Expr,
 
 /// Parses a list of variable names separated by commas
 ///
-///     a, b, c
-///
 /// This is how the compiler passes in arguments to our attribute -- it is
 /// everything inside the delimiters after the attribute name.
-///
+///```rust,ignore
 ///     #[wlroots_dehandle(a, b, c)]
-///
+///```
 struct Args {
     vars: HashMap<Ident, bool>
 }
@@ -73,7 +71,7 @@ impl Args {
 ///
 /// # Example
 ///
-/// ```
+/// ```rust,ignore
 /// impl InputManagerHandler for InputManager {
 ///     #[wlroots_dehandle(compositor, keyboard, seat)]
 ///     fn keyboard_added(&mut self,
