@@ -65,6 +65,12 @@ impl Args {
 /// **left** and the variable you used in the attribute declaration should
 /// go on the **right**.
 ///
+/// # Panics
+/// If the handle is invalid (e.g. default constructed, or is a dangling
+/// handle) then your code will `panic!`.
+///
+/// If this is undesirable, please use the non-proc macro `with_handles!`.
+///
 /// # Example
 ///
 /// ```
