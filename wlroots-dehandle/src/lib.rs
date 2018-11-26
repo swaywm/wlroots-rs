@@ -208,6 +208,24 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
             }
             Expr::Match(match_expr)
         },
+        Expr::Struct(mut struct_expr) => {
+            for field in &mut struct_expr.fields {
+                field.expr = build_block_expr(field.expr.clone(), args);
+            }
+            Expr::Struct(struct_expr)
+        },
+        Expr::Call(mut call_expr) => {
+            for arg in &mut call_expr.args {
+                *arg = build_block_expr(arg.clone(), args);
+            }
+            Expr::Call(call_expr)
+        },
+        Expr::MethodCall(mut call_expr) => {
+            for arg in &mut call_expr.args {
+                *arg = build_block_expr(arg.clone(), args);
+            }
+            Expr::MethodCall(call_expr)
+        },
         Expr::Closure(mut closure_expr) => {
             *closure_expr.body = build_block_expr(*closure_expr.body.clone(),
                                                   args);
@@ -245,6 +263,24 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
                 }
             }
             Expr::Return(return_expr)
+        },
+        Expr::Reference(mut reference_expr) => {
+            *reference_expr.expr = build_block_expr(*reference_expr.expr.clone(),
+                                                    args);
+            Expr::Reference(reference_expr)
+        },
+        Expr::Paren(mut paren_expr) => {
+            *paren_expr.expr = build_block_expr(*paren_expr.expr.clone(), args);
+            Expr::Paren(paren_expr)
+        },
+        Expr::Unary(mut unary_expr) => {
+            *unary_expr.expr = build_block_expr(*unary_expr.expr.clone(), args);
+            Expr::Unary(unary_expr)
+        },
+        Expr::Binary(mut binary_expr) => {
+            *binary_expr.left = build_block_expr(*binary_expr.left.clone(), args);
+            *binary_expr.right = build_block_expr(*binary_expr.right.clone(), args);
+            Expr::Binary(binary_expr)
         },
         v => {
             v
