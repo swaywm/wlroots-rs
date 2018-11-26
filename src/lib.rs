@@ -14,7 +14,10 @@ extern crate vsprintf;
 #[macro_use]
 pub extern crate wayland_sys;
 pub extern crate wlroots_sys;
+pub extern crate wlroots_dehandle;
 pub extern crate xkbcommon;
+
+pub use wlroots_dehandle::wlroots_dehandle;
 
 #[macro_use]
 mod macros;
