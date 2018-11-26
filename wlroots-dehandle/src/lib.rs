@@ -5,7 +5,7 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
@@ -24,14 +24,14 @@ use syn::{ItemFn, Stmt, UseTree, ItemUse, Item, Block, Expr,
 ///     #[wlroots_dehandle(a, b, c)]
 ///
 struct Args {
-    vars: HashSet<Ident>
+    vars: HashMap<Ident, bool>
 }
 
 impl Parse for Args {
     fn parse(input: ParseStream) -> parse::Result<Self> {
         let vars = Punctuated::<Ident, Token![,]>::parse_terminated(input)?;
         Ok(Args {
-            vars: vars.into_iter().collect(),
+            vars: vars.into_iter().map(|k| (k, false)).collect(),
         })
     }
 }
@@ -43,8 +43,13 @@ impl Fold for Args {
 }
 
 impl Args {
-    fn is_handle(&self, name: Ident) -> bool {
-        self.vars.contains(&name)
+    fn is_handle(&mut self, name: Ident) -> bool {
+        if let Some(seen) = self.vars.get_mut(&name) {
+            *seen = true;
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -91,10 +96,16 @@ pub fn wlroots_dehandle(args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemFn);
     let mut args = parse_macro_input!(args as Args);
     let output = args.fold_item_fn(input);
+    for (arg, seen) in args.vars {
+        if !seen {
+            panic!(format!("Must use all declared handles, didn't use `{}`",
+                           arg))
+        }
+    }
     TokenStream::from(quote!(#output))
 }
 
-fn build_block(mut input: std::slice::Iter<Stmt>, args: &Args) -> Block {
+fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
     let mut output = vec![];
     let mut inner = None;
     while let Some(stmt) = input.next().cloned() {
@@ -148,7 +159,7 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &Args) -> Block {
 }
 
 /// Tries to build a block from the expression.
-fn build_block_expr(expr: Expr, args: &Args) -> Expr {
+fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
     match expr {
         Expr::Block(block) => {
             let block = build_block(block.block.stmts.iter(), args);
