@@ -14,129 +14,130 @@ use wlroots::utils::{init_logging, WLR_DEBUG};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
 
-const CAT_WIDTH: u32 = 128;
-const CAT_HEIGHT: u32 = 128;
-const CAT_DATA: &'static [u8] = include_bytes!("cat.data");
+const CAT_TEXTURE_WIDTH: u32 = 128;
+const CAT_TEXTURE_HEIGHT: u32 = 128;
+const CAT_TEXTURE_DATA: &'static [u8] = include_bytes!("cat.data");
+const VELOCITY_STEP_DIFF: f32 = 16.0;
 
-/// Helper step by iterator, because `step_by` on `Range` is unstable.
-struct StepRange(i32, i32, i32);
-impl Iterator for StepRange {
-    type Item = i32;
-    fn next(&mut self) -> Option<i32> {
-        if self.0 < self.1 {
-            let v = self.0;
-            self.0 = v + self.2;
-            Some(v)
-        } else {
-            None
-        }
+struct Vector2 {
+    x: f32,
+    y: f32,
+}
+impl Vector2 {
+    pub fn increment(&mut self, x: f32, y: f32) {
+        self.x += x;
+        self.y += y;
     }
 }
 
 struct CompositorState {
     cat_texture: Option<Texture<'static>>,
-    rotation: wl_output_transform,
+    rotation_transform: wl_output_transform,
     last_frame: Instant,
-    x_offs: f32,
-    y_offs: f32,
-    x_vel: f32,
-    y_vel: f32
+    offset: Vector2,
+    velocity: Vector2,
+}
+impl CompositorState {
+    fn new(rotation_transform: wl_output_transform) -> Self {
+        CompositorState { cat_texture: None,
+                          rotation_transform,
+                          last_frame: Instant::now(),
+                          offset: Vector2 {
+                              x: 0.0,
+                              y: 0.0
+                          },
+                          velocity: Vector2 {
+                              x: 128.0,
+                              y: 128.0
+                          }}
+    }
+
+    /// Registers `now` as the last frame and returns the calculated delta time since the previous last frame in seconds.
+    pub fn register_frame(&mut self) -> f32 {
+        let now = Instant::now();
+        let delta = now.duration_since(self.last_frame);
+        self.last_frame = now;
+        let seconds_delta = delta.as_secs() as f32;
+        let nano_delta = delta.subsec_nanos() as u64;
+        let ms = (seconds_delta * 1000.0) + nano_delta as f32 / 1000000.0;
+        ms / 1000.0
+    }
 }
 
 compositor_data!(CompositorState);
 
-impl CompositorState {
-    fn new(rotation: wl_output_transform) -> Self {
-        CompositorState { cat_texture: None,
-                          rotation,
-                          last_frame: Instant::now(),
-                          x_offs: 0.0,
-                          y_offs: 0.0,
-                          x_vel: 128.0,
-                          y_vel: 128.0 }
-    }
-}
-
 struct OutputManager;
-
-struct ExOutput;
-
-struct InputManager;
-
-struct KeyboardManager;
-
 impl OutputManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
-                             compositor: CompositorHandle,
-                             builder: OutputBuilder<'output>)
+                             compositor_handle: CompositorHandle,
+                             output_builder: OutputBuilder<'output>)
                              -> Option<OutputBuilderResult<'output>> {
-        let output = ExOutput;
-        let mut res = builder.build_best_mode(output);
-        with_handles!([(compositor: {compositor}), (output: {&mut res.output})] => {
-            let compositor_data: &mut CompositorState = compositor.into();
-            output.transform(compositor_data.rotation);
+        let ex_output = ExOutput;
+        let mut result = output_builder.build_best_mode(ex_output);
+        with_handles!([(compositor: {compositor_handle}), (output: {&mut result.output})] => {
+            let compositor_state: &mut CompositorState = compositor.into();
+            output.transform(compositor_state.rotation_transform);
         }).unwrap();
-        Some(res)
+        Some(result)
     }
 }
 
+struct ExOutput;
 impl OutputHandler for ExOutput {
-    fn on_frame(&mut self, mut compositor: CompositorHandle, mut output: OutputHandle) {
-        with_handles!([(compositor: {&mut compositor}), (output: {&mut output})] => {
-            let (width, height) = output.effective_resolution();
+    fn on_frame(&mut self, mut compositor_handle: CompositorHandle, mut output_handle: OutputHandle) {
+        with_handles!([(compositor: {&mut compositor_handle}), (output: {&mut output_handle})] => {
+            let (output_width, output_height) = output.effective_resolution();
             let renderer = compositor.renderer
                                     .as_mut()
                                     .expect("Compositor was not loaded with gles2 renderer");
-            let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut()
+            let compositor_state: &mut CompositorState = (&mut compositor.data).downcast_mut()
                 .unwrap();
-            let now = Instant::now();
-            let delta = now.duration_since(compositor_data.last_frame);
-            let seconds_delta = delta.as_secs() as f32;
-            let nano_delta = delta.subsec_nanos() as u64;
-            let ms = (seconds_delta * 1000.0) + nano_delta as f32 / 1000000.0;
-            let seconds = ms / 1000.0;
+            let delta_time_in_seconds = compositor_state.register_frame();
             let transform_matrix = output.transform_matrix();
             let mut renderer = renderer.render(output, None);
-            let cat_texture = compositor_data.cat_texture.as_ref().unwrap();
-            for y in StepRange(-128 + compositor_data.y_offs as i32, height, 128) {
-                for x in StepRange(-128 + compositor_data.x_offs as i32, width, 128) {
+            let cat_texture = compositor_state.cat_texture.as_ref().unwrap();
+            let (max_width, max_height) = (CAT_TEXTURE_WIDTH as i32, CAT_TEXTURE_HEIGHT as i32);
+            for y in (-max_height + compositor_state.offset.y as i32..output_height).step_by(max_height as usize) {
+                for x in (-max_width + compositor_state.offset.x as i32..output_width).step_by(max_width as usize) {
                     renderer.render_texture(&cat_texture, transform_matrix, x, y, 1.0);
                 }
             }
-            compositor_data.x_offs += compositor_data.x_vel * seconds;
-            compositor_data.y_offs += compositor_data.y_vel * seconds;
-            if compositor_data.x_offs > 128.0 {
-                compositor_data.x_offs = 0.0
+            compositor_state.offset.increment(
+                compositor_state.velocity.x * delta_time_in_seconds,
+                compositor_state.velocity.y * delta_time_in_seconds
+            );
+            if compositor_state.offset.x > max_width as f32 {
+                compositor_state.offset.x = 0.0
             }
-            if compositor_data.y_offs > 128.0 {
-                compositor_data.y_offs = 0.0
+            if compositor_state.offset.y > max_height as f32 {
+                compositor_state.offset.y = 0.0
             }
-            compositor_data.last_frame = now;
         }).unwrap();
     }
 }
 
+struct InputManager;
 impl InputManagerHandler for InputManager {
     fn keyboard_added(&mut self,
-                      _: CompositorHandle,
-                      _: KeyboardHandle)
+                      _compositor_handle: CompositorHandle,
+                      _keyboard_handle: KeyboardHandle)
                       -> Option<Box<KeyboardHandler>> {
         Some(Box::new(KeyboardManager))
     }
 }
 
+struct KeyboardManager;
 impl KeyboardHandler for KeyboardManager {
-    fn on_key(&mut self, compositor: CompositorHandle, _: KeyboardHandle, key_event: &KeyEvent) {
-        let keys = key_event.pressed_keys();
-
-        with_handles!([(compositor: {compositor})] => {
-            for key in keys {
+    fn on_key(&mut self, compositor_handle: CompositorHandle, _keyboard_handle: KeyboardHandle, key_event: &KeyEvent) {
+        with_handles!([(compositor: {compositor_handle})] => {
+            let compositor_state: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
+            for key in key_event.pressed_keys() {
                 match key {
                     keysyms::KEY_Escape => wlroots::terminate(),
-                    keysyms::KEY_Left => update_velocities(compositor.into(), -16.0, 0.0),
-                    keysyms::KEY_Right => update_velocities(compositor.into(), 16.0, 0.0),
-                    keysyms::KEY_Up => update_velocities(compositor.into(), 0.0, -16.0),
-                    keysyms::KEY_Down => update_velocities(compositor.into(), 0.0, 16.0),
+                    keysyms::KEY_Left => compositor_state.velocity.increment(-VELOCITY_STEP_DIFF, 0.0),
+                    keysyms::KEY_Right => compositor_state.velocity.increment(VELOCITY_STEP_DIFF, 0.0),
+                    keysyms::KEY_Up => compositor_state.velocity.increment(0.0, -VELOCITY_STEP_DIFF),
+                    keysyms::KEY_Down => compositor_state.velocity.increment(0.0, VELOCITY_STEP_DIFF),
                     _ => {}
                 }
             }
@@ -144,44 +145,39 @@ impl KeyboardHandler for KeyboardManager {
     }
 }
 
-fn update_velocities(compositor: &mut CompositorState, x_diff: f32, y_diff: f32) {
-    compositor.x_vel += x_diff;
-    compositor.y_vel += y_diff;
+fn rotation_transform_from_str(rotation_str: &str) -> wl_output_transform {
+    use wl_output_transform::*;
+    match rotation_str {
+        "90" => WL_OUTPUT_TRANSFORM_90,
+        "180" => WL_OUTPUT_TRANSFORM_180,
+        "270" => WL_OUTPUT_TRANSFORM_270,
+        "flipped" => WL_OUTPUT_TRANSFORM_FLIPPED,
+        "flipped_90" => WL_OUTPUT_TRANSFORM_FLIPPED_90,
+        "flipped_180" => WL_OUTPUT_TRANSFORM_FLIPPED_180,
+        "flipped_270" => WL_OUTPUT_TRANSFORM_FLIPPED_270,
+        _ => WL_OUTPUT_TRANSFORM_NORMAL
+    }
 }
 
 fn main() {
     init_logging(WLR_DEBUG, None);
-    use wl_output_transform::*;
     let mut args = env::args();
-    args.next();
-    let rotation = if let Some(arg) = args.next() {
-        match arg.as_str() {
-            "90" => WL_OUTPUT_TRANSFORM_90,
-            "180" => WL_OUTPUT_TRANSFORM_180,
-            "270" => WL_OUTPUT_TRANSFORM_270,
-            "flipped" => WL_OUTPUT_TRANSFORM_FLIPPED,
-            "flipped_90" => WL_OUTPUT_TRANSFORM_FLIPPED_90,
-            "flipped_180" => WL_OUTPUT_TRANSFORM_FLIPPED_180,
-            "flipped_270" => WL_OUTPUT_TRANSFORM_FLIPPED_270,
-            _ => WL_OUTPUT_TRANSFORM_NORMAL
-        }
-    } else {
-        WL_OUTPUT_TRANSFORM_NORMAL
-    };
-    let compositor_state = CompositorState::new(rotation);
+    let rotation_argument_string = args.nth(1).unwrap_or_else(|| "".to_string());
+    let rotation_transform = rotation_transform_from_str(&rotation_argument_string);
+    let compositor_state = CompositorState::new(rotation_transform);
     let mut compositor = CompositorBuilder::new().gles2(true)
                                                  .input_manager(Box::new(InputManager))
                                                  .output_manager(Box::new(OutputManager))
                                                  .build_auto(compositor_state);
     {
         let gles2 = &mut compositor.renderer.as_mut().unwrap();
-        let compositor_data: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
-        compositor_data.cat_texture =
+        let compositor_state: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
+        compositor_state.cat_texture =
             gles2.create_texture_from_pixels(TextureFormat::ABGR8888.into(),
-                                             CAT_WIDTH * 4,
-                                             CAT_WIDTH,
-                                             CAT_HEIGHT,
-                                             CAT_DATA);
+                                             CAT_TEXTURE_WIDTH * 4,
+                                             CAT_TEXTURE_WIDTH,
+                                             CAT_TEXTURE_HEIGHT,
+                                             CAT_TEXTURE_DATA);
     }
     compositor.run();
 }
