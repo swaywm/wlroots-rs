@@ -17,7 +17,7 @@ use wlroots::pointer_events::{AbsoluteMotionEvent, ButtonEvent, MotionEvent};
 use wlroots::utils::{init_logging, WLR_DEBUG, current_time};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
-use wlroots::wlroots_dehandle::wlroots_dehandle;
+use wlroots::wlroots_dehandle;
 
 struct State {
     xcursor_manager: XCursorManager,
