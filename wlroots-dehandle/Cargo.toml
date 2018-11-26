@@ -1,0 +1,12 @@
+[package]
+name = "wlroots-dehandle"
+version = "0.0.0"
+authors = ["Timidger <APragmaticPlace@gmail.com>"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "0.15", features = ["full", "fold"] }
+quote = "0.6"
+proc-macro2 = "0.4"
