@@ -1,16 +1,17 @@
 //! TODO Documentation
 
-use std::time::Duration;
+use std::{ptr, time::Duration};
+
 
 use libc::{c_float, c_int, c_void};
-
-use {Area, Output, PixmanRegion};
-use render::Texture;
 use wlroots_sys::{wl_shm_format, wlr_backend, wlr_backend_get_renderer,
                   wlr_render_ellipse_with_matrix, wlr_render_quad_with_matrix, wlr_render_rect,
                   wlr_render_texture, wlr_render_texture_with_matrix, wlr_renderer,
                   wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
-                  wlr_texture_from_pixels, wlr_texture_destroy};
+                  wlr_texture_from_pixels, wlr_texture_destroy, wlr_renderer_scissor};
+
+use {Area, Output, PixmanRegion};
+use render::Texture;
 
 /// A generic interface for rendering to the screen.
 ///
@@ -161,6 +162,18 @@ impl<'output> Renderer<'output> {
         unsafe {
             wlr_render_texture_with_matrix(self.renderer, texture.as_ptr(), matrix.as_ptr(), 1.0)
         }
+    }
+
+    /// Defines a scissor box. Only pixels that lie within the scissor box can be
+    /// modified by drawing functions.
+    ///
+    /// Providing a `None` for `area` disables the scissor box.
+    pub fn render_scissor<T>(&mut self, area: T) where T: Into<Option<Area>> {
+        let mut area = area.into().map(|area| area.into());;
+        let area_ptr = area.as_mut()
+            .map(|area| area as _)
+            .unwrap_or(ptr::null_mut());
+        unsafe { wlr_renderer_scissor(self.renderer, area_ptr) }
     }
 
     /// Renders a solid quad in the specified color.
