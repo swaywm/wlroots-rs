@@ -5,7 +5,7 @@ extern crate libc;
 use std::process::Command;
 use std::thread;
 
-use wlroots::{project_box, Area, Capability, CompositorBuilder, CompositorHandle, Cursor,
+use wlroots::{matrix, Area, Capability, CompositorBuilder, CompositorHandle, Cursor,
               CursorHandle, CursorHandler, InputManagerHandler, KeyboardHandle, KeyboardHandler,
               Origin, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
               OutputLayout, OutputLayoutHandle, OutputLayoutHandler, OutputManagerHandler,
@@ -311,11 +311,11 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                                              render_height));
         if layout.intersects(renderer.output, render_box) {
             let transform = renderer.output.get_transform().invert();
-            let matrix = project_box(render_box,
-                                     transform,
-                                     0.0,
-                                     renderer.output
-                                     .transform_matrix());
+            let matrix = matrix::project_box(render_box,
+                                             transform,
+                                             0.0,
+                                             renderer.output
+                                             .transform_matrix());
             if let Some(texture) = surface.texture().as_ref() {
                 renderer.render_texture_with_matrix(texture, matrix);
             }

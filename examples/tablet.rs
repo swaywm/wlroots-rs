@@ -2,7 +2,7 @@ extern crate wlroots;
 extern crate libc;
 
 use std::f64::consts::PI;
-use wlroots::{tablet_pad_events, tablet_tool_events, *, key_events::*, utils::*,
+use wlroots::{matrix, tablet_pad_events, tablet_tool_events, *, key_events::*, utils::*,
               wlroots_sys::wl_output_transform::WL_OUTPUT_TRANSFORM_NORMAL,
               xkbcommon::xkb::KEY_Escape};
 
@@ -222,10 +222,10 @@ impl OutputHandler for OutputEx {
 
                                   height: (16.0 * (state.pressure + 1.0)) as i32 };
                 let mut area = Area { origin, size };
-                let matrix = project_box(area,
-                                         WL_OUTPUT_TRANSFORM_NORMAL,
-                                         state.ring as _,
-                                         transform_matrix.clone());
+                let matrix = matrix::project_box(area,
+                                                 WL_OUTPUT_TRANSFORM_NORMAL,
+                                                 state.ring as _,
+                                                 transform_matrix.clone());
                 renderer.render_colored_quad(tool_color, matrix);
 
                 area.origin.x += state.tilt.0 as i32;
