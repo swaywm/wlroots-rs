@@ -7,15 +7,16 @@
 //! transforming the matrices.
 
 use Area;
-use wlroots_sys::{wl_output_transform, wlr_matrix_identity, wlr_matrix_multiply,
+use wlroots_sys::{wl_output_transform, wlr_matrix_multiply,
                   wlr_matrix_project_box, wlr_matrix_projection, wlr_matrix_rotate,
                   wlr_matrix_scale, wlr_matrix_transform, wlr_matrix_translate,
                   wlr_matrix_transpose};
 
-/// Modifies the matrix to become the identity matrix.
-pub fn matrix_identity(output: &mut [f32; 9]) {
-    unsafe { wlr_matrix_identity(output.as_mut_ptr()) }
-}
+pub const IDENTITY: [f32; 9] =[
+    1.0, 0.0, 0.0,
+    0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0
+];
 
 /// Translate the matrix in x, and y.
 pub fn matrix_translate(x: f32, y: f32) -> [f32; 9] {
