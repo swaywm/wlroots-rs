@@ -536,7 +536,12 @@ impl Compositor {
 
 impl Drop for Compositor {
     fn drop(&mut self) {
-        unsafe { wlr_compositor_destroy(self.compositor) }
+        unsafe {
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_display_destroy_clients,
+                          self.display);
+            wlr_compositor_destroy(self.compositor)
+        }
     }
 }
 
