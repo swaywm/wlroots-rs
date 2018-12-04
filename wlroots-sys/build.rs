@@ -56,6 +56,7 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=xcb-shm");
     println!("cargo:rustc-link-lib=dylib=xcb-icccm");
     println!("cargo:rustc-link-lib=dylib=xcb-xkb");
+    println!("cargo:rustc-link-lib=dylib=xcb-xinput");
     println!("cargo:rustc-link-lib=dylib=wayland-egl");
     println!("cargo:rustc-link-lib=dylib=wayland-client");
     println!("cargo:rustc-link-lib=dylib=wayland-server");

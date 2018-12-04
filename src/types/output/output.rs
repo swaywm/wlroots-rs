@@ -13,7 +13,7 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
                   wlr_output_damage, wlr_output_effective_resolution, wlr_output_enable,
                   wlr_output_get_gamma_size, wlr_output_make_current, wlr_output_mode,
                   wlr_output_schedule_frame, wlr_output_set_custom_mode,
-                  wlr_output_set_fullscreen_surface, wlr_output_set_gamma, wlr_output_set_mode,
+                  wlr_output_set_gamma, wlr_output_set_mode,
                   wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
                   wlr_output_swap_buffers, wlr_output_transformed_resolution};
 
@@ -25,7 +25,7 @@ use {OutputLayoutHandle, OutputMode};
 pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;
 
-use {Origin, OutputDamage, PixmanRegion, Size, Surface, SurfaceHandle};
+use {Origin, OutputDamage, PixmanRegion, Size};
 
 pub(crate) struct OutputState {
     pub(crate) output: *mut UserOutput,
@@ -332,18 +332,6 @@ impl Output {
         wlr_output_swap_buffers(self.output, when_ptr, damage)
     }
 
-    /// If there is a fullscreen surface on this output, returns a handle to it.
-    pub fn fullscreen_surface(&self) -> Option<SurfaceHandle> {
-        unsafe {
-            let surface = (*self.output).fullscreen_surface;
-            if surface.is_null() {
-                None
-            } else {
-                Some(SurfaceHandle::from_ptr(surface))
-            }
-        }
-    }
-
     /// Determines if a frame is pending or not.
     pub fn frame_pending(&self) -> bool {
         unsafe { (*self.output).frame_pending }
@@ -413,11 +401,6 @@ impl Output {
     /// Get the gamma size.
     pub fn get_gamma_size(&self) -> usize {
         unsafe { wlr_output_get_gamma_size(self.output) }
-    }
-
-    /// Set the fullscreen surface for this output.
-    pub fn set_fullscreen_surface(&mut self, surface: &mut Surface) {
-        unsafe { wlr_output_set_fullscreen_surface(self.output, surface.as_ptr()) }
     }
 
     /// Sets the position of this output.

@@ -33,14 +33,6 @@ pub struct DataSource {
 // TODO Be able to set the function pointers?
 
 impl DataSource {
-    /// Get the data offer from this source.
-    pub fn offer<'source>(&'source mut self) -> DataOffer<'source> {
-        unsafe {
-            DataOffer { offer: (*self.source).offer,
-                        phantom: PhantomData }
-        }
-    }
-
     // TODO Mime types
 
     pub fn action(&self) -> i32 {
