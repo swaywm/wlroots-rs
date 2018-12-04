@@ -6,6 +6,8 @@ pub extern crate wayland_server;
 #[macro_use]
 pub extern crate wayland_sys;
 
+pub use wayland_sys::{*, pid_t, gid_t, uid_t, server::{self, WAYLAND_SERVER_HANDLE}};
+
 #[allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 mod generated {
     use libc;

@@ -21,7 +21,7 @@ pkg-config = "0.3.*"
 libc = "^0.2.*"
 wayland-commons = { version = "0.21.*", features = ["native_lib"] }
 wayland-server = { version = "0.21.*", features = ["native_lib"] }
-wayland-sys = { version = "0.21.*" }
+wayland-sys = { version = "0.21.*", features = ["dlopen", "server"] }
 
 [features]
 default = ["static", "libcap", "systemd", "elogind", "unstable-features"]

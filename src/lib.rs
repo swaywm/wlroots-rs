@@ -12,12 +12,12 @@ extern crate lazy_static;
 pub extern crate libc;
 extern crate vsprintf;
 #[macro_use]
-pub extern crate wayland_sys;
 pub extern crate wlroots_sys;
 pub extern crate wlroots_dehandle;
 pub extern crate xkbcommon;
 
 pub use wlroots_dehandle::wlroots_dehandle;
+pub use wlroots_sys::wayland_sys;
 
 #[macro_use]
 mod macros;
