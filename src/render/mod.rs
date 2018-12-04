@@ -2,6 +2,7 @@
 mod renderer;
 #[cfg(feature = "unstable")]
 mod texture;
+#[cfg(feature = "unstable")]
 pub mod matrix;
 #[cfg(feature = "unstable")]
 mod image;
