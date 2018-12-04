@@ -20,16 +20,10 @@ libc = "^0.2.*"
 rust-ini = "0.10.0"
 wlroots-sys = { path = "wlroots-sys", default-features = false }
 wlroots-dehandle = { path = "wlroots-dehandle" }
-wayland-sys = { version = "0.9.*", features = ["client", "dlopen", "server",] }
 lazy_static = "0.2"
 xkbcommon = "0.3"
 bitflags = "1.0"
 vsprintf = "1.0.1"
-
-[dev-dependencies]
-wayland-client = { version = "0.12.*" }
-byteorder = "1"
-tempfile = "2"
 
 [features]
 default = ["static", "libcap", "systemd", "elogind", "unstable-features"]

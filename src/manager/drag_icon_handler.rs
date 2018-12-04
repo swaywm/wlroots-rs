@@ -1,8 +1,8 @@
 //! Handler for drag icons
 
 use libc;
+use wlroots_sys::WAYLAND_SERVER_HANDLE;
 
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use compositor::{compositor_handle};
 use {CompositorHandle, DragIcon, DragIconHandle};
 

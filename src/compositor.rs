@@ -20,7 +20,6 @@ use wlroots_sys::{wlr_backend_destroy, wlr_backend_start,
                   wlr_compositor, wlr_compositor_create, wlr_compositor_destroy,
                   wlr_xdg_shell_v6, wlr_xdg_shell_v6_create,
                   wlr_xdg_shell, wlr_xdg_shell_create};
-use wlroots_sys::wayland_server::sys::wl_display_init_shm;
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 pub(crate) static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
@@ -329,7 +328,9 @@ impl CompositorBuilder {
                               -> Compositor
         where D: Any + 'static {
             // Set up shared memory buffer for Wayland clients.
-            let shm_fd = wl_display_init_shm(display as *mut _);
+            let shm_fd = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                       wl_display_init_shm,
+                                       display as *mut _);
             // Create optional extensions.
             let server_decoration_manager = if self.server_decoration_manager {
                 ServerDecorationManager::new(display)
@@ -535,7 +536,12 @@ impl Compositor {
 
 impl Drop for Compositor {
     fn drop(&mut self) {
-        unsafe { wlr_compositor_destroy(self.compositor) }
+        unsafe {
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                          wl_display_destroy_clients,
+                          self.display);
+            wlr_compositor_destroy(self.compositor)
+        }
     }
 }
 

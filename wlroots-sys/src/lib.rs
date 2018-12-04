@@ -1,9 +1,12 @@
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
 extern crate libc;
+pub extern crate wayland_commons;
 pub extern crate wayland_server;
 #[macro_use]
 pub extern crate wayland_sys;
+
+pub use wayland_sys::{*, pid_t, gid_t, uid_t, server::{self, WAYLAND_SERVER_HANDLE}};
 
 #[allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 mod generated {
@@ -15,15 +18,20 @@ mod generated {
     pub mod protocols {
         pub mod server_decoration {
             #![allow(unused_imports)]
-            pub mod server {
-                mod interfaces {
-                    pub(crate) use wayland_server::protocol_interfaces::wl_surface_interface;
-                    include!(concat!(env!("OUT_DIR"), "/server_decoration_interfaces.rs"));
-                }
+            #![allow(unused_variables)]
+            mod c_interfaces {
+                use wayland_server::sys::protocol_interfaces::wl_surface_interface;
+                include!(concat!(env!("OUT_DIR"), "/server_decoration_interfaces.rs"));
+            }
 
-                use wayland_server::{Client, EventLoopHandle, EventResult, Implementable,
-                                     Liveness, Resource};
-                use wayland_server::protocol::wl_surface;
+            pub mod server {
+                pub(crate) use wayland_server::{NewResource, Resource};
+                pub(crate) use wayland_commons::{AnonymousObject, Interface, MessageGroup,
+                                                 wire::{Argument, ArgumentType, Message, MessageDesc},
+                                                 map::{Object, ObjectMetadata}};
+                pub(crate) use wayland_sys as sys;
+                use wayland_server::{*, protocol::wl_surface};
+                use wayland_sys::common::{wl_interface, wl_argument};
                 include!(concat!(env!("OUT_DIR"), "/server_decoration_server_api.rs"));
             }
         }

@@ -77,7 +77,6 @@ impl XdgV6ShellSurface {
         where T: Into<Option<XdgV6ShellState>>
     {
         let state = state.into();
-        // TODO FIXME Free state in drop impl when Rc == 1
         (*shell_surface).data = ptr::null_mut();
         let liveliness = Rc::new(Cell::new(false));
         let shell_state =
@@ -208,6 +207,26 @@ impl XdgV6ShellSurface {
                                       Some(ref state) => unsafe { Some(state.clone()) }
                                   },
                                   shell_surface: self.shell_surface }
+    }
+}
+
+impl Drop for XdgV6ShellSurface {
+    fn drop(&mut self) {
+        if Rc::strong_count(&self.liveliness) == 1 {
+            wlr_log!(WLR_DEBUG, "Dropped xdg v6 shell {:p}", self.shell_surface);
+            let weak_count = Rc::weak_count(&self.liveliness);
+            if weak_count > 0 {
+                wlr_log!(WLR_DEBUG,
+                         "Still {} weak pointers to xdg v6 shell {:p}",
+                         weak_count,
+                         self.shell_surface);
+            }
+        } else {
+            return
+        }
+        unsafe {
+            let _ = Box::from_raw((*self.shell_surface).data as *mut XdgV6ShellSurfaceState);
+        }
     }
 }
 

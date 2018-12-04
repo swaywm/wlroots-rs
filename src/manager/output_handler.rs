@@ -1,11 +1,12 @@
 //! Handler for outputs
 
+use libc;
+use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wlroots_sys::wlr_output;
+
 use {Output, OutputHandle, OutputState};
 use errors::HandleErr;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use compositor::{compositor_handle, CompositorHandle};
-use libc;
-use wlroots_sys::wlr_output;
 
 pub trait OutputHandler {
     /// Called every time the output frame is updated.

@@ -466,7 +466,7 @@ impl Drop for Output {
         // That is handled by the backend automatically
 
         // NOTE
-        // We do _not_ need to call wlr_output_damage_detroy for the output,
+        // We do _not_ need to call wlr_output_damage_destroy for the output,
         // that is handled automatically by the listeners in wlroots.
         if Rc::strong_count(&self.liveliness) == 1 {
             wlr_log!(WLR_DEBUG, "Dropped output {:p}", self.output);
