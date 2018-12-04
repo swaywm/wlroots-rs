@@ -39,6 +39,9 @@ tasks:
       cd ../
 
       cargo build --verbose
+      cargo build --verbose --features=unstable
       cargo build --examples
+      cargo build --examples --features=unstable
+      # For doc tests
       cargo doc
-      cargo test --all
+      cargo test --all --features=unstable
