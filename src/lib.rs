@@ -4,7 +4,7 @@
 //! Start your [Compositor](struct.Compositor.html) by implementing an [input
 //! manager](manager/struct.InputManager.html) and an [output
 //! manager](manager/struct.OutputManager.html) on two separate structs.
-#![cfg_attr(not(unstable_features), allow(unused_imports, unused_macros))]
+#![cfg_attr(not(unstable), allow(unused_imports, unused_macros))]
 
 #![allow(unused_unsafe)]
 #[macro_use]
@@ -22,28 +22,28 @@ pub use wlroots_sys::wayland_sys;
 
 #[macro_use]
 mod macros;
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 mod manager;
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 mod compositor;
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 mod errors;
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 pub mod events;
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 pub mod types;
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 pub mod extensions;
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 pub mod render;
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 pub mod utils;
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 mod xwayland;
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 mod backend;
 
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 mod unstable {
     pub use self::backend::*;
     pub use self::compositor::{compositor_handle, terminate, Compositor, CompositorBuilder,
@@ -85,6 +85,6 @@ mod unstable {
 
     pub use self::errors::*;
 }
-#[cfg(unstable_features)]
+#[cfg(unstable)]
 pub use unstable::*;
 

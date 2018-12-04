@@ -40,7 +40,7 @@ fn main() {
         .hide_type("FP_ZERO")
         .hide_type("FP_SUBNORMAL")
         .hide_type("FP_NORMAL");
-    if cfg!(feature = "unstable-features") {
+    if cfg!(feature = "unstable") {
         builder = builder.clang_arg("-DWLR_USE_UNSTABLE");
     }
     let generated = builder.generate().unwrap();
