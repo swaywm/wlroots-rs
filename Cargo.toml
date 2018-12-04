@@ -26,7 +26,7 @@ bitflags = "1.0"
 vsprintf = "1.0.1"
 
 [features]
-default = ["static", "libcap", "systemd", "elogind", "unstable-features"]
+default = ["static", "libcap", "systemd", "elogind"]
 static = ["wlroots-sys/static"]
 libcap = ["wlroots-sys/libcap"]
 systemd = ["wlroots-sys/systemd"]

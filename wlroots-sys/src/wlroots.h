@@ -1,4 +1,14 @@
-/// Backend includes
+// Stable interfaces
+
+#include <wlr/util/edges.h>
+#include <wlr/util/log.h>
+#include <wlr/util/region.h>
+
+#include <wlr/xcursor.h>
+
+#include <xcursor.h>
+
+#ifdef WLR_USE_UNSTABLE
 #include <wlr/backend.h>
 #include <wlr/backend/drm.h>
 #include <wlr/backend/headless.h>
@@ -11,15 +21,14 @@
 #include <wlr/backend/x11.h>
 #include <wlr/backend/session/interface.h>
 
-/// Render includes
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/render/egl.h>
 #include <wlr/render/gles2.h>
 #include <wlr/render/interface.h>
 #include <wlr/render/wlr_texture.h>
 
-/// Type includes
 #include <wlr/types/wlr_box.h>
+// NOTE this is stable, but it relies on wlr_box.h which isn't
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_cursor.h>
@@ -44,12 +53,9 @@
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 
-/// Util includes
-#include <wlr/util/log.h>
-#include <wlr/util/edges.h>
 
-/// Misc includes
-#include <xcursor.h>
 #include <xwayland.h>
 #include <xkbcommon/xkbcommon.h>
 #include <pixman.h>
+
+#endif
