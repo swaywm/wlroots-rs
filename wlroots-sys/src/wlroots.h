@@ -9,6 +9,7 @@
 #include <xcursor.h>
 
 #ifdef WLR_USE_UNSTABLE
+
 #include <wlr/backend.h>
 #include <wlr/backend/drm.h>
 #include <wlr/backend/headless.h>

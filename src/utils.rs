@@ -101,6 +101,7 @@ pub unsafe fn c_to_rust_string(c_str: *const c_char) -> Option<String> {
 ///
 /// When a panic occurs, we terminate the compositor and let the rest
 /// of the code run.
+#[cfg(feature = "unstable")]
 pub(crate) unsafe fn handle_unwind<T>(res: ::std::thread::Result<T>) {
     match res {
         Ok(_) => {}

@@ -30,13 +30,10 @@ mod compositor;
 mod errors;
 #[cfg(feature = "unstable")]
 pub mod events;
-#[cfg(feature = "unstable")]
 pub mod types;
 #[cfg(feature = "unstable")]
 pub mod extensions;
-#[cfg(feature = "unstable")]
 pub mod render;
-#[cfg(feature = "unstable")]
 pub mod utils;
 #[cfg(feature = "unstable")]
 mod xwayland;
@@ -80,9 +77,7 @@ pub use wlroots_sys::{wlr_keyboard_modifiers, wlr_tablet_tool_axes, wl_shm_forma
                       wlr_tablet_tool_proximity_state::{self, *}};
 
 #[cfg(feature = "unstable")]
-pub use self::render::{matrix_identity, matrix_multiply, matrix_projection, matrix_rotate,
-                       matrix_scale, matrix_transform, matrix_translate, matrix_transpose,
-                       project_box, GenericRenderer, Image, Renderer, Texture, TextureFormat};
+pub use self::render::{matrix, GenericRenderer, Image, Renderer, Texture, TextureFormat};
 
 #[cfg(feature = "unstable")]
 pub use self::errors::*;

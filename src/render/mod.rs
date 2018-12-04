@@ -1,9 +1,14 @@
+#[cfg(feature = "unstable")]
 mod renderer;
+#[cfg(feature = "unstable")]
 mod texture;
-mod matrix;
+pub mod matrix;
+#[cfg(feature = "unstable")]
 mod image;
 
+#[cfg(feature = "unstable")]
 pub use self::image::*;
-pub use self::matrix::*;
+#[cfg(feature = "unstable")]
 pub use self::renderer::{GenericRenderer, Renderer};
+#[cfg(feature = "unstable")]
 pub use self::texture::{Texture, TextureFormat};

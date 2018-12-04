@@ -1,4 +1,10 @@
-//! TODO Documentation
+//! Matrix math is used to render things on a computer screen. This is common
+//! throughout computer graphics, for examples and primers on using matrix
+//! math to render things to screens please read an OpengGL tutorial.
+//!
+//! In wlroots we primarily use a 3x3 matrix of 32 bit floating point values to
+//! represent a 2D screen. We also provide basic helper functions to assist in
+//! transforming the matrices.
 
 use Area;
 use wlroots_sys::{wl_output_transform, wlr_matrix_identity, wlr_matrix_multiply,
