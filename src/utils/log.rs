@@ -1,6 +1,13 @@
+//! Hooks into the wlroots logging functionality. Internally many events are logged
+//! and are reported on standard error. The verbosity of the logs is determined by
+//! [the verbosity level](type.LogVerbosity.html) when
+//! [initializing the logs](fn.init_logging.html).
+//!
+//! To log using this system please utilize the [`wlr_log!`](../../macro.wlr_log.html) macro.
 
 use libc::c_char;
-pub use wlroots_sys::wlr_log_importance::{self, *};
+pub use wlroots_sys::wlr_log_importance::{self, WLR_SILENT, WLR_ERROR, WLR_INFO,
+                                          WLR_DEBUG, WLR_LOG_IMPORTANCE_LAST};
 use wlroots_sys::{__va_list_tag, wlr_log_init};
 use vsprintf::vsprintf;
 
@@ -19,9 +26,8 @@ static mut RUST_LOGGING_FN: LogCallback = dummy_callback;
 /// an optional callback that will be called for every log.
 ///
 /// To log using this system, use the `wlr_log!` macro.
-// TODO Wrap the callback function type
-pub fn init_logging<T>(verbosity: LogVerbosity, callback: T)
-where T: Into<Option<LogCallback>>
+pub fn init_logging<F>(verbosity: LogVerbosity, callback: F)
+where F: Into<Option<LogCallback>>
 {
     unsafe {
         match callback.into() {
