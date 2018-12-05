@@ -33,17 +33,6 @@ macro_rules! wl_list_for_each {
     }
 }
 
-/// Convert a literal string to a C string.
-/// Note: Does not check for internal nulls, nor does it do any conversions on
-/// the grapheme clustors. Just passes the bytes as is.
-/// So probably only works on ASCII.
-#[macro_export]
-macro_rules! c_str {
-    ($s:expr) => {
-        concat!($s, "\0").as_ptr() as *const $crate::libc::c_char
-    }
-}
-
 /// Logs a message using wlroots' logging capability.
 ///
 /// Example:
@@ -60,6 +49,15 @@ macro_rules! c_str {
 #[macro_export]
 macro_rules! wlr_log {
     ($verb: expr, $($msg:tt)*) => {{
+        /// Convert a literal string to a C string.
+        /// Note: Does not check for internal nulls, nor does it do any conversions on
+        /// the grapheme clustors. Just passes the bytes as is.
+        /// So probably only works on ASCII.
+        macro_rules! c_str {
+            ($s:expr) => {
+                concat!($s, "\0").as_ptr() as *const $crate::libc::c_char
+            }
+        }
         use $crate::wlroots_sys::_wlr_log;
         use $crate::wlroots_sys::wlr_log_importance::*;
         use ::std::ffi::CString;
@@ -200,6 +198,7 @@ macro_rules! wayland_listener {
 /// It will automatically implement the CompositorData trait for the struct,
 /// and also add a method to `Compositor` to unwrap the data from the fat
 /// pointer.
+#[cfg(feature = "unstable")]
 #[macro_export]
 macro_rules! compositor_data {
     ($struct_name: ty) => {
@@ -246,6 +245,7 @@ macro_rules! compositor_data {
 /// })
 /// ```
 ///
+#[cfg(feature = "unstable")]
 #[macro_export]
 macro_rules! with_handles {
     ([($handle_name: ident: $unhandle_name: block)] => $body: block) => {
