@@ -9,7 +9,7 @@ use wlroots::{CompositorBuilder, CompositorHandle, Cursor, CursorHandle, CursorH
               XCursorManager};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AbsoluteMotionEvent, AxisEvent, ButtonEvent, MotionEvent};
-use wlroots::utils::{init_logging, WLR_DEBUG};
+use wlroots::utils::log::{init_logging, WLR_DEBUG};
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms;
 

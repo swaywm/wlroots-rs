@@ -241,7 +241,7 @@ impl OutputHandler for OutputEx {
 compositor_data!(State);
 
 fn main() {
-    init_logging(WLR_DEBUG, None);
+    log::init_logging(log::WLR_DEBUG, None);
     CompositorBuilder::new().gles2(true)
                             .input_manager(Box::new(InputManagerEx))
                             .output_manager(Box::new(OutputManagerEx))

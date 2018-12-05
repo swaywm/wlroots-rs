@@ -10,7 +10,7 @@ use wlroots::{CompositorBuilder, CompositorHandle, InputManagerHandler, Keyboard
               OutputManagerHandler};
 use wlroots::key_events::KeyEvent;
 use wlroots::render::{Texture, TextureFormat};
-use wlroots::utils::{init_logging, WLR_DEBUG};
+use wlroots::utils::log::{init_logging, WLR_DEBUG};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
 

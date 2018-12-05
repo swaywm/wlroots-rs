@@ -7,7 +7,6 @@ pub mod log;
 mod time;
 mod string;
 
-pub use self::edges::Edges;
 pub use self::time::{current_time, ToMs};
 pub(crate) use self::string::{c_to_rust_string, safe_as_cstring};
 

@@ -4,8 +4,7 @@ use wlroots_sys::{wlr_xdg_toplevel_v6_move_event, wlr_xdg_toplevel_v6_resize_eve
                   wlr_xdg_toplevel_v6_set_fullscreen_event,
                   wlr_xdg_toplevel_v6_show_window_menu_event};
 
-use {OutputHandle, XdgV6ShellSurfaceHandle};
-use utils::Edges;
+use {OutputHandle, XdgV6ShellSurfaceHandle, utils::edges::Edges};
 
 /// Event that triggers when the surface has been moved in coordinate space.
 #[derive(Debug, PartialEq, Eq)]

@@ -18,7 +18,7 @@ pub extern crate wlroots_dehandle;
 pub extern crate xkbcommon;
 
 pub use wlroots_dehandle::wlroots_dehandle;
-pub use wlroots_sys::wayland_sys;
+pub(crate) use wlroots_sys::wayland_sys;
 
 #[macro_use]
 mod macros;
@@ -33,6 +33,7 @@ pub mod events;
 pub mod types;
 #[cfg(feature = "unstable")]
 pub mod extensions;
+#[cfg(feature = "unstable")]
 pub mod render;
 pub mod utils;
 #[cfg(feature = "unstable")]

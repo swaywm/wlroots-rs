@@ -7,7 +7,7 @@ use wlroots::{CompositorBuilder, CompositorHandle, InputManagerHandler, Keyboard
               OutputManagerHandler, Texture, TextureFormat, TouchHandle, TouchHandler};
 use wlroots::key_events::KeyEvent;
 use wlroots::touch_events::{DownEvent, MotionEvent, UpEvent};
-use wlroots::utils::{init_logging, WLR_DEBUG};
+use wlroots::utils::log::{init_logging, WLR_DEBUG};
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 const CAT_WIDTH: u32 = 128;
