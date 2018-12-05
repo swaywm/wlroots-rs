@@ -30,7 +30,7 @@ mod compositor;
 mod errors;
 #[cfg(feature = "unstable")]
 pub mod events;
-pub mod types;
+mod types;
 #[cfg(feature = "unstable")]
 pub mod extensions;
 #[cfg(feature = "unstable")]
@@ -40,6 +40,8 @@ pub mod utils;
 mod xwayland;
 #[cfg(feature = "unstable")]
 mod backend;
+
+pub use types::*;
 
 #[cfg(feature = "unstable")]
 pub use self::backend::*;
@@ -59,9 +61,6 @@ pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, Out
                         XdgV6ShellManagerHandler, XdgShellHandler, XdgShellManagerHandler,
                         DragIconHandler};
 
-#[cfg(feature = "unstable")]
-pub use self::types::{area::*, cursor::*, data_device::*, input::*,
-                      output::*, seat::*, shell::*, surface::*};
 #[cfg(feature = "unstable")]
 pub use self::xwayland::{XWaylandManagerHandler, XWaylandServer, XWaylandSurface,
                          XWaylandSurfaceHandle, XWaylandSurfaceHandler, XWaylandSurfaceHints,
