@@ -13,6 +13,7 @@ packages:
     - rustup
     - clang
     - libxcb
+    - xorg-xinput
     - xcb-util-image
     - xcb-util-cursor
     - xcb-util-wm
