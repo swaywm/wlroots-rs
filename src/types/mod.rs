@@ -1,19 +1,19 @@
-mod cursor;
+pub(crate) mod cursor;
 
 #[cfg(feature = "unstable")]
-pub mod input;
+pub(crate) mod input;
 #[cfg(feature = "unstable")]
-pub mod output;
+pub(crate) mod output;
 #[cfg(feature = "unstable")]
-pub mod area;
+pub(crate) mod area;
 #[cfg(feature = "unstable")]
-pub mod seat;
+pub(crate) mod seat;
 #[cfg(feature = "unstable")]
-pub mod surface;
+pub(crate) mod surface;
 #[cfg(feature = "unstable")]
-pub mod shell;
+pub(crate) mod shell;
 #[cfg(feature = "unstable")]
-pub mod data_device;
+pub(crate) mod data_device;
 
 pub use self::cursor::*;
 
