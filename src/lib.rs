@@ -29,7 +29,7 @@ mod compositor;
 #[cfg(feature = "unstable")]
 mod errors;
 #[cfg(feature = "unstable")]
-pub mod events;
+mod events;
 mod types;
 #[cfg(feature = "unstable")]
 pub mod extensions;
@@ -49,11 +49,7 @@ pub use self::backend::*;
 pub use self::compositor::{compositor_handle, terminate, Compositor, CompositorBuilder,
                             CompositorHandle, CompositorHandler};
 #[cfg(feature = "unstable")]
-pub use self::events::{key_events, seat_events, tablet_pad_events, tablet_tool_events,
-                        touch_events, xwayland_events,
-                        pointer_events::{self, BTN_BACK, BTN_EXTRA, BTN_FORWARD, BTN_LEFT,
-                                        BTN_MIDDLE, BTN_MOUSE, BTN_RIGHT, BTN_SIDE, BTN_TASK},
-                        xdg_shell_v6_events, xdg_shell_events};
+pub use events::*;
 #[cfg(feature = "unstable")]
 pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
                         OutputHandler, OutputManagerHandler, PointerHandler, TabletPadHandler,
@@ -65,8 +61,6 @@ pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, Out
 pub use self::xwayland::{XWaylandManagerHandler, XWaylandServer, XWaylandSurface,
                          XWaylandSurfaceHandle, XWaylandSurfaceHandler, XWaylandSurfaceHints,
                          XWaylandSurfaceSizeHints};
-#[cfg(feature = "unstable")]
-pub use key_events::Key;
 #[cfg(feature = "unstable")]
 pub use wlroots_sys::{wlr_keyboard_modifiers, wlr_tablet_tool_axes, wl_shm_format::{self, *},
                       wlr_axis_orientation::{self, *}, wlr_axis_source::{self, *},
