@@ -1,11 +1,11 @@
 //! TODO Documentation
 
-use libc::c_int;
 use std::marker::PhantomData;
 
+use libc::c_int;
 use wlroots_sys::{wl_output_transform, wl_resource, wlr_surface_state};
 
-use {PixmanRegion, Surface};
+use {output::output_damage::PixmanRegion, surface::Surface};
 
 #[derive(Debug)]
 #[repr(u32)]
@@ -55,7 +55,7 @@ impl<'surface> SurfaceState<'surface> {
     /// # Panics
     /// If the invalid state is in an undefined state, this will panic.
     pub fn committed(&self) -> InvalidState {
-        use InvalidState::*;
+        use self::InvalidState::*;
         unsafe {
             match self.state.committed {
                 1 => Buffer,

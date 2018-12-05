@@ -19,44 +19,26 @@ pub(crate) use wlroots_sys::libc;
 #[macro_use]
 mod macros;
 #[cfg(feature = "unstable")]
-mod manager;
+pub(crate) mod manager;
 #[cfg(feature = "unstable")]
-mod compositor;
+pub mod compositor;
 #[cfg(feature = "unstable")]
 mod errors;
 #[cfg(feature = "unstable")]
-mod events;
+pub(crate) mod events;
 mod types;
 #[cfg(feature = "unstable")]
 pub mod extensions;
 #[cfg(feature = "unstable")]
-mod render;
+pub mod render;
 pub mod utils;
 #[cfg(feature = "unstable")]
-mod xwayland;
+pub mod xwayland;
 #[cfg(feature = "unstable")]
-mod backend;
+pub mod backend;
 
 pub use types::*;
 
-#[cfg(feature = "unstable")]
-pub use self::backend::*;
-#[cfg(feature = "unstable")]
-pub use self::compositor::{compositor_handle, terminate, Compositor, CompositorBuilder,
-                            CompositorHandle, CompositorHandler};
-#[cfg(feature = "unstable")]
-pub use events::*;
-#[cfg(feature = "unstable")]
-pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
-                        OutputHandler, OutputManagerHandler, PointerHandler, TabletPadHandler,
-                        TabletToolHandler, TouchHandler, XdgV6ShellHandler,
-                        XdgV6ShellManagerHandler, XdgShellHandler, XdgShellManagerHandler,
-                        DragIconHandler};
-
-#[cfg(feature = "unstable")]
-pub use self::xwayland::{XWaylandManagerHandler, XWaylandServer, XWaylandSurface,
-                         XWaylandSurfaceHandle, XWaylandSurfaceHandler, XWaylandSurfaceHints,
-                         XWaylandSurfaceSizeHints};
 #[cfg(feature = "unstable")]
 pub use wlroots_sys::{wlr_keyboard_modifiers as KeyboardModifiers,
                       wlr_tablet_tool_axes as TabletToolAxes,
@@ -67,9 +49,6 @@ pub use wlroots_sys::{wlr_keyboard_modifiers as KeyboardModifiers,
                       wlr_tablet_pad_ring_source::{self, *},
                       wlr_tablet_pad_strip_source::{self, *},
                       wlr_tablet_tool_proximity_state::{self, *}};
-
-#[cfg(feature = "unstable")]
-pub use self::render::*;
 
 #[cfg(feature = "unstable")]
 pub use self::errors::*;

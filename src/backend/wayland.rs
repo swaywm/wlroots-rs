@@ -3,9 +3,10 @@ use std::ptr;
 use wlroots_sys::{wlr_backend, wl_display, wlr_wl_backend_create,
                   wlr_wl_output_create, wlr_input_device_is_wl, wlr_output_is_wl};
 
-use {OutputHandle, InputDevice, Output};
-use utils::safe_as_cstring;
-use super::UnsafeRenderSetupFunction;
+use {backend::backend::UnsafeRenderSetupFunction,
+     output::{OutputHandle, Output},
+     input::InputDevice,
+     utils::safe_as_cstring};
 
 /// When the compositor is running in a nested Wayland environment.
 /// e.g. your compositor is executed while the user is running Gnome+Mutter or Weston.

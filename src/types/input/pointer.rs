@@ -6,6 +6,8 @@ use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
 use super::input_device::{InputDevice, InputState};
+pub use manager::pointer_handler::*;
+pub use events::pointer_events as event;
 
 #[derive(Debug)]
 pub struct Pointer {

@@ -5,6 +5,8 @@ use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_tablet};
 
 use super::input_device::{InputDevice, InputState};
+pub use manager::tablet_tool_handler::*;
+pub use events::tablet_tool_events as event;
 
 #[derive(Debug)]
 pub struct TabletTool {

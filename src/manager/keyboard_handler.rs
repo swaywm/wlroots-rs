@@ -1,14 +1,12 @@
 //! Handler for keyboards
 
 use libc;
-use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wlroots_sys::{wlr_input_device, wlr_event_keyboard_key};
 
-use {Keyboard, KeyboardHandle};
-use compositor::{compositor_handle, CompositorHandle};
-use events::key_events::KeyEvent;
-
-use wlroots_sys::wlr_event_keyboard_key;
+use {compositor::{compositor_handle, CompositorHandle},
+     events::key_events::KeyEvent,
+     input::keyboard::{Keyboard, KeyboardHandle}};
 
 pub trait KeyboardHandler {
     /// Callback that is triggered when a key is pressed.
@@ -27,7 +25,7 @@ pub trait KeyboardHandler {
     fn destroyed(&mut self, CompositorHandle, KeyboardHandle) {}
 }
 
-wayland_listener!(KeyboardWrapper, (Keyboard, Box<KeyboardHandler>), [
+wayland_listener!(pub(crate) KeyboardWrapper, (Keyboard, Box<KeyboardHandler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut KeyboardWrapper, data: *mut libc::c_void,|
     unsafe {
         let input_device_ptr = data as *mut wlr_input_device;

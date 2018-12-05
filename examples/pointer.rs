@@ -1,14 +1,17 @@
 #[macro_use]
 extern crate wlroots;
 
-use wlroots::{CompositorBuilder, CompositorHandle, Cursor, CursorHandle, CursorHandler,
-              InputManagerHandler, KeyboardHandle, KeyboardHandler, OutputBuilder,
-              OutputBuilderResult, OutputHandle, OutputHandler, OutputLayout, OutputLayoutHandle,
-              OutputLayoutHandler, OutputManagerHandler, PointerHandle, PointerHandler,
-              XCursorManager};
-use wlroots::key_events::KeyEvent;
-use wlroots::pointer_events::{AbsoluteMotionEvent, AxisEvent, ButtonEvent, MotionEvent};
-use wlroots::utils::log::{init_logging, WLR_DEBUG};
+use wlroots::{compositor::{CompositorBuilder, CompositorHandle},
+              cursor::{Cursor, CursorHandle, CursorHandler, xcursor_manager::XCursorManager},
+              input::{InputManagerHandler,
+                      pointer::{PointerHandle, PointerHandler,
+                                event::{AbsoluteMotionEvent, AxisEvent,
+                                        ButtonEvent, MotionEvent}},
+                      keyboard::{KeyboardHandle, KeyboardHandler, event::KeyEvent}},
+              utils::log::{init_logging, WLR_DEBUG},
+              output::{OutputHandle, OutputBuilder, OutputBuilderResult,
+                       OutputHandler, OutputManagerHandler,
+                       output_layout::{OutputLayout, OutputLayoutHandle, OutputLayoutHandler}}};
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms;
 
@@ -77,7 +80,7 @@ impl KeyboardHandler for ExKeyboardHandler {
     fn on_key(&mut self, _compositor_handle: CompositorHandle, _keyboard_handle: KeyboardHandle, key_event: &KeyEvent) {
         for key in key_event.pressed_keys() {
             match key {
-                keysyms::KEY_Escape => wlroots::terminate(),
+                keysyms::KEY_Escape => wlroots::compositor::terminate(),
                 _ => {}
             }
         }

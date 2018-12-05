@@ -1,14 +1,13 @@
 //! Handler for stable XDG shell clients.
 
 use libc;
-
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_xdg_surface;
 
-use {SurfaceHandle, XdgShellSurface, XdgShellSurfaceHandle};
-use compositor::{compositor_handle, CompositorHandle};
-use types::shell::XdgShellSurfaceState;
-use xdg_shell_events::{MoveEvent, ResizeEvent, SetFullscreenEvent, ShowWindowMenuEvent};
+use {compositor::{compositor_handle, CompositorHandle},
+     surface::SurfaceHandle,
+     events::xdg_shell_events::{MoveEvent, ResizeEvent, SetFullscreenEvent, ShowWindowMenuEvent},
+     shell::xdg_shell::{XdgShellSurface, XdgShellSurfaceHandle, XdgShellSurfaceState}};
 
 /// Handles events from the client stable XDG shells.
 pub trait XdgShellHandler {
@@ -81,7 +80,7 @@ pub trait XdgShellHandler {
     }
 }
 
-wayland_listener!(XdgShell, (XdgShellSurface, Option<Box<XdgShellHandler>>), [
+wayland_listener!(pub(crate) XdgShell, (XdgShellSurface, Option<Box<XdgShellHandler>>), [
     destroy_listener => destroy_notify: |this: &mut XdgShell, data: *mut libc::c_void,| unsafe {
         let (ref shell_surface, ref mut manager) = this.data;
         let compositor = match compositor_handle() {

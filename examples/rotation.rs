@@ -1,14 +1,14 @@
 #[macro_use]
 extern crate wlroots;
 
-use std::env;
-use std::time::Instant;
+use std::{env, time::Instant};
 
-use wlroots::{CompositorBuilder, CompositorHandle, InputManagerHandler, KeyboardHandle,
-              KeyboardHandler, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
-              OutputManagerHandler, Texture, TextureFormat};
-use wlroots::key_events::KeyEvent;
-use wlroots::utils::log::{init_logging, WLR_DEBUG};
+use wlroots::{compositor::{self, CompositorBuilder, CompositorHandle},
+              input::{InputManagerHandler, keyboard::{KeyboardHandle, KeyboardHandler, event::KeyEvent}},
+              output::{OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
+                       OutputManagerHandler},
+              render::texture::{Texture, TextureFormat},
+              utils::log::{init_logging, WLR_DEBUG}};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
 
@@ -131,7 +131,7 @@ impl KeyboardHandler for KeyboardManager {
             let compositor_state: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
             for key in key_event.pressed_keys() {
                 match key {
-                    keysyms::KEY_Escape => wlroots::terminate(),
+                    keysyms::KEY_Escape => compositor::terminate(),
                     keysyms::KEY_Left => compositor_state.velocity.increment(-VELOCITY_STEP_DIFF, 0.0),
                     keysyms::KEY_Right => compositor_state.velocity.increment(VELOCITY_STEP_DIFF, 0.0),
                     keysyms::KEY_Up => compositor_state.velocity.increment(0.0, -VELOCITY_STEP_DIFF),

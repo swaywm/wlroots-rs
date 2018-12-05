@@ -5,10 +5,10 @@ use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_xdg_surface_v6;
 
-use {SurfaceHandle, XdgV6ShellSurface, XdgV6ShellSurfaceHandle};
-use compositor::{compositor_handle, CompositorHandle};
-use types::shell::XdgV6ShellSurfaceState;
-use xdg_shell_v6_events::{MoveEvent, ResizeEvent, SetFullscreenEvent, ShowWindowMenuEvent};
+use {compositor::{compositor_handle, CompositorHandle},
+     events::xdg_shell_v6_events::{MoveEvent, ResizeEvent, SetFullscreenEvent, ShowWindowMenuEvent},
+     surface::SurfaceHandle,
+     shell::xdg_shell_v6::{XdgV6ShellSurface, XdgV6ShellSurfaceHandle, XdgV6ShellSurfaceState}};
 
 /// Handles events from the client XDG v6 shells.
 pub trait XdgV6ShellHandler {
@@ -81,7 +81,7 @@ pub trait XdgV6ShellHandler {
     }
 }
 
-wayland_listener!(XdgV6Shell, (XdgV6ShellSurface, Option<Box<XdgV6ShellHandler>>), [
+wayland_listener!(pub(crate) XdgV6Shell, (XdgV6ShellSurface, Option<Box<XdgV6ShellHandler>>), [
     destroy_listener => destroy_notify: |this: &mut XdgV6Shell, data: *mut libc::c_void,| unsafe {
         let (ref mut shell_surface, ref mut manager) = match &mut this.data {
             (_, None) => return,

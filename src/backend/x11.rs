@@ -3,9 +3,11 @@ use std::ptr;
 use wlroots_sys::{wlr_backend, wlr_x11_backend_create, wlr_x11_output_create,
                   wlr_input_device_is_x11, wlr_output_is_x11, wl_display};
 
-use {OutputHandle, InputDevice, Output};
-use super::UnsafeRenderSetupFunction;
-use utils::safe_as_cstring;
+use {backend::backend::UnsafeRenderSetupFunction,
+     output::{OutputHandle, Output},
+     input::InputDevice,
+     utils::safe_as_cstring};
+
 
 /// When the compositor is running in a nested X11 environment.
 /// e.g. your compositor is executed while the user is running an X11 window manager.

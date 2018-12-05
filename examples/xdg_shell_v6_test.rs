@@ -1,19 +1,24 @@
 #[macro_use]
 extern crate wlroots;
 
-use std::process::Command;
-use std::thread;
+use std::{thread, process::Command};
 
-use wlroots::{matrix, Area, Capability, CompositorBuilder, CompositorHandle, Cursor,
-              CursorHandle, CursorHandler, InputManagerHandler, KeyboardHandle, KeyboardHandler,
-              Origin, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
-              OutputLayout, OutputLayoutHandle, OutputLayoutHandler, OutputManagerHandler,
-              PointerHandle, PointerHandler, Renderer, Seat, SeatHandle, SeatHandler, Size,
-              XCursorManager, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState,
-              XdgV6ShellSurfaceHandle, SurfaceHandler, SurfaceHandle};
-use wlroots::key_events::KeyEvent;
-use wlroots::pointer_events::{AbsoluteMotionEvent, ButtonEvent, MotionEvent};
-use wlroots::utils::{log::{init_logging, WLR_DEBUG}, current_time};
+use wlroots::{area::{Area, Origin, Size},
+              compositor::{self, CompositorBuilder, CompositorHandle},
+              cursor::{Cursor, CursorHandle, CursorHandler,
+                       xcursor_manager::XCursorManager},
+              input::{InputManagerHandler,
+                      keyboard::{KeyboardHandle, KeyboardHandler, event::KeyEvent},
+                      pointer::{PointerHandle, PointerHandler,
+                                event::{AbsoluteMotionEvent, ButtonEvent, MotionEvent}}},
+              output::{OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler, OutputManagerHandler,
+                       output_layout::{OutputLayout, OutputLayoutHandle, OutputLayoutHandler}},
+              render::{matrix, renderer::Renderer},
+              seat::{Capability, Seat, SeatHandle, SeatHandler},
+              shell::xdg_shell_v6::{XdgV6ShellHandler, XdgV6ShellManagerHandler,
+                                    XdgV6ShellState, XdgV6ShellSurfaceHandle},
+              surface::{SurfaceHandler, SurfaceHandle},
+              utils::{log::{init_logging, WLR_DEBUG}, current_time}};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 use wlroots::wlroots_dehandle;
@@ -144,13 +149,12 @@ impl OutputManagerHandler for OutputManager {
 impl KeyboardHandler for ExKeyboardHandler {
     #[wlroots_dehandle(compositor, seat)]
     fn on_key(&mut self,
-              compositor: CompositorHandle,
+              compositor_handle: CompositorHandle,
               _: KeyboardHandle,
               key_event: &KeyEvent) {
-        use compositor as compositor;
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
-                wlroots::terminate();
+                compositor::terminate();
             } else if key_event.key_state() == WLR_KEY_PRESSED {
                 if key == KEY_F1 {
                     thread::spawn(move || {
@@ -160,6 +164,7 @@ impl KeyboardHandler for ExKeyboardHandler {
                 }
             }
         };
+        use compositor_handle as compositor;
         let state: &mut State = compositor.into();
         let seat_handle = state.seat_handle.clone().unwrap();
         use seat_handle as seat;

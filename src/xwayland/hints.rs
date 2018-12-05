@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use libc::{int32_t, uint32_t};
 use wlroots_sys::{wlr_xwayland_surface_hints, wlr_xwayland_surface_size_hints};
 
-use XWaylandSurface;
+use xwayland::surface::XWaylandSurface;
 
 /// Hints provided by the XWayland client to aid in compositing.
 pub struct XWaylandSurfaceHints<'surface> {

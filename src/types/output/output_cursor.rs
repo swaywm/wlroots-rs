@@ -1,11 +1,15 @@
 //! TODO documentation
 
 use std::ptr;
+
 use wlroots_sys::{wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor_destroy,
                   wlr_output_cursor_move, wlr_output_cursor_set_image,
                   wlr_output_cursor_set_surface};
 
-use {HandleErr, Image, Output, OutputHandle, Surface, SurfaceHandle, Texture};
+use {HandleErr,
+     render::{image::Image, texture::Texture},
+     output::{Output, OutputHandle},
+     surface::{Surface, SurfaceHandle}};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct OutputCursor {

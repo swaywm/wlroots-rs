@@ -1,11 +1,15 @@
 #[macro_use]
 extern crate wlroots;
 
-use wlroots::{CompositorBuilder, CompositorHandle, InputManagerHandler, KeyboardHandle,
-              KeyboardHandler, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
-              OutputManagerHandler, Texture, TextureFormat, TouchHandle, TouchHandler};
-use wlroots::key_events::KeyEvent;
-use wlroots::touch_events::{DownEvent, MotionEvent, UpEvent};
+use wlroots::{compositor::{self, CompositorBuilder, CompositorHandle},
+              input::{InputManagerHandler,
+                      keyboard::{KeyboardHandle, KeyboardHandler,
+                                 event::KeyEvent},
+                      touch::{TouchHandle, TouchHandler,
+                              event::{DownEvent, MotionEvent, UpEvent}}},
+              output::{OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
+                       OutputManagerHandler},
+              render::texture::{Texture, TextureFormat}};
 use wlroots::utils::log::{init_logging, WLR_DEBUG};
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
@@ -57,7 +61,7 @@ impl KeyboardHandler for ExKeyboardHandler {
     fn on_key(&mut self, _: CompositorHandle, _: KeyboardHandle, key_event: &KeyEvent) {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
-                wlroots::terminate()
+                compositor::terminate()
             }
         }
     }

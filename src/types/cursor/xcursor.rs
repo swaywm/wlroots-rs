@@ -16,6 +16,7 @@ pub struct XCursorTheme {
 }
 
 #[derive(Debug)]
+/// An XCursor from the X11 xcursor library. `  wl`
 pub struct XCursor<'theme> {
     xcursor: *mut wlr_xcursor,
     phantom: PhantomData<&'theme XCursorTheme>

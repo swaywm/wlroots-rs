@@ -1,9 +1,6 @@
-mod manager;
-mod server;
-mod surface;
-mod hints;
+pub mod manager;
+pub mod server;
+pub mod surface;
+pub mod hints;
 
-pub use self::hints::*;
-pub use self::manager::*;
-pub use self::server::*;
-pub use self::surface::*;
+pub use events::xwayland_events as event;

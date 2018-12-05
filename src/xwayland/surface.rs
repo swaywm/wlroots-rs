@@ -6,13 +6,13 @@ use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{pid_t, wl_event_source, wlr_xwayland_surface, xcb_atom_t, xcb_window_t,
                   wlr_xwayland_surface_configure, wlr_xwayland_surface_activate};
 
-use {SurfaceHandle, SurfaceHandler, XWaylandSurfaceHints, XWaylandSurfaceSizeHints};
-use types::surface::InternalSurfaceState;
-use types::area::{Area, Origin, Size};
-use compositor::{compositor_handle, CompositorHandle};
-use errors::{HandleErr, HandleResult};
-use events::xwayland_events::{ConfigureEvent, MoveEvent, ResizeEvent};
-use utils::c_to_rust_string;
+use {area::{Area, Size, Origin},
+     compositor::{compositor_handle, CompositorHandle},
+     errors::{HandleErr, HandleResult},
+     events::xwayland_events::{ConfigureEvent, MoveEvent, ResizeEvent},
+     surface::{SurfaceHandle, SurfaceHandler, InternalSurfaceState},
+     xwayland::hints::{XWaylandSurfaceHints, XWaylandSurfaceSizeHints},
+     utils::c_to_rust_string};
 
 pub trait XWaylandSurfaceHandler {
     /// Called when the XWayland surface is destroyed (e.g by the user).
@@ -63,7 +63,7 @@ pub trait XWaylandSurfaceHandler {
     fn ping_timeout(&mut self, CompositorHandle, Option<SurfaceHandle>, XWaylandSurfaceHandle) {}
 }
 
-wayland_listener!(XWaylandShell, (XWaylandSurface, Option<Box<XWaylandSurfaceHandler>>), [
+wayland_listener!(pub(crate) XWaylandShell, (XWaylandSurface, Option<Box<XWaylandSurfaceHandler>>), [
     destroy_listener => destroy_notify: |this: &mut XWaylandShell, data: *mut libc::c_void,|
     unsafe {
         let (ref mut shell_surface, ref mut manager) = match &mut this.data {

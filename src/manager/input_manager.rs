@@ -7,19 +7,20 @@ use libc;
 use std::{env, panic};
 use std::process::abort;
 
-use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper, TabletPadHandler,
-            TabletPadWrapper, TabletToolHandler, TabletToolWrapper, TouchHandler, TouchWrapper};
-use compositor::{compositor_handle, CompositorHandle};
-use types::input::{InputDevice, Keyboard, KeyboardHandle, Pointer, PointerHandle, TabletPad,
-                   TabletPadHandle, TabletTool, TabletToolHandle, Touch, TouchHandle};
-use utils::safe_as_cstring;
-
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_input_device, wlr_input_device_type, wlr_keyboard_set_keymap,
                   wlr_keyboard_set_repeat_info, xkb_context_new, xkb_context_unref,
-                  xkb_keymap_new_from_names, xkb_keymap_unref, xkb_rule_names};
-use wlroots_sys::xkb_context_flags::*;
-use wlroots_sys::xkb_keymap_compile_flags::*;
+                  xkb_keymap_new_from_names, xkb_keymap_unref, xkb_rule_names,
+                  xkb_context_flags::*, xkb_keymap_compile_flags::*};
+
+use {compositor::{compositor_handle, CompositorHandle},
+     input::{InputDevice,
+             keyboard::{Keyboard, KeyboardHandle, KeyboardHandler, KeyboardWrapper},
+             pointer::{Pointer, PointerHandle, PointerHandler, PointerWrapper},
+             tablet_pad::{TabletPad, TabletPadHandle, TabletPadHandler, TabletPadWrapper},
+             tablet_tool::{TabletTool, TabletToolHandle, TabletToolHandler, TabletToolWrapper},
+             touch::{Touch, TouchHandle, TouchHandler, TouchWrapper}},
+     utils::safe_as_cstring};
 
 /// Handles input addition and removal.
 pub trait InputManagerHandler {
@@ -78,7 +79,7 @@ pub trait InputManagerHandler {
     }
 }
 
-wayland_listener!(InputManager, Box<InputManagerHandler>, [
+wayland_listener!(pub(crate) InputManager, Box<InputManagerHandler>, [
     add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
         let compositor = match compositor_handle() {
             Some(handle) => handle,

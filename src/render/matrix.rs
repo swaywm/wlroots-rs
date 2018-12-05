@@ -6,11 +6,12 @@
 //! represent a 2D screen. We also provide basic helper functions to assist in
 //! transforming the matrices.
 
-use Area;
 use wlroots_sys::{wl_output_transform, wlr_matrix_multiply,
                   wlr_matrix_project_box, wlr_matrix_projection, wlr_matrix_rotate,
                   wlr_matrix_scale, wlr_matrix_transform, wlr_matrix_translate,
                   wlr_matrix_transpose};
+
+use area::Area;
 
 pub const IDENTITY: [f32; 9] =[
     1.0, 0.0, 0.0,

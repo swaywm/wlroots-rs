@@ -4,11 +4,12 @@ use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface, wlr_xdg_surface_role::*};
 
-use types::{shell::XdgShellSurfaceState, surface::InternalSurfaceState};
+use {compositor::{compositor_handle, CompositorHandle},
+     shell::xdg_shell::{XdgShellState::*, XdgShellSurface, XdgShellSurfaceState,
+                        XdgShellSurfaceHandle, XdgTopLevel, XdgPopup},
+     manager::xdg_shell_handler::XdgShellHandler,
+     surface::{SurfaceHandler, InternalSurfaceState}};
 use super::xdg_shell_handler::XdgShell;
-use {SurfaceHandler, XdgPopup, XdgShellHandler, XdgShellState::*, XdgShellSurface,
-     XdgShellSurfaceHandle, XdgTopLevel};
-use compositor::{compositor_handle, CompositorHandle};
 
 pub trait XdgShellManagerHandler {
     /// Callback that is triggered when a new stable XDG shell surface appears.
@@ -18,7 +19,7 @@ pub trait XdgShellManagerHandler {
                    -> (Option<Box<XdgShellHandler>>, Option<Box<SurfaceHandler>>);
 }
 
-wayland_listener!(XdgShellManager, Box<XdgShellManagerHandler>, [
+wayland_listener!(pub(crate) XdgShellManager, Box<XdgShellManagerHandler>, [
     add_listener => add_notify: |this: &mut XdgShellManager, data: *mut libc::c_void,|
     unsafe {
         let manager = &mut this.data;

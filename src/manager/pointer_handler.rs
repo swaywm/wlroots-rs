@@ -1,14 +1,13 @@
 //! Handler for pointers
 
 use libc;
-use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wlroots_sys::{wlr_input_device, wlr_event_pointer_axis, wlr_event_pointer_button,
+                  wlr_event_pointer_motion};
 
-use {Pointer, PointerHandle};
-use compositor::{compositor_handle, CompositorHandle};
-use events::pointer_events::{AbsoluteMotionEvent, AxisEvent, ButtonEvent, MotionEvent};
-
-use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion};
+use {compositor::{compositor_handle, CompositorHandle},
+     events::pointer_events::{AbsoluteMotionEvent, AxisEvent, ButtonEvent, MotionEvent},
+     input::pointer::{Pointer, PointerHandle}};
 
 pub trait PointerHandler {
     /// Callback that is triggered when the pointer moves.
@@ -26,7 +25,7 @@ pub trait PointerHandler {
     fn destroyed(&mut self, CompositorHandle, PointerHandle) {}
 }
 
-wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
+wayland_listener!(pub(crate) PointerWrapper, (Pointer, Box<PointerHandler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut PointerWrapper, data: *mut libc::c_void,|
     unsafe {
         let input_device_ptr = data as *mut wlr_input_device;

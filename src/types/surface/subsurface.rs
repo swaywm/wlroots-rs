@@ -6,15 +6,16 @@ use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_subsurface;
 
-use super::{SurfaceHandle, SurfaceState};
-use compositor::{compositor_handle, CompositorHandle};
-use errors::{HandleErr, HandleResult};
+use {compositor::{compositor_handle, CompositorHandle},
+     errors::{HandleErr, HandleResult},
+     surface::SurfaceHandle,
+     surface::surface_state::SurfaceState};
 
 pub trait SubsurfaceHandler {
     fn on_destroy(&mut self, CompositorHandle, SubsurfaceHandle, SurfaceHandle) {}
 }
 
-wayland_listener!(InternalSubsurface, (Subsurface, Box<SubsurfaceHandler>), [
+wayland_listener!(pub(crate) InternalSubsurface, (Subsurface, Box<SubsurfaceHandler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut InternalSubsurface,
                                                data: *mut libc::c_void,|
     unsafe {

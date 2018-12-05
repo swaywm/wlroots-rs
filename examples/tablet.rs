@@ -1,8 +1,23 @@
+#[macro_use]
 extern crate wlroots;
 
 use std::f64::consts::PI;
-use wlroots::{matrix, tablet_pad_events, tablet_tool_events, *, key_events::*, utils::*,
+
+use wlroots::{area::{Area, Size, Origin},
+              compositor::{self, CompositorBuilder, CompositorHandle},
+              input::{InputManagerHandler,
+                      keyboard::{KeyboardHandle, KeyboardHandler,
+                                 event::KeyEvent},
+                      tablet_tool::{self, TabletToolHandle, TabletToolHandler,
+                                    event::TabletToolAxis},
+                      tablet_pad::{self, TabletPadHandle, TabletPadHandler}},
+              output::{OutputBuilder, OutputBuilderResult, OutputHandle,
+                       OutputHandler, OutputManagerHandler},
+              render::matrix,
               wlroots_sys::wl_output_transform::WL_OUTPUT_TRANSFORM_NORMAL,
+              wlr_tablet_tool_proximity_state::*,
+              wlr_button_state::*,
+              utils::log,
               xkbcommon::xkb::KEY_Escape};
 
 #[derive(Debug, Default)]
@@ -81,7 +96,7 @@ impl KeyboardHandler for KeyboardEx {
     fn on_key(&mut self, _: CompositorHandle, _: KeyboardHandle, key_event: &KeyEvent) {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
-                wlroots::terminate()
+                compositor::terminate()
             }
         }
     }
@@ -91,7 +106,7 @@ impl TabletPadHandler for TabletEx {
     fn on_button(&mut self,
                  compositor: CompositorHandle,
                  _: TabletPadHandle,
-                 event: &tablet_pad_events::ButtonEvent) {
+                 event: &tablet_pad::event::ButtonEvent) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             if event.state() == WLR_BUTTON_RELEASED {
@@ -111,7 +126,7 @@ impl TabletPadHandler for TabletEx {
     fn on_ring(&mut self,
                compositor: CompositorHandle,
                _: TabletPadHandle,
-               event: &tablet_pad_events::RingEvent) {
+               event: &tablet_pad::event::RingEvent) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let position = event.position();
@@ -126,13 +141,12 @@ impl TabletToolHandler for TabletEx {
     fn on_axis(&mut self,
                compositor: CompositorHandle,
                _: TabletToolHandle,
-               event: &tablet_tool_events::AxisEvent) {
+               event: &tablet_tool::event::AxisEvent) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let axis = event.updated_axes();
             let (x, y) = event.position();
             let (tilt_x, tilt_y) = event.tilt();
-            use tablet_tool_events::TabletToolAxis;
             if axis.contains(TabletToolAxis::WLR_TABLET_TOOL_AXIS_X) {
                 state.pos.0 = x
             }
@@ -157,7 +171,7 @@ impl TabletToolHandler for TabletEx {
     fn on_proximity(&mut self,
                     compositor: CompositorHandle,
                     _: TabletToolHandle,
-                    event: &tablet_tool_events::ProximityEvent) {
+                    event: &tablet_tool::event::ProximityEvent) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             state.proximity = event.state() == WLR_TABLET_TOOL_PROXIMITY_IN
@@ -167,7 +181,7 @@ impl TabletToolHandler for TabletEx {
     fn on_button(&mut self,
                  compositor: CompositorHandle,
                  _: TabletToolHandle,
-                 event: &tablet_tool_events::ButtonEvent) {
+                 event: &tablet_tool::event::ButtonEvent) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             if event.state() == WLR_BUTTON_RELEASED {

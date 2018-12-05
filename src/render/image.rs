@@ -1,4 +1,4 @@
-use XCursorImage;
+use cursor::xcursor::XCursorImage;
 
 /// An image that can be attached to a `Cursor` or `OutputCursor`.
 #[derive(Debug, Default, PartialEq)]

@@ -1,10 +1,11 @@
-use std::marker::PhantomData;
-use std::ptr;
-use types::{Cursor, XCursor, XCursorTheme};
-use utils::{c_to_rust_string, safe_as_cstring};
+use std::{marker::PhantomData, ptr};
+
 use wlroots_sys::{wlr_xcursor_manager, wlr_xcursor_manager_create, wlr_xcursor_manager_destroy,
                   wlr_xcursor_manager_get_xcursor, wlr_xcursor_manager_load,
                   wlr_xcursor_manager_set_cursor_image, wlr_xcursor_manager_theme};
+
+use {cursor::{Cursor, xcursor::{XCursor, XCursorTheme}},
+     utils::{c_to_rust_string, safe_as_cstring}};
 
 /// An `XCursorTheme` at a particular scale factor of the base size.
 #[derive(Debug)]

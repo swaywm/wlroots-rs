@@ -4,9 +4,9 @@ use libc;
 use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
-use {TabletTool, TabletToolHandle};
-use compositor::{compositor_handle, CompositorHandle};
-use events::tablet_tool_events::{AxisEvent, ButtonEvent, ProximityEvent, TipEvent};
+use {compositor::{compositor_handle, CompositorHandle},
+     events::tablet_tool_events::{AxisEvent, ButtonEvent, ProximityEvent, TipEvent},
+     input::tablet_tool::{TabletTool, TabletToolHandle}};
 
 pub trait TabletToolHandler {
     /// Callback that is triggered when an axis event fires
@@ -27,7 +27,7 @@ pub trait TabletToolHandler {
     fn destroyed(&mut self, CompositorHandle, TabletToolHandle) {}
 }
 
-wayland_listener!(TabletToolWrapper, (TabletTool, Box<TabletToolHandler>), [
+wayland_listener!(pub(crate) TabletToolWrapper, (TabletTool, Box<TabletToolHandler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut TabletToolWrapper, data: *mut libc::c_void,|
     unsafe {
         let input_device_ptr = data as *mut wlr_input_device;

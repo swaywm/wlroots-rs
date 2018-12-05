@@ -2,16 +2,15 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
-use {Output, OutputHandle, OutputState};
-use compositor::{compositor_handle, CompositorHandle};
-use libc;
-use manager::{OutputHandler, UserOutput};
+use std::{marker::PhantomData, panic};
 
-use std::marker::PhantomData;
+use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_output;
 
-use std::panic;
+use {compositor::{compositor_handle, CompositorHandle},
+     output::{Output, OutputHandle, OutputState, OutputHandler, UserOutput}};
+
 
 /// Used to ensure the output sets the mode before doing any other
 /// operation on the Output.
@@ -79,7 +78,7 @@ impl OutputDestruction {
     // TODO Functions which are safe to use
 }
 
-wayland_listener!(OutputManager, Box<OutputManagerHandler>, [
+wayland_listener!(pub(crate) OutputManager, Box<OutputManagerHandler>, [
     add_listener => add_notify: |this: &mut OutputManager, data: *mut libc::c_void,| unsafe {
         let ref mut manager = this.data;
         let data = data as *mut wlr_output;

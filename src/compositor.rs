@@ -1,25 +1,34 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
-use libc;
 use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{Rc, Weak}};
 
-use {UnsafeRenderSetupFunction, Backend, MultiBackend, WaylandBackend,
-     DataDeviceManager, Surface, X11Backend, DRMBackend, HeadlessBackend,
-     SurfaceHandle, XWaylandManagerHandler, XWaylandServer, Session};
-use errors::{HandleErr, HandleResult};
-use types::surface::{InternalSurface, InternalSurfaceState};
-use extensions::server_decoration::ServerDecorationManager;
-use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
-              XdgShellManager,
-              XdgShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
-use render::GenericRenderer;
-
+use libc;
 use wayland_sys::server::{wl_display, wl_event_loop, signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{wlr_backend_destroy, wlr_backend_start,
                   wlr_compositor, wlr_compositor_create, wlr_compositor_destroy,
                   wlr_xdg_shell_v6, wlr_xdg_shell_v6_create,
                   wlr_xdg_shell, wlr_xdg_shell_create};
+
+
+use {backend::{UnsafeRenderSetupFunction, Backend,
+               session::Session,
+               multi::MultiBackend,
+               wayland::WaylandBackend,
+               x11::X11Backend,
+               drm::DRMBackend,
+               headless::HeadlessBackend},
+     data_device::manager::DataDeviceManager,
+     errors::{HandleErr, HandleResult},
+     extensions::server_decoration::ServerDecorationManager,
+     surface::{Surface, SurfaceHandle, InternalSurface, InternalSurfaceState},
+     input::{InputManager, InputManagerHandler},
+     output::{OutputManager, OutputManagerHandler},
+     render::renderer::GenericRenderer,
+     shell::{xdg_shell::{XdgShellManager, XdgShellManagerHandler},
+             xdg_shell_v6::{XdgV6ShellManager, XdgV6ShellManagerHandler}},
+     xwayland::{manager::XWaylandManagerHandler,
+                server::XWaylandServer}};
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 pub(crate) static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;

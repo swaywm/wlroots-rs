@@ -13,11 +13,15 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_absolute_to_layout_coords,
                   wlr_cursor_set_image, wlr_cursor_set_surface, wlr_cursor_warp,
                   wlr_cursor_warp_absolute};
 
-use {Area, InputDevice, Output, OutputHandle, OutputLayout, OutputLayoutHandle, Surface,
-     XCursorImage};
-use compositor::{compositor_handle, CompositorHandle};
-use errors::{HandleErr, HandleResult};
-use events::{pointer_events, tablet_tool_events, touch_events};
+use {area::Area,
+     compositor::{compositor_handle, CompositorHandle},
+     errors::{HandleErr, HandleResult},
+     events::{pointer_events, tablet_tool_events, touch_events},
+     input::InputDevice,
+     output::{Output, OutputHandle,
+              output_layout::{OutputLayout, OutputLayoutHandle}},
+     surface::Surface,
+     cursor::xcursor::XCursorImage};
 
 #[derive(Debug)]
 pub struct CursorState {
@@ -85,7 +89,7 @@ pub trait CursorHandler {
     }
 }
 
-wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLayoutHandle>), [
+wayland_listener!(pub Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLayoutHandle>), [
     pointer_motion_listener => pointer_motion_notify: |this: &mut Cursor, event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;

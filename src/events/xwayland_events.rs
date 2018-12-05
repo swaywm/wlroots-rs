@@ -1,7 +1,9 @@
 use libc::{int16_t, uint16_t};
 use wlroots_sys::{wlr_xwayland_move_event, wlr_xwayland_resize_event,
                   wlr_xwayland_surface_configure_event};
-use {XWaylandSurfaceHandle, utils::edges::Edges};
+
+use {xwayland::surface::XWaylandSurfaceHandle,
+     utils::edges::Edges};
 
 /// Event for when XWayland surface needs to be configured.
 pub struct ConfigureEvent {

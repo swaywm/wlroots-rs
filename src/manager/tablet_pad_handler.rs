@@ -4,9 +4,9 @@ use libc;
 use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
-use {TabletPad, TabletPadHandle};
-use compositor::{compositor_handle, CompositorHandle};
-use events::tablet_pad_events::{ButtonEvent, RingEvent, StripEvent};
+use {compositor::{compositor_handle, CompositorHandle},
+     events::tablet_pad_events::{ButtonEvent, RingEvent, StripEvent},
+     input::tablet_pad::{TabletPad, TabletPadHandle}};
 
 pub trait TabletPadHandler {
     /// Callback that is triggered when a button is pressed on the tablet pad.
@@ -22,7 +22,7 @@ pub trait TabletPadHandler {
     fn destroyed(&mut self, CompositorHandle, TabletPadHandle) {}
 }
 
-wayland_listener!(TabletPadWrapper, (TabletPad, Box<TabletPadHandler>), [
+wayland_listener!(pub(crate) TabletPadWrapper, (TabletPad, Box<TabletPadHandler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut TabletPadWrapper, data: *mut libc::c_void,|
     unsafe {
         let input_device_ptr = data as *mut wlr_input_device;

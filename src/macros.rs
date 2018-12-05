@@ -112,7 +112,7 @@ macro_rules! wlr_log {
 ///
 /// wayland_listener!(
 ///     // The name of the structure that will be defined.
-///     InputManager,
+///     pub(crate) InputManager,
 ///     // The type that's stored in the `data` field.
 ///     // Note that we use a Box here to achieve dynamic dispatch,
 ///     // it's not required for this type to be in a box.
@@ -145,11 +145,11 @@ macro_rules! wlr_log {
 /// Second, this macro doesn't protect against the stored data being unsized.
 /// Passing a pointer of unsized data to C is UB, don't do it.
 macro_rules! wayland_listener {
-    ($struct_name: ident, $data: ty, $([
+    ($pub: vis $struct_name: ident, $data: ty, $([
         $($listener: ident => $listener_func: ident :
           |$($func_arg:ident: $func_type:ty,)*| unsafe $body: block;)*])+) => {
         #[repr(C)]
-        pub struct $struct_name {
+        $pub struct $struct_name {
             data: $data,
             $($($listener: $crate::wlroots_sys::wl_listener),*)*
         }
@@ -203,8 +203,8 @@ macro_rules! wayland_listener {
 #[macro_export]
 macro_rules! compositor_data {
     ($struct_name: ty) => {
-        impl<'a>::std::convert::From<&'a mut $crate::Compositor> for &'a mut $struct_name {
-            fn from(compositor: &'a mut $crate::Compositor) -> &'a mut $struct_name {
+        impl<'a>::std::convert::From<&'a mut $crate::compositor::Compositor> for &'a mut $struct_name {
+            fn from(compositor: &'a mut $crate::compositor::Compositor) -> &'a mut $struct_name {
                 &mut *compositor.data.downcast_mut::<$struct_name>()
                     .unwrap_or_else(|| {
                         wlr_log!(WLR_ERROR, "Could not cast compositor state to {:#?}",

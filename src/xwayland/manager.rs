@@ -20,7 +20,7 @@ pub trait XWaylandManagerHandler {
                    -> Option<Box<XWaylandSurfaceHandler>>;
 }
 
-wayland_listener!(XWaylandManager, Box<XWaylandManagerHandler>, [
+wayland_listener!(pub(crate) XWaylandManager, Box<XWaylandManagerHandler>, [
     on_ready_listener => on_ready_notify: |this: &mut XWaylandManager, _data: *mut libc::c_void,|
     unsafe {
         let ref mut manager = this.data;

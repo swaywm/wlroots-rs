@@ -4,11 +4,11 @@ use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface_v6, wlr_xdg_surface_v6_role::*};
 
-use types::{shell::XdgV6ShellSurfaceState, surface::InternalSurfaceState};
-use super::xdg_shell_v6_handler::XdgV6Shell;
-use {SurfaceHandler, XdgV6Popup, XdgV6ShellHandler, XdgV6ShellState::*, XdgV6ShellSurface,
-     XdgV6ShellSurfaceHandle, XdgV6TopLevel};
-use compositor::{compositor_handle, CompositorHandle};
+use {compositor::{compositor_handle, CompositorHandle},
+     shell::xdg_shell_v6::{XdgV6Popup, XdgV6ShellState::*, XdgV6ShellSurface,
+                           XdgV6ShellSurfaceState,  XdgV6ShellSurfaceHandle, XdgV6TopLevel},
+     surface::{SurfaceHandler, InternalSurfaceState}};
+use super::xdg_shell_v6_handler::{XdgV6Shell, XdgV6ShellHandler};
 
 pub trait XdgV6ShellManagerHandler {
     /// Callback that is triggered when a new XDG shell v6 surface appears.
@@ -18,7 +18,7 @@ pub trait XdgV6ShellManagerHandler {
                    -> (Option<Box<XdgV6ShellHandler>>, Option<Box<SurfaceHandler>>);
 }
 
-wayland_listener!(XdgV6ShellManager, Box<XdgV6ShellManagerHandler>, [
+wayland_listener!(pub(crate) XdgV6ShellManager, Box<XdgV6ShellManagerHandler>, [
     add_listener => add_notify: |this: &mut XdgV6ShellManager, data: *mut libc::c_void,|
     unsafe {
         let ref mut manager = this.data;

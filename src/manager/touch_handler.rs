@@ -4,9 +4,9 @@ use libc;
 use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
-use compositor::{compositor_handle, CompositorHandle};
-use events::touch_events::{CancelEvent, DownEvent, MotionEvent, UpEvent};
-use types::input::{Touch, TouchHandle};
+use {compositor::{compositor_handle, CompositorHandle},
+     events::touch_events::{CancelEvent, DownEvent, MotionEvent, UpEvent},
+     input::touch::{Touch, TouchHandle}};
 
 pub trait TouchHandler {
     /// Callback that is triggered when the user starts touching the
@@ -28,7 +28,7 @@ pub trait TouchHandler {
     fn destroyed(&mut self, CompositorHandle, TouchHandle) {}
 }
 
-wayland_listener!(TouchWrapper, (Touch, Box<TouchHandler>), [
+wayland_listener!(pub(crate) TouchWrapper, (Touch, Box<TouchHandler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,|
     unsafe {
         let input_device_ptr = data as *mut wlr_input_device;

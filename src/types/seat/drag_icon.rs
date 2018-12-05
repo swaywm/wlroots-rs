@@ -1,11 +1,9 @@
-use wlroots_sys::wlr_drag_icon;
-use std::cell::Cell;
-use std::rc::{Rc, Weak};
-use std::hash::{Hash, Hasher};
-use std::panic;
-use errors::{HandleErr, HandleResult};
+use std::{cell::Cell, rc::{Rc, Weak}, hash::{Hash, Hasher}, panic};
 
-use {SurfaceHandle};
+use wlroots_sys::wlr_drag_icon;
+
+use {surface::SurfaceHandle,
+     errors::{HandleErr, HandleResult}};
 
 #[derive(Debug)]
 pub struct DragIcon {

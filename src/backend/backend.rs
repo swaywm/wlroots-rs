@@ -17,7 +17,12 @@ use wlroots_sys::{self, wlr_backend, wlr_backend_is_wl, wlr_backend_is_x11,
                   wlr_backend_is_drm, wlr_backend_is_headless, wlr_backend_is_multi,
                   wlr_backend_is_libinput};
 
-use super::{WaylandBackend, X11Backend, DRMBackend, HeadlessBackend, MultiBackend, LibInputBackend};
+use backend::{wayland::WaylandBackend,
+              x11::X11Backend,
+              drm::DRMBackend,
+              headless::HeadlessBackend,
+              multi::MultiBackend,
+              libinput::LibInputBackend};
 
 /// A custom function to set up the renderer.
 pub type UnsafeRenderSetupFunction = unsafe extern "C" fn(*mut wlroots_sys::wlr_egl,

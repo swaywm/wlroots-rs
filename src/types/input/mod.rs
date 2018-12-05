@@ -1,13 +1,8 @@
 mod input_device;
-mod keyboard;
-mod pointer;
-mod touch;
-mod tablet_tool;
-mod tablet_pad;
+pub mod keyboard;
+pub mod pointer;
+pub mod touch;
+pub mod tablet_tool;
+pub mod tablet_pad;
 
 pub use self::input_device::*;
-pub use self::keyboard::*;
-pub use self::pointer::*;
-pub use self::tablet_pad::*;
-pub use self::tablet_tool::*;
-pub use self::touch::*;

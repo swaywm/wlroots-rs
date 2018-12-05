@@ -3,7 +3,7 @@ use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{pid_t, wl_client, wl_display, wlr_compositor, wlr_xwayland, wlr_xwayland_create,
                   wlr_xwayland_destroy, wlr_xwayland_set_cursor};
 
-use super::{XWaylandManager, XWaylandManagerHandler};
+use xwayland::manager::{XWaylandManager, XWaylandManagerHandler};
 
 #[allow(dead_code)]
 pub struct XWaylandServer {

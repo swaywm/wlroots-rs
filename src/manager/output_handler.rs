@@ -4,9 +4,9 @@ use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_output;
 
-use {Output, OutputHandle, OutputState};
-use errors::HandleErr;
-use compositor::{compositor_handle, CompositorHandle};
+use {compositor::{compositor_handle, CompositorHandle},
+     errors::HandleErr,
+     output::{Output, OutputHandle, OutputState}};
 
 pub trait OutputHandler {
     /// Called every time the output frame is updated.
@@ -34,7 +34,7 @@ pub trait OutputHandler {
     fn destroyed(&mut self, CompositorHandle, OutputHandle) {}
 }
 
-wayland_listener!(UserOutput, (Output, Box<OutputHandler>), [
+wayland_listener!(pub(crate) UserOutput, (Output, Box<OutputHandler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut UserOutput, data: *mut libc::c_void,|
     unsafe {
         let output_ptr = data as *mut wlr_output;

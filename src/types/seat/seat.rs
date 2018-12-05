@@ -4,7 +4,6 @@
 //! TODO This module could really use some examples, as the API surface is huge.
 
 use std::{fmt, panic, ptr, cell::Cell, rc::{Rc, Weak}, time::Duration};
-use types::surface::InternalSurfaceState;
 
 use libc;
 use wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
@@ -31,14 +30,19 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_dest
 pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
-use {InputDevice, KeyboardGrab, KeyboardHandle, PointerGrab, Surface,
-     TouchGrab, TouchId, TouchPoint, events::seat_events::SetCursorEvent, SurfaceHandler, DragIconHandle, DragIcon, DragIconHandler};
-use manager::DragIconListener;
-use compositor::{compositor_handle, Compositor, CompositorHandle};
-use errors::{HandleErr, HandleResult};
-use utils::{c_to_rust_string, safe_as_cstring};
-use utils::ToMs;
-use KeyboardModifiers;
+use {KeyboardModifiers,
+     compositor::{compositor_handle, Compositor, CompositorHandle},
+     input::{InputDevice,
+             keyboard::KeyboardHandle},
+     events::seat_events::SetCursorEvent,
+     errors::{HandleErr, HandleResult},
+     surface::{Surface, InternalSurfaceState, SurfaceHandler},
+     seat::{grab::{KeyboardGrab, PointerGrab, TouchGrab},
+            touch_point::{TouchId, TouchPoint},
+            drag_icon::{DragIconHandle, DragIcon}},
+     utils::{ToMs, c_to_rust_string, safe_as_cstring}};
+pub use manager::drag_icon_handler::*;
+pub use events::seat_events as event;
 
 struct SeatState {
     /// A counter that will always have a strong count of 1.
@@ -96,7 +100,7 @@ pub trait SeatHandler {
     }
 }
 
-wayland_listener!(Seat, (*mut wlr_seat, Box<SeatHandler>), [
+wayland_listener!(pub Seat, (*mut wlr_seat, Box<SeatHandler>), [
     pointer_grab_begin_listener => pointer_grab_begin_notify: |this: &mut Seat,
                                                                event: *mut libc::c_void,|
     unsafe {

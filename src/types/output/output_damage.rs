@@ -1,5 +1,6 @@
-use libc::{c_int, c_uint, clock_t};
 use std::{mem, ptr, time::Duration};
+
+use libc::{c_int, c_uint, clock_t};
 use wlroots_sys::{timespec, wlr_output, wlr_output_damage, wlr_output_damage_add,
                   wlr_output_damage_add_box, wlr_output_damage_add_whole,
                   wlr_output_damage_create, wlr_output_damage_destroy,
@@ -7,7 +8,7 @@ use wlroots_sys::{timespec, wlr_output, wlr_output_damage, wlr_output_damage_add
                   pixman_region32_fini, pixman_region32_init, pixman_region32_t,
                   pixman_region32_union_rect};
 
-use Area;
+use area::Area;
 
 /// A pixman region, used for damage tracking.
 #[derive(Debug)]

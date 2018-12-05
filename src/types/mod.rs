@@ -1,33 +1,16 @@
-pub(crate) mod cursor;
+pub mod cursor;
 
 #[cfg(feature = "unstable")]
-pub(crate) mod input;
+pub mod input;
 #[cfg(feature = "unstable")]
-pub(crate) mod output;
+pub mod output;
 #[cfg(feature = "unstable")]
-pub(crate) mod area;
+pub mod area;
 #[cfg(feature = "unstable")]
-pub(crate) mod seat;
+pub mod seat;
 #[cfg(feature = "unstable")]
-pub(crate) mod surface;
+pub mod surface;
 #[cfg(feature = "unstable")]
-pub(crate) mod shell;
+pub mod shell;
 #[cfg(feature = "unstable")]
-pub(crate) mod data_device;
-
-pub use self::cursor::*;
-
-#[cfg(feature = "unstable")]
-pub use self::input::*;
-#[cfg(feature = "unstable")]
-pub use self::output::*;
-#[cfg(feature = "unstable")]
-pub use self::area::*;
-#[cfg(feature = "unstable")]
-pub use self::seat::*;
-#[cfg(feature = "unstable")]
-pub use self::surface::*;
-#[cfg(feature = "unstable")]
-pub use self::shell::*;
-#[cfg(feature = "unstable")]
-pub use self::data_device::*;
+pub mod data_device;

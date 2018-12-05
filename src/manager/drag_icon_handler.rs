@@ -3,8 +3,8 @@
 use libc;
 use wlroots_sys::WAYLAND_SERVER_HANDLE;
 
-use compositor::{compositor_handle};
-use {CompositorHandle, DragIcon, DragIconHandle};
+use {compositor::{CompositorHandle, compositor_handle},
+     seat::drag_icon::{DragIcon, DragIconHandle}};
 
 /// Handles events from the wlr drag icon
 pub trait DragIconHandler {
@@ -18,7 +18,7 @@ pub trait DragIconHandler {
     fn destroyed(&mut self, CompositorHandle, DragIconHandle);
 }
 
-wayland_listener!(DragIconListener, (DragIcon, Box<DragIconHandler>), [
+wayland_listener!(pub(crate) DragIconListener, (DragIcon, Box<DragIconHandler>), [
     destroy_listener => destroy_notify: |this: &mut DragIconListener, _data: *mut libc::c_void,| unsafe {
         {
             let (ref drag_icon, ref mut handler) = this.data;

@@ -6,6 +6,8 @@ use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_touch};
 
 use super::input_device::{InputDevice, InputState};
+pub use manager::touch_handler::*;
+pub use events::touch_events as event;
 
 #[derive(Debug)]
 pub struct Touch {

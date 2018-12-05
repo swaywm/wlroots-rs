@@ -1,9 +1,8 @@
 //! TODO Documentation
 
-use std::{panic, ptr};
-use std::cell::Cell;
-use std::rc::{Rc, Weak};
+use std::{cell::Cell, rc::{Rc, Weak}, panic, ptr};
 
+use libc::c_void;
 use wlroots_sys::{wlr_xdg_popup, wlr_xdg_surface, wlr_xdg_surface_ping,
                   wlr_xdg_surface_role, wlr_xdg_surface_send_close,
                   wlr_xdg_surface_surface_at, wlr_xdg_toplevel,
@@ -12,11 +11,13 @@ use wlroots_sys::{wlr_xdg_popup, wlr_xdg_surface, wlr_xdg_surface_ping,
                   wlr_xdg_toplevel_set_size, wlr_xdg_toplevel_state,
                   wlr_xdg_surface_for_each_surface, wlr_surface, wlr_xdg_surface_from_wlr_surface};
 
-use {Area, SeatHandle, SurfaceHandle, Surface};
-use errors::{HandleErr, HandleResult};
-use utils::c_to_rust_string;
-use manager::XdgShell;
-use libc::c_void;
+
+use {area::Area,
+     errors::{HandleErr, HandleResult},
+     seat::SeatHandle,
+     surface::{SurfaceHandle, Surface},
+     utils::c_to_rust_string};
+pub use manager::{xdg_shell_manager::*, xdg_shell_handler::*};
 
 /// Used internally to reclaim a handle from just a *mut wlr_xdg_surface.
 pub(crate) struct XdgShellSurfaceState {
@@ -493,7 +494,7 @@ impl XdgPopup {
 impl XdgShellState {
     /// Unsafe copy of the pointer
     unsafe fn clone(&self) -> Self {
-        use XdgShellState::*;
+        use self::XdgShellState::*;
         match *self {
             TopLevel(XdgTopLevel { shell_surface,
                                      toplevel }) => {

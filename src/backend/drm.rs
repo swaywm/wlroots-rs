@@ -1,10 +1,11 @@
 use std::ptr;
 
-use libc;
+use libc::c_int;
 use wlroots_sys::{wlr_backend, wl_display, wlr_drm_backend_create, wlr_output_is_drm};
 
-use Output;
-use super::{UnsafeRenderSetupFunction, Session};
+use {output::Output,
+     backend::{backend::UnsafeRenderSetupFunction,
+               session::Session}};
 
 /// When the compositor is ran on a TTY and has full control of the system resources.
 ///
@@ -31,11 +32,11 @@ impl DRMBackend {
      /// a DRM backend, other kinds of backends raise SIGABRT).
     pub unsafe fn new(display: *mut wl_display,
                       session: Session,
-                      gpu_fd: libc::c_int,
+                      gpu_fd: c_int,
                       parent: Option<DRMBackend>,
                       render_setup_func: Option<UnsafeRenderSetupFunction>)
                       -> Self {
-        let parent_ptr = parent.map(|backend| backend.as_ptr()).unwrap_or_else(|| ptr::null_mut());
+        let parent_ptr = parent.map(|backend| backend.as_ptr()).unwrap_or_else(ptr::null_mut);
         let backend = wlr_drm_backend_create(display,
                                              session.as_ptr(),
                                              gpu_fd,

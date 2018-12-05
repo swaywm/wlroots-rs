@@ -10,13 +10,14 @@ use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_su
                   wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_surface_at,
                   wlr_surface_is_xdg_surface, wlr_surface_get_texture};
 
-use super::{Subsurface, SubsurfaceHandle, SubsurfaceHandler, SubsurfaceManager, SurfaceState,
-            InternalSubsurface};
-use compositor::{compositor_handle, CompositorHandle};
-use Output;
-use errors::{HandleErr, HandleResult};
-use render::Texture;
-use utils::c_to_rust_string;
+use {compositor::{compositor_handle, CompositorHandle},
+     errors::{HandleErr, HandleResult},
+     surface::{subsurface::{Subsurface, SubsurfaceHandle, SubsurfaceHandler, InternalSubsurface},
+               subsurface_manager::SubsurfaceManager,
+               surface_state::SurfaceState},
+     output::Output,
+     render::texture::Texture,
+     utils::c_to_rust_string};
 
 pub trait SurfaceHandler {
     fn on_commit(&mut self, CompositorHandle, SurfaceHandle) {}
@@ -30,7 +31,7 @@ pub trait SurfaceHandler {
 
 impl SurfaceHandler for () {}
 
-wayland_listener!(InternalSurface, (Surface, Box<SurfaceHandler>), [
+wayland_listener!(pub(crate) InternalSurface, (Surface, Box<SurfaceHandler>), [
     on_commit_listener => on_commit_notify: |this: &mut InternalSurface, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut surface, ref mut manager) = this.data;

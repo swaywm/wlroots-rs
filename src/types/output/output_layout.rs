@@ -1,8 +1,8 @@
 //! TODO Documentation
 
-use libc::{self, c_double, c_int};
 use std::{fmt, panic, ptr, cell::Cell, marker::PhantomData, rc::{Rc, Weak}};
 
+use libc::{self, c_double, c_int};
 use wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{wlr_output_effective_resolution, wlr_output_layout, wlr_output_layout_add,
                   wlr_output_layout_add_auto, wlr_output_layout_closest_point,
@@ -12,10 +12,10 @@ use wlroots_sys::{wlr_output_effective_resolution, wlr_output_layout, wlr_output
                   wlr_output_layout_move, wlr_output_layout_output, wlr_output_layout_output_at,
                   wlr_output_layout_output_coords, wlr_output_layout_remove};
 
-use errors::{HandleErr, HandleResult};
-
-use {Area, Origin, Output, OutputHandle};
-use compositor::{compositor_handle, CompositorHandle};
+use {area::{Area, Origin},
+     compositor::{compositor_handle, CompositorHandle},
+     output::{Output, OutputHandle},
+     errors::{HandleErr, HandleResult}};
 
 struct OutputLayoutState {
     /// A counter that will always have a strong count of 1.
@@ -51,7 +51,7 @@ pub trait OutputLayoutHandler {
     }
 }
 
-wayland_listener!(OutputLayout, (*mut wlr_output_layout, Box<OutputLayoutHandler>), [
+wayland_listener!(pub OutputLayout, (*mut wlr_output_layout, Box<OutputLayoutHandler>), [
     output_add_listener => output_add_notify: |this: &mut OutputLayout, data: *mut libc::c_void,|
     unsafe {
         let (output_ptr, ref mut manager) = this.data;

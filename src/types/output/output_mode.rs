@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use wlroots_sys::wlr_output_mode;
 
-use Output;
+use output::Output;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct OutputMode<'output> {

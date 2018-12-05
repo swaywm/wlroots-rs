@@ -4,9 +4,13 @@ use libc::{c_double, c_uint};
 use wlroots_sys::{wlr_input_device, wlr_input_device_pointer, wlr_input_device_type,
                   wlr_input_device_type::*};
 
-use utils::c_to_rust_string;
-
-use {KeyboardHandle, PointerHandle, TouchHandle, TabletPadHandle, TabletToolHandle};
+use {input::{keyboard::KeyboardHandle,
+             pointer::PointerHandle,
+             touch::TouchHandle,
+             tablet_pad::TabletPadHandle,
+             tablet_tool::TabletToolHandle},
+     utils::c_to_rust_string};
+pub use manager::input_manager::*;
 
 /// A handle to an input device.
 pub enum InputHandle {

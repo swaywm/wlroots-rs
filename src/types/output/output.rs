@@ -1,11 +1,7 @@
 //! TODO Documentation
 
-use std::{panic, ptr};
-use std::cell::Cell;
-use std::ffi::CStr;
-use std::mem::ManuallyDrop;
-use std::rc::{Rc, Weak};
-use std::time::Duration;
+use std::{cell::Cell, ffi::CStr, mem::ManuallyDrop, rc::{Rc, Weak},
+          time::Duration, panic, ptr};
 
 use libc::{c_float, c_int, clock_t};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -17,15 +13,16 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
                   wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
                   wlr_output_swap_buffers, wlr_output_transformed_resolution};
 
-use manager::UserOutput;
-use errors::{HandleErr, HandleResult};
-use utils::c_to_rust_string;
-use {OutputLayoutHandle, OutputMode};
+use {area::{Origin, Size},
+     errors::{HandleErr, HandleResult},
+     utils::c_to_rust_string,
+     output::{output_layout::OutputLayoutHandle,
+              output_damage::{OutputDamage, PixmanRegion},
+              output_mode::OutputMode}};
+pub use manager::{output_manager::*, output_handler::*};
 
 pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;
-
-use {Origin, OutputDamage, PixmanRegion, Size};
 
 pub(crate) struct OutputState {
     pub(crate) output: *mut UserOutput,
