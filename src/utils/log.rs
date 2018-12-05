@@ -13,7 +13,7 @@ use utils::c_to_rust_string;
 
 // Export these so it can be used in `wlr_log!`.
 pub use self::wlr_log_importance::{WLR_SILENT, WLR_ERROR, WLR_INFO,
-                                   WLR_DEBUG, WLR_LOG_IMPORTANCE_LAST};
+                                   WLR_DEBUG};
 
 /// How verbose you want the logging. Lower levels prints more.
 pub type LogVerbosity = wlr_log_importance;
