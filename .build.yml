@@ -45,4 +45,5 @@ tasks:
       cargo build --examples --features=unstable
       # For doc tests
       cargo doc
+      cargo doc --features=unstable
       cargo test --all --features=unstable
