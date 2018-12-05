@@ -27,7 +27,8 @@ static mut RUST_LOGGING_FN: LogCallback = dummy_callback;
 /// Initialize wlroots logging at a certain level of verbosity with
 /// an optional callback that will be called for every log.
 ///
-/// To log using this system, use the `wlr_log!` macro.
+/// To log using this system, use the
+/// [`wlr_log!`](../../macro.wlr_log.html) macro.
 pub fn init_logging<F>(verbosity: LogVerbosity, callback: F)
 where F: Into<Option<LogCallback>>
 {
