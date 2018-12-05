@@ -20,7 +20,9 @@ pub type LogVerbosity = wlr_log_importance;
 
 /// The signature for the callback function you can hook into the logging
 /// functionality of wlroots.
-pub type LogCallback = fn(LogVerbosity, String);
+///
+/// `message` is the formatted string ready to be displayed on the screen.
+pub type LogCallback = fn(verbosity: LogVerbosity, message: String);
 
 static mut RUST_LOGGING_FN: LogCallback = dummy_callback;
 
