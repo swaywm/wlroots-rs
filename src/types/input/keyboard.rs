@@ -4,12 +4,12 @@ use std::{fmt, panic, ptr, cell::Cell, rc::{Rc, Weak}};
 use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
                   wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap};
-pub use wlroots_sys::{wlr_key_state, wlr_keyboard_modifiers};
-
+pub use wlroots_sys::wlr_key_state;
 use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex};
 use xkbcommon::xkb::ffi::{xkb_keymap, xkb_state};
 
-use super::input_device::{InputDevice, InputState};
+use super::input_device::InputState;
+use {KeyboardModifiers, InputDevice};
 
 /// Information about repeated keypresses for a particular Keyboard.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -180,7 +180,7 @@ impl Keyboard {
     }
 
     /// Get the modifier masks for each group.
-    pub fn get_modifier_masks(&self) -> wlr_keyboard_modifiers {
+    pub fn get_modifier_masks(&self) -> KeyboardModifiers {
         unsafe { (*self.keyboard).modifiers }
     }
 

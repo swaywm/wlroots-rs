@@ -62,7 +62,9 @@ pub use self::xwayland::{XWaylandManagerHandler, XWaylandServer, XWaylandSurface
                          XWaylandSurfaceHandle, XWaylandSurfaceHandler, XWaylandSurfaceHints,
                          XWaylandSurfaceSizeHints};
 #[cfg(feature = "unstable")]
-pub use wlroots_sys::{wlr_keyboard_modifiers, wlr_tablet_tool_axes, wl_shm_format::{self, *},
+pub use wlroots_sys::{wlr_keyboard_modifiers as KeyboardModifiers,
+                      wlr_tablet_tool_axes as TabletToolAxes,
+                      wl_shm_format::{self, *},
                       wlr_axis_orientation::{self, *}, wlr_axis_source::{self, *},
                       wlr_button_state::{self, *}, wlr_input_device_type::{self, *},
                       wlr_key_state::{self, *}, wlr_keyboard_modifier::{self, *},

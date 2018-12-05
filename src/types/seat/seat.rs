@@ -31,13 +31,14 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_dest
 pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
-use {wlr_keyboard_modifiers, InputDevice, KeyboardGrab, KeyboardHandle, PointerGrab, Surface,
+use {InputDevice, KeyboardGrab, KeyboardHandle, PointerGrab, Surface,
      TouchGrab, TouchId, TouchPoint, events::seat_events::SetCursorEvent, SurfaceHandler, DragIconHandle, DragIcon, DragIconHandler};
 use manager::DragIconListener;
 use compositor::{compositor_handle, Compositor, CompositorHandle};
 use errors::{HandleErr, HandleResult};
 use utils::{c_to_rust_string, safe_as_cstring};
 use utils::ToMs;
+use KeyboardModifiers;
 
 struct SeatState {
     /// A counter that will always have a strong count of 1.
@@ -519,7 +520,7 @@ impl Seat {
     /// Send the modifier state to focused keyboard resources.
     ///
     /// Compositors should use `Seat::keyboard_notify_modifiers()` to respect any keyboard grabs.
-    pub fn keyboard_send_modifiers(&self, modifiers: &mut wlr_keyboard_modifiers) {
+    pub fn keyboard_send_modifiers(&self, modifiers: &mut KeyboardModifiers) {
         unsafe { wlr_seat_keyboard_send_modifiers(self.data.0, modifiers) }
     }
 
@@ -542,7 +543,7 @@ impl Seat {
     pub fn keyboard_notify_enter(&self,
                                  surface: &mut Surface,
                                  keycodes: &mut [Keycode],
-                                 modifiers: &mut wlr_keyboard_modifiers) {
+                                 modifiers: &mut KeyboardModifiers) {
         let keycodes_length = keycodes.len();
         unsafe {
             wlr_seat_keyboard_notify_enter(self.data.0,
@@ -563,7 +564,7 @@ impl Seat {
     pub fn keyboard_enter(&self,
                           surface: &mut Surface,
                           keycodes: &mut [Keycode],
-                          modifiers: &mut wlr_keyboard_modifiers) {
+                          modifiers: &mut KeyboardModifiers) {
         let keycodes_length = keycodes.len();
         unsafe {
             wlr_seat_keyboard_enter(self.data.0,
@@ -600,7 +601,7 @@ impl Seat {
     /// Notify the seat that the modifiers for the keyboard have changed.
     ///
     /// Defers to any keyboard grabs.
-    pub fn keyboard_notify_modifiers(&self, modifiers: &mut wlr_keyboard_modifiers) {
+    pub fn keyboard_notify_modifiers(&self, modifiers: &mut KeyboardModifiers) {
         unsafe { wlr_seat_keyboard_notify_modifiers(self.data.0, modifiers) }
     }
 
