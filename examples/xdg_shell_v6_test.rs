@@ -14,7 +14,7 @@ use wlroots::{matrix, Area, Capability, CompositorBuilder, CompositorHandle, Cur
               XdgV6ShellSurfaceHandle, SurfaceHandler, SurfaceHandle};
 use wlroots::key_events::KeyEvent;
 use wlroots::pointer_events::{AbsoluteMotionEvent, ButtonEvent, MotionEvent};
-use wlroots::utils::{init_logging, WLR_DEBUG, current_time};
+use wlroots::utils::{log::{init_logging, WLR_DEBUG}, current_time};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 use wlroots::wlroots_dehandle;

@@ -37,7 +37,7 @@ use manager::DragIconListener;
 use compositor::{compositor_handle, Compositor, CompositorHandle};
 use errors::{HandleErr, HandleResult};
 use utils::{c_to_rust_string, safe_as_cstring};
-use utils::ToMS;
+use utils::ToMs;
 
 struct SeatState {
     /// A counter that will always have a strong count of 1.
