@@ -14,7 +14,7 @@ pub extern crate libc;
 extern crate vsprintf;
 #[macro_use]
 pub extern crate wlroots_sys;
-pub extern crate wlroots_dehandle;
+extern crate wlroots_dehandle;
 pub extern crate xkbcommon;
 
 pub use wlroots_dehandle::wlroots_dehandle;
@@ -34,7 +34,7 @@ mod types;
 #[cfg(feature = "unstable")]
 pub mod extensions;
 #[cfg(feature = "unstable")]
-pub mod render;
+mod render;
 pub mod utils;
 #[cfg(feature = "unstable")]
 mod xwayland;
@@ -71,7 +71,7 @@ pub use wlroots_sys::{wlr_keyboard_modifiers, wlr_tablet_tool_axes, wl_shm_forma
                       wlr_tablet_tool_proximity_state::{self, *}};
 
 #[cfg(feature = "unstable")]
-pub use self::render::{matrix, GenericRenderer, Image, Renderer, Texture, TextureFormat};
+pub use self::render::*;
 
 #[cfg(feature = "unstable")]
 pub use self::errors::*;
