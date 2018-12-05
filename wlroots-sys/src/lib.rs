@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
-extern crate libc;
+pub extern crate libc;
 pub extern crate wayland_commons;
 pub extern crate wayland_server;
 #[macro_use]

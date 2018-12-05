@@ -1,5 +1,4 @@
 extern crate wlroots;
-extern crate libc;
 
 use std::f64::consts::PI;
 use wlroots::{matrix, tablet_pad_events, tablet_tool_events, *, key_events::*, utils::*,

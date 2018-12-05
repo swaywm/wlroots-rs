@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate wlroots;
-extern crate libc;
 
 use wlroots::{CompositorBuilder, CompositorHandle, InputManagerHandler, KeyboardHandle,
               KeyboardHandler, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,

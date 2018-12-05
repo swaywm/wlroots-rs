@@ -17,7 +17,6 @@ travis-ci = { repository = "way-cooler/wlroots-rs/" }
 
 
 [dependencies]
-libc = "^0.2.*"
 rust-ini = "0.10.0"
 wlroots-sys = { path = "wlroots-sys", default-features = false }
 wlroots-dehandle = { path = "wlroots-dehandle" }

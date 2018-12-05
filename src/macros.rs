@@ -55,7 +55,8 @@ macro_rules! wlr_log {
         /// So probably only works on ASCII.
         macro_rules! c_str {
             ($s:expr) => {
-                concat!($s, "\0").as_ptr() as *const $crate::libc::c_char
+                concat!($s, "\0").as_ptr()
+                    as *const $crate::wlroots_sys::libc::c_char
             }
         }
         use $crate::wlroots_sys::_wlr_log;

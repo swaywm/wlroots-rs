@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate wlroots;
-extern crate libc;
 
 use std::env;
 use std::time::Instant;
