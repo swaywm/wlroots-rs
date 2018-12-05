@@ -7,9 +7,8 @@ use std::time::Instant;
 
 use wlroots::{CompositorBuilder, CompositorHandle, InputManagerHandler, KeyboardHandle,
               KeyboardHandler, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
-              OutputManagerHandler};
+              OutputManagerHandler, Texture, TextureFormat};
 use wlroots::key_events::KeyEvent;
-use wlroots::render::{Texture, TextureFormat};
 use wlroots::utils::log::{init_logging, WLR_DEBUG};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
