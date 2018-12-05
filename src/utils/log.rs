@@ -6,12 +6,14 @@
 //! To log using this system please utilize the [`wlr_log!`](../../macro.wlr_log.html) macro.
 
 use libc::c_char;
-pub use wlroots_sys::wlr_log_importance::{self, WLR_SILENT, WLR_ERROR, WLR_INFO,
-                                          WLR_DEBUG, WLR_LOG_IMPORTANCE_LAST};
-use wlroots_sys::{__va_list_tag, wlr_log_init};
+use wlroots_sys::{wlr_log_importance, __va_list_tag, wlr_log_init};
 use vsprintf::vsprintf;
 
 use utils::c_to_rust_string;
+
+// Export these so it can be used in `wlr_log!`.
+pub use self::wlr_log_importance::{WLR_SILENT, WLR_ERROR, WLR_INFO,
+                                   WLR_DEBUG, WLR_LOG_IMPORTANCE_LAST};
 
 /// How verbose you want the logging. Lower levels prints more.
 pub type LogVerbosity = wlr_log_importance;

@@ -46,12 +46,17 @@ macro_rules! c_str {
 
 /// Logs a message using wlroots' logging capability.
 ///
-/// Possible values for `verb`:
+/// Example:
+/// ```rust,no_run,ignore
+/// #[macro_use]
+/// use wlroots::log::{init_logging, L_DEBUG, L_ERROR};
 ///
-/// * L_SILENT
-/// * WLR_INFO
-/// * WLR_DEBUG
-/// * WLR_ERROR
+/// // Call this once, at the beginning of your program.
+/// init_logging(WLR_DEBUG, None);
+///
+/// wlr_log!(L_DEBUG, "Hello world");
+/// wlr_log!(L_ERROR, "Could not {:#?} the {}", foo, bar);
+/// ```
 #[macro_export]
 macro_rules! wlr_log {
     ($verb: expr, $($msg:tt)*) => {{
