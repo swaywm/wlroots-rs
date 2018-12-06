@@ -3,24 +3,24 @@ use std::marker::PhantomData;
 use libc::{int32_t, uint32_t};
 use wlroots_sys::{wlr_xwayland_surface_hints, wlr_xwayland_surface_size_hints};
 
-use xwayland::surface::XWaylandSurface;
+use xwayland;
 
 /// Hints provided by the XWayland client to aid in compositing.
-pub struct XWaylandSurfaceHints<'surface> {
+pub struct Hints<'surface> {
     hints: *mut wlr_xwayland_surface_hints,
-    phantom: PhantomData<&'surface XWaylandSurface>
+    phantom: PhantomData<&'surface xwayland::surface::Surface>
 }
 
 /// Hints provided by the XWayland client to aid in compositing specifically
 /// for placement.
-pub struct XWaylandSurfaceSizeHints<'surface> {
+pub struct SizeHints<'surface> {
     hints: *mut wlr_xwayland_surface_size_hints,
-    phantom: PhantomData<&'surface XWaylandSurface>
+    phantom: PhantomData<&'surface xwayland::surface::Surface>
 }
 
-impl<'surface> XWaylandSurfaceHints<'surface> {
+impl<'surface> Hints<'surface> {
     pub(crate) unsafe fn from_ptr(hints: *mut wlr_xwayland_surface_hints) -> Self {
-        XWaylandSurfaceHints { hints,
+        Hints { hints,
                                phantom: PhantomData }
     }
 
@@ -60,9 +60,9 @@ impl<'surface> XWaylandSurfaceHints<'surface> {
     }
 }
 
-impl<'surface> XWaylandSurfaceSizeHints<'surface> {
+impl<'surface> SizeHints<'surface> {
     pub(crate) unsafe fn from_ptr(hints: *mut wlr_xwayland_surface_size_hints) -> Self {
-        XWaylandSurfaceSizeHints { hints,
+        SizeHints { hints,
                                    phantom: PhantomData }
     }
 

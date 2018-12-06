@@ -2,6 +2,6 @@
 mod cursor;
 pub mod xcursor;
 #[cfg(feature = "unstable")]
-pub mod xcursor_manager;
+pub(crate) mod xcursor_manager;
 
 pub use self::cursor::*;

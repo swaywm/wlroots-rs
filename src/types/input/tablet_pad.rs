@@ -4,7 +4,7 @@ use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_tablet_pad};
 
-use super::input_device::{InputDevice, InputState};
+use input::{self, InputState};
 pub use manager::tablet_pad_handler::*;
 pub use events::tablet_pad_events as event;
 
@@ -15,25 +15,25 @@ pub struct TabletPad {
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
     ///
-    /// If this is `None`, then this is from an upgraded `TabletPadHandle`, and
+    /// If this is `None`, then this is from an upgraded `tablet_pad::Handle`, and
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
-    /// marked function `upgrade` on a `TabletPadHandle`.
+    /// marked function `upgrade` on a `tablet_pad::Handle`.
     liveliness: Rc<Cell<bool>>,
     /// The device that refers to this tablet pad.
-    device: InputDevice,
+    device: input::Device,
     /// Underlying tablet state
     pad: *mut wlr_tablet_pad
 }
 
 #[derive(Debug)]
-pub struct TabletPadHandle {
+pub struct Handle {
     /// The Rc that ensures that this handle is still alive.
     ///
     /// When wlroots deallocates the tablet tool associated with this handle,
     handle: Weak<Cell<bool>>,
     /// The device that refers to this tablet_pad.
-    device: InputDevice,
+    device: input::Device,
     /// The underlying tablet state
     pad: *mut wlr_tablet_pad
 }
@@ -54,17 +54,17 @@ impl TabletPad {
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
                 let state = Box::new(InputState { handle,
-                                                  device: InputDevice::from_ptr(device) });
+                                                  device: input::Device::from_ptr(device) });
                 (*pad).data = Box::into_raw(state) as *mut _;
                 Some(TabletPad { liveliness,
-                                 device: InputDevice::from_ptr(device),
+                                 device: input::Device::from_ptr(device),
                                  pad })
             }
             _ => None
         }
     }
 
-    unsafe fn from_handle(handle: &TabletPadHandle) -> HandleResult<Self> {
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
         let liveliness = handle.handle
                                .upgrade()
                                .ok_or_else(|| HandleErr::AlreadyDropped)?;
@@ -74,7 +74,7 @@ impl TabletPad {
     }
 
     /// Gets the wlr_input_device associated with this TabletPad.
-    pub fn input_device(&self) -> &InputDevice {
+    pub fn input_device(&self) -> &input::Device {
         &self.device
     }
 
@@ -85,8 +85,8 @@ impl TabletPad {
     /// # Panics
     /// If this `TabletPad` is a previously upgraded `TabletPad`,
     /// then this function will panic.
-    pub fn weak_reference(&self) -> TabletPadHandle {
-        TabletPadHandle { handle: Rc::downgrade(&self.liveliness),
+    pub fn weak_reference(&self) -> Handle {
+        Handle { handle: Rc::downgrade(&self.liveliness),
                           // NOTE Rationale for cloning:
                           // We can't use the tablet tool handle unless the tablet tool is alive,
                           // which means the device pointer is still alive.
@@ -114,24 +114,24 @@ impl Drop for TabletPad {
     }
 }
 
-impl TabletPadHandle {
-    /// Constructs a new TabletPadHandle that is always invalid. Calling `run` on this
+impl Handle {
+    /// Constructs a new tablet_pad::Handle that is always invalid. Calling `run` on this
     /// will always fail.
     ///
     /// This is useful for pre-filling a value before it's provided by the server, or
     /// for mocking/testing.
     pub fn new() -> Self {
         unsafe {
-            TabletPadHandle { handle: Weak::new(),
+            Handle { handle: Weak::new(),
                               // NOTE Rationale for null pointer here:
                               // It's never used, because you can never upgrade it,
                               // so no way to dereference it and trigger UB.
-                              device: InputDevice::from_ptr(ptr::null_mut()),
+                              device: input::Device::from_ptr(ptr::null_mut()),
                               pad: ptr::null_mut() }
         }
     }
 
-    /// Creates an TabletPadHandle from the raw pointer, using the saved
+    /// Creates an tablet_pad::Handle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     ///
     /// # Panics
@@ -144,7 +144,7 @@ impl TabletPadHandle {
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*pad).data = Box::into_raw(data) as *mut _;
-        TabletPadHandle { handle,
+        Handle { handle,
                          pad,
                          device }
     }
@@ -209,29 +209,29 @@ impl TabletPadHandle {
         }
     }
 
-    /// Gets the wlr_input_device associated with this TabletPadHandle
-    pub fn input_device(&self) -> HandleResult<&InputDevice> {
+    /// Gets the wlr_input_device associated with this tablet_pad::Handle
+    pub fn input_device(&self) -> HandleResult<&input::Device> {
         match self.handle.upgrade() {
             Some(_) => Ok(&self.device),
             None => Err(HandleErr::AlreadyDropped)
         }
     }
 
-    /// Gets the wlr_tablet_tool associated with this TabletPadHandle.
+    /// Gets the wlr_tablet_tool associated with this tablet_pad::Handle.
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_tablet_pad {
         self.pad
     }
 }
 
-impl Default for TabletPadHandle {
+impl Default for Handle {
     fn default() -> Self {
-        TabletPadHandle::new()
+        Handle::new()
     }
 }
 
-impl Clone for TabletPadHandle {
+impl Clone for Handle {
     fn clone(&self) -> Self {
-        TabletPadHandle { pad: self.pad,
+        Handle { pad: self.pad,
                           handle: self.handle.clone(),
                           /// NOTE Rationale for unsafe clone:
                           ///
@@ -241,10 +241,10 @@ impl Clone for TabletPadHandle {
     }
 }
 
-impl PartialEq for TabletPadHandle {
-    fn eq(&self, other: &TabletPadHandle) -> bool {
+impl PartialEq for Handle {
+    fn eq(&self, other: &Handle) -> bool {
         self.pad == other.pad
     }
 }
 
-impl Eq for TabletPadHandle {}
+impl Eq for Handle {}

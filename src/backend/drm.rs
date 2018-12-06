@@ -3,9 +3,7 @@ use std::ptr;
 use libc::c_int;
 use wlroots_sys::{wlr_backend, wl_display, wlr_drm_backend_create, wlr_output_is_drm};
 
-use {output::Output,
-     backend::{backend::UnsafeRenderSetupFunction,
-               session::Session}};
+use {output::Output, backend::{UnsafeRenderSetupFunction, Session}};
 
 /// When the compositor is ran on a TTY and has full control of the system resources.
 ///
@@ -20,11 +18,11 @@ use {output::Output,
 /// Note that if the process exits for any reason (a panic, an abort, or a clean exit)
 /// all of the resource handles will automatically be cleaned up properly by the OS.
 #[derive(Debug, Hash, Eq, PartialEq)]
-pub struct DRMBackend {
+pub struct Drm {
     pub(crate) backend: *mut wlr_backend
 }
 
-impl DRMBackend {
+impl Drm {
      /// Creates a DRM backend using the specified GPU file descriptor (typically from
      /// a device node in /dev/dri).
      ///
@@ -33,7 +31,7 @@ impl DRMBackend {
     pub unsafe fn new(display: *mut wl_display,
                       session: Session,
                       gpu_fd: c_int,
-                      parent: Option<DRMBackend>,
+                      parent: Option<Drm>,
                       render_setup_func: Option<UnsafeRenderSetupFunction>)
                       -> Self {
         let parent_ptr = parent.map(|backend| backend.as_ptr()).unwrap_or_else(ptr::null_mut);
@@ -45,7 +43,7 @@ impl DRMBackend {
         if backend.is_null() {
             panic!("Could not construct X11 backend");
         }
-        DRMBackend { backend }
+        Drm { backend }
     }
 
     pub fn output_is_drm(&self, output: &Output) -> bool {

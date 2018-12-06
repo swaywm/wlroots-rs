@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use libc::c_int;
 use wlroots_sys::{wl_output_transform, wl_resource, wlr_surface_state};
 
-use {output::output_damage::PixmanRegion, surface::Surface};
+use {render::PixmanRegion, surface::Surface};
 
 #[derive(Debug)]
 #[repr(u32)]
@@ -34,20 +34,19 @@ pub enum InvalidState {
 
 /// Surface state as reported by wlroots.
 #[derive(Debug)]
-pub struct SurfaceState<'surface> {
+pub struct State<'surface> {
     state: wlr_surface_state,
     phantom: PhantomData<&'surface Surface>
 }
 
-impl<'surface> SurfaceState<'surface> {
+impl<'surface> State<'surface> {
     /// Create a new subsurface from the given surface.
     ///
     /// # Safety
     /// Since we rely on the surface providing a valid surface state,
     /// this function is marked unsafe.
-    pub(crate) unsafe fn new(state: wlr_surface_state) -> SurfaceState<'surface> {
-        SurfaceState { state,
-                       phantom: PhantomData }
+    pub(crate) unsafe fn new(state: wlr_surface_state) -> State<'surface> {
+        State { state, phantom: PhantomData }
     }
 
     /// Gets the state of the sub surface.

@@ -4,34 +4,45 @@ use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wlr_input_device, wlr_event_keyboard_key};
 
-use {compositor::{compositor_handle, CompositorHandle},
-     events::key_events::KeyEvent,
-     input::keyboard::{Keyboard, KeyboardHandle}};
+use {compositor,
+     input::keyboard::{self, Keyboard}};
 
-pub trait KeyboardHandler {
+#[allow(unused_variables)]
+pub trait Handler {
     /// Callback that is triggered when a key is pressed.
-    fn on_key(&mut self, CompositorHandle, KeyboardHandle, &KeyEvent) {}
+    fn on_key(&mut self,
+              compositor_handle: compositor::Handle,
+              keyboard_handle: keyboard::Handle,
+              event: &keyboard::event::Key) {}
 
     /// Callback that is triggered when modifiers are pressed.
-    fn modifiers(&mut self, CompositorHandle, KeyboardHandle) {}
+    fn modifiers(&mut self,
+                 compositor_handle: compositor::Handle,
+                 keyboard_handle: keyboard::Handle) {}
 
     /// Callback that is triggered when the keymap is updated.
-    fn keymap(&mut self, CompositorHandle, KeyboardHandle) {}
+    fn keymap(&mut self,
+              compositor_handle: compositor::Handle,
+              keyboard_handle: keyboard::Handle) {}
 
     /// Callback that is triggered when repeat info is updated.
-    fn repeat_info(&mut self, CompositorHandle, KeyboardHandle) {}
+    fn repeat_info(&mut self,
+                   compositor_handle: compositor::Handle,
+                   keyboard_handle: keyboard::Handle) {}
 
     /// Callback that is triggered when the keyboard is destroyed.
-    fn destroyed(&mut self, CompositorHandle, KeyboardHandle) {}
+    fn destroyed(&mut self,
+                 compositor_handle: compositor::Handle,
+                 keyboard_handle: keyboard::Handle) {}
 }
 
-wayland_listener!(pub(crate) KeyboardWrapper, (Keyboard, Box<KeyboardHandler>), [
+wayland_listener!(pub(crate) KeyboardWrapper, (Keyboard, Box<Handler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut KeyboardWrapper, data: *mut libc::c_void,|
     unsafe {
         let input_device_ptr = data as *mut wlr_input_device;
         {
             let (ref mut keyboard, ref mut keyboard_handler) = this.data;
-            let compositor = match compositor_handle() {
+            let compositor = match compositor::handle() {
                 Some(handle) => handle,
                 None => return
             };
@@ -56,19 +67,19 @@ wayland_listener!(pub(crate) KeyboardWrapper, (Keyboard, Box<KeyboardHandler>), 
     };
     key_listener => key_notify: |this: &mut KeyboardWrapper, data: *mut libc::c_void,| unsafe {
         let (ref mut keyboard, ref mut keyboard_handler) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
         let xkb_state = (*keyboard.as_ptr()).xkb_state;
-        let key = KeyEvent::new(data as *mut wlr_event_keyboard_key, xkb_state);
+        let key = keyboard::event::Key::new(data as *mut wlr_event_keyboard_key, xkb_state);
 
         keyboard_handler.on_key(compositor, keyboard.weak_reference(), &key);
     };
     modifiers_listener => modifiers_notify: |this: &mut KeyboardWrapper, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut keyboard, ref mut keyboard_handler) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -78,7 +89,7 @@ wayland_listener!(pub(crate) KeyboardWrapper, (Keyboard, Box<KeyboardHandler>), 
     keymap_listener => keymap_notify: |this: &mut KeyboardWrapper, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut keyboard, ref mut keyboard_handler) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -88,7 +99,7 @@ wayland_listener!(pub(crate) KeyboardWrapper, (Keyboard, Box<KeyboardHandler>), 
    repeat_listener => repeat_notify: |this: &mut KeyboardWrapper, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut keyboard, ref mut keyboard_handler) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };

@@ -4,43 +4,60 @@ use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_output;
 
-use {compositor::{compositor_handle, CompositorHandle},
+use {compositor,
      errors::HandleErr,
-     output::{Output, OutputHandle, OutputState}};
+     output::{self, Output, OutputState}};
 
-pub trait OutputHandler {
+#[allow(unused_variables)]
+pub trait Handler {
     /// Called every time the output frame is updated.
-    fn on_frame(&mut self, CompositorHandle, OutputHandle) {}
+    fn on_frame(&mut self,
+                compositor_handle: compositor::Handle,
+                output_handle: output::Handle) {}
 
     /// Called every time the output mode changes.
-    fn on_mode_change(&mut self, CompositorHandle, OutputHandle) {}
+    fn on_mode_change(&mut self,
+                      compositor_handle: compositor::Handle,
+                      output_handle: output::Handle) {}
 
     /// Called every time the output is enabled.
-    fn on_enable(&mut self, CompositorHandle, OutputHandle) {}
+    fn on_enable(&mut self,
+                 compositor_handle: compositor::Handle,
+                 output_handle: output::Handle) {}
 
     /// Called every time the output scale changes.
-    fn on_scale_change(&mut self, CompositorHandle, OutputHandle) {}
+    fn on_scale_change(&mut self,
+                       compositor_handle: compositor::Handle,
+                       output_handle: output::Handle) {}
 
     /// Called every time the output transforms.
-    fn on_transform(&mut self, CompositorHandle, OutputHandle) {}
+    fn on_transform(&mut self,
+                    compositor_handle: compositor::Handle,
+                    output_handle: output::Handle) {}
 
     /// Called every time the buffers are swapped on an output.
-    fn on_buffers_swapped(&mut self, CompositorHandle, OutputHandle) {}
+    fn on_buffers_swapped(&mut self,
+                          compositor_handle: compositor::Handle,
+                          output_handle: output::Handle) {}
 
     /// Called every time the buffers need to be swapped on an output.
-    fn needs_swap(&mut self, CompositorHandle, OutputHandle) {}
+    fn needs_swap(&mut self,
+                  compositor_handle: compositor::Handle,
+                  output_handle: output::Handle) {}
 
     /// Called when an output is destroyed (e.g. unplugged).
-    fn destroyed(&mut self, CompositorHandle, OutputHandle) {}
+    fn destroyed(&mut self,
+                 compositor_handle: compositor::Handle,
+                 output_handle: output::Handle) {}
 }
 
-wayland_listener!(pub(crate) UserOutput, (Output, Box<OutputHandler>), [
+wayland_listener!(pub(crate) UserOutput, (Output, Box<Handler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut UserOutput, data: *mut libc::c_void,|
     unsafe {
         let output_ptr = data as *mut wlr_output;
         {
             let (ref mut output, ref mut manager) = this.data;
-            let compositor = match compositor_handle() {
+            let compositor = match compositor::handle() {
                 Some(handle) => handle,
                 None => return
             };
@@ -86,7 +103,7 @@ wayland_listener!(pub(crate) UserOutput, (Output, Box<OutputHandler>), [
     };
     frame_listener => frame_notify: |this: &mut UserOutput, _output: *mut libc::c_void,| unsafe {
         let (ref output, ref mut manager) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -96,7 +113,7 @@ wayland_listener!(pub(crate) UserOutput, (Output, Box<OutputHandler>), [
     mode_listener => mode_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
     unsafe {
         let (ref output, ref mut manager) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -105,7 +122,7 @@ wayland_listener!(pub(crate) UserOutput, (Output, Box<OutputHandler>), [
     };
     enable_listener => enable_notify: |this: &mut UserOutput, _output: *mut libc::c_void,| unsafe {
         let (ref output, ref mut manager) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -114,7 +131,7 @@ wayland_listener!(pub(crate) UserOutput, (Output, Box<OutputHandler>), [
     };
     scale_listener => scale_notify: |this: &mut UserOutput, _output: *mut libc::c_void,| unsafe {
         let (ref output, ref mut manager) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -124,7 +141,7 @@ wayland_listener!(pub(crate) UserOutput, (Output, Box<OutputHandler>), [
     transform_listener => transform_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
     unsafe {
         let (ref output, ref mut manager) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -136,7 +153,7 @@ wayland_listener!(pub(crate) UserOutput, (Output, Box<OutputHandler>), [
     unsafe {
 
         let (ref output, ref mut manager) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -146,7 +163,7 @@ wayland_listener!(pub(crate) UserOutput, (Output, Box<OutputHandler>), [
     need_swap_listener => need_swap_notify: |this: &mut UserOutput, _output: *mut libc::c_void,|
     unsafe {
         let (ref output, ref mut manager) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };

@@ -16,9 +16,8 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
 use {area::{Origin, Size},
      errors::{HandleErr, HandleResult},
      utils::c_to_rust_string,
-     output::{output_layout::OutputLayoutHandle,
-              output_damage::{OutputDamage, PixmanRegion},
-              output_mode::OutputMode}};
+     output::{self, layout},
+     render::PixmanRegion};
 pub use manager::{output_manager::*, output_handler::*};
 
 pub type Subpixel = wl_output_subpixel;
@@ -28,7 +27,7 @@ pub(crate) struct OutputState {
     pub(crate) output: *mut UserOutput,
     handle: Weak<Cell<bool>>,
     damage: *mut wlr_output_damage,
-    layout_handle: Option<OutputLayoutHandle>
+    layout_handle: Option<layout::Handle>
 }
 
 #[derive(Debug)]
@@ -38,20 +37,20 @@ pub struct Output {
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
     ///
-    /// If this is `None`, then this is from an upgraded `OutputHandle`, and
+    /// If this is `None`, then this is from an upgraded `output::Handle`, and
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
-    /// marked function `upgrade` on a `OutputHandle`.
+    /// marked function `upgrade` on a `output::Handle`.
     liveliness: Rc<Cell<bool>>,
     /// The tracker for damage on the output.
-    damage: ManuallyDrop<OutputDamage>,
+    damage: ManuallyDrop<output::Damage>,
     /// The output ptr that refers to this `Output`
     output: *mut wlr_output
 }
 
 /// A wrapper around a wlr_output.
 #[derive(Debug, Clone)]
-pub struct OutputHandle {
+pub struct Handle {
     /// The Rc that ensures that this handle is still alive.
     ///
     /// When wlroots deallocates the pointer associated with this handle,
@@ -87,7 +86,7 @@ impl Output {
         (*output).data = ptr::null_mut();
         let liveliness = Rc::new(Cell::new(false));
         let handle = Rc::downgrade(&liveliness);
-        let damage = ManuallyDrop::new(OutputDamage::new(output));
+        let damage = ManuallyDrop::new(output::Damage::new(output));
         let state = Box::new(OutputState { output: ptr::null_mut(),
                                            handle,
                                            damage: damage.as_ptr(),
@@ -99,7 +98,7 @@ impl Output {
     }
 
     pub(crate) unsafe fn set_output_layout<T>(&mut self, layout_handle: T)
-        where T: Into<Option<OutputLayoutHandle>>
+        where T: Into<Option<layout::Handle>>
     {
         self.remove_from_output_layout();
         let user_data = self.user_data();
@@ -152,7 +151,7 @@ impl Output {
     /// Note that this isn't exposed to user space, as they could easily
     /// create two mutable pointers to the same structure. We keep it internally
     /// though because we use it during the cleanup process.
-    pub(crate) unsafe fn layout(&mut self) -> Option<OutputLayoutHandle> {
+    pub(crate) unsafe fn layout(&mut self) -> Option<layout::Handle> {
         let data = self.user_data();
         if data.is_null() {
             None
@@ -186,7 +185,7 @@ impl Output {
     // What will happen?
 
     /// Set this to be the current mode for the Output.
-    pub fn set_mode(&mut self, mode: OutputMode) -> bool {
+    pub fn set_mode(&mut self, mode: output::Mode) -> bool {
         unsafe { wlr_output_set_mode(self.output, mode.as_ptr()) }
     }
 
@@ -245,12 +244,12 @@ impl Output {
         unsafe { (*self.output).refresh }
     }
 
-    pub fn current_mode<'output>(&'output self) -> Option<OutputMode<'output>> {
+    pub fn current_mode<'output>(&'output self) -> Option<output::Mode<'output>> {
         unsafe {
             if (*self.output).current_mode.is_null() {
                 None
             } else {
-                Some(OutputMode::new((*self.output).current_mode))
+                Some(output::Mode::new((*self.output).current_mode))
             }
         }
     }
@@ -375,11 +374,11 @@ impl Output {
     /// Get the modes associated with this output.
     ///
     /// Note that some backends may have zero modes.
-    pub fn modes<'output>(&'output self) -> Vec<OutputMode<'output>> {
+    pub fn modes<'output>(&'output self) -> Vec<output::Mode<'output>> {
         unsafe {
             let mut result = vec![];
             wl_list_for_each!((*self.output).modes, link, (mode: wlr_output_mode) => {
-                result.push(OutputMode::new(mode))
+                result.push(output::Mode::new(mode))
             });
             result
         }
@@ -410,7 +409,7 @@ impl Output {
         unsafe { wlr_output_set_scale(self.output, scale) }
     }
 
-    pub fn damage(&mut self) -> &mut OutputDamage {
+    pub fn damage(&mut self) -> &mut output::Damage {
         &mut *self.damage
     }
 
@@ -421,20 +420,20 @@ impl Output {
     /// Creates a weak reference to an `Output`.
     ///
     /// # Panics
-    /// If this `Output` is a previously upgraded `OutputHandle`,
+    /// If this `Output` is a previously upgraded `output::Handle`,
     /// then this function will panic.
-    pub fn weak_reference(&self) -> OutputHandle {
-        OutputHandle { handle: Rc::downgrade(&self.liveliness),
+    pub fn weak_reference(&self) -> Handle {
+        Handle { handle: Rc::downgrade(&self.liveliness),
                        damage: unsafe { self.damage.as_ptr() },
                        output: self.output }
     }
 
-    unsafe fn from_handle(handle: &OutputHandle) -> HandleResult<Self> {
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
         let liveliness = handle.handle
                                .upgrade()
                                .ok_or_else(|| HandleErr::AlreadyDropped)?;
         Ok(Output { liveliness,
-                    damage: ManuallyDrop::new(OutputDamage::from_ptr(handle.damage)),
+                    damage: ManuallyDrop::new(output::Damage::from_ptr(handle.damage)),
                     output: handle.as_ptr() })
     }
 }
@@ -468,28 +467,28 @@ impl Drop for Output {
     }
 }
 
-impl OutputHandle {
-    /// Constructs a new OutputHandle that is always invalid. Calling `run` on this
+impl Handle {
+    /// Constructs a new output::Handle that is always invalid. Calling `run` on this
     /// will always fail.
     ///
     /// This is useful for pre-filling a value before it's provided by the server, or
     /// for mocking/testing.
     pub fn new() -> Self {
         unsafe {
-            OutputHandle { handle: Weak::new(),
+            Handle { handle: Weak::new(),
                            damage: ptr::null_mut(),
                            output: ptr::null_mut() }
         }
     }
 
-    /// Creates an OutputHandle from the raw pointer, using the saved
+    /// Creates an output::Handle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     pub(crate) unsafe fn from_ptr(output: *mut wlr_output) -> Self {
         let data = Box::from_raw((*output).data as *mut OutputState);
         let handle = data.handle.clone();
         let damage = data.damage;
         (*output).data = Box::into_raw(data) as *mut _;
-        OutputHandle { handle,
+        Handle { handle,
                        output,
                        damage }
     }
@@ -559,16 +558,16 @@ impl OutputHandle {
     }
 }
 
-impl Default for OutputHandle {
+impl Default for Handle {
     fn default() -> Self {
-        OutputHandle::new()
+        Handle::new()
     }
 }
 
-impl PartialEq for OutputHandle {
-    fn eq(&self, other: &OutputHandle) -> bool {
+impl PartialEq for Handle {
+    fn eq(&self, other: &Handle) -> bool {
         self.output == other.output
     }
 }
 
-impl Eq for OutputHandle {}
+impl Eq for Handle {}

@@ -1,16 +1,16 @@
 use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wl_display, wlr_multi_backend_add,
                   wlr_multi_backend_remove, wlr_multi_is_empty};
 
-use super::UnsafeRenderSetupFunction;
+use backend::UnsafeRenderSetupFunction;
 
 /// When multiple backends are running or when the compositor writer doesn't care and
 /// just used the auto create option in the `CompositorBuilder`.
 #[derive(Debug, Hash, Eq, PartialEq)]
-pub struct MultiBackend {
+pub struct Multi {
     pub(crate) backend: *mut wlr_backend
 }
 
-impl MultiBackend {
+impl Multi {
     /// Auto create a backend based on the environment.
     pub unsafe fn auto_create(display: *mut wl_display,
                               render_setup_func: Option<UnsafeRenderSetupFunction>)
@@ -19,7 +19,7 @@ impl MultiBackend {
         if backend.is_null() {
             panic!("Could not auto construct backend");
         }
-        MultiBackend { backend }
+        Multi { backend }
     }
 
     /// Adds the given backend to the multi backend.

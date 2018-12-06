@@ -3,9 +3,9 @@ use std::ptr;
 use wlroots_sys::{wlr_backend, wlr_x11_backend_create, wlr_x11_output_create,
                   wlr_input_device_is_x11, wlr_output_is_x11, wl_display};
 
-use {backend::backend::UnsafeRenderSetupFunction,
-     output::{OutputHandle, Output},
-     input::InputDevice,
+use {backend::UnsafeRenderSetupFunction,
+     output::{self, Output},
+     input,
      utils::safe_as_cstring};
 
 
@@ -14,11 +14,11 @@ use {backend::backend::UnsafeRenderSetupFunction,
 ///
 /// This is useful for testing and iteration on the design of the compositor.
 #[derive(Debug, Hash, Eq, PartialEq)]
-pub struct X11Backend {
+pub struct X11 {
     pub(crate) backend: *mut wlr_backend
 }
 
-impl X11Backend {
+impl X11 {
     pub unsafe fn new(display: *mut wl_display,
                       x11_display: Option<String>,
                       render_setup_func: Option<UnsafeRenderSetupFunction>)
@@ -29,22 +29,22 @@ impl X11Backend {
         if backend.is_null() {
             panic!("Could not construct X11 backend");
         }
-        X11Backend { backend }
+        X11 { backend }
     }
 
-    pub fn create_output(&self) -> Option<OutputHandle> {
+    pub fn create_output(&self) -> Option<output::Handle> {
         unsafe {
             let output_ptr = wlr_x11_output_create(self.backend);
             if output_ptr.is_null() {
                 None
             } else {
-                Some(OutputHandle::from_ptr(output_ptr))
+                Some(output::Handle::from_ptr(output_ptr))
             }
 
         }
     }
 
-    pub fn is_x11_input_device(&self, input_device: &InputDevice) -> bool {
+    pub fn is_x11_input_device(&self, input_device: &input::Device) -> bool {
         unsafe {
             wlr_input_device_is_x11(input_device.as_ptr())
         }

@@ -2,36 +2,35 @@ use libc::{int16_t, uint16_t};
 use wlroots_sys::{wlr_xwayland_move_event, wlr_xwayland_resize_event,
                   wlr_xwayland_surface_configure_event};
 
-use {xwayland::surface::XWaylandSurfaceHandle,
-     utils::edges::Edges};
+use {xwayland, utils::edges::Edges};
 
 /// Event for when XWayland surface needs to be configured.
-pub struct ConfigureEvent {
+pub struct Configure {
     event: *mut wlr_xwayland_surface_configure_event
 }
 
 /// Event for when an XWayland surface is moved.
-pub struct MoveEvent {
+pub struct Move {
     event: *mut wlr_xwayland_move_event
 }
 
 /// Event for when an XWayland surface is resized.
-pub struct ResizeEvent {
+pub struct Resize {
     event: *mut wlr_xwayland_resize_event
 }
 
-impl ConfigureEvent {
+impl Configure {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_xwayland_surface_configure_event) -> Self {
-        ConfigureEvent { event }
+        Configure { event }
     }
 
     /// Get the surface associated with this configure event.
-    pub fn surface(&self) -> Option<XWaylandSurfaceHandle> {
+    pub fn surface(&self) -> Option<xwayland::surface::Handle> {
         unsafe {
             if (*self.event).surface.is_null() {
                 None
             } else {
-                Some(XWaylandSurfaceHandle::from_ptr((*self.event).surface))
+                Some(xwayland::surface::Handle::from_ptr((*self.event).surface))
             }
         }
     }
@@ -51,35 +50,35 @@ impl ConfigureEvent {
     }
 }
 
-impl MoveEvent {
+impl Move {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_xwayland_move_event) -> Self {
-        MoveEvent { event }
+        Move { event }
     }
 
     /// Get the surface associated with this move event.
-    pub fn surface(&self) -> Option<XWaylandSurfaceHandle> {
+    pub fn surface(&self) -> Option<xwayland::surface::Handle> {
         unsafe {
             if (*self.event).surface.is_null() {
                 None
             } else {
-                Some(XWaylandSurfaceHandle::from_ptr((*self.event).surface))
+                Some(xwayland::surface::Handle::from_ptr((*self.event).surface))
             }
         }
     }
 }
 
-impl ResizeEvent {
+impl Resize {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_xwayland_resize_event) -> Self {
-        ResizeEvent { event }
+        Resize { event }
     }
 
     /// Get the surface associated with this resize event.
-    pub fn surface(&self) -> Option<XWaylandSurfaceHandle> {
+    pub fn surface(&self) -> Option<xwayland::surface::Handle> {
         unsafe {
             if (*self.event).surface.is_null() {
                 None
             } else {
-                Some(XWaylandSurfaceHandle::from_ptr((*self.event).surface))
+                Some(xwayland::surface::Handle::from_ptr((*self.event).surface))
             }
         }
     }

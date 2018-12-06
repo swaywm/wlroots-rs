@@ -4,27 +4,24 @@ use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface, wlr_xdg_surface_role::*};
 
-use {compositor::{compositor_handle, CompositorHandle},
-     shell::xdg_shell::{XdgShellState::*, XdgShellSurface, XdgShellSurfaceState,
-                        XdgShellSurfaceHandle, XdgTopLevel, XdgPopup},
-     manager::xdg_shell_handler::XdgShellHandler,
-     surface::{SurfaceHandler, InternalSurfaceState}};
+use {compositor, shell::xdg_shell::{self, ShellState}, surface};
 use super::xdg_shell_handler::XdgShell;
 
-pub trait XdgShellManagerHandler {
+#[allow(unused_variables)]
+pub trait ManagerHandler {
     /// Callback that is triggered when a new stable XDG shell surface appears.
     fn new_surface(&mut self,
-                   CompositorHandle,
-                   XdgShellSurfaceHandle)
-                   -> (Option<Box<XdgShellHandler>>, Option<Box<SurfaceHandler>>);
+                   compositor_handle: compositor::Handle,
+                   xdg_shell_handle: xdg_shell::Handle)
+                   -> (Option<Box<xdg_shell::Handler>>, Option<Box<surface::Handler>>);
 }
 
-wayland_listener!(pub(crate) XdgShellManager, Box<XdgShellManagerHandler>, [
-    add_listener => add_notify: |this: &mut XdgShellManager, data: *mut libc::c_void,|
+wayland_listener!(pub(crate) Manager, Box<ManagerHandler>, [
+    add_listener => add_notify: |this: &mut Manager, data: *mut libc::c_void,|
     unsafe {
         let manager = &mut this.data;
         let data = data as *mut wlr_xdg_surface;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -34,21 +31,21 @@ wayland_listener!(pub(crate) XdgShellManager, Box<XdgShellManagerHandler>, [
                 WLR_XDG_SURFACE_ROLE_NONE => None,
                 WLR_XDG_SURFACE_ROLE_TOPLEVEL => {
                     let toplevel = (*data).__bindgen_anon_1.toplevel;
-                    Some(TopLevel(XdgTopLevel::from_shell(data, toplevel)))
+                    Some(ShellState::TopLevel(xdg_shell::TopLevel::from_shell(data, toplevel)))
                 }
                 WLR_XDG_SURFACE_ROLE_POPUP => {
                     let popup = (*data).__bindgen_anon_1.popup;
-                    Some(Popup(XdgPopup::from_shell(data, popup)))
+                    Some(ShellState::Popup(xdg_shell::Popup::from_shell(data, popup)))
                 }
             }
         };
-        let shell_surface = XdgShellSurface::new(data, state);
+        let shell_surface = xdg_shell::Surface::new(data, state);
 
         let (shell_surface_manager, surface_handler) =
             manager.new_surface(compositor, shell_surface.weak_reference());
 
         let mut shell_surface = XdgShell::new((shell_surface, shell_surface_manager));
-        let surface_state = (*(*data).surface).data as *mut InternalSurfaceState;
+        let surface_state = (*(*data).surface).data as *mut surface::InternalState;
         if let Some(surface_handler) = surface_handler {
             (*(*surface_state).surface).data().1 = surface_handler;
         }
@@ -67,8 +64,8 @@ wayland_listener!(pub(crate) XdgShellManager, Box<XdgShellManagerHandler>, [
                         shell_surface.unmap_listener() as _);
         let events = with_handles!([(shell_surface: {shell_surface.surface_mut()})] => {
             match shell_surface.state() {
-                None | Some(&mut Popup(_)) => None,
-                Some(&mut TopLevel(ref mut toplevel)) => Some((*toplevel.as_ptr()).events)
+                None | Some(&mut ShellState::Popup(_)) => None,
+                Some(&mut ShellState::TopLevel(ref mut toplevel)) => Some((*toplevel.as_ptr()).events)
             }
         }).expect("Cannot borrow xdg shell surface");
         if let Some(mut events) = events {
@@ -85,7 +82,7 @@ wayland_listener!(pub(crate) XdgShellManager, Box<XdgShellManagerHandler>, [
             wl_signal_add(&mut events.request_show_window_menu as *mut _ as _,
                             shell_surface.show_window_menu_listener() as _);
         }
-        let shell_data = (*data).data as *mut XdgShellSurfaceState;
+        let shell_data = (*data).data as *mut xdg_shell::SurfaceState;
         (*shell_data).shell = Box::into_raw(shell_surface);
     };
 ]);

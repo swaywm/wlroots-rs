@@ -1,46 +1,46 @@
 use wlroots_sys::{wlr_seat_keyboard_grab, wlr_seat_pointer_grab, wlr_seat_touch_grab};
 
-pub struct PointerGrab {
+pub struct Pointer {
     grab: *mut wlr_seat_pointer_grab
 }
 
-pub struct KeyboardGrab {
+pub struct Keyboard {
     grab: *mut wlr_seat_keyboard_grab
 }
 
-pub struct TouchGrab {
+pub struct Touch {
     grab: *mut wlr_seat_touch_grab
 }
 
 #[allow(dead_code)]
-impl PointerGrab {
+impl Pointer {
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_seat_pointer_grab {
         self.grab
     }
 
     pub(crate) unsafe fn from_ptr(grab: *mut wlr_seat_pointer_grab) -> Self {
-        PointerGrab { grab }
+        Pointer { grab }
     }
 }
 
 #[allow(dead_code)]
-impl KeyboardGrab {
+impl Keyboard {
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_seat_keyboard_grab {
         self.grab
     }
 
     pub(crate) unsafe fn from_ptr(grab: *mut wlr_seat_keyboard_grab) -> Self {
-        KeyboardGrab { grab }
+        Keyboard { grab }
     }
 }
 
 #[allow(dead_code)]
-impl TouchGrab {
+impl Touch {
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_seat_touch_grab {
         self.grab
     }
 
     pub(crate) unsafe fn from_ptr(grab: *mut wlr_seat_touch_grab) -> Self {
-        TouchGrab { grab }
+        Touch { grab }
     }
 }

@@ -1,8 +1,19 @@
 #[cfg(feature = "unstable")]
-pub mod renderer;
+mod renderer;
 #[cfg(feature = "unstable")]
-pub mod texture;
+mod texture;
 #[cfg(feature = "unstable")]
 pub mod matrix;
 #[cfg(feature = "unstable")]
-pub mod image;
+mod image;
+#[cfg(feature = "unstable")]
+mod pixman_region;
+
+#[cfg(feature = "unstable")]
+pub use self::renderer::*;
+#[cfg(feature = "unstable")]
+pub use self::pixman_region::*;
+#[cfg(feature = "unstable")]
+pub use self::image::*;
+#[cfg(feature = "unstable")]
+pub use self::texture::*;

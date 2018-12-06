@@ -9,9 +9,10 @@ use wlroots_sys::{wlr_xcursor, wlr_xcursor_frame, wlr_xcursor_image, wlr_xcursor
                   wlr_xcursor_theme_destroy, wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load};
 
 use utils::{c_to_rust_string, safe_as_cstring};
+pub use super::xcursor_manager::*;
 
 #[derive(Debug)]
-pub struct XCursorTheme {
+pub struct Theme {
     theme: *mut wlr_xcursor_theme
 }
 
@@ -19,11 +20,11 @@ pub struct XCursorTheme {
 /// An XCursor from the X11 xcursor library. `  wl`
 pub struct XCursor<'theme> {
     xcursor: *mut wlr_xcursor,
-    phantom: PhantomData<&'theme XCursorTheme>
+    phantom: PhantomData<&'theme Theme>
 }
 
 #[derive(Debug)]
-pub struct XCursorImage<'cursor> {
+pub struct Image<'cursor> {
     pub width: u32,
     pub height: u32,
     pub hotspot_x: u32,
@@ -32,9 +33,9 @@ pub struct XCursorImage<'cursor> {
     pub buffer: &'cursor [u8]
 }
 
-impl XCursorTheme {
-    pub(crate) unsafe fn new(theme: *mut wlr_xcursor_theme) -> XCursorTheme {
-        XCursorTheme { theme }
+impl Theme {
+    pub(crate) unsafe fn new(theme: *mut wlr_xcursor_theme) -> Theme {
+        Theme { theme }
     }
 
     /// If no name is given, defaults to "default".
@@ -46,7 +47,7 @@ impl XCursorTheme {
             if theme.is_null() {
                 None
             } else {
-                Some(XCursorTheme { theme })
+                Some(Theme { theme })
             }
         }
     }
@@ -98,7 +99,7 @@ impl XCursorTheme {
     }
 }
 
-impl Drop for XCursorTheme {
+impl Drop for Theme {
     fn drop(&mut self) {
         unsafe { wlr_xcursor_theme_destroy(self.theme) }
     }
@@ -119,7 +120,7 @@ impl<'theme> XCursor<'theme> {
         }
     }
 
-    pub fn images<'cursor>(&'cursor self) -> Vec<XCursorImage<'cursor>> {
+    pub fn images<'cursor>(&'cursor self) -> Vec<Image<'cursor>> {
         unsafe {
             let image_ptr = (*self.xcursor).images as *const *const wlr_xcursor_image;
             let length = (*self.xcursor).image_count;
@@ -128,7 +129,7 @@ impl<'theme> XCursor<'theme> {
                                                                            length as usize);
             let mut result = Vec::with_capacity(cursors_slice.len());
             for cursor in cursors_slice {
-                result.push(XCursorImage {
+                result.push(Image {
                     width: (**cursor).width,
                     height: (**cursor).height,
                     hotspot_x: (**cursor).hotspot_x,

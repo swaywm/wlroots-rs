@@ -3,11 +3,10 @@ extern crate wlroots;
 
 use std::{env, time::Instant};
 
-use wlroots::{compositor::{self, CompositorBuilder, CompositorHandle},
-              input::{InputManagerHandler, keyboard::{KeyboardHandle, KeyboardHandler, event::KeyEvent}},
-              output::{OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
-                       OutputManagerHandler},
-              render::texture::{Texture, TextureFormat},
+use wlroots::{compositor,
+              input::{self, keyboard},
+              output,
+              render::{Texture, TextureFormat},
               utils::log::{init_logging, WLR_DEBUG}};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
@@ -65,11 +64,11 @@ impl CompositorState {
 compositor_data!(CompositorState);
 
 struct OutputManager;
-impl OutputManagerHandler for OutputManager {
+impl output::ManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
-                             compositor_handle: CompositorHandle,
-                             output_builder: OutputBuilder<'output>)
-                             -> Option<OutputBuilderResult<'output>> {
+                             compositor_handle: compositor::Handle,
+                             output_builder: output::Builder<'output>)
+                             -> Option<output::BuilderResult<'output>> {
         let ex_output = ExOutput;
         let mut result = output_builder.build_best_mode(ex_output);
         with_handles!([(compositor: {compositor_handle}), (output: {&mut result.output})] => {
@@ -81,8 +80,10 @@ impl OutputManagerHandler for OutputManager {
 }
 
 struct ExOutput;
-impl OutputHandler for ExOutput {
-    fn on_frame(&mut self, mut compositor_handle: CompositorHandle, mut output_handle: OutputHandle) {
+impl output::Handler for ExOutput {
+    fn on_frame(&mut self,
+                mut compositor_handle: compositor::Handle,
+                mut output_handle: output::Handle) {
         with_handles!([(compositor: {&mut compositor_handle}), (output: {&mut output_handle})] => {
             let (output_width, output_height) = output.effective_resolution();
             let renderer = compositor.renderer
@@ -115,18 +116,21 @@ impl OutputHandler for ExOutput {
 }
 
 struct InputManager;
-impl InputManagerHandler for InputManager {
+impl input::ManagerHandler for InputManager {
     fn keyboard_added(&mut self,
-                      _compositor_handle: CompositorHandle,
-                      _keyboard_handle: KeyboardHandle)
-                      -> Option<Box<KeyboardHandler>> {
+                      _compositor_handle: compositor::Handle,
+                      _keyboard_handle: keyboard::Handle)
+                      -> Option<Box<keyboard::Handler>> {
         Some(Box::new(KeyboardManager))
     }
 }
 
 struct KeyboardManager;
-impl KeyboardHandler for KeyboardManager {
-    fn on_key(&mut self, compositor_handle: CompositorHandle, _keyboard_handle: KeyboardHandle, key_event: &KeyEvent) {
+impl keyboard::Handler for KeyboardManager {
+    fn on_key(&mut self,
+              compositor_handle: compositor::Handle,
+              _keyboard_handle: keyboard::Handle,
+              key_event: &keyboard::event::Key) {
         with_handles!([(compositor: {compositor_handle})] => {
             let compositor_state: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();
             for key in key_event.pressed_keys() {
@@ -163,10 +167,10 @@ fn main() {
     let rotation_argument_string = args.nth(1).unwrap_or_else(|| "".to_string());
     let rotation_transform = rotation_transform_from_str(&rotation_argument_string);
     let compositor_state = CompositorState::new(rotation_transform);
-    let mut compositor = CompositorBuilder::new().gles2(true)
-                                                 .input_manager(Box::new(InputManager))
-                                                 .output_manager(Box::new(OutputManager))
-                                                 .build_auto(compositor_state);
+    let mut compositor = compositor::Builder::new().gles2(true)
+                                                   .input_manager(Box::new(InputManager))
+                                                   .output_manager(Box::new(OutputManager))
+                                                   .build_auto(compositor_state);
     {
         let gles2 = &mut compositor.renderer.as_mut().unwrap();
         let compositor_state: &mut CompositorState = (&mut compositor.data).downcast_mut().unwrap();

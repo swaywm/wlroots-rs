@@ -6,23 +6,24 @@ use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_subsurface;
 
-use {compositor::{compositor_handle, CompositorHandle},
-     errors::{HandleErr, HandleResult},
-     surface::SurfaceHandle,
-     surface::surface_state::SurfaceState};
+use {compositor, errors::{HandleErr, HandleResult}, surface};
 
-pub trait SubsurfaceHandler {
-    fn on_destroy(&mut self, CompositorHandle, SubsurfaceHandle, SurfaceHandle) {}
+#[allow(unused_variables)]
+pub trait Handler {
+    fn on_destroy(&mut self,
+                  compositor_handle: compositor::Handle,
+                  subsurface_handle: Handle,
+                  surface_handle: surface::Handle) {}
 }
 
-wayland_listener!(pub(crate) InternalSubsurface, (Subsurface, Box<SubsurfaceHandler>), [
+wayland_listener!(pub(crate) InternalSubsurface, (Subsurface, Box<Handler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut InternalSubsurface,
                                                data: *mut libc::c_void,|
     unsafe {
         let (ref mut subsurface, ref mut manager) = this.data;
         let subsurface_ptr = data as *mut wlr_subsurface;
-        let surface = SurfaceHandle::from_ptr((*subsurface_ptr).surface);
-        let compositor = match compositor_handle() {
+        let surface = surface::Handle::from_ptr((*subsurface_ptr).surface);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -38,17 +39,17 @@ pub struct Subsurface {
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
     ///
-    /// If this is `None`, then this is from an upgraded `SurfaceHandle`, and
+    /// If this is `None`, then this is from an upgraded `surface::Handle`, and
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
-    /// marked function `upgrade` on a `SurfaceHandle`.
+    /// marked function `upgrade` on a `surface::Handle`.
     liveliness: Rc<Cell<bool>>,
     /// The pointer to the wlroots object that wraps a wl_surface.
     subsurface: *mut wlr_subsurface
 }
 
 #[derive(Clone, Debug)]
-pub struct SubsurfaceHandle {
+pub struct Handle {
     /// The Rc that ensures that this handle is still alive.
     ///
     /// When wlroots deallocates the pointer associated with this handle,
@@ -70,22 +71,22 @@ impl Subsurface {
     }
 
     /// Get a handle to the surface for this sub surface.
-    pub fn surface(&self) -> SurfaceHandle {
-        unsafe { SurfaceHandle::from_ptr((*self.subsurface).surface) }
+    pub fn surface(&self) -> surface::Handle {
+        unsafe { surface::Handle::from_ptr((*self.subsurface).surface) }
     }
 
     /// Get a handle to the parent surface for this sub surface.
-    pub fn parent_surface(&self) -> SurfaceHandle {
-        unsafe { SurfaceHandle::from_ptr((*self.subsurface).parent) }
+    pub fn parent_surface(&self) -> surface::Handle {
+        unsafe { surface::Handle::from_ptr((*self.subsurface).parent) }
     }
 
     /// Get the cached state of the sub surface.
-    pub fn cached_state<'surface>(&'surface self) -> Option<SurfaceState<'surface>> {
+    pub fn cached_state<'surface>(&'surface self) -> Option<surface::State<'surface>> {
         unsafe {
             if (*self.subsurface).has_cache {
                 None
             } else {
-                Some(SurfaceState::new((*self.subsurface).cached))
+                Some(surface::State::new((*self.subsurface).cached))
             }
         }
     }
@@ -106,14 +107,14 @@ impl Subsurface {
     /// Creates a weak reference to a `Subsurface`.
     ///
     /// # Panics
-    /// If this `Subsurface` is a previously upgraded `SubsurfaceHandle`
+    /// If this `Subsurface` is a previously upgraded `subsurface::Handle`
     /// then this function will panic.
-    pub fn weak_reference(&self) -> SubsurfaceHandle {
-        SubsurfaceHandle { handle: Rc::downgrade(&self.liveliness),
+    pub fn weak_reference(&self) -> Handle {
+        Handle { handle: Rc::downgrade(&self.liveliness),
                            subsurface: self.subsurface }
     }
 
-    unsafe fn from_handle(handle: &SubsurfaceHandle) -> HandleResult<Self> {
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
         let liveliness = handle.handle
                                .upgrade()
                                .ok_or_else(|| HandleErr::AlreadyDropped)?;
@@ -122,15 +123,15 @@ impl Subsurface {
     }
 }
 
-impl SubsurfaceHandle {
-    /// Constructs a new SubsurfaceHandle that is always invalid. Calling `run` on this
+impl Handle {
+    /// Constructs a new subsurface::Handle that is always invalid. Calling `run` on this
     /// will always fail.
     ///
     /// This is useful for pre-filling a value before it's provided by the server, or
     /// for mocking/testing.
     pub fn new() -> Self {
         unsafe {
-            SubsurfaceHandle { handle: Weak::new(),
+            Handle { handle: Weak::new(),
                                subsurface: ptr::null_mut() }
         }
     }
@@ -198,9 +199,9 @@ impl SubsurfaceHandle {
     }
 }
 
-impl Default for SubsurfaceHandle {
+impl Default for Handle {
     fn default() -> Self {
-        SubsurfaceHandle::new()
+        Handle::new()
     }
 }
 

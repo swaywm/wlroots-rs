@@ -4,35 +4,31 @@ use libc::{c_double, c_uint};
 use wlroots_sys::{wlr_input_device, wlr_input_device_pointer, wlr_input_device_type,
                   wlr_input_device_type::*};
 
-use {input::{keyboard::KeyboardHandle,
-             pointer::PointerHandle,
-             touch::TouchHandle,
-             tablet_pad::TabletPadHandle,
-             tablet_tool::TabletToolHandle},
+use {input::{keyboard, pointer, touch, tablet_pad, tablet_tool},
      utils::c_to_rust_string};
 pub use manager::input_manager::*;
 
 /// A handle to an input device.
-pub enum InputHandle {
-    Keyboard(KeyboardHandle),
-    Pointer(PointerHandle),
-    Touch(TouchHandle),
-    TabletPad(TabletPadHandle),
-    TabletTool(TabletToolHandle)
+pub enum Handle {
+    Keyboard(keyboard::Handle),
+    Pointer(pointer::Handle),
+    Touch(touch::Handle),
+    TabletPad(tablet_pad::Handle),
+    TabletTool(tablet_tool::Handle)
 }
 
 pub(crate) struct InputState {
     pub(crate) handle: Weak<Cell<bool>>,
-    pub(crate) device: InputDevice
+    pub(crate) device: Device
 }
 
 /// Wrapper for wlr_input_device
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub struct InputDevice {
+pub struct Device {
     pub(crate) device: *mut wlr_input_device
 }
 
-impl InputDevice {
+impl Device {
     /// Just like `std::clone::Clone`, but unsafe.
     ///
     /// # Unsafety
@@ -43,7 +39,7 @@ impl InputDevice {
     /// This isn't exposed to the user, but still marked as `unsafe` to reduce
     /// possible bugs from using this.
     pub(crate) unsafe fn clone(&self) -> Self {
-        InputDevice { device: self.device }
+        Device { device: self.device }
     }
 
     pub fn vendor(&self) -> c_uint {
@@ -75,28 +71,28 @@ impl InputDevice {
     }
 
     /// Get a handle to the backing input device.
-    pub fn device(&self) -> InputHandle {
+    pub fn device(&self) -> Handle {
         unsafe {
             match self.dev_type() {
                 WLR_INPUT_DEVICE_KEYBOARD => {
                     let keyboard_ptr = (*self.device).__bindgen_anon_1.keyboard;
-                    InputHandle::Keyboard(KeyboardHandle::from_ptr(keyboard_ptr))
+                    Handle::Keyboard(keyboard::Handle::from_ptr(keyboard_ptr))
                 },
                 WLR_INPUT_DEVICE_POINTER => {
                     let pointer_ptr = (*self.device).__bindgen_anon_1.pointer;
-                    InputHandle::Pointer(PointerHandle::from_ptr(pointer_ptr))
+                    Handle::Pointer(pointer::Handle::from_ptr(pointer_ptr))
                 },
                 WLR_INPUT_DEVICE_TOUCH => {
                     let touch_ptr = (*self.device).__bindgen_anon_1.touch;
-                    InputHandle::Touch(TouchHandle::from_ptr(touch_ptr))
+                    Handle::Touch(touch::Handle::from_ptr(touch_ptr))
                 },
                 WLR_INPUT_DEVICE_TABLET_TOOL => {
                     let tablet_tool_ptr = (*self.device).__bindgen_anon_1.tablet;
-                    InputHandle::TabletTool(TabletToolHandle::from_ptr(tablet_tool_ptr))
+                    Handle::TabletTool(tablet_tool::Handle::from_ptr(tablet_tool_ptr))
                 },
                 WLR_INPUT_DEVICE_TABLET_PAD => {
                     let tablet_pad_ptr = (*self.device).__bindgen_anon_1.tablet_pad;
-                    InputHandle::TabletPad(TabletPadHandle::from_ptr(tablet_pad_ptr))
+                    Handle::TabletPad(tablet_pad::Handle::from_ptr(tablet_pad_ptr))
                 },
             }
         }
@@ -107,7 +103,7 @@ impl InputDevice {
     }
 
     pub(crate) unsafe fn from_ptr(device: *mut wlr_input_device) -> Self {
-        InputDevice { device: device }
+        Device { device: device }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_input_device {

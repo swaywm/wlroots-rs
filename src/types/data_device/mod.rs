@@ -1,2 +1,5 @@
-pub mod manager;
-pub mod data_source;
+mod manager;
+mod data_source;
+
+pub use self::manager::*;
+pub use self::data_source::*;

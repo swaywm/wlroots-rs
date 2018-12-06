@@ -5,7 +5,7 @@ use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_touch};
 
-use super::input_device::{InputDevice, InputState};
+use input::{self, InputState};
 pub use manager::touch_handler::*;
 pub use events::touch_events as event;
 
@@ -16,26 +16,26 @@ pub struct Touch {
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
     ///
-    /// If this is `None`, then this is from an upgraded `TouchHandle`, and
+    /// If this is `None`, then this is from an upgraded `touch::Handle`, and
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
-    /// marked function `upgrade` on a `TouchHandle`.
+    /// marked function `upgrade` on a `touch::Handle`.
     liveliness: Rc<Cell<bool>>,
     /// The device that refers to this touch.
-    device: InputDevice,
+    device: input::Device,
     /// The underlying touch data.
     touch: *mut wlr_touch
 }
 
 #[derive(Debug)]
-pub struct TouchHandle {
+pub struct Handle {
     /// The Rc that ensures that this handle is still alive.
     ///
     /// When wlroots deallocates the touch associated with this handle,
     /// this can no longer be used.
     handle: Weak<Cell<bool>>,
     /// The device that refers to this touch.
-    device: InputDevice,
+    device: input::Device,
     /// The underlying touch data.
     touch: *mut wlr_touch
 }
@@ -56,18 +56,18 @@ impl Touch {
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
                 let state = Box::new(InputState { handle,
-                                                  device: InputDevice::from_ptr(device) });
+                                                  device: input::Device::from_ptr(device) });
                 (*touch).data = Box::into_raw(state) as *mut _;
                 Some(Touch { liveliness,
-                             device: InputDevice::from_ptr(device),
+                             device: input::Device::from_ptr(device),
                              touch })
             }
             _ => None
         }
     }
 
-    /// Creates an unbound `Touch` from a `TouchHandle`
-    unsafe fn from_handle(handle: &TouchHandle) -> HandleResult<Self> {
+    /// Creates an unbound `Touch` from a `touch::Handle`
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
         let liveliness = handle.handle
                                .upgrade()
                                .ok_or_else(|| HandleErr::AlreadyDropped)?;
@@ -77,7 +77,7 @@ impl Touch {
     }
 
     /// Gets the wlr_input_device associated with this `Touch`.
-    pub fn input_device(&self) -> &InputDevice {
+    pub fn input_device(&self) -> &input::Device {
         &self.device
     }
 
@@ -90,10 +90,10 @@ impl Touch {
     /// Creates a weak reference to a `Touch`.
     ///
     /// # Panics
-    /// If this `Touch` is a previously upgraded `TouchHandle`,
+    /// If this `Touch` is a previously upgraded `touch::Handle`,
     /// then this function will panic.
-    pub fn weak_reference(&self) -> TouchHandle {
-        TouchHandle { handle: Rc::downgrade(&self.liveliness),
+    pub fn weak_reference(&self) -> Handle {
+        Handle { handle: Rc::downgrade(&self.liveliness),
                       // NOTE Rationale for cloning:
                       // We can't use the keyboard handle unless the keyboard is alive,
                       // which means the device pointer is still alive.
@@ -106,7 +106,7 @@ impl Drop for Touch {
         if Rc::strong_count(&self.liveliness) == 1 {
             wlr_log!(WLR_DEBUG, "Dropped Touch {:p}", self.touch);
             unsafe {
-                let _ = Box::from_raw((*self.touch).data as *mut InputDevice);
+                let _ = Box::from_raw((*self.touch).data as *mut input::Device);
             }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
@@ -119,24 +119,24 @@ impl Drop for Touch {
     }
 }
 
-impl TouchHandle {
-    /// Constructs a new TouchHandle that is always invalid. Calling `run` on this
+impl Handle {
+    /// Constructs a new touch::Handle that is always invalid. Calling `run` on this
     /// will always fail.
     ///
     /// This is useful for pre-filling a value before it's provided by the server, or
     /// for mocking/testing.
     pub fn new() -> Self {
         unsafe {
-            TouchHandle { handle: Weak::new(),
+            Handle { handle: Weak::new(),
                           // NOTE Rationale for null pointer here:
                           // It's never used, because you can never upgrade it,
                           // so no way to dereference it and trigger UB.
-                          device: InputDevice::from_ptr(ptr::null_mut()),
+                          device: input::Device::from_ptr(ptr::null_mut()),
                           touch: ptr::null_mut() }
         }
     }
 
-    /// Creates an TouchHandle from the raw pointer, using the saved
+    /// Creates an touch::Handle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     ///
     /// # Panics
@@ -149,7 +149,7 @@ impl TouchHandle {
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*touch).data = Box::into_raw(data) as *mut _;
-        TouchHandle { handle,
+        Handle { handle,
                           touch,
                           device }
     }
@@ -215,29 +215,29 @@ impl TouchHandle {
         }
     }
 
-    /// Gets the wlr_input_device associated with this TouchHandle.
-    pub fn input_device(&self) -> HandleResult<&InputDevice> {
+    /// Gets the wlr_input_device associated with this touch::Handle.
+    pub fn input_device(&self) -> HandleResult<&input::Device> {
         match self.handle.upgrade() {
             Some(_) => Ok(&self.device),
             None => Err(HandleErr::AlreadyDropped)
         }
     }
 
-    /// Gets the `wlr_touch` associated with this `TouchHandle`.
+    /// Gets the `wlr_touch` associated with this `touch::Handle`.
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_touch {
         self.touch
     }
 }
 
-impl Default for TouchHandle {
+impl Default for Handle {
     fn default() -> Self {
-        TouchHandle::new()
+        Handle::new()
     }
 }
 
-impl Clone for TouchHandle {
+impl Clone for Handle {
     fn clone(&self) -> Self {
-        TouchHandle { touch: self.touch,
+        Handle { touch: self.touch,
                       handle: self.handle.clone(),
                       /// NOTE Rationale for unsafe clone:
                       ///
@@ -247,10 +247,10 @@ impl Clone for TouchHandle {
     }
 }
 
-impl PartialEq for TouchHandle {
-    fn eq(&self, other: &TouchHandle) -> bool {
+impl PartialEq for Handle {
+    fn eq(&self, other: &Handle) -> bool {
         self.touch == other.touch
     }
 }
 
-impl Eq for TouchHandle {}
+impl Eq for Handle {}

@@ -17,46 +17,42 @@ use wlroots_sys::{self, wlr_backend, wlr_backend_is_wl, wlr_backend_is_x11,
                   wlr_backend_is_drm, wlr_backend_is_headless, wlr_backend_is_multi,
                   wlr_backend_is_libinput};
 
-use backend::{wayland::WaylandBackend,
-              x11::X11Backend,
-              drm::DRMBackend,
-              headless::HeadlessBackend,
-              multi::MultiBackend,
-              libinput::LibInputBackend};
+use backend;
 
 /// A custom function to set up the renderer.
-pub type UnsafeRenderSetupFunction = unsafe extern "C" fn(*mut wlroots_sys::wlr_egl,
-                                                          u32,
-                                                          *mut libc::c_void,
-                                                          *mut i32, i32)
+pub type UnsafeRenderSetupFunction = unsafe extern "C" fn(egl: *mut wlroots_sys::wlr_egl,
+                                                          platform: u32,
+                                                          remote_display: *mut libc::c_void,
+                                                          config_attribs: *mut i32,
+                                                          visual_id: i32)
                                                           -> *mut wlroots_sys::wlr_renderer;
 
 
 #[derive(Debug, Hash, Eq, PartialEq)]
 pub enum Backend {
-    Wayland(WaylandBackend),
-    X11(X11Backend),
-    DRM(DRMBackend),
-    Headless(HeadlessBackend),
-    LibInput(LibInputBackend),
-    Multi(MultiBackend)
+    Wayland(backend::Wayland),
+    X11(backend::X11),
+    DRM(backend::Drm),
+    Headless(backend::Headless),
+    LibInput(backend::Libinput),
+    Multi(backend::Multi)
 }
 
 impl Backend {
     /// Create a backend from a `*mut wlr_backend`.
     pub unsafe fn from_backend(backend: *mut wlr_backend) -> Self {
         if wlr_backend_is_wl(backend) {
-            Backend::Wayland(WaylandBackend{ backend })
+            Backend::Wayland(backend::Wayland { backend })
         } else if wlr_backend_is_x11(backend) {
-            Backend::X11(X11Backend{ backend })
+            Backend::X11(backend::X11 { backend })
         } else if wlr_backend_is_drm(backend) {
-            Backend::DRM(DRMBackend{ backend })
+            Backend::DRM(backend::Drm { backend })
         } else if wlr_backend_is_headless(backend) {
-            Backend::Headless(HeadlessBackend{ backend })
+            Backend::Headless(backend::Headless { backend })
         } else if wlr_backend_is_multi(backend) {
-            Backend::Multi(MultiBackend{ backend })
+            Backend::Multi(backend::Multi { backend })
         } else if wlr_backend_is_libinput(backend) {
-            Backend::LibInput(LibInputBackend { backend })
+            Backend::LibInput(backend::Libinput { backend })
         } else {
             panic!("Unknown backend {:p}", backend)
         }
@@ -64,12 +60,12 @@ impl Backend {
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_backend {
         match *self {
-            Backend::Wayland(WaylandBackend { backend }) |
-            Backend::X11(X11Backend { backend }) |
-            Backend::DRM(DRMBackend { backend }) |
-            Backend::Headless(HeadlessBackend { backend }) |
-            Backend::Multi(MultiBackend { backend }) |
-            Backend::LibInput(LibInputBackend { backend }) => backend
+            Backend::Wayland(backend::Wayland { backend }) |
+            Backend::X11(backend::X11 { backend }) |
+            Backend::DRM(backend::Drm { backend }) |
+            Backend::Headless(backend::Headless { backend }) |
+            Backend::Multi(backend::Multi { backend }) |
+            Backend::LibInput(backend::Libinput { backend }) => backend
         }
     }
 }

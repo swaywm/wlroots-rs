@@ -3,17 +3,9 @@ extern crate wlroots;
 
 use std::f64::consts::PI;
 
-use wlroots::{area::{Area, Size, Origin},
-              compositor::{self, CompositorBuilder, CompositorHandle},
-              input::{InputManagerHandler,
-                      keyboard::{KeyboardHandle, KeyboardHandler,
-                                 event::KeyEvent},
-                      tablet_tool::{self, TabletToolHandle, TabletToolHandler,
-                                    event::TabletToolAxis},
-                      tablet_pad::{self, TabletPadHandle, TabletPadHandler}},
-              output::{OutputBuilder, OutputBuilderResult, OutputHandle,
-                       OutputHandler, OutputManagerHandler},
-              render::matrix,
+use wlroots::{area::{Area, Size, Origin}, compositor,
+              input::{self, keyboard, tablet_tool, tablet_pad},
+              output, render::matrix,
               wlroots_sys::wl_output_transform::WL_OUTPUT_TRANSFORM_NORMAL,
               wlr_tablet_tool_proximity_state::*,
               wlr_button_state::*,
@@ -49,18 +41,18 @@ struct OutputEx;
 struct KeyboardEx;
 struct TabletEx;
 
-impl InputManagerHandler for InputManagerEx {
+impl input::ManagerHandler for InputManagerEx {
     fn keyboard_added(&mut self,
-                      _: CompositorHandle,
-                      _: KeyboardHandle)
-                      -> Option<Box<KeyboardHandler>> {
+                      _: compositor::Handle,
+                      _: keyboard::Handle)
+                      -> Option<Box<keyboard::Handler>> {
         Some(Box::new(KeyboardEx))
     }
 
     fn tablet_tool_added(&mut self,
-                         compositor: CompositorHandle,
-                         tool: TabletToolHandle)
-                         -> Option<Box<TabletToolHandler>> {
+                         compositor: compositor::Handle,
+                         tool: tablet_tool::Handle)
+                         -> Option<Box<tablet_tool::Handler>> {
         with_handles!([(compositor: {compositor}), (tool: {tool})] => {
             let state: &mut State = compositor.into();
             state.size_mm = tool.input_device().size();
@@ -75,25 +67,28 @@ impl InputManagerHandler for InputManagerEx {
     }
 
     fn tablet_pad_added(&mut self,
-                        _: CompositorHandle,
-                        _: TabletPadHandle)
-                        -> Option<Box<TabletPadHandler>> {
+                        _: compositor::Handle,
+                        _: tablet_pad::Handle)
+                        -> Option<Box<tablet_pad::Handler>> {
         Some(Box::new(TabletEx))
     }
 }
 
-impl OutputManagerHandler for OutputManagerEx {
+impl output::ManagerHandler for OutputManagerEx {
     fn output_added<'output>(&mut self,
-                             _: CompositorHandle,
-                             builder: OutputBuilder<'output>)
-                             -> Option<OutputBuilderResult<'output>> {
+                             _: compositor::Handle,
+                             builder: output::Builder<'output>)
+                             -> Option<output::BuilderResult<'output>> {
         let result = builder.build_best_mode(OutputEx);
         Some(result)
     }
 }
 
-impl KeyboardHandler for KeyboardEx {
-    fn on_key(&mut self, _: CompositorHandle, _: KeyboardHandle, key_event: &KeyEvent) {
+impl keyboard::Handler for KeyboardEx {
+    fn on_key(&mut self,
+              _: compositor::Handle,
+              _: keyboard::Handle,
+              key_event: &keyboard::event::Key) {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
                 compositor::terminate()
@@ -102,11 +97,11 @@ impl KeyboardHandler for KeyboardEx {
     }
 }
 
-impl TabletPadHandler for TabletEx {
+impl tablet_pad::Handler for TabletEx {
     fn on_button(&mut self,
-                 compositor: CompositorHandle,
-                 _: TabletPadHandle,
-                 event: &tablet_pad::event::ButtonEvent) {
+                 compositor: compositor::Handle,
+                 _: tablet_pad::Handle,
+                 event: &tablet_pad::event::Button) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             if event.state() == WLR_BUTTON_RELEASED {
@@ -124,9 +119,9 @@ impl TabletPadHandler for TabletEx {
     }
 
     fn on_ring(&mut self,
-               compositor: CompositorHandle,
-               _: TabletPadHandle,
-               event: &tablet_pad::event::RingEvent) {
+               compositor: compositor::Handle,
+               _: tablet_pad::Handle,
+               event: &tablet_pad::event::Ring) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let position = event.position();
@@ -137,41 +132,41 @@ impl TabletPadHandler for TabletEx {
     }
 }
 
-impl TabletToolHandler for TabletEx {
+impl tablet_tool::Handler for TabletEx {
     fn on_axis(&mut self,
-               compositor: CompositorHandle,
-               _: TabletToolHandle,
-               event: &tablet_tool::event::AxisEvent) {
+               compositor: compositor::Handle,
+               _: tablet_tool::Handle,
+               event: &tablet_tool::event::Axis) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let axis = event.updated_axes();
             let (x, y) = event.position();
             let (tilt_x, tilt_y) = event.tilt();
-            if axis.contains(TabletToolAxis::WLR_TABLET_TOOL_AXIS_X) {
+            if axis.contains(tablet_tool::Axis::WLR_TABLET_TOOL_AXIS_X) {
                 state.pos.0 = x
             }
-            if axis.contains(TabletToolAxis::WLR_TABLET_TOOL_AXIS_Y) {
+            if axis.contains(tablet_tool::Axis::WLR_TABLET_TOOL_AXIS_Y) {
                 state.pos.1 = y
             }
-            if axis.contains(TabletToolAxis::WLR_TABLET_TOOL_AXIS_DISTANCE) {
+            if axis.contains(tablet_tool::Axis::WLR_TABLET_TOOL_AXIS_DISTANCE) {
                 state.distance = event.distance()
             }
-            if axis.contains(TabletToolAxis::WLR_TABLET_TOOL_AXIS_PRESSURE) {
+            if axis.contains(tablet_tool::Axis::WLR_TABLET_TOOL_AXIS_PRESSURE) {
                 state.pressure = event.pressure()
             }
-            if axis.contains(TabletToolAxis::WLR_TABLET_TOOL_AXIS_TILT_X) {
+            if axis.contains(tablet_tool::Axis::WLR_TABLET_TOOL_AXIS_TILT_X) {
                 state.tilt.0 = tilt_x
             }
-            if axis.contains(TabletToolAxis::WLR_TABLET_TOOL_AXIS_TILT_Y) {
+            if axis.contains(tablet_tool::Axis::WLR_TABLET_TOOL_AXIS_TILT_Y) {
                 state.tilt.1 = tilt_y
             }
         }).unwrap();
     }
 
     fn on_proximity(&mut self,
-                    compositor: CompositorHandle,
-                    _: TabletToolHandle,
-                    event: &tablet_tool::event::ProximityEvent) {
+                    compositor: compositor::Handle,
+                    _: tablet_tool::Handle,
+                    event: &tablet_tool::event::Proximity) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             state.proximity = event.state() == WLR_TABLET_TOOL_PROXIMITY_IN
@@ -179,9 +174,9 @@ impl TabletToolHandler for TabletEx {
     }
 
     fn on_button(&mut self,
-                 compositor: CompositorHandle,
-                 _: TabletToolHandle,
-                 event: &tablet_tool::event::ButtonEvent) {
+                 compositor: compositor::Handle,
+                 _: tablet_tool::Handle,
+                 event: &tablet_tool::event::Button) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             if event.state() == WLR_BUTTON_RELEASED {
@@ -200,8 +195,8 @@ impl TabletToolHandler for TabletEx {
     }
 }
 
-impl OutputHandler for OutputEx {
-    fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
+impl output::Handler for OutputEx {
+    fn on_frame(&mut self, compositor: compositor::Handle, output: output::Handle) {
         with_handles!([(compositor: {compositor}), (output: {output})] => {
             let state: &mut State = compositor.data.downcast_mut().unwrap();
             let (width, height) = output.effective_resolution();
@@ -255,7 +250,7 @@ compositor_data!(State);
 
 fn main() {
     log::init_logging(log::WLR_DEBUG, None);
-    CompositorBuilder::new().gles2(true)
+    compositor::Builder::new().gles2(true)
                             .input_manager(Box::new(InputManagerEx))
                             .output_manager(Box::new(OutputManagerEx))
                             .build_auto(State::new())

@@ -1,4 +1,4 @@
-use cursor::xcursor::XCursorImage;
+use cursor::xcursor;
 
 /// An image that can be attached to a `Cursor` or `OutputCursor`.
 #[derive(Debug, Default, PartialEq)]
@@ -34,8 +34,8 @@ impl<'buffer> Image<'buffer> {
     }
 }
 
-impl<'buffer> Into<XCursorImage<'buffer>> for Image<'buffer> {
-    fn into(self) -> XCursorImage<'buffer> {
+impl<'buffer> Into<xcursor::Image<'buffer>> for Image<'buffer> {
+    fn into(self) -> xcursor::Image<'buffer> {
         let Image { pixels,
                     width,
                     height,
@@ -43,7 +43,7 @@ impl<'buffer> Into<XCursorImage<'buffer>> for Image<'buffer> {
                     hotspot_y,
                     delay,
                     .. } = self;
-        XCursorImage { buffer: pixels,
+        xcursor::Image { buffer: pixels,
                        width,
                        height,
                        hotspot_x: hotspot_x as _,

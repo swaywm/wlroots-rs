@@ -4,37 +4,51 @@ use libc;
 use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
-use {compositor::{compositor_handle, CompositorHandle},
-     events::touch_events::{CancelEvent, DownEvent, MotionEvent, UpEvent},
-     input::touch::{Touch, TouchHandle}};
+use {compositor,
+     input::touch::{self, Touch}};
 
-pub trait TouchHandler {
+#[allow(unused_variables)]
+pub trait Handler {
     /// Callback that is triggered when the user starts touching the
     /// screen/input device.
-    fn on_down(&mut self, CompositorHandle, TouchHandle, &DownEvent) {}
+    fn on_down(&mut self,
+               compositor_handle: compositor::Handle,
+               touch_handle: touch::Handle,
+               event: &touch::event::Down) {}
 
     /// Callback that is triggered when the user stops touching the
     /// screen/input device.
-    fn on_up(&mut self, CompositorHandle, TouchHandle, &UpEvent) {}
+    fn on_up(&mut self,
+             compositor_handle: compositor::Handle,
+             touch_handle: touch::Handle,
+             event: &touch::event::Up) {}
 
     /// Callback that is triggered when the user moves his fingers along the
     /// screen/input device.
-    fn on_motion(&mut self, CompositorHandle, TouchHandle, &MotionEvent) {}
+    fn on_motion(&mut self,
+                 compositor_handle: compositor::Handle,
+                 touch_handle: touch::Handle,
+                 event: &touch::event::Motion) {}
 
     /// Callback triggered when the touch is canceled.
-    fn on_cancel(&mut self, CompositorHandle, TouchHandle, &CancelEvent) {}
+    fn on_cancel(&mut self,
+                 compositor_handle: compositor::Handle,
+                 touch_handle: touch::Handle,
+                 event: &touch::event::Cancel) {}
 
     /// Callback that is triggered when the touch is destroyed.
-    fn destroyed(&mut self, CompositorHandle, TouchHandle) {}
+    fn destroyed(&mut self,
+                 compositor_handle: compositor::Handle,
+                 touch_handle: touch::Handle) {}
 }
 
-wayland_listener!(pub(crate) TouchWrapper, (Touch, Box<TouchHandler>), [
+wayland_listener!(pub(crate) TouchWrapper, (Touch, Box<Handler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,|
     unsafe {
         let input_device_ptr = data as *mut wlr_input_device;
         {
             let (ref mut touch, ref mut touch_handler) = this.data;
-            let compositor = match compositor_handle() {
+            let compositor = match compositor::handle() {
                 Some(handle) => handle,
                 None => return
             };
@@ -59,8 +73,8 @@ wayland_listener!(pub(crate) TouchWrapper, (Touch, Box<TouchHandler>), [
     };
     down_listener => down_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
         let (ref touch, ref mut handler) = this.data;
-        let event = DownEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = touch::event::Down::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -71,8 +85,8 @@ wayland_listener!(pub(crate) TouchWrapper, (Touch, Box<TouchHandler>), [
     };
     up_listener => up_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
         let (ref touch, ref mut handler) = this.data;
-        let event = UpEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = touch::event::Up::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -83,8 +97,8 @@ wayland_listener!(pub(crate) TouchWrapper, (Touch, Box<TouchHandler>), [
     };
     motion_listener => motion_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
         let (ref touch, ref mut handler) = this.data;
-        let event = MotionEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = touch::event::Motion::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -95,8 +109,8 @@ wayland_listener!(pub(crate) TouchWrapper, (Touch, Box<TouchHandler>), [
     };
     cancel_listener => cancel_notify: |this: &mut TouchWrapper, data: *mut libc::c_void,| unsafe {
         let (ref touch, ref mut handler) = this.data;
-        let event = CancelEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = touch::event::Cancel::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };

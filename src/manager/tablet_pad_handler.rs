@@ -4,31 +4,42 @@ use libc;
 use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
-use {compositor::{compositor_handle, CompositorHandle},
-     events::tablet_pad_events::{ButtonEvent, RingEvent, StripEvent},
-     input::tablet_pad::{TabletPad, TabletPadHandle}};
+use {compositor,
+     input::tablet_pad::{self, TabletPad}};
 
-pub trait TabletPadHandler {
+#[allow(unused_variables)]
+pub trait Handler {
     /// Callback that is triggered when a button is pressed on the tablet pad.
-    fn on_button(&mut self, CompositorHandle, TabletPadHandle, &ButtonEvent) {}
+    fn on_button(&mut self,
+                 compositor_handle: compositor::Handle,
+                 tablet_pad_handle: tablet_pad::Handle,
+                 event: &tablet_pad::event::Button) {}
 
     /// Callback that is triggered when the touch strip is used.
-    fn on_strip(&mut self, CompositorHandle, TabletPadHandle, &StripEvent) {}
+    fn on_strip(&mut self,
+                compositor_handle: compositor::Handle,
+                tablet_pad_handle: tablet_pad::Handle,
+                event: &tablet_pad::event::Strip) {}
 
     /// Callback that is triggered when the ring is touched.
-    fn on_ring(&mut self, CompositorHandle, TabletPadHandle, &RingEvent) {}
+    fn on_ring(&mut self,
+               compositor_handle: compositor::Handle,
+               tablet_pad_handle: tablet_pad::Handle,
+               event: &tablet_pad::event::Ring) {}
 
     /// Callback that is triggered when the pad device is destroyed.
-    fn destroyed(&mut self, CompositorHandle, TabletPadHandle) {}
+    fn destroyed(&mut self,
+                 compositor_handle: compositor::Handle,
+                 tablet_pad_handle: tablet_pad::Handle) {}
 }
 
-wayland_listener!(pub(crate) TabletPadWrapper, (TabletPad, Box<TabletPadHandler>), [
+wayland_listener!(pub(crate) TabletPadWrapper, (TabletPad, Box<Handler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut TabletPadWrapper, data: *mut libc::c_void,|
     unsafe {
         let input_device_ptr = data as *mut wlr_input_device;
         {
             let (ref mut pad, ref mut tablet_pad_handler) = this.data;
-            let compositor = match compositor_handle() {
+            let compositor = match compositor::handle() {
                 Some(handle) => handle,
                 None => return
             };
@@ -51,8 +62,8 @@ wayland_listener!(pub(crate) TabletPadWrapper, (TabletPad, Box<TabletPadHandler>
     button_listener => button_notify: |this: &mut TabletPadWrapper, data: *mut libc::c_void,|
     unsafe {
         let (ref pad, ref mut handler) = this.data;
-        let event = ButtonEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = tablet_pad::event::Button::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -64,8 +75,8 @@ wayland_listener!(pub(crate) TabletPadWrapper, (TabletPad, Box<TabletPadHandler>
     strip_listener => strip_notify: |this: &mut TabletPadWrapper, data: *mut libc::c_void,|
     unsafe {
         let (ref pad, ref mut handler) = this.data;
-        let event = StripEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = tablet_pad::event::Strip::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -77,8 +88,8 @@ wayland_listener!(pub(crate) TabletPadWrapper, (TabletPad, Box<TabletPadHandler>
     ring_listener => ring_notify: |this: &mut TabletPadWrapper, data: *mut libc::c_void,|
     unsafe {
         let (ref pad, ref mut handler) = this.data;
-        let event = RingEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = tablet_pad::event::Ring::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };

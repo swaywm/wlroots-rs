@@ -2,9 +2,9 @@
 use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 
 use errors::{HandleErr, HandleResult};
-use wlroots_sys::{wlr_input_device, wlr_tablet};
+use wlroots_sys::{wlr_input_device, wlr_tablet, wlr_tablet_tool_axes};
 
-use super::input_device::{InputDevice, InputState};
+use input::{self, InputState};
 pub use manager::tablet_tool_handler::*;
 pub use events::tablet_tool_events as event;
 
@@ -15,27 +15,44 @@ pub struct TabletTool {
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
     ///
-    /// If this is `None`, then this is from an upgraded `TabletToolHandle`, and
+    /// If this is `None`, then this is from an upgraded `tablet_tool::Handle`, and
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
-    /// marked function `upgrade` on a `TabletToolHandle`.
+    /// marked function `upgrade` on a `tablet_tool::Handle`.
     liveliness: Rc<Cell<bool>>,
     /// The device that refers to this tablet tool.
-    device: InputDevice,
+    device: input::Device,
     /// Underlying tablet state
     tool: *mut wlr_tablet
 }
 
 #[derive(Debug)]
-pub struct TabletToolHandle {
+pub struct Handle {
     /// The Rc that ensures that this handle is still alive.
     ///
     /// When wlroots deallocates the tablet tool associated with this handle,
     handle: Weak<Cell<bool>>,
     /// The device that refers to this tablet_tool.
-    device: InputDevice,
+    device: input::Device,
     /// The underlying tablet state
     tool: *mut wlr_tablet
+}
+
+bitflags! {
+    pub struct Axis: u32 {
+        const WLR_TABLET_TOOL_AXIS_X =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_X as u32;
+        const WLR_TABLET_TOOL_AXIS_Y =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_Y as u32;
+        const WLR_TABLET_TOOL_AXIS_DISTANCE =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_DISTANCE as u32;
+        const WLR_TABLET_TOOL_AXIS_PRESSURE =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_PRESSURE as u32;
+        const WLR_TABLET_TOOL_AXIS_TILT_X =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_TILT_X as u32;
+        const WLR_TABLET_TOOL_AXIS_TILT_Y =
+            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_TILT_Y as u32;
+    }
 }
 
 impl TabletTool {
@@ -54,17 +71,17 @@ impl TabletTool {
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
                 let state = Box::new(InputState { handle,
-                                                  device: InputDevice::from_ptr(device) });
+                                                  device: input::Device::from_ptr(device) });
                 (*tool).data = Box::into_raw(state) as *mut _;
                 Some(TabletTool { liveliness,
-                                  device: InputDevice::from_ptr(device),
+                                  device: input::Device::from_ptr(device),
                                   tool })
             }
             _ => None
         }
     }
 
-    unsafe fn from_handle(handle: &TabletToolHandle) -> HandleResult<Self> {
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
         let liveliness = handle.handle
                                .upgrade()
                                .ok_or_else(|| HandleErr::AlreadyDropped)?;
@@ -74,7 +91,7 @@ impl TabletTool {
     }
 
     /// Gets the wlr_input_device associated with this TabletTool.
-    pub fn input_device(&self) -> &InputDevice {
+    pub fn input_device(&self) -> &input::Device {
         &self.device
     }
 
@@ -85,8 +102,8 @@ impl TabletTool {
     /// # Panics
     /// If this `TabletTool` is a previously upgraded `TabletTool`,
     /// then this function will panic.
-    pub fn weak_reference(&self) -> TabletToolHandle {
-        TabletToolHandle { handle: Rc::downgrade(&self.liveliness),
+    pub fn weak_reference(&self) -> Handle {
+        Handle { handle: Rc::downgrade(&self.liveliness),
                            // NOTE Rationale for cloning:
                            // We can't use the tablet tool handle unless the tablet tool is alive,
                            // which means the device pointer is still alive.
@@ -114,24 +131,24 @@ impl Drop for TabletTool {
     }
 }
 
-impl TabletToolHandle {
-    /// Constructs a new TabletToolHandle that is always invalid. Calling `run` on this
+impl Handle {
+    /// Constructs a new tablet_tool::Handle that is always invalid. Calling `run` on this
     /// will always fail.
     ///
     /// This is useful for pre-filling a value before it's provided by the server, or
     /// for mocking/testing.
     pub fn new() -> Self {
         unsafe {
-            TabletToolHandle { handle: Weak::new(),
+            Handle { handle: Weak::new(),
                                // NOTE Rationale for null pointer here:
                                // It's never used, because you can never upgrade it,
                                // so no way to dereference it and trigger UB.
-                               device: InputDevice::from_ptr(ptr::null_mut()),
+                               device: input::Device::from_ptr(ptr::null_mut()),
                                tool: ptr::null_mut() }
         }
     }
 
-    /// Creates an TabletToolHandle from the raw pointer, using the saved
+    /// Creates an tablet_tool::Handle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     ///
     /// # Panics
@@ -144,7 +161,7 @@ impl TabletToolHandle {
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*tool).data = Box::into_raw(data) as *mut _;
-        TabletToolHandle { handle,
+        Handle { handle,
                       tool,
                       device }
     }
@@ -209,29 +226,29 @@ impl TabletToolHandle {
         }
     }
 
-    /// Gets the wlr_input_device associated with this TabletToolHandle
-    pub fn input_device(&self) -> HandleResult<&InputDevice> {
+    /// Gets the wlr_input_device associated with this tablet_tool::Handle
+    pub fn input_device(&self) -> HandleResult<&input::Device> {
         match self.handle.upgrade() {
             Some(_) => Ok(&self.device),
             None => Err(HandleErr::AlreadyDropped)
         }
     }
 
-    /// Gets the wlr_tablet associated with this TabletToolHandle.
+    /// Gets the wlr_tablet associated with this tablet_tool::Handle.
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_tablet {
         self.tool
     }
 }
 
-impl Default for TabletToolHandle {
+impl Default for Handle {
     fn default() -> Self {
-        TabletToolHandle::new()
+        Handle::new()
     }
 }
 
-impl Clone for TabletToolHandle {
+impl Clone for Handle {
     fn clone(&self) -> Self {
-        TabletToolHandle { tool: self.tool,
+        Handle { tool: self.tool,
                            handle: self.handle.clone(),
                            /// NOTE Rationale for unsafe clone:
                            ///
@@ -241,10 +258,10 @@ impl Clone for TabletToolHandle {
     }
 }
 
-impl PartialEq for TabletToolHandle {
-    fn eq(&self, other: &TabletToolHandle) -> bool {
+impl PartialEq for Handle {
+    fn eq(&self, other: &Handle) -> bool {
         self.tool == other.tool
     }
 }
 
-impl Eq for TabletToolHandle {}
+impl Eq for Handle {}

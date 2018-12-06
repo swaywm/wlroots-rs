@@ -4,36 +4,50 @@ use libc;
 use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
-use {compositor::{compositor_handle, CompositorHandle},
-     events::tablet_tool_events::{AxisEvent, ButtonEvent, ProximityEvent, TipEvent},
-     input::tablet_tool::{TabletTool, TabletToolHandle}};
+use {compositor,
+     input::tablet_tool::{self, TabletTool}};
 
-pub trait TabletToolHandler {
+#[allow(unused_variables)]
+pub trait Handler {
     /// Callback that is triggered when an axis event fires
-    fn on_axis(&mut self, CompositorHandle, TabletToolHandle, &AxisEvent) {}
+    fn on_axis(&mut self,
+               compositor_handle: compositor::Handle,
+               tablet_tool_handle: tablet_tool::Handle,
+               event: &tablet_tool::event::Axis) {}
 
     /// Callback that is triggered when a table tool is brought close to the
     /// input source.
-    fn on_proximity(&mut self, CompositorHandle, TabletToolHandle, &ProximityEvent) {}
+    fn on_proximity(&mut self,
+                    compositor_handle: compositor::Handle,
+                    tablet_tool_handle: tablet_tool::Handle,
+                    event: &tablet_tool::event::Proximity) {}
 
     /// Callback that is triggered when a table tool's tip touches the input
     /// source.
-    fn on_tip(&mut self, CompositorHandle, TabletToolHandle, &TipEvent) {}
+    fn on_tip(&mut self,
+              compositor_handle: compositor::Handle,
+              tablet_tool_handle: tablet_tool::Handle,
+              event: &tablet_tool::event::Tip) {}
 
     /// Callback that is triggered when a button is pressed on the tablet tool.
-    fn on_button(&mut self, CompositorHandle, TabletToolHandle, &ButtonEvent) {}
+    fn on_button(&mut self,
+                 compositor_handle: compositor::Handle,
+                 tablet_tool_handle: tablet_tool::Handle,
+                 event: &tablet_tool::event::Button) {}
 
     /// Callback that is triggered when a tablet tool is destroyed.
-    fn destroyed(&mut self, CompositorHandle, TabletToolHandle) {}
+    fn destroyed(&mut self,
+                 compositor_handle: compositor::Handle,
+                 tablet_tool_handle: tablet_tool::Handle) {}
 }
 
-wayland_listener!(pub(crate) TabletToolWrapper, (TabletTool, Box<TabletToolHandler>), [
+wayland_listener!(pub(crate) TabletToolWrapper, (TabletTool, Box<Handler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut TabletToolWrapper, data: *mut libc::c_void,|
     unsafe {
         let input_device_ptr = data as *mut wlr_input_device;
         {
             let (ref mut tool, ref mut tablet_tool_handler) = this.data;
-            let compositor = match compositor_handle() {
+            let compositor = match compositor::handle() {
                 Some(handle) => handle,
                 None => return
             };
@@ -58,8 +72,8 @@ wayland_listener!(pub(crate) TabletToolWrapper, (TabletTool, Box<TabletToolHandl
     };
     axis_listener => axis_notify: |this: &mut TabletToolWrapper, data: *mut libc::c_void,| unsafe {
         let (ref tool, ref mut handler) = this.data;
-        let event = AxisEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = tablet_tool::event::Axis::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -72,8 +86,8 @@ wayland_listener!(pub(crate) TabletToolWrapper, (TabletTool, Box<TabletToolHandl
     data: *mut libc::c_void,|
     unsafe {
         let (ref tool, ref mut handler) = this.data;
-        let event = ProximityEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = tablet_tool::event::Proximity::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -84,8 +98,8 @@ wayland_listener!(pub(crate) TabletToolWrapper, (TabletTool, Box<TabletToolHandl
     };
     tip_listener => tip_notify: |this: &mut TabletToolWrapper, data: *mut libc::c_void,| unsafe {
         let (ref tool, ref mut handler) = this.data;
-        let event = TipEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = tablet_tool::event::Tip::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -97,8 +111,8 @@ wayland_listener!(pub(crate) TabletToolWrapper, (TabletTool, Box<TabletToolHandl
     button_listener => button_notify: |this: &mut TabletToolWrapper, data: *mut libc::c_void,|
     unsafe {
         let (ref tool, ref mut handler) = this.data;
-        let event = ButtonEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = tablet_tool::event::Button::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };

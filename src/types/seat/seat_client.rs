@@ -15,14 +15,14 @@ use wlroots_sys::{wl_client, wlr_seat_client, wlr_seat_client_for_wl_client};
 /// It can be used to issue input events to the client.
 ///
 /// The lifetime of this object is managed by `Seat`.
-pub struct SeatClient<'wlr_seat> {
+pub struct Client<'wlr_seat> {
     client: *mut wlr_seat_client,
     _phantom: PhantomData<&'wlr_seat Seat>
 }
 
 #[allow(dead_code)]
-impl<'wlr_seat> SeatClient<'wlr_seat> {
-    /// Gets a SeatClient for the specified client,
+impl<'wlr_seat> Client<'wlr_seat> {
+    /// Gets a seat::Client for the specified client,
     /// if there is one bound for that client.
     ///
     /// # Unsafety
@@ -32,17 +32,17 @@ impl<'wlr_seat> SeatClient<'wlr_seat> {
     /// Please only pass a valid pointer to a wl_client to this function.
     pub unsafe fn client_for_wl_client(seat: &'wlr_seat mut Seat,
                                        client: *mut wl_client)
-                                       -> Option<SeatClient<'wlr_seat>> {
+                                       -> Option<Client<'wlr_seat>> {
         let client = wlr_seat_client_for_wl_client(seat.as_ptr(), client);
         if client.is_null() {
             None
         } else {
-            Some(SeatClient { client,
+            Some(Client { client,
                               _phantom: PhantomData })
         }
     }
 
-    /// Recreates a `SeatClient` from a raw `wlr_seat_client`.
+    /// Recreates a `Client` from a raw `wlr_seat_client`.
     ///
     /// # Unsafety
     /// The pointer must point to a valid `wlr_seat_client`.
@@ -50,8 +50,8 @@ impl<'wlr_seat> SeatClient<'wlr_seat> {
     /// Note also that the struct has an *boundless lifetime*. You _must_ ensure
     /// this struct does not live longer than the `Seat` that manages it.
     pub(crate) unsafe fn from_ptr<'unbound_seat>(client: *mut wlr_seat_client)
-                                                 -> SeatClient<'unbound_seat> {
-        SeatClient { client,
+                                                 -> Client<'unbound_seat> {
+        Client { client,
                      _phantom: PhantomData }
     }
 

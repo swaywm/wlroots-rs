@@ -5,32 +5,32 @@ use wlroots_sys::{wlr_event_touch_cancel, wlr_event_touch_down, wlr_event_touch_
 
 #[derive(Debug)]
 /// Event that is triggered when a touch down event occurs.
-pub struct DownEvent {
+pub struct Down {
     event: *mut wlr_event_touch_down
 }
 
 #[derive(Debug)]
 /// Event that is triggered when a touch up event occurs.
-pub struct UpEvent {
+pub struct Up {
     event: *mut wlr_event_touch_up
 }
 
 #[derive(Debug)]
 /// Event that is triggered when a touch motion event occurs.
-pub struct MotionEvent {
+pub struct Motion {
     event: *mut wlr_event_touch_motion
 }
 
 #[derive(Debug)]
 /// Event that is triggered when a touch cancel event occurs.
-pub struct CancelEvent {
+pub struct Cancel {
     event: *mut wlr_event_touch_cancel
 }
 
-impl DownEvent {
-    /// Constructs a `DownEvent` from a raw event pointer.
+impl Down {
+    /// Constructs a `Down` from a raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_touch_down) -> Self {
-        DownEvent { event }
+        Down { event }
     }
 
     /// Gets how long the touch event has been going on for.
@@ -51,10 +51,10 @@ impl DownEvent {
     }
 }
 
-impl UpEvent {
-    /// Constructs a `UpEvent` from a raw event pointer.
+impl Up {
+    /// Constructs a `Up` from a raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_touch_up) -> Self {
-        UpEvent { event }
+        Up { event }
     }
 
     pub fn time_msec(&self) -> u32 {
@@ -67,10 +67,10 @@ impl UpEvent {
     }
 }
 
-impl MotionEvent {
-    /// Constructs a `MotionEvent` from a raw event pointer.
+impl Motion {
+    /// Constructs a `Motion` from a raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_touch_motion) -> Self {
-        MotionEvent { event }
+        Motion { event }
     }
 
     /// Gets how long the touch event has been going on for.
@@ -91,10 +91,10 @@ impl MotionEvent {
     }
 }
 
-impl CancelEvent {
-    /// Constructs a `CancelEvent` from a raw event pointe
+impl Cancel {
+    /// Constructs a `Cancel` from a raw event pointe
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_touch_cancel) -> Self {
-        CancelEvent { event }
+        Cancel { event }
     }
 
     pub fn time_msec(&self) -> u32 {

@@ -1,15 +1,10 @@
 #[macro_use]
 extern crate wlroots;
 
-use wlroots::{compositor::{self, CompositorBuilder, CompositorHandle},
-              input::{InputManagerHandler,
-                      keyboard::{KeyboardHandle, KeyboardHandler,
-                                 event::KeyEvent},
-                      touch::{TouchHandle, TouchHandler,
-                              event::{DownEvent, MotionEvent, UpEvent}}},
-              output::{OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
-                       OutputManagerHandler},
-              render::texture::{Texture, TextureFormat}};
+use wlroots::{compositor,
+              input::{self, keyboard, touch},
+              output,
+              render::{Texture, TextureFormat}};
 use wlroots::utils::log::{init_logging, WLR_DEBUG};
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
@@ -48,17 +43,20 @@ struct InputManager;
 
 struct ExKeyboardHandler;
 
-impl OutputManagerHandler for OutputManager {
+impl output::ManagerHandler for OutputManager {
     fn output_added<'output>(&mut self,
-                             _: CompositorHandle,
-                             builder: OutputBuilder<'output>)
-                             -> Option<OutputBuilderResult<'output>> {
+                             _: compositor::Handle,
+                             builder: output::Builder<'output>)
+                             -> Option<output::BuilderResult<'output>> {
         Some(builder.build_best_mode(ExOutput))
     }
 }
 
-impl KeyboardHandler for ExKeyboardHandler {
-    fn on_key(&mut self, _: CompositorHandle, _: KeyboardHandle, key_event: &KeyEvent) {
+impl keyboard::Handler for ExKeyboardHandler {
+    fn on_key(&mut self,
+              _: compositor::Handle,
+              _: keyboard::Handle,
+              key_event: &keyboard::event::Key) {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
                 compositor::terminate()
@@ -67,8 +65,8 @@ impl KeyboardHandler for ExKeyboardHandler {
     }
 }
 
-impl OutputHandler for ExOutput {
-    fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
+impl output::Handler for ExOutput {
+    fn on_frame(&mut self, compositor: compositor::Handle, output: output::Handle) {
         with_handles!([(compositor: {compositor}), (output: {output})] => {
             let renderer = compositor.renderer.as_mut().unwrap();
             let state: &mut State = (&mut compositor.data).downcast_mut().unwrap();
@@ -88,8 +86,11 @@ impl OutputHandler for ExOutput {
     }
 }
 
-impl TouchHandler for TouchHandlerEx {
-    fn on_down(&mut self, compositor: CompositorHandle, _: TouchHandle, event: &DownEvent) {
+impl touch::Handler for TouchHandlerEx {
+    fn on_down(&mut self,
+               compositor: compositor::Handle,
+               _: touch::Handle,
+               event: &touch::event::Down) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let (x, y) = event.location();
@@ -101,7 +102,10 @@ impl TouchHandler for TouchHandlerEx {
         }).unwrap();
     }
 
-    fn on_up(&mut self, compositor: CompositorHandle, _: TouchHandle, event: &UpEvent) {
+    fn on_up(&mut self,
+             compositor: compositor::Handle,
+             _: touch::Handle,
+             event: &touch::event::Up) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             wlr_log!(WLR_ERROR,
@@ -118,7 +122,10 @@ impl TouchHandler for TouchHandlerEx {
         }).unwrap();
     }
 
-    fn on_motion(&mut self, compositor: CompositorHandle, _: TouchHandle, event: &MotionEvent) {
+    fn on_motion(&mut self,
+                 compositor: compositor::Handle,
+                 _: touch::Handle,
+                 event: &touch::event::Motion) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let (x, y) = event.location();
@@ -133,25 +140,25 @@ impl TouchHandler for TouchHandlerEx {
     }
 }
 
-impl InputManagerHandler for InputManager {
-    fn touch_added(&mut self, _: CompositorHandle, _: TouchHandle) -> Option<Box<TouchHandler>> {
+impl input::ManagerHandler for InputManager {
+    fn touch_added(&mut self, _: compositor::Handle, _: touch::Handle) -> Option<Box<touch::Handler>> {
         Some(Box::new(TouchHandlerEx))
     }
 
     fn keyboard_added(&mut self,
-                      _: CompositorHandle,
-                      _: KeyboardHandle)
-                      -> Option<Box<KeyboardHandler>> {
+                      _: compositor::Handle,
+                      _: keyboard::Handle)
+                      -> Option<Box<keyboard::Handler>> {
         Some(Box::new(ExKeyboardHandler))
     }
 }
 
 fn main() {
     init_logging(WLR_DEBUG, None);
-    let mut compositor = CompositorBuilder::new().gles2(true)
-                                                 .input_manager(Box::new(InputManager))
-                                                 .output_manager(Box::new(OutputManager))
-                                                 .build_auto(State::new());
+    let mut compositor = compositor::Builder::new().gles2(true)
+                                                   .input_manager(Box::new(InputManager))
+                                                   .output_manager(Box::new(OutputManager))
+                                                   .build_auto(State::new());
     {
         let gles2 = &mut compositor.renderer.as_mut().unwrap();
         let compositor_data: &mut State = (&mut compositor.data).downcast_mut().unwrap();
