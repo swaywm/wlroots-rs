@@ -9,6 +9,7 @@ use wlroots_sys::{wlr_xcursor, wlr_xcursor_frame, wlr_xcursor_image, wlr_xcursor
                   wlr_xcursor_theme_destroy, wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load};
 
 use utils::{c_to_rust_string, safe_as_cstring};
+#[cfg(feature = "unstable")]
 pub use super::xcursor_manager::*;
 
 #[derive(Debug)]
