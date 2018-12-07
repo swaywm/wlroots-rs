@@ -35,7 +35,7 @@ impl<'manager> ManagerTheme<'manager> {
 
     /// Get the underlying `xcursor::Theme` for this managed theme.
     pub fn theme(self) -> xcursor::Theme {
-        unsafe { xcursor::Theme::new((*self.theme).theme) }
+        unsafe { xcursor::Theme::from_ptr((*self.theme).theme) }
     }
 }
 

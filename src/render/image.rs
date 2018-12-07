@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use cursor::xcursor;
 
 /// An image that can be attached to a `Cursor` or `OutputCursor`.
@@ -48,6 +49,7 @@ impl<'buffer> Into<xcursor::Image<'buffer>> for Image<'buffer> {
                        height,
                        hotspot_x: hotspot_x as _,
                        hotspot_y: hotspot_y as _,
-                       delay }
+                       delay,
+                       _no_send: PhantomData }
     }
 }
