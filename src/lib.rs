@@ -5,7 +5,6 @@
 #![allow(unused_unsafe)]
 #[macro_use]
 extern crate bitflags;
-extern crate lazy_static;
 extern crate vsprintf;
 #[macro_use]
 pub extern crate wlroots_sys;

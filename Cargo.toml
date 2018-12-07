@@ -5,22 +5,16 @@ members = ["wlroots-sys", "wlroots-dehandle"]
 name = "wlroots"
 version = "0.2.0"
 authors = ["Timidger <APragmaticPlace@gmail.com>"]
-description = "Rust wrapping for Wayland compositor library wlroots"
+description = "Wayland compositor framework"
 keywords = ["wayland", "compositor", "bindings"]
 categories = ["external-ffi-bindings", "gui"]
 license = "MIT"
 exclude = [".travis.yml"]
 autoexamples = true
 
-[badges]
-travis-ci = { repository = "way-cooler/wlroots-rs/" }
-
-
 [dependencies]
-rust-ini = "0.10.0"
 wlroots-sys = { path = "wlroots-sys", default-features = false }
 wlroots-dehandle = { path = "wlroots-dehandle" }
-lazy_static = "0.2"
 xkbcommon = "0.3"
 bitflags = "1.0"
 vsprintf = "1.0.1"
