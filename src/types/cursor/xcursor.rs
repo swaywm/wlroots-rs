@@ -1,3 +1,5 @@
+//! Wrappers around the XCursor library used by wlroots.
+//!
 //! [From the man page](ftp://www.x.org/pub/X11R7.7/doc/man/man3/Xcursor.3.xhtml):
 //! > Xcursor is a simple library designed to help locate and load cursors.
 //! > Cursors can be loaded from files or memory. A library of common cursors
