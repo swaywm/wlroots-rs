@@ -3,7 +3,7 @@ members = ["wlroots-sys", "wlroots-dehandle"]
 
 [package]
 name = "wlroots"
-version = "0.0.0"
+version = "0.2.0"
 authors = ["Timidger <APragmaticPlace@gmail.com>"]
 description = "Rust wrapping for Wayland compositor library wlroots"
 keywords = ["wayland", "compositor", "bindings"]
