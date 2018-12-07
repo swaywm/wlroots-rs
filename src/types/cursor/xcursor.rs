@@ -1,4 +1,8 @@
-//! TODO Documentation
+//! [From the man page](ftp://www.x.org/pub/X11R7.7/doc/man/man3/Xcursor.3.xhtml):
+//! > Xcursor is a simple library designed to help locate and load cursors.
+//! > Cursors can be loaded from files or memory. A library of common cursors
+//! > exists which map to the standard X cursor names. Cursors can exist in
+//! > several sizes and the library automatically picks the best size.
 
 use std::{mem, ptr, slice};
 use std::marker::PhantomData;
@@ -17,21 +21,36 @@ pub struct Theme {
     theme: *mut wlr_xcursor_theme
 }
 
-#[derive(Debug)]
 /// An XCursor from the X11 xcursor library. `  wl`
+#[derive(Debug)]
 pub struct XCursor<'theme> {
     xcursor: *mut wlr_xcursor,
     phantom: PhantomData<&'theme Theme>
 }
 
-#[derive(Debug)]
+/// Contains the information necessary to render the cursor.
+///
+/// The hotspot of the image shows where the cursor will interact with the
+/// environment. i.e. it refers to the location of the cursor "point".
+/// Note that the coordinates could be inside the image.
+#[derive(Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Image<'cursor> {
+    /// The width of the image in pixels.
     pub width: u32,
+    /// The height of the image in pixels.
     pub height: u32,
+    /// The x coordinate of the hotspot, which must be inside the image.
     pub hotspot_x: u32,
+    /// The y coordinate of the hotspot, which must be inside the image.
     pub hotspot_y: u32,
+    /// Animation delay to the next frame in milliseconds.
     pub delay: u32,
-    pub buffer: &'cursor [u8]
+    /// The bytes in ARGB format.
+    pub buffer: &'cursor [u8],
+    /// A marker to indicate you can't send this type across threads.
+    /// Also ensures you can't construct it outside of this library.
+    #[doc(hidden)]
+    _no_send: PhantomData<*mut wlr_xcursor_image>
 }
 
 impl Theme {
@@ -140,7 +159,8 @@ impl<'theme> XCursor<'theme> {
                         (**cursor).buffer as *const u8,
                         (**cursor).width as usize * (**cursor).height as usize
                             * mem::size_of::<u32>()
-                    )
+                    ),
+                    _no_send: PhantomData
                 })
             }
             result

@@ -9,8 +9,10 @@ extern crate vsprintf;
 #[macro_use]
 pub extern crate wlroots_sys;
 extern crate wlroots_dehandle;
+#[cfg(feature = "unstable")]
 pub extern crate xkbcommon;
 
+#[cfg(feature = "unstable")]
 pub use wlroots_dehandle::wlroots_dehandle;
 pub(crate) use wlroots_sys::wayland_sys;
 pub(crate) use wlroots_sys::libc;
