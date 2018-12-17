@@ -42,9 +42,6 @@ pub trait Handleable<D, T> {
     #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut T;
 
-    /// Creates a weak reference to the resource.
-    fn weak_reference(&self) -> Handle<D, T, Self> where Self: Sized;
-
     /// Gets the resource from the handle.
     ///
     /// This is used internally to upgrade a handle, and should not be used.
@@ -52,8 +49,10 @@ pub trait Handleable<D, T> {
     ///
     /// If you _need_ to use this, use `Handle::upgrade` instead.
     #[doc(hidden)]
-    unsafe fn from_handle(&Handle<D, T, Self>) -> HandleResult<Self>
-        where Self: Sized;
+    unsafe fn from_handle(&Handle<D, T, Self>) -> HandleResult<Self> where Self: Sized;
+
+    /// Creates a weak reference to the resource.
+    fn weak_reference(&self) -> Handle<D, T, Self> where Self: Sized;
 }
 
 impl <D: Clone, T, W: Handleable<D, T>> Clone for Handle<D, T, W> {
