@@ -3,10 +3,12 @@ use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
 use libc::{self, size_t, int16_t, uint16_t};
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{pid_t, wl_event_source, wlr_xwayland_surface, xcb_atom_t, xcb_window_t};
+use wlroots_sys::{pid_t, wl_event_source, wlr_xwayland_surface, xcb_atom_t, xcb_window_t,
+                  wlr_xwayland_surface_configure, wlr_xwayland_surface_activate};
 
 use {SurfaceHandle, SurfaceHandler, XWaylandSurfaceHints, XWaylandSurfaceSizeHints};
 use types::surface::InternalSurfaceState;
+use types::area::{Area, Origin, Size};
 use compositor::{compositor_handle, CompositorHandle};
 use errors::{HandleErr, HandleResult};
 use events::xwayland_events::{ConfigureEvent, MoveEvent, ResizeEvent};
@@ -362,7 +364,7 @@ impl XWaylandSurface {
             if surface.is_null() {
                 None
             } else {
-                Some(SurfaceHandle::from_ptr((*self.shell_surface).surface))
+                Some(SurfaceHandle::from_ptr(surface))
             }
         }
     }
@@ -513,6 +515,34 @@ impl XWaylandSurface {
     /// Determine if the client has an alpha channel.
     pub fn has_alpha(&self) -> bool {
         unsafe { (*self.shell_surface).has_alpha }
+    }
+
+    /// Geometry of the surface in layout-local coordinates
+    pub fn geometry(&self) -> Area {
+        let (x, y, width, height) = unsafe {
+            (
+                (*self.shell_surface).x as i32,
+                (*self.shell_surface).y as i32,
+                (*self.shell_surface).width as i32,
+                (*self.shell_surface).height as i32
+            )
+        };
+        Area {
+            origin: Origin { x, y },
+            size: Size { width, height }
+        }
+    }
+
+    /// Send the surface a configure request, requesting the new position and dimensions
+    pub fn configure(&self, x: i16, y: i16, width: u16, height: u16) {
+        unsafe {
+            wlr_xwayland_surface_configure(self.shell_surface, x, y, width, height);
+        }
+    }
+
+    /// Tell the window whether it is the foucsed window
+    pub fn set_activated(&self, active: bool) {
+        unsafe { wlr_xwayland_surface_activate(self.shell_surface, active); }
     }
 }
 
