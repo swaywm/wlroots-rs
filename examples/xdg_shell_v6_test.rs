@@ -12,7 +12,7 @@ use wlroots::{area::{Area, Origin, Size},
               seat::{self, Seat},
               shell::xdg_shell_v6,
               surface,
-              utils::{log::{init_logging, WLR_DEBUG}, current_time}};
+              utils::{Handleable, log::{init_logging, WLR_DEBUG}, current_time}};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 use wlroots::wlroots_dehandle;
