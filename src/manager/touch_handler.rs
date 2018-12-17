@@ -5,7 +5,8 @@ use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 
 use {compositor,
-     input::touch::{self, Touch}};
+     input::touch::{self, Touch},
+     utils::Handleable};
 
 #[allow(unused_variables)]
 pub trait Handler {
