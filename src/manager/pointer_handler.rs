@@ -6,7 +6,8 @@ use wlroots_sys::{wlr_input_device, wlr_event_pointer_axis, wlr_event_pointer_bu
                   wlr_event_pointer_motion};
 
 use {compositor,
-     input::pointer::{self, Pointer}};
+     input::pointer::{self, Pointer},
+     utils::Handleable};
 
 #[allow(unused_variables)]
 pub trait Handler {
