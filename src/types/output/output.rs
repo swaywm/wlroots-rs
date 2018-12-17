@@ -15,7 +15,7 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
 
 use {area::{Origin, Size},
      errors::{HandleErr, HandleResult},
-     utils::c_to_rust_string,
+     utils::{self, Handleable, c_to_rust_string},
      output::{self, layout},
      render::PixmanRegion};
 pub use manager::{output_manager::*, output_handler::*};
@@ -48,19 +48,7 @@ pub struct Output {
     output: *mut wlr_output
 }
 
-/// A wrapper around a wlr_output.
-#[derive(Debug, Clone)]
-pub struct Handle {
-    /// The Rc that ensures that this handle is still alive.
-    ///
-    /// When wlroots deallocates the pointer associated with this handle,
-    /// this can no longer be used.
-    handle: Weak<Cell<bool>>,
-    /// The tracker for damage on the output.
-    damage: *mut wlr_output_damage,
-    /// The output ptr that refers to this `Output`
-    output: *mut wlr_output
-}
+pub type Handle = utils::Handle<*mut wlr_output_damage, wlr_output, Output>;
 
 impl Output {
     /// Just like `std::clone::Clone`, but unsafe.
@@ -412,30 +400,6 @@ impl Output {
     pub fn damage(&mut self) -> &mut output::Damage {
         &mut *self.damage
     }
-
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {
-        self.output
-    }
-
-    /// Creates a weak reference to an `Output`.
-    ///
-    /// # Panics
-    /// If this `Output` is a previously upgraded `output::Handle`,
-    /// then this function will panic.
-    pub fn weak_reference(&self) -> Handle {
-        Handle { handle: Rc::downgrade(&self.liveliness),
-                       damage: unsafe { self.damage.as_ptr() },
-                       output: self.output }
-    }
-
-    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-                               .upgrade()
-                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(Output { liveliness,
-                    damage: ManuallyDrop::new(output::Damage::from_ptr(handle.damage)),
-                    output: handle.as_ptr() })
-    }
 }
 
 impl Drop for Output {
@@ -467,107 +431,35 @@ impl Drop for Output {
     }
 }
 
-impl Handle {
-    /// Constructs a new output::Handle that is always invalid. Calling `run` on this
-    /// will always fail.
-    ///
-    /// This is useful for pre-filling a value before it's provided by the server, or
-    /// for mocking/testing.
-    pub fn new() -> Self {
-        unsafe {
-            Handle { handle: Weak::new(),
-                           damage: ptr::null_mut(),
-                           output: ptr::null_mut() }
-        }
-    }
-
-    /// Creates an output::Handle from the raw pointer, using the saved
-    /// user data to recreate the memory model.
-    pub(crate) unsafe fn from_ptr(output: *mut wlr_output) -> Self {
-        let data = Box::from_raw((*output).data as *mut OutputState);
+impl Handleable<*mut wlr_output_damage, wlr_output> for Output {
+    unsafe fn from_ptr(ptr: *mut wlr_output) -> Self where Self: Sized {
+        let data = Box::from_raw((*ptr).data as *mut OutputState);
         let handle = data.handle.clone();
         let damage = data.damage;
-        (*output).data = Box::into_raw(data) as *mut _;
-        Handle { handle,
-                       output,
-                       damage }
+        (*ptr).data = Box::into_raw(data) as *mut _;
+        Output { liveliness: handle.upgrade().unwrap(),
+                 damage: ManuallyDrop::new(output::Damage::from_ptr(damage)),
+                 output: ptr}
+
     }
 
-    /// Upgrades the output handle to a reference to the backing `Output`.
-    ///
-    /// # Unsafety
-    /// This function is unsafe, because it creates an unbound `Output`
-    /// which may live forever..
-    /// But no output lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Output> {
-        self.handle.upgrade()
-            .ok_or(HandleErr::AlreadyDropped)
-            // NOTE
-            // We drop the Rc here because having two would allow a dangling
-            // pointer to exist!
-            .and_then(|check| {
-                let output = Output::from_handle(self)?;
-                if check.get() {
-                    return Err(HandleErr::AlreadyBorrowed)
-                }
-                check.set(true);
-                Ok(output)
-            })
-    }
-
-    /// Run a function on the referenced Output, if it still exists
-    ///
-    /// Returns the result of the function, if successful
-    ///
-    /// # Safety
-    /// By enforcing a rather harsh limit on the lifetime of the output
-    /// to a short lived scope of an anonymous function,
-    /// this function ensures the Output does not live longer
-    /// than it exists.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
-    /// This will happen if you call `upgrade` directly within this callback,
-    /// or if you run this function within the another run to the same `Output`.
-    ///
-    /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut Output) -> R
-    {
-        let mut output = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut output)));
-        self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running output callback, mutable lock \
-                                                    was false for: {:?}",
-                                                   output);
-                                          panic!("Lock in incorrect state!");
-                                      }
-                                      check.set(false);
-                                  });
-        match res {
-            Ok(res) => Ok(res),
-            Err(err) => panic::resume_unwind(err)
-        }
-    }
-
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output {
+    unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
     }
-}
 
-impl Default for Handle {
-    fn default() -> Self {
-        Handle::new()
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> where Self: Sized {
+        let liveliness = handle.handle
+            .upgrade()
+            .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Output { liveliness,
+                    damage: ManuallyDrop::new(output::Damage::from_ptr(handle.data)),
+                    output: handle.as_ptr() })
+    }
+
+    fn weak_reference(&self) -> Handle {
+        Handle { ptr: self.output,
+                 handle: Rc::downgrade(&self.liveliness),
+                 data: unsafe { self.damage.as_ptr() },
+                 _marker: std::marker::PhantomData }
     }
 }
-
-impl PartialEq for Handle {
-    fn eq(&self, other: &Handle) -> bool {
-        self.output == other.output
-    }
-}
-
-impl Eq for Handle {}

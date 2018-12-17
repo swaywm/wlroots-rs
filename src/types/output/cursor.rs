@@ -6,7 +6,11 @@ use wlroots_sys::{wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor
                   wlr_output_cursor_move, wlr_output_cursor_set_image,
                   wlr_output_cursor_set_surface};
 
-use {HandleErr, render, output::{self, Output}, surface::{self, Surface}};
+use {HandleErr,
+     render,
+     output::{self, Output},
+     surface::{self, Surface},
+     utils::Handleable};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Cursor {

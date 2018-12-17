@@ -9,7 +9,8 @@ use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_output;
 
 use {compositor,
-     output::{self, Output, OutputState, UserOutput}};
+     output::{self, Output, OutputState, UserOutput},
+     utils::Handleable};
 
 
 /// Used to ensure the output sets the mode before doing any other

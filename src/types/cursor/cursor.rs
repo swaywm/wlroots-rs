@@ -19,7 +19,8 @@ use {area::Area,
      input::{self, pointer, tablet_tool, touch},
      output::{self, Output, layout::Layout},
      surface::Surface,
-     cursor::xcursor};
+     cursor::xcursor,
+     utils::Handleable};
 
 #[derive(Debug)]
 pub(crate) struct CursorState {

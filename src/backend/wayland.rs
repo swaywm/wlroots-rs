@@ -6,7 +6,7 @@ use wlroots_sys::{wlr_backend, wl_display, wlr_wl_backend_create,
 use {backend::UnsafeRenderSetupFunction,
      output::{self, Output},
      input,
-     utils::safe_as_cstring};
+     utils::{Handleable, safe_as_cstring}};
 
 /// When the compositor is running in a nested Wayland environment.
 /// e.g. your compositor is executed while the user is running Gnome+Mutter or Weston.

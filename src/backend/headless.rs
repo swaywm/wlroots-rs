@@ -5,7 +5,8 @@ use wlroots_sys::{wlr_backend, wlr_headless_backend_create, wlr_headless_add_out
 
 use {backend::UnsafeRenderSetupFunction,
      input,
-     output::{self, Output}};
+     output::{self, Output},
+     utils::Handleable};
 
 /// In this backend the only resource the compositor uses is the Wayland file descriptor.
 /// It doesn't try to grab actual keyboard/pointers and it doesn't render anything.

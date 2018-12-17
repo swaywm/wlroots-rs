@@ -3,7 +3,9 @@ use std::ptr;
 use libc::c_int;
 use wlroots_sys::{wlr_backend, wl_display, wlr_drm_backend_create, wlr_output_is_drm};
 
-use {output::Output, backend::{UnsafeRenderSetupFunction, Session}};
+use {output::Output,
+     backend::{UnsafeRenderSetupFunction, Session},
+     utils::Handleable};
 
 /// When the compositor is ran on a TTY and has full control of the system resources.
 ///

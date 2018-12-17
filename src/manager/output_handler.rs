@@ -6,7 +6,8 @@ use wlroots_sys::wlr_output;
 
 use {compositor,
      errors::HandleErr,
-     output::{self, Output, OutputState}};
+     output::{self, Output, OutputState},
+     utils::Handleable};
 
 #[allow(unused_variables)]
 pub trait Handler {

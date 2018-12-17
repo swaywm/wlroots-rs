@@ -7,8 +7,10 @@ pub mod region;
 // Rust specific utilities that don't wrap a wlroots utility.
 mod time;
 mod string;
+mod handle;
 
 pub use self::time::{current_time, ToMs};
+pub use self::handle::*;
 pub(crate) use self::string::{c_to_rust_string, safe_as_cstring};
 
 

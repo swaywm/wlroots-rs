@@ -17,7 +17,7 @@ use {compositor,
                subsurface_manager::SubsurfaceManager},
      output::Output,
      render::Texture,
-     utils::c_to_rust_string};
+     utils::{Handleable, c_to_rust_string}};
 
 #[allow(unused_variables)]
 pub trait Handler {
