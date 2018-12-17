@@ -34,6 +34,8 @@ pub(crate) struct CursorState {
     cursor: *mut Cursor
 }
 
+// NOTE We can't use `utils::Handle` because we own the cursor.
+// So this is special cased, just like `output::Layout`.
 #[derive(Debug, Clone)]
 pub struct Handle {
     cursor: *mut wlr_cursor,

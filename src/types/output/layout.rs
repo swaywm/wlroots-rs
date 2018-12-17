@@ -114,6 +114,8 @@ impl fmt::Debug for Layout {
     }
 }
 
+// NOTE We can't use `utils::Handle` because we own the cursor.
+// So this is special cased, just like `output::Layout`.
 /// A handle to an `output::layout::Layout`.
 #[derive(Debug, Clone)]
 pub struct Handle {
