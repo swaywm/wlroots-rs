@@ -65,6 +65,10 @@ wayland_listener!(InternalCompositor, Box<Handler>, [
     };
 ]);
 
+// NOTE This handle is handled differently from the others, so we can't use
+// the generic `utils::Handle` implementation. This is due to how we need
+// to be able to return a "full" `Compositor` for `upgrade` but that's
+// impossible.
 #[derive(Debug, Clone)]
 pub struct Handle {
     /// This ensures that this handle is still alive and not already borrowed.
