@@ -2,6 +2,7 @@
 
 pub mod edges;
 pub mod log;
+pub mod region;
 
 // Rust specific utilities that don't wrap a wlroots utility.
 mod time;
