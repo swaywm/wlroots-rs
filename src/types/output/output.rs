@@ -432,6 +432,7 @@ impl Drop for Output {
 }
 
 impl Handleable<*mut wlr_output_damage, wlr_output> for Output {
+    #[doc(hidden)]
     unsafe fn from_ptr(ptr: *mut wlr_output) -> Self where Self: Sized {
         let data = Box::from_raw((*ptr).data as *mut OutputState);
         let handle = data.handle.clone();
@@ -443,10 +444,12 @@ impl Handleable<*mut wlr_output_damage, wlr_output> for Output {
 
     }
 
+    #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut wlr_output {
         self.output
     }
 
+    #[doc(hidden)]
     unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> where Self: Sized {
         let liveliness = handle.handle
             .upgrade()
