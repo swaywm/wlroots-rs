@@ -5,7 +5,8 @@ use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wlr_input_device, wlr_event_keyboard_key};
 
 use {compositor,
-     input::keyboard::{self, Keyboard}};
+     input::keyboard::{self, Keyboard},
+     utils::Handleable};
 
 #[allow(unused_variables)]
 pub trait Handler {

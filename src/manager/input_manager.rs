@@ -19,7 +19,7 @@ use {compositor,
              tablet_pad::{self, TabletPad, TabletPadWrapper},
              tablet_tool::{self, TabletTool, TabletToolWrapper},
              touch::{self, Touch, TouchWrapper}},
-     utils::safe_as_cstring};
+     utils::{Handleable, safe_as_cstring}};
 
 /// Handles input addition and removal.
 #[allow(unused_variables)]
