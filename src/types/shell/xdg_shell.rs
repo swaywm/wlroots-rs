@@ -20,7 +20,12 @@ use {area::Area,
 pub use manager::{xdg_shell_manager::*, xdg_shell_handler::*};
 pub use events::xdg_shell_events as event;
 
-pub type Handle = utils::Handle<Option<ShellState>, wlr_xdg_surface, Surface>;
+pub type Handle = utils::Handle<OptionalShellState, wlr_xdg_surface, Surface>;
+
+/// A hack to ensure we can clone a shell handle.
+#[derive(Debug, Eq, PartialEq, Hash)]
+#[doc(hidden)]
+pub struct OptionalShellState(Option<ShellState>);
 
 /// Used internally to reclaim a handle from just a *mut wlr_xdg_surface.
 pub(crate) struct SurfaceState {
@@ -28,6 +33,18 @@ pub(crate) struct SurfaceState {
     pub(crate) shell: *mut XdgShell,
     handle: Weak<Cell<bool>>,
     shell_state: Option<ShellState>
+}
+
+impl Clone for OptionalShellState {
+    fn clone(&self) -> Self {
+        OptionalShellState ( match self.0 {
+            None => None,
+            // NOTE Rationale for safety:
+            // This is only stored in the handle, and it's fine to clone
+            // the raw pointer when we just have a handle.
+            Some(ref state) => Some(unsafe { state.clone() })
+        })
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -193,7 +210,7 @@ impl Drop for Surface {
     }
 }
 
-impl Handleable<Option<ShellState>, wlr_xdg_surface> for Surface {
+impl Handleable<OptionalShellState, wlr_xdg_surface> for Surface {
     #[doc(hidden)]
     unsafe fn from_ptr(shell_surface: *mut wlr_xdg_surface) -> Self {
         let data = &mut *((*shell_surface).data as *mut SurfaceState);
@@ -219,19 +236,16 @@ impl Handleable<Option<ShellState>, wlr_xdg_surface> for Surface {
             .ok_or_else(|| HandleErr::AlreadyDropped)?;
         Ok(Surface { liveliness,
                      shell_surface: handle.ptr,
-                     state: match handle.data {
-                         None => None,
-                         Some(ref state) => Some(state.clone())
-                     }})
+                     state: handle.data.clone().0 })
     }
 
     fn weak_reference(&self) -> Handle {
         Handle { ptr: self.shell_surface,
                  handle: Rc::downgrade(&self.liveliness),
-                 data: match self.state {
+                 data: OptionalShellState(match self.state {
                      None => None,
                      Some(ref state) => Some(unsafe { state.clone() })
-                 },
+                 }),
                  _marker: std::marker::PhantomData }
     }
 }

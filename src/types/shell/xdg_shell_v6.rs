@@ -11,10 +11,34 @@ use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
                   wlr_xdg_toplevel_v6_set_size, wlr_xdg_toplevel_v6_state,
                   wlr_xdg_surface_v6_for_each_surface, wlr_surface};
 
-use {area::Area, errors::{HandleErr, HandleResult}, seat, surface,
-     utils::c_to_rust_string};
+use {area::Area,
+     errors::{HandleErr, HandleResult},
+     seat,
+     surface,
+     utils::{self, Handleable, c_to_rust_string}};
 pub use manager::{xdg_shell_v6_manager::*, xdg_shell_v6_handler::*};
 pub use events::xdg_shell_v6_events as event;
+
+pub type Handle = utils::Handle<OptionalShellState,
+                                wlr_xdg_surface_v6,
+                                Surface>;
+
+/// A hack to ensure we can clone a shell handle.
+#[derive(Debug, Eq, PartialEq, Hash)]
+#[doc(hidden)]
+pub struct OptionalShellState(Option<ShellState>);
+
+impl Clone for OptionalShellState {
+    fn clone(&self) -> Self {
+        OptionalShellState ( match self.0 {
+            None => None,
+            // NOTE Rationale for safety:
+            // This is only stored in the handle, and it's fine to clone
+            // the raw pointer when we just have a handle.
+            Some(ref state) => Some(unsafe { state.clone() })
+        })
+    }
+}
 
 /// Used internally to reclaim a handle from just a *mut wlr_xdg_surface_v6.
 pub(crate) struct SurfaceState {
@@ -51,25 +75,6 @@ pub struct Surface {
     shell_surface: *mut wlr_xdg_surface_v6
 }
 
-#[derive(Debug)]
-pub struct Handle {
-    state: Option<ShellState>,
-    handle: Weak<Cell<bool>>,
-    shell_surface: *mut wlr_xdg_surface_v6
-}
-
-impl Clone for Handle {
-    fn clone(&self) -> Self {
-        let state = match self.state {
-            None => None,
-            Some(ref state) => Some(unsafe { state.clone() })
-        };
-        Handle { state,
-                                  handle: self.handle.clone(),
-                                  shell_surface: self.shell_surface }
-    }
-}
-
 impl Surface {
     pub(crate) unsafe fn new<T>(shell_surface: *mut wlr_xdg_surface_v6, state: T) -> Self
         where T: Into<Option<ShellState>>
@@ -88,15 +93,6 @@ impl Surface {
         Surface { liveliness,
                             state: state,
                             shell_surface }
-    }
-
-    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-                               .upgrade()
-                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(Surface { liveliness,
-                               state: handle.clone().state,
-                               shell_surface: handle.as_ptr() })
     }
 
     /// Gets the surface used by this XDG shell.
@@ -192,20 +188,6 @@ impl Surface {
             wlr_xdg_surface_v6_for_each_surface(self.shell_surface, Some(c_iterator), iterator_ptr);
         }
     }
-
-    /// Creates a weak reference to an `Surface`.
-    ///
-    /// # Panics
-    /// If this `Surface` is a previously upgraded `Handle`,
-    /// then this function will panic.
-    pub fn weak_reference(&self) -> Handle {
-        Handle { handle: Rc::downgrade(&self.liveliness),
-                                  state: match self.state {
-                                      None => None,
-                                      Some(ref state) => unsafe { Some(state.clone()) }
-                                  },
-                                  shell_surface: self.shell_surface }
-    }
 }
 
 impl Drop for Surface {
@@ -228,118 +210,45 @@ impl Drop for Surface {
     }
 }
 
-impl Handle {
-    /// Constructs a new xdg_shell_v6::Handle that is always invalid. Calling `run` on this
-    /// will always fail.
-    ///
-    /// This is useful for pre-filling a value before it's provided by the server, or
-    /// for mocking/testing.
-    pub fn new() -> Self {
-        unsafe {
-            Handle { handle: Weak::new(),
-                                      state: None,
-                                      shell_surface: ptr::null_mut() }
-        }
-    }
-
-    /// Creates a xdg_shell_v6::Handle from the raw pointer, using the saved
-    /// user data to recreate the memory model.
-    pub(crate) unsafe fn from_ptr(shell_surface: *mut wlr_xdg_surface_v6) -> Self {
-        if shell_surface.is_null() {
-            panic!("shell surface was null")
-        }
-        let data = (*shell_surface).data as *mut SurfaceState;
-        if data.is_null() {
-            panic!("Cannot construct handle from a shell surface that has not been set up!");
-        }
-        let handle = (*data).handle.clone();
-        let state = match (*data).shell_state {
+impl Handleable<OptionalShellState, wlr_xdg_surface_v6> for Surface {
+    #[doc(hidden)]
+    unsafe fn from_ptr(shell_surface: *mut wlr_xdg_surface_v6) -> Self {
+        let data = &mut *((*shell_surface).data as *mut SurfaceState);
+        let state = match data.shell_state {
             None => None,
-            Some(ref state) => Some(unsafe { state.clone() })
+            Some(ref state) => Some(state.clone())
         };
-        Handle { handle,
-                                  state,
-                                  shell_surface }
+        let liveliness = data.handle.upgrade().unwrap();
+        Surface { liveliness,
+                  state,
+                  shell_surface }
     }
 
-    /// Upgrades the wayland shell handle to a reference to the backing `Surface`.
-    ///
-    /// # Unsafety
-    /// This function is unsafe, because it creates an unbound `Surface`
-    /// which may live forever..
-    /// But no surface lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Surface> {
-        self.handle.upgrade()
-            .ok_or(HandleErr::AlreadyDropped)
-            // NOTE
-            // We drop the Rc here because having two would allow a dangling
-            // pointer to exist!
-            .and_then(|check| {
-                let shell_surface = Surface::from_handle(self)?;
-                if check.get() {
-                    return Err(HandleErr::AlreadyBorrowed)
-                }
-                check.set(true);
-                Ok(shell_surface)
-            })
-    }
-
-    /// Run a function on the referenced Surface, if it still exists
-    ///
-    /// Returns the result of the function, if successful
-    ///
-    /// # Safety
-    /// By enforcing a rather harsh limit on the lifetime of the output
-    /// to a short lived scope of an anonymous function,
-    /// this function ensures the Surface does not live longer
-    /// than it exists.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
-    /// This will happen if you call `upgrade` directly within this callback,
-    /// or if you run this function within the another run to the same `Output`.
-    ///
-    /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut Surface) -> R
-    {
-        let mut xdg_surface = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut xdg_surface)));
-        self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running Surface callback, \
-                                                    mutable lock was false for: {:?}",
-                                                   xdg_surface);
-                                          panic!("Lock in incorrect state!");
-                                      }
-                                      check.set(false);
-                                  });
-        match res {
-            Ok(res) => Ok(res),
-            Err(err) => panic::resume_unwind(err)
-        }
-    }
-
+    #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut wlr_xdg_surface_v6 {
         self.shell_surface
     }
-}
 
-impl Default for Handle {
-    fn default() -> Self {
-        Handle::new()
+    #[doc(hidden)]
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
+        let liveliness = handle.handle
+            .upgrade()
+            .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Surface { liveliness,
+                     shell_surface: handle.ptr,
+                     state: handle.data.clone().0 })
+    }
+
+    fn weak_reference(&self) -> Handle {
+        Handle { ptr: self.shell_surface,
+                 handle: Rc::downgrade(&self.liveliness),
+                 data: OptionalShellState(match self.state {
+                     None => None,
+                     Some(ref state) => Some(unsafe { state.clone() })
+                 }),
+                 _marker: std::marker::PhantomData }
     }
 }
-
-impl PartialEq for Handle {
-    fn eq(&self, other: &Handle) -> bool {
-        self.shell_surface == other.shell_surface
-    }
-}
-
-impl Eq for Handle {}
 
 impl TopLevel {
     pub(crate) unsafe fn from_shell(shell_surface: *mut wlr_xdg_surface_v6,
@@ -495,3 +404,4 @@ impl ShellState {
         }
     }
 }
+

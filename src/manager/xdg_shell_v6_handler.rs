@@ -7,7 +7,8 @@ use wlroots_sys::wlr_xdg_surface_v6;
 
 use {compositor,
      surface,
-     shell::xdg_shell_v6::{self, SurfaceState}};
+     shell::xdg_shell_v6::{self, SurfaceState},
+     utils::Handleable};
 
 /// Handles events from the client XDG v6 shells.
 #[allow(unused_variables)]

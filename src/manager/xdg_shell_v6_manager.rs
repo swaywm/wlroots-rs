@@ -4,7 +4,10 @@ use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface_v6, wlr_xdg_surface_v6_role::*};
 
-use {compositor, shell::xdg_shell_v6::{self, ShellState}, surface};
+use {compositor,
+     shell::xdg_shell_v6::{self, ShellState},
+     surface,
+     utils::Handleable};
 use super::xdg_shell_v6_handler::XdgShellV6;
 
 pub trait ManagerHandler {
