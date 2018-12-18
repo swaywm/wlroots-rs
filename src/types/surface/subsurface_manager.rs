@@ -14,7 +14,7 @@ use wlroots_sys::wlr_subsurface;
 
 use {surface::subsurface::{self, Subsurface}, utils::Handleable};
 
-wayland_listener!(pub(crate) SubsurfaceManager, Vec<Subsurface>, [
+wayland_listener!(pub SubsurfaceManager, Vec<Subsurface>, [
     subsurface_created_listener => subsurface_created_notify:
                                    |this: &mut SubsurfaceManager, data: *mut libc::c_void,|
     unsafe {

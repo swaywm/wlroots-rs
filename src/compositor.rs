@@ -20,7 +20,8 @@ use {backend::{self, UnsafeRenderSetupFunction, Backend, Session},
      output,
      render::GenericRenderer,
      shell::{xdg_shell, xdg_shell_v6},
-     xwayland};
+     xwayland,
+     utils::Handleable};
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 pub(crate) static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
