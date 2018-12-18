@@ -105,6 +105,7 @@ impl <D, T, W: Handleable<D, T>> Handle<D, T, W> {
     ///
     /// # Panics
     /// This function is allowed to panic when attempting to upgrade the handle.
+    #[allow(dead_code)]
     pub(crate) unsafe fn from_ptr(ptr: *mut T) -> Handle<D, T, W> {
         let wrapped_resource = W::from_ptr(ptr);
         wrapped_resource.weak_reference()
