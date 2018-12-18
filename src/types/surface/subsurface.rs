@@ -1,12 +1,17 @@
 //! TODO Documentation
 
-use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
+use std::{cell::Cell, rc::Rc};
 
 use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_subsurface;
 
-use {compositor, errors::{HandleErr, HandleResult}, surface};
+use {compositor,
+     errors::{HandleErr, HandleResult},
+     surface,
+     utils::{self, Handleable}};
+
+pub type Handle = utils::Handle<(), wlr_subsurface, Subsurface>;
 
 #[allow(unused_variables)]
 pub trait Handler {
@@ -44,17 +49,6 @@ pub struct Subsurface {
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `surface::Handle`.
     liveliness: Rc<Cell<bool>>,
-    /// The pointer to the wlroots object that wraps a wl_surface.
-    subsurface: *mut wlr_subsurface
-}
-
-#[derive(Clone, Debug)]
-pub struct Handle {
-    /// The Rc that ensures that this handle is still alive.
-    ///
-    /// When wlroots deallocates the pointer associated with this handle,
-    /// this can no longer be used.
-    handle: Weak<Cell<bool>>,
     /// The pointer to the wlroots object that wraps a wl_surface.
     subsurface: *mut wlr_subsurface
 }
@@ -103,105 +97,38 @@ impl Subsurface {
     pub fn reordered(&self) -> bool {
         unsafe { (*self.subsurface).reordered }
     }
-
-    /// Creates a weak reference to a `Subsurface`.
-    ///
-    /// # Panics
-    /// If this `Subsurface` is a previously upgraded `subsurface::Handle`
-    /// then this function will panic.
-    pub fn weak_reference(&self) -> Handle {
-        Handle { handle: Rc::downgrade(&self.liveliness),
-                           subsurface: self.subsurface }
-    }
-
-    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-                               .upgrade()
-                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(Subsurface { liveliness,
-                        subsurface: handle.subsurface })
-    }
 }
 
-impl Handle {
-    /// Constructs a new subsurface::Handle that is always invalid. Calling `run` on this
-    /// will always fail.
-    ///
-    /// This is useful for pre-filling a value before it's provided by the server, or
-    /// for mocking/testing.
-    pub fn new() -> Self {
-        unsafe {
-            Handle { handle: Weak::new(),
-                               subsurface: ptr::null_mut() }
+impl Handleable<(), wlr_subsurface> for Subsurface {
+    #[doc(hidden)]
+    unsafe fn from_ptr(subsurface: *mut wlr_subsurface) -> Self {
+        let data = (*subsurface).data as *mut InternalSubsurface;
+        Subsurface {
+            liveliness: (*data).data.0.liveliness.clone(),
+            subsurface
         }
     }
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_subsurface {
+
+    #[doc(hidden)]
+    unsafe fn as_ptr(&self) -> *mut wlr_subsurface {
         self.subsurface
     }
 
-    /// Upgrades the surface handle to a reference to the backing `Surface`.
-    ///
-    /// # Unsafety
-    /// This function is unsafe, because it creates an unbound `Surface`
-    /// which may live forever..
-    /// But no surface lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Subsurface> {
-        self.handle.upgrade()
-            .ok_or(HandleErr::AlreadyDropped)
-            // NOTE
-            // We drop the Rc here because having two would allow a dangling
-            // pointer to exist!
-            .and_then(|check| {
-                if check.get() {
-                    return Err(HandleErr::AlreadyBorrowed)
-                }
-                check.set(true);
-                Subsurface::from_handle(self)
-            })
+    #[doc(hidden)]
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
+        let liveliness = handle.handle
+            .upgrade()
+            .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Subsurface { liveliness,
+                        subsurface: handle.ptr })
     }
 
-    /// Run a function on the referenced Surface, if it still exists
-    ///
-    /// Returns the result of the function, if successful
-    ///
-    /// # Safety
-    /// By enforcing a rather harsh limit on the lifetime of the surface
-    /// to a short lived scope of an anonymous function,
-    /// this function ensures the Surface does not live longer
-    /// than it exists.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
-    /// This will happen if you call `upgrade` directly within this callback,
-    /// or if you run this function within the another run to the same `Surface`.
-    ///
-    /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut Subsurface) -> R
-    {
-        let mut subsurface = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut subsurface)));
-        self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running subsurface callback, mutable \
-                                                    lock was false for: {:?}",
-                                                   subsurface);
-                                          panic!("Lock in incorrect state!");
-                                      }
-                                      check.set(false);
-                                  });
-        match res {
-            Ok(res) => Ok(res),
-            Err(err) => panic::resume_unwind(err)
+    fn weak_reference(&self) -> Handle {
+        Handle { ptr: self.subsurface,
+                 handle: Rc::downgrade(&self.liveliness),
+                 data: (),
+                 _marker: std::marker::PhantomData
         }
-    }
-}
-
-impl Default for Handle {
-    fn default() -> Self {
-        Handle::new()
     }
 }
 
