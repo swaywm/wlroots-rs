@@ -4,7 +4,7 @@ use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_xwayland_surface;
 
-use {compositor, xwayland};
+use {compositor, xwayland, utils::Handleable};
 
 pub trait ManagerHandler {
     /// Callback that's triggered when the XWayland library is ready.

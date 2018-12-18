@@ -1,4 +1,4 @@
-use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
+use std::{ptr, cell::Cell, rc::{Rc, Weak}};
 
 use libc::{self, size_t, int16_t, uint16_t};
 
@@ -11,8 +11,10 @@ use {area::{Area, Size, Origin},
      errors::{HandleErr, HandleResult},
      surface::{self, InternalState},
      xwayland,
-     utils::c_to_rust_string};
+     utils::{self, Handleable, c_to_rust_string}};
 pub use xwayland::hints::{Hints, SizeHints};
+
+pub type Handle = utils::Handle<(), wlr_xwayland_surface, Surface>;
 
 #[allow(unused_variables)]
 pub trait Handler {
@@ -357,12 +359,6 @@ pub struct Surface {
     shell_surface: *mut wlr_xwayland_surface
 }
 
-#[derive(Debug, Clone)]
-pub struct Handle {
-    handle: Weak<Cell<bool>>,
-    shell_surface: *mut wlr_xwayland_surface
-}
-
 impl Surface {
     pub(crate) unsafe fn new(shell_surface: *mut wlr_xwayland_surface) -> Self {
         (*shell_surface).data = ptr::null_mut();
@@ -371,20 +367,6 @@ impl Surface {
         (*shell_surface).data = Box::into_raw(state) as *mut _;
         Surface { liveliness,
                           shell_surface }
-    }
-
-    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-                               .upgrade()
-                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(Surface { liveliness,
-                             shell_surface: handle.as_ptr() })
-    }
-
-    /// Creates a weak reference to an `Surface`.
-    pub fn weak_reference(&self) -> Handle {
-        Handle { handle: Rc::downgrade(&self.liveliness),
-                                shell_surface: self.shell_surface }
     }
 
     /// Get the window id for this surface.
@@ -588,96 +570,6 @@ impl Surface {
     }
 }
 
-impl Handle {
-    /// Constructs a new `xwayland::surface::Handle` that is always invalid. Calling `run` on this
-    /// will always fail.
-    ///
-    /// This is useful for pre-filling a value before it's provided by the server, or for
-    /// mocking/testing.
-    pub fn new() -> Self {
-        unsafe {
-            Handle { handle: Weak::new(),
-                                    shell_surface: ptr::null_mut() }
-        }
-    }
-
-    /// Creates a `xwayland::surface::Handle` from the raw pointer, using the saved
-    /// user data to recreate the memory model.
-    pub(crate) unsafe fn from_ptr(shell_surface: *mut wlr_xwayland_surface) -> Self {
-        let data = (*shell_surface).data as *mut State;
-        if data.is_null() {
-            panic!("Cannot construct handle from a shell surface that has not been set up!");
-        }
-        let handle = (*data).handle.clone();
-        Handle { handle,
-                                shell_surface }
-    }
-
-    /// Upgrades the xwayland shell handle to a reference to the backing `Surface`.
-    ///
-    /// # Unsafety
-    /// This function is unsafe, because it creates an unbound `Surface`
-    /// which may live forever..
-    /// But no surface lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Surface> {
-        self.handle.upgrade()
-            .ok_or(HandleErr::AlreadyDropped)
-            // NOTE
-            // We drop the Rc here because having two would allow a dangling
-            // pointer to exist!
-            .and_then(|check| {
-                let shell_surface = Surface::from_handle(self)?;
-                if check.get() {
-                    return Err(HandleErr::AlreadyBorrowed)
-                }
-                check.set(true);
-                Ok(shell_surface)
-            })
-    }
-
-    /// Run a function on the referenced `Surface`, if it still exists
-    ///
-    /// Returns the result of the function, if successful
-    ///
-    /// # Safety
-    /// By enforcing a rather harsh limit on the lifetime of the output
-    /// to a short lived scope of an anonymous function,
-    /// this function ensures the `Surface` does not live longer
-    /// than it exists.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
-    /// This will happen if you call `upgrade` directly within this callback,
-    /// or if you run this function within the another run to the same `Surface`.
-    ///
-    /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut Surface) -> R
-    {
-        let mut wl_shell_surface = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut wl_shell_surface)));
-        self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running Surface callback, \
-                                                    mutable lock was false for: {:?}",
-                                                   wl_shell_surface);
-                                          panic!("Lock in incorrect state!");
-                                      }
-                                      check.set(false);
-                                  });
-        match res {
-            Ok(res) => Ok(res),
-            Err(err) => panic::resume_unwind(err)
-        }
-    }
-
-    unsafe fn as_ptr(&self) -> *mut wlr_xwayland_surface {
-        self.shell_surface
-    }
-}
-
 impl Drop for Surface {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) > 1 {
@@ -689,19 +581,36 @@ impl Drop for Surface {
     }
 }
 
-impl Default for Handle {
-    fn default() -> Self {
-        Handle::new()
+impl Handleable<(), wlr_xwayland_surface> for Surface {
+    #[doc(hidden)]
+    unsafe fn from_ptr(shell_surface: *mut wlr_xwayland_surface) -> Self {
+        let data = (*shell_surface).data as *mut State;
+        let liveliness = (*data).handle.upgrade().unwrap();
+        Surface { liveliness, shell_surface }
+    }
+
+    #[doc(hidden)]
+    unsafe fn as_ptr(&self) -> *mut wlr_xwayland_surface {
+        self.shell_surface
+    }
+
+    #[doc(hidden)]
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
+        let liveliness = handle.handle
+            .upgrade()
+            .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Surface { liveliness,
+                     shell_surface: handle.as_ptr() })
+    }
+
+    /// Creates a weak reference to an `Surface`.
+    fn weak_reference(&self) -> Handle {
+        Handle { ptr: self.shell_surface,
+                 handle: Rc::downgrade(&self.liveliness),
+                 _marker: std::marker::PhantomData,
+                 data: () }
     }
 }
-
-impl PartialEq for Handle {
-    fn eq(&self, other: &Handle) -> bool {
-        self.shell_surface == other.shell_surface
-    }
-}
-
-impl Eq for Handle {}
 
 impl Drop for Shell {
     fn drop(&mut self) {
