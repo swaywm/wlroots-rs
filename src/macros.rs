@@ -33,28 +33,32 @@ macro_rules! wl_list_for_each {
     }
 }
 
-/// Convert a literal string to a C string.
-/// Note: Does not check for internal nulls, nor does it do any conversions on
-/// the grapheme clustors. Just passes the bytes as is.
-/// So probably only works on ASCII.
-#[macro_export]
-macro_rules! c_str {
-    ($s:expr) => {
-        concat!($s, "\0").as_ptr() as *const $crate::libc::c_char
-    }
-}
-
 /// Logs a message using wlroots' logging capability.
 ///
-/// Possible values for `verb`:
+/// Example:
+/// ```rust,no_run,ignore
+/// #[macro_use]
+/// use wlroots::log::{init_logging, L_DEBUG, L_ERROR};
 ///
-/// * L_SILENT
-/// * WLR_INFO
-/// * WLR_DEBUG
-/// * WLR_ERROR
+/// // Call this once, at the beginning of your program.
+/// init_logging(WLR_DEBUG, None);
+///
+/// wlr_log!(L_DEBUG, "Hello world");
+/// wlr_log!(L_ERROR, "Could not {:#?} the {}", foo, bar);
+/// ```
 #[macro_export]
 macro_rules! wlr_log {
     ($verb: expr, $($msg:tt)*) => {{
+        /// Convert a literal string to a C string.
+        /// Note: Does not check for internal nulls, nor does it do any conversions on
+        /// the grapheme clustors. Just passes the bytes as is.
+        /// So probably only works on ASCII.
+        macro_rules! c_str {
+            ($s:expr) => {
+                concat!($s, "\0").as_ptr()
+                    as *const $crate::wlroots_sys::libc::c_char
+            }
+        }
         use $crate::wlroots_sys::_wlr_log;
         use $crate::wlroots_sys::wlr_log_importance::*;
         use ::std::ffi::CString;
@@ -108,7 +112,7 @@ macro_rules! wlr_log {
 ///
 /// wayland_listener!(
 ///     // The name of the structure that will be defined.
-///     InputManager,
+///     pub(crate) InputManager,
 ///     // The type that's stored in the `data` field.
 ///     // Note that we use a Box here to achieve dynamic dispatch,
 ///     // it's not required for this type to be in a box.
@@ -141,11 +145,12 @@ macro_rules! wlr_log {
 /// Second, this macro doesn't protect against the stored data being unsized.
 /// Passing a pointer of unsized data to C is UB, don't do it.
 macro_rules! wayland_listener {
-    ($struct_name: ident, $data: ty, $([
+    ($pub: vis $struct_name: ident, $data: ty, $([
         $($listener: ident => $listener_func: ident :
           |$($func_arg:ident: $func_type:ty,)*| unsafe $body: block;)*])+) => {
         #[repr(C)]
-        pub struct $struct_name {
+        #[doc(hidden)]
+        $pub struct $struct_name {
             data: $data,
             $($($listener: $crate::wlroots_sys::wl_listener),*)*
         }
@@ -195,11 +200,12 @@ macro_rules! wayland_listener {
 /// It will automatically implement the CompositorData trait for the struct,
 /// and also add a method to `Compositor` to unwrap the data from the fat
 /// pointer.
+#[cfg(feature = "unstable")]
 #[macro_export]
 macro_rules! compositor_data {
     ($struct_name: ty) => {
-        impl<'a>::std::convert::From<&'a mut $crate::Compositor> for &'a mut $struct_name {
-            fn from(compositor: &'a mut $crate::Compositor) -> &'a mut $struct_name {
+        impl<'a>::std::convert::From<&'a mut $crate::compositor::Compositor> for &'a mut $struct_name {
+            fn from(compositor: &'a mut $crate::compositor::Compositor) -> &'a mut $struct_name {
                 &mut *compositor.data.downcast_mut::<$struct_name>()
                     .unwrap_or_else(|| {
                         wlr_log!(WLR_ERROR, "Could not cast compositor state to {:#?}",
@@ -241,6 +247,7 @@ macro_rules! compositor_data {
 /// })
 /// ```
 ///
+#[cfg(feature = "unstable")]
 #[macro_export]
 macro_rules! with_handles {
     ([($handle_name: ident: $unhandle_name: block)] => $body: block) => {
@@ -253,11 +260,11 @@ macro_rules! with_handles {
       $($rest: tt)*] => $body: block) => {
         $unhandle_name1.run(|$handle_name1| {
             with_handles!([($handle_name2: $unhandle_name2), $($rest)*] => $body)
-        }).and_then(|n: $crate::HandleResult<_>| n)
+        }).and_then(|n: $crate::utils::HandleResult<_>| n)
     };
     ([($handle_name: ident: $unhandle_name: block), $($rest: tt)*] => $body: block) => {
         $unhandle_name.run(|$handle_name| {
             with_handles!([$($rest)*] => $body)
-        }).and_then(|n: $crate::HandleResult<_>| n)
+        }).and_then(|n: $crate::utils::HandleResult<_>| n)
     };
 }

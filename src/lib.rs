@@ -1,64 +1,47 @@
 //! This crate provides safe bindings to
 //! [wlroots](https://github.com/swaywm/wlroots).
-//!
-//! Start your [Compositor](struct.Compositor.html) by implementing an [input
-//! manager](manager/struct.InputManager.html) and an [output
-//! manager](manager/struct.OutputManager.html) on two separate structs.
+#![cfg_attr(not(feature = "unstable"), allow(unused_imports, unused_macros))]
 
 #![allow(unused_unsafe)]
 #[macro_use]
 extern crate bitflags;
-extern crate lazy_static;
-pub extern crate libc;
 extern crate vsprintf;
 #[macro_use]
 pub extern crate wlroots_sys;
-pub extern crate wlroots_dehandle;
+extern crate wlroots_dehandle;
+#[cfg(feature = "unstable")]
 pub extern crate xkbcommon;
 
+#[cfg(feature = "unstable")]
 pub use wlroots_dehandle::wlroots_dehandle;
-pub use wlroots_sys::wayland_sys;
+pub(crate) use wlroots_sys::wayland_sys;
+pub(crate) use wlroots_sys::libc;
 
 #[macro_use]
 mod macros;
-mod manager;
-mod compositor;
-mod errors;
-pub mod events;
-pub mod types;
+#[cfg(feature = "unstable")]
+pub(crate) mod manager;
+#[cfg(feature = "unstable")]
+pub mod compositor;
+#[cfg(feature = "unstable")]
+pub(crate) mod events;
+mod types;
+#[cfg(feature = "unstable")]
 pub mod extensions;
+#[cfg(feature = "unstable")]
 pub mod render;
 pub mod utils;
-mod xwayland;
-mod backend;
+#[cfg(feature = "unstable")]
+pub mod xwayland;
+#[cfg(feature = "unstable")]
+pub mod backend;
 
-pub use self::backend::*;
-pub use self::compositor::{compositor_handle, terminate, Compositor, CompositorBuilder,
-                           CompositorHandle, CompositorHandler};
-pub use self::events::{key_events, seat_events, tablet_pad_events, tablet_tool_events,
-                       touch_events, xwayland_events,
-                       pointer_events::{self, BTN_BACK, BTN_EXTRA, BTN_FORWARD, BTN_LEFT,
-                                        BTN_MIDDLE, BTN_MOUSE, BTN_RIGHT, BTN_SIDE, BTN_TASK},
-                       xdg_shell_v6_events, xdg_shell_events};
-pub use self::manager::{InputManagerHandler, KeyboardHandler, OutputBuilder, OutputBuilderResult,
-                        OutputHandler, OutputManagerHandler, PointerHandler, TabletPadHandler,
-                        TabletToolHandler, TouchHandler, XdgV6ShellHandler,
-                        XdgV6ShellManagerHandler, XdgShellHandler, XdgShellManagerHandler,
-                        DragIconHandler};
+pub use types::*;
 
-pub use self::types::area::*;
-pub use self::types::cursor::*;
-pub use self::types::data_device::*;
-pub use self::types::input::*;
-pub use self::types::output::*;
-pub use self::types::seat::*;
-pub use self::types::shell::*;
-pub use self::types::surface::*;
-pub use self::xwayland::{XWaylandManagerHandler, XWaylandServer, XWaylandSurface,
-                         XWaylandSurfaceHandle, XWaylandSurfaceHandler, XWaylandSurfaceHints,
-                         XWaylandSurfaceSizeHints};
-pub use key_events::Key;
-pub use wlroots_sys::{wlr_keyboard_modifiers, wlr_tablet_tool_axes, wl_shm_format::{self, *},
+#[cfg(feature = "unstable")]
+pub use wlroots_sys::{wlr_keyboard_modifiers as KeyboardModifiers,
+                      wlr_tablet_tool_axes as TabletToolAxes,
+                      wl_shm_format::{self, *},
                       wlr_axis_orientation::{self, *}, wlr_axis_source::{self, *},
                       wlr_button_state::{self, *}, wlr_input_device_type::{self, *},
                       wlr_key_state::{self, *}, wlr_keyboard_modifier::{self, *},
@@ -66,8 +49,3 @@ pub use wlroots_sys::{wlr_keyboard_modifiers, wlr_tablet_tool_axes, wl_shm_forma
                       wlr_tablet_pad_strip_source::{self, *},
                       wlr_tablet_tool_proximity_state::{self, *}};
 
-pub use self::render::{matrix_identity, matrix_multiply, matrix_projection, matrix_rotate,
-                       matrix_scale, matrix_transform, matrix_translate, matrix_transpose,
-                       project_box, GenericRenderer, Image, Renderer, Texture, TextureFormat};
-
-pub use self::errors::*;

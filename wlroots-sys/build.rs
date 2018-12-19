@@ -40,7 +40,7 @@ fn main() {
         .hide_type("FP_ZERO")
         .hide_type("FP_SUBNORMAL")
         .hide_type("FP_NORMAL");
-    if cfg!(feature = "unstable-features") {
+    if cfg!(feature = "unstable") {
         builder = builder.clang_arg("-DWLR_USE_UNSTABLE");
     }
     let generated = builder.generate().unwrap();
@@ -56,6 +56,7 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=xcb-shm");
     println!("cargo:rustc-link-lib=dylib=xcb-icccm");
     println!("cargo:rustc-link-lib=dylib=xcb-xkb");
+    println!("cargo:rustc-link-lib=dylib=xcb-xinput");
     println!("cargo:rustc-link-lib=dylib=wayland-egl");
     println!("cargo:rustc-link-lib=dylib=wayland-client");
     println!("cargo:rustc-link-lib=dylib=wayland-server");

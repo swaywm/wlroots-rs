@@ -4,42 +4,41 @@ use wlroots_sys::{wlr_xdg_toplevel_v6_move_event, wlr_xdg_toplevel_v6_resize_eve
                   wlr_xdg_toplevel_v6_set_fullscreen_event,
                   wlr_xdg_toplevel_v6_show_window_menu_event};
 
-use {OutputHandle, XdgV6ShellSurfaceHandle};
-use utils::Edges;
+use {output, shell::xdg_shell_v6, utils::edges::Edges};
 
 /// Event that triggers when the surface has been moved in coordinate space.
 #[derive(Debug, PartialEq, Eq)]
-pub struct MoveEvent {
+pub struct Move {
     event: *mut wlr_xdg_toplevel_v6_move_event
 }
 
 /// Event that triggers when the suface has been resized.
 #[derive(Debug, PartialEq, Eq)]
-pub struct ResizeEvent {
+pub struct Resize {
     event: *mut wlr_xdg_toplevel_v6_resize_event
 }
 
 /// Event that is triggered when the surface toggles between being fullscreen
 /// or not.
 #[derive(Debug, PartialEq, Eq)]
-pub struct SetFullscreenEvent {
+pub struct SetFullscreen {
     event: *mut wlr_xdg_toplevel_v6_set_fullscreen_event
 }
 
 /// Event that is triggered when the surface shows the window menu.
 #[derive(Debug, PartialEq, Eq)]
-pub struct ShowWindowMenuEvent {
+pub struct ShowWindowMenu {
     event: *mut wlr_xdg_toplevel_v6_show_window_menu_event
 }
 
-impl MoveEvent {
+impl Move {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_xdg_toplevel_v6_move_event) -> Self {
-        MoveEvent { event }
+        Move { event }
     }
 
     /// Get a handle to the surface associated with this event.
-    pub fn surface(&self) -> XdgV6ShellSurfaceHandle {
-        unsafe { XdgV6ShellSurfaceHandle::from_ptr((*self.event).surface) }
+    pub fn surface(&self) -> xdg_shell_v6::Handle {
+        unsafe { xdg_shell_v6::Handle::from_ptr((*self.event).surface) }
     }
 
     // TODO Get seat client
@@ -49,14 +48,14 @@ impl MoveEvent {
     }
 }
 
-impl ResizeEvent {
+impl Resize {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_xdg_toplevel_v6_resize_event) -> Self {
-        ResizeEvent { event }
+        Resize { event }
     }
 
     /// Get a handle to the surface associated with this event.
-    pub fn surface(&self) -> XdgV6ShellSurfaceHandle {
-        unsafe { XdgV6ShellSurfaceHandle::from_ptr((*self.event).surface) }
+    pub fn surface(&self) -> xdg_shell_v6::Handle {
+        unsafe { xdg_shell_v6::Handle::from_ptr((*self.event).surface) }
     }
 
     // TODO Get seat client
@@ -76,14 +75,14 @@ impl ResizeEvent {
     }
 }
 
-impl SetFullscreenEvent {
+impl SetFullscreen {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_xdg_toplevel_v6_set_fullscreen_event) -> Self {
-        SetFullscreenEvent { event }
+        SetFullscreen { event }
     }
 
     /// Get a handle to the surface associated with this event.
-    pub fn surface(&self) -> XdgV6ShellSurfaceHandle {
-        unsafe { XdgV6ShellSurfaceHandle::from_ptr((*self.event).surface) }
+    pub fn surface(&self) -> xdg_shell_v6::Handle {
+        unsafe { xdg_shell_v6::Handle::from_ptr((*self.event).surface) }
     }
 
     /// Determine if the event is to trigger fullscreen or to stop being
@@ -93,19 +92,19 @@ impl SetFullscreenEvent {
     }
 
     /// Get a handle to the output that this fullscreen event refers to.
-    pub fn output(&self) -> OutputHandle {
-        unsafe { OutputHandle::from_ptr((*self.event).output) }
+    pub fn output(&self) -> output::Handle {
+        unsafe { output::Handle::from_ptr((*self.event).output) }
     }
 }
 
-impl ShowWindowMenuEvent {
+impl ShowWindowMenu {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_xdg_toplevel_v6_show_window_menu_event) -> Self {
-        ShowWindowMenuEvent { event }
+        ShowWindowMenu { event }
     }
 
     /// Get a handle to the surface associated with this event.
-    pub fn surface(&self) -> XdgV6ShellSurfaceHandle {
-        unsafe { XdgV6ShellSurfaceHandle::from_ptr((*self.event).surface) }
+    pub fn surface(&self) -> xdg_shell_v6::Handle {
+        unsafe { xdg_shell_v6::Handle::from_ptr((*self.event).surface) }
     }
 
     // TODO seat client

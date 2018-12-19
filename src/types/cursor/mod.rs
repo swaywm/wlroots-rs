@@ -1,7 +1,8 @@
+#[cfg(feature = "unstable")]
 mod cursor;
-mod xcursor;
-mod xcursor_manager;
+pub mod xcursor;
+#[cfg(feature = "unstable")]
+pub(crate) mod xcursor_manager;
 
-pub use self::cursor::{Cursor, CursorHandle, CursorHandler};
-pub use self::xcursor::*;
-pub use self::xcursor_manager::*;
+#[cfg(feature = "unstable")]
+pub use self::cursor::*;

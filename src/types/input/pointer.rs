@@ -1,11 +1,15 @@
 //! TODO Documentation
 
-use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}};
+use std::{cell::Cell, rc::Rc};
 
-use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
-use super::input_device::{InputDevice, InputState};
+use {input::{self, InputState},
+     utils::{self, Handleable, HandleErr, HandleResult}};
+pub use manager::pointer_handler::*;
+pub use events::pointer_events as event;
+
+pub type Handle = utils::Handle<*mut wlr_input_device, wlr_pointer, Pointer>;
 
 #[derive(Debug)]
 pub struct Pointer {
@@ -14,26 +18,13 @@ pub struct Pointer {
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
     ///
-    /// If this is `None`, then this is from an upgraded `PointerHandle`, and
+    /// If this is `None`, then this is from an upgraded `pointer::Handle`, and
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
-    /// marked function `upgrade` on a `PointerHandle`.
+    /// marked function `upgrade` on a `pointer::Handle`.
     liveliness: Rc<Cell<bool>>,
     /// The device that refers to this pointer.
-    device: InputDevice,
-    /// The underlying pointer data.
-    pointer: *mut wlr_pointer
-}
-
-#[derive(Debug)]
-pub struct PointerHandle {
-    /// The Rc that ensures that this handle is still alive.
-    ///
-    /// When wlroots deallocates the pointer associated with this handle,
-    /// this can no longer be used.
-    handle: Weak<Cell<bool>>,
-    /// The device that refers to this pointer.
-    device: InputDevice,
+    device: input::Device,
     /// The underlying pointer data.
     pointer: *mut wlr_pointer
 }
@@ -54,28 +45,18 @@ impl Pointer {
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
                 let state = Box::new(InputState { handle,
-                                                  device: InputDevice::from_ptr(device) });
+                                                  device: input::Device::from_ptr(device) });
                 (*pointer).data = Box::into_raw(state) as *mut _;
                 Some(Pointer { liveliness,
-                               device: InputDevice::from_ptr(device),
+                               device: input::Device::from_ptr(device),
                                pointer })
             }
             _ => None
         }
     }
 
-    /// Creates an unbound Pointer from a `PointerHandle`
-    unsafe fn from_handle(handle: &PointerHandle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-                               .upgrade()
-                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(Pointer { liveliness,
-                     device: handle.input_device()?.clone(),
-                     pointer: handle.as_ptr() })
-    }
-
     /// Gets the wlr_input_device associated with this Pointer.
-    pub fn input_device(&self) -> &InputDevice {
+    pub fn input_device(&self) -> &input::Device {
         &self.device
     }
 
@@ -83,20 +64,6 @@ impl Pointer {
     #[allow(dead_code)]
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_pointer {
         self.pointer
-    }
-
-    /// Creates a weak reference to a `Pointer`.
-    ///
-    /// # Panics
-    /// If this `Pointer` is a previously upgraded `PointerHandle`,
-    /// then this function will panic.
-    pub fn weak_reference(&self) -> PointerHandle {
-        PointerHandle { handle: Rc::downgrade(&self.liveliness),
-                        // NOTE Rationale for cloning:
-                        // We can't use the keyboard handle unless the keyboard is alive,
-                        // which means the device pointer is still alive.
-                        device: unsafe { self.device.clone() },
-                        pointer: self.pointer }
     }
 }
 
@@ -118,138 +85,44 @@ impl Drop for Pointer {
     }
 }
 
-impl PointerHandle {
-    /// Constructs a new PointerHandle that is always invalid. Calling `run` on this
-    /// will always fail.
-    ///
-    /// This is useful for pre-filling a value before it's provided by the server, or
-    /// for mocking/testing.
-    pub fn new() -> Self {
-        unsafe {
-            PointerHandle { handle: Weak::new(),
-                            // NOTE Rationale for null pointer here:
-                            // It's never used, because you can never upgrade it,
-                            // so no way to dereference it and trigger UB.
-                            device: InputDevice::from_ptr(ptr::null_mut()),
-                            pointer: ptr::null_mut() }
-        }
-    }
-
-    /// Creates a PointerHandle from the raw pointer, using the saved user
-    /// data to recreate the memory model.
-    ///
-    /// # Panics
-    /// Panics if the wlr_pointer wasn't allocated using `new_from_input_device`.
-    pub(crate) unsafe fn from_ptr(pointer: *mut wlr_pointer) -> Self {
-        if (*pointer).data.is_null() {
-            panic!("Tried to get handle to keyboard that wasn't set up properly");
-        }
+impl Handleable<*mut wlr_input_device, wlr_pointer> for Pointer {
+    #[doc(hidden)]
+    unsafe fn from_ptr(pointer: *mut wlr_pointer) -> Self {
         let data = Box::from_raw((*pointer).data as *mut InputState);
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*pointer).data = Box::into_raw(data) as *mut _;
-        PointerHandle { handle,
-                        device,
-                        pointer }
+        Pointer { liveliness: handle.upgrade().unwrap(),
+                  device,
+                  pointer }
     }
 
-    /// Upgrades the pointer handle to a reference to the backing `Pointer`.
-    ///
-    /// # Unsafety
-    /// This function is unsafe, because it creates an unbound `Pointer`
-    /// which may live forever..
-    /// But no pointer lives forever and might be disconnected at any time.
-    pub unsafe fn upgrade(&self) -> HandleResult<Pointer> {
-        self.handle.upgrade()
-            .ok_or(HandleErr::AlreadyDropped)
-            // NOTE
-            // We drop the Rc here because having two would allow a dangling
-            // pointer to exist!
-            .and_then(|check| {
-                let pointer = Pointer::from_handle(self)?;
-                if check.get() {
-                    wlr_log!(WLR_ERROR, "Double mutable borrows on {:?}", pointer);
-                    panic!("Double mutable borrows detected");
-                }
-                check.set(true);
-                Ok(pointer)
-            })
-    }
-
-    /// Run a function on the referenced Pointer, if it still exists
-    ///
-    /// Returns the result of the function, if successful
-    ///
-    /// # Safety
-    /// By enforcing a rather harsh limit on the lifetime of the output
-    /// to a short lived scope of an anonymous function,
-    /// this function ensures the Pointer does not live longer
-    /// than it exists.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
-    /// This will happen if you call `upgrade` directly within this callback,
-    /// or if you run this function within the another run to the same `Output`.
-    ///
-    /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&Pointer) -> R
-    {
-        let mut pointer = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut pointer)));
-        self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running pointer callback, mutable lock \
-                                                    was false for: {:?}",
-                                                   pointer);
-                                          panic!("Lock in incorrect state!");
-                                      }
-                                      check.set(false);
-                                  });
-        match res {
-            Ok(res) => Ok(res),
-            Err(err) => panic::resume_unwind(err)
-        }
-    }
-
-    /// Gets the wlr_input_device associated with this PointerHandle.
-    pub fn input_device(&self) -> HandleResult<&InputDevice> {
-        match self.handle.upgrade() {
-            Some(_) => Ok(&self.device),
-            None => Err(HandleErr::AlreadyDropped)
-        }
-    }
-
-    /// Gets the wlr_pointer associated with this PointerHandle.
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_pointer {
+    #[doc(hidden)]
+    unsafe fn as_ptr(&self) -> *mut wlr_pointer {
         self.pointer
     }
-}
 
-impl Default for PointerHandle {
-    fn default() -> Self {
-        PointerHandle::new()
+    #[doc(hidden)]
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
+        let liveliness = handle.handle
+            .upgrade()
+            .ok_or(HandleErr::AlreadyDropped)?;
+        Ok(Pointer { liveliness,
+                     // NOTE Rationale for cloning:
+                     // If we already dropped we don't reach this point.
+                     device: input::Device { device: handle.data },
+                     pointer: handle.as_ptr()
+        })
+    }
+
+    fn weak_reference(&self) -> Handle {
+        Handle { ptr: self.pointer,
+                 handle: Rc::downgrade(&self.liveliness),
+                 // NOTE Rationale for cloning:
+                 // Since we have a strong reference already,
+                 // the input must still be alive.
+                 data: unsafe { self.device.as_ptr() },
+                 _marker: std::marker::PhantomData
+        }
     }
 }
-
-impl Clone for PointerHandle {
-    fn clone(&self) -> Self {
-        PointerHandle { pointer: self.pointer,
-                        handle: self.handle.clone(),
-                        /// NOTE Rationale for unsafe clone:
-                        ///
-                        /// You can only access it after a call to `upgrade`,
-                        /// and that implicitly checks that it is valid.
-                        device: unsafe { self.device.clone() } }
-    }
-}
-
-impl PartialEq for PointerHandle {
-    fn eq(&self, other: &PointerHandle) -> bool {
-        self.pointer == other.pointer
-    }
-}
-
-impl Eq for PointerHandle {}

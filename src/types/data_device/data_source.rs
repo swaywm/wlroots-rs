@@ -6,12 +6,12 @@ use wlroots_sys::{wl_data_device_manager_dnd_action, wlr_data_offer, wlr_data_so
 
 /// An offering of data
 #[derive(Debug)]
-pub struct DataOffer<'source> {
+pub struct Offer<'source> {
     offer: *mut wlr_data_offer,
-    phantom: PhantomData<&'source DataSource>
+    phantom: PhantomData<&'source Source>
 }
 
-impl<'source> DataOffer<'source> {
+impl<'source> Offer<'source> {
     pub fn actions(&self) -> u32 {
         unsafe { (*self.offer).actions }
     }
@@ -26,21 +26,13 @@ impl<'source> DataOffer<'source> {
 }
 
 #[derive(Debug)]
-pub struct DataSource {
+pub struct Source {
     source: *mut wlr_data_source
 }
 
 // TODO Be able to set the function pointers?
 
-impl DataSource {
-    /// Get the data offer from this source.
-    pub fn offer<'source>(&'source mut self) -> DataOffer<'source> {
-        unsafe {
-            DataOffer { offer: (*self.source).offer,
-                        phantom: PhantomData }
-        }
-    }
-
+impl Source {
     // TODO Mime types
 
     pub fn action(&self) -> i32 {

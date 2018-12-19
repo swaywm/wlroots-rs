@@ -2,41 +2,42 @@
 
 use wlroots_sys::{wlr_button_state, wlr_event_tablet_tool_axis, wlr_event_tablet_tool_button,
                   wlr_event_tablet_tool_proximity, wlr_event_tablet_tool_tip,
-                  wlr_tablet_tool_axes, wlr_tablet_tool_proximity_state, wlr_tablet_tool_tip_state};
+                  wlr_tablet_tool_proximity_state, wlr_tablet_tool_tip_state};
+use input::tablet_tool;
 
 #[derive(Debug)]
 /// Event that is triggered when a tablet tool axis event occurs.
-pub struct AxisEvent {
+pub struct Axis {
     event: *mut wlr_event_tablet_tool_axis
 }
 
 #[derive(Debug)]
 /// Event that is triggered when a tablet tool proximity event occurs.
-pub struct ProximityEvent {
+pub struct Proximity {
     event: *mut wlr_event_tablet_tool_proximity
 }
 
 /// Event that is triggered when a tablet tool tip event occurs.
-pub struct TipEvent {
+pub struct Tip {
     event: *mut wlr_event_tablet_tool_tip
 }
 
 /// Event that is triggered when a tablet tool button event occurs.
-pub struct ButtonEvent {
+pub struct Button {
     event: *mut wlr_event_tablet_tool_button
 }
 
-impl AxisEvent {
+impl Axis {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_tablet_tool_axis) -> Self {
-        AxisEvent { event }
+        Axis { event }
     }
 
     pub fn time_msec(&self) -> u32 {
         unsafe { (*self.event).time_msec }
     }
 
-    pub fn updated_axes(&self) -> TabletToolAxis {
-        unsafe { TabletToolAxis::from_bits_truncate((*self.event).updated_axes) }
+    pub fn updated_axes(&self) -> tablet_tool::Axis {
+        unsafe { tablet_tool::Axis::from_bits_truncate((*self.event).updated_axes) }
     }
 
     /// Gets the position of the event.
@@ -70,9 +71,9 @@ impl AxisEvent {
     }
 }
 
-impl ProximityEvent {
+impl Proximity {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_tablet_tool_proximity) -> Self {
-        ProximityEvent { event }
+        Proximity { event }
     }
 
     pub fn time_msec(&self) -> u32 {
@@ -91,9 +92,9 @@ impl ProximityEvent {
     }
 }
 
-impl TipEvent {
+impl Tip {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_tablet_tool_tip) -> Self {
-        TipEvent { event }
+        Tip { event }
     }
 
     pub fn time_msec(&self) -> u32 {
@@ -112,9 +113,9 @@ impl TipEvent {
     }
 }
 
-impl ButtonEvent {
+impl Button {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_tablet_tool_button) -> Self {
-        ButtonEvent { event }
+        Button { event }
     }
 
     pub fn time_msec(&self) -> u32 {
@@ -127,22 +128,5 @@ impl ButtonEvent {
 
     pub fn state(&self) -> wlr_button_state {
         unsafe { (*self.event).state }
-    }
-}
-
-bitflags! {
-    pub struct TabletToolAxis: u32 {
-        const WLR_TABLET_TOOL_AXIS_X =
-            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_X as u32;
-        const WLR_TABLET_TOOL_AXIS_Y =
-            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_Y as u32;
-        const WLR_TABLET_TOOL_AXIS_DISTANCE =
-            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_DISTANCE as u32;
-        const WLR_TABLET_TOOL_AXIS_PRESSURE =
-            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_PRESSURE as u32;
-        const WLR_TABLET_TOOL_AXIS_TILT_X =
-            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_TILT_X as u32;
-        const WLR_TABLET_TOOL_AXIS_TILT_Y =
-            wlr_tablet_tool_axes::WLR_TABLET_TOOL_AXIS_TILT_Y as u32;
     }
 }

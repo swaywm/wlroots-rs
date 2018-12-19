@@ -4,19 +4,19 @@ use std::marker::PhantomData;
 
 use wlroots_sys::wlr_output_mode;
 
-use Output;
+use output::Output;
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct OutputMode<'output> {
+pub struct Mode<'output> {
     output_mode: *mut wlr_output_mode,
     phantom: PhantomData<&'output Output>
 }
 
-impl<'output> OutputMode<'output> {
+impl<'output> Mode<'output> {
     /// NOTE This is a lifetime defined by the user of this function, but it must not outlive
     /// the `Output` that hosts this output mode.
-    pub(crate) unsafe fn new<'unbound>(output_mode: *mut wlr_output_mode) -> OutputMode<'unbound> {
-        OutputMode { output_mode,
+    pub(crate) unsafe fn new<'unbound>(output_mode: *mut wlr_output_mode) -> Mode<'unbound> {
+        Mode { output_mode,
                      phantom: PhantomData }
     }
 
@@ -24,12 +24,12 @@ impl<'output> OutputMode<'output> {
         self.output_mode
     }
 
-    /// Gets the flags set on this OutputMode.
+    /// Gets the flags set on this Mode.
     pub fn flags(&self) -> u32 {
         unsafe { (*self.output_mode).flags }
     }
 
-    /// Gets the dimensions of this OutputMode.
+    /// Gets the dimensions of this Mode.
     ///
     /// Returned value is (width, height)
     pub fn dimensions(&self) -> (i32, i32) {

@@ -1,15 +1,21 @@
 //! TODO Documentation
-use std::{fmt, panic, ptr, cell::Cell, rc::{Rc, Weak}};
+use std::{fmt, cell::Cell, rc::Rc};
 
-use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
-                  wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap};
-pub use wlroots_sys::{wlr_key_state, wlr_keyboard_modifiers};
-
+                  wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap,
+                  xkb_keysym_t};
+pub use wlroots_sys::wlr_key_state;
 use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex};
 use xkbcommon::xkb::ffi::{xkb_keymap, xkb_state};
 
-use super::input_device::{InputDevice, InputState};
+use {KeyboardModifiers,
+     input::{self, InputState},
+     utils::{self, Handleable, HandleErr, HandleResult}};
+pub use manager::keyboard_handler::*;
+pub use events::key_events as event;
+
+pub type Key = xkb_keysym_t;
+pub type Handle = utils::Handle<*mut wlr_input_device, wlr_keyboard, Keyboard>;
 
 /// Information about repeated keypresses for a particular Keyboard.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -27,25 +33,13 @@ pub struct Keyboard {
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
     ///
-    /// If this is `None`, then this is from an upgraded `KeyboardHandle`, and
+    /// If this is `None`, then this is from an upgraded `keyboard::Handle`, and
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
-    /// marked function `upgrade` on a `KeyboardHandle`.
+    /// marked function `upgrade` on a `keyboard::Handle`.
     liveliness: Rc<Cell<bool>>,
     /// The device that refers to this keyboard.
-    device: InputDevice,
-    /// The underlying keyboard data.
-    keyboard: *mut wlr_keyboard
-}
-
-#[derive(Debug)]
-pub struct KeyboardHandle {
-    /// The Rc that ensures that this handle is still alive.
-    ///
-    /// When wlroots deallocates the keyboard associated with this handle,
-    handle: Weak<Cell<bool>>,
-    /// The device that refers to this keyboard.
-    device: InputDevice,
+    device: input::Device,
     /// The underlying keyboard data.
     keyboard: *mut wlr_keyboard
 }
@@ -66,32 +60,23 @@ impl Keyboard {
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
                 let state = Box::new(InputState { handle,
-                                                  device: InputDevice::from_ptr(device) });
+                                                  device: input::Device::from_ptr(device) });
                 (*keyboard).data = Box::into_raw(state) as *mut _;
                 Some(Keyboard { liveliness,
-                                device: InputDevice::from_ptr(device),
+                                device: input::Device::from_ptr(device),
                                 keyboard })
             }
             _ => None
         }
     }
 
-    unsafe fn from_handle(handle: &KeyboardHandle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-                               .upgrade()
-                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(Keyboard { liveliness,
-                      device: handle.input_device()?.clone(),
-                      keyboard: handle.as_ptr() })
-    }
-
-    /// Gets the wlr_keyboard associated with this KeyboardHandle.
+    /// Gets the wlr_keyboard associated with this keyboard::Handle.
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
         self.keyboard
     }
 
-    /// Gets the wlr_input_device associated with this KeyboardHandle
-    pub fn input_device(&self) -> &InputDevice {
+    /// Gets the wlr_input_device associated with this keyboard::Handle
+    pub fn input_device(&self) -> &input::Device {
         &self.device
     }
 
@@ -168,34 +153,20 @@ impl Keyboard {
     /// Update the LED lights using the provided bitmap.
     ///
     /// 1 means one, 0 means off.
-    pub fn update_led(&mut self, leds: KeyboardLed) {
+    pub fn update_led(&mut self, leds: Led) {
         unsafe {
             wlr_keyboard_led_update(self.keyboard, leds.bits() as u32);
         }
     }
 
     /// Get the modifiers that are currently pressed on the keyboard.
-    pub fn get_modifiers(&self) -> KeyboardModifier {
-        unsafe { KeyboardModifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard)) }
+    pub fn get_modifiers(&self) -> Modifier {
+        unsafe { Modifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard)) }
     }
 
     /// Get the modifier masks for each group.
-    pub fn get_modifier_masks(&self) -> wlr_keyboard_modifiers {
+    pub fn get_modifier_masks(&self) -> KeyboardModifiers {
         unsafe { (*self.keyboard).modifiers }
-    }
-
-    /// Creates a weak reference to a `Keyboard`.
-    ///
-    /// # Panics
-    /// If this `Keyboard` is a previously upgraded `KeyboardHandle`,
-    /// then this function will panic.
-    pub fn weak_reference(&self) -> KeyboardHandle {
-        KeyboardHandle { handle: Rc::downgrade(&self.liveliness),
-                         // NOTE Rationale for cloning:
-                         // We can't use the keyboard handle unless the keyboard is alive,
-                         // which means the device pointer is still alive.
-                         device: unsafe { self.device.clone() },
-                         keyboard: self.keyboard }
     }
 }
 
@@ -217,135 +188,50 @@ impl Drop for Keyboard {
     }
 }
 
-impl KeyboardHandle {
-    /// Constructs a new KeyboardHandle that is always invalid. Calling `run` on this
-    /// will always fail.
-    ///
-    /// This is useful for pre-filling a value before it's provided by the server, or
-    /// for mocking/testing.
-    pub fn new() -> Self {
-        unsafe {
-            KeyboardHandle { handle: Weak::new(),
-                             // NOTE Rationale for null pointer here:
-                             // It's never used, because you can never upgrade it,
-                             // so no way to dereference it and trigger UB.
-                             device: InputDevice::from_ptr(ptr::null_mut()),
-                             keyboard: ptr::null_mut() }
-        }
-    }
-
-    /// Creates an KeyboardHandle from the raw pointer, using the saved
-    /// user data to recreate the memory model.
-    ///
-    /// # Panics
-    /// Panics if the wlr_keyboard wasn't allocated using `new_from_input_device`.
-    pub(crate) unsafe fn from_ptr(keyboard: *mut wlr_keyboard) -> Self {
-        if (*keyboard).data.is_null() {
-            panic!("Tried to get handle to keyboard that wasn't set up properly");
-        }
+impl Handleable<*mut wlr_input_device, wlr_keyboard> for Keyboard {
+    #[doc(hidden)]
+    unsafe fn from_ptr(keyboard: *mut wlr_keyboard) -> Self {
         let data = Box::from_raw((*keyboard).data as *mut InputState);
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*keyboard).data = Box::into_raw(data) as *mut _;
-        KeyboardHandle { handle,
-                         keyboard,
-                         device }
+        Keyboard { liveliness: handle.upgrade().unwrap(),
+                   device,
+                   keyboard }
     }
 
-    /// Upgrades the keyboard handle to a reference to the backing `Keyboard`.
-    ///
-    /// # Unsafety
-    /// This function is unsafe, because it creates an unbounded `Keyboard`
-    /// which may live forever..
-    /// But no keyboard lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Keyboard> {
-        self.handle.upgrade()
-            .ok_or(HandleErr::AlreadyDropped)
-            // NOTE
-            // We drop the Rc here because having two would allow a dangling
-            // pointer to exist!
-            .and_then(|check| {
-                let keyboard = Keyboard::from_handle(self)?;
-                if check.get() {
-                    return Err(HandleErr::AlreadyBorrowed)
-                }
-                check.set(true);
-                Ok(keyboard)
-            })
-    }
-
-    /// Run a function on the referenced Keyboard, if it still exists
-    ///
-    /// Returns the result of the function, if successful
-    ///
-    /// # Safety
-    /// By enforcing a rather harsh limit on the lifetime of the output
-    /// to a short lived scope of an anonymous function,
-    /// this function ensures the Keyboard does not live longer
-    /// than it exists.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
-    /// This will happen if you call `upgrade` directly within this callback,
-    /// or if you run this function within the another run to the same `Output`.
-    ///
-    /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut Keyboard) -> R
-    {
-        let mut keyboard = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut keyboard)));
-        self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running keyboard callback, mutable \
-                                                    lock was false for: {:?}",
-                                                   keyboard);
-                                          panic!("Lock in incorrect state!");
-                                      }
-                                      check.set(false);
-                                  });
-        match res {
-            Ok(res) => Ok(res),
-            Err(err) => panic::resume_unwind(err)
-        }
-    }
-
-    /// Gets the wlr_input_device associated with this KeyboardHandle
-    pub fn input_device(&self) -> HandleResult<&InputDevice> {
-        match self.handle.upgrade() {
-            Some(_) => Ok(&self.device),
-            None => Err(HandleErr::AlreadyDropped)
-        }
-    }
-
-    /// Gets the wlr_keyboard associated with this KeyboardHandle.
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
+    #[doc(hidden)]
+    unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
         self.keyboard
     }
-}
 
-impl Default for KeyboardHandle {
-    fn default() -> Self {
-        KeyboardHandle::new()
+    #[doc(hidden)]
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
+        let liveliness = handle.handle
+            .upgrade()
+            .ok_or(HandleErr::AlreadyDropped)?;
+        Ok(Keyboard { liveliness,
+                      // NOTE Rationale for cloning:
+                      // If we already dropped we don't reach this point.
+                      device: input::Device { device: handle.data },
+                      keyboard: handle.as_ptr()
+        })
     }
-}
 
-impl Clone for KeyboardHandle {
-    fn clone(&self) -> Self {
-        KeyboardHandle { keyboard: self.keyboard,
-                         handle: self.handle.clone(),
-                         /// NOTE Rationale for unsafe clone:
-                         ///
-                         /// You can only access it after a call to `upgrade`,
-                         /// and that implicitly checks that it is valid.
-                         device: unsafe { self.device.clone() } }
+    fn weak_reference(&self) -> Handle {
+        Handle { ptr: self.keyboard,
+                 handle: Rc::downgrade(&self.liveliness),
+                 // NOTE Rationale for cloning:
+                 // Since we have a strong reference already,
+                 // the input must still be alive.
+                 data: unsafe { self.device.as_ptr() },
+                 _marker: std::marker::PhantomData
+        }
     }
 }
 
 bitflags! {
-    pub struct KeyboardLed: u32 {
+    pub struct Led: u32 {
         const WLR_LED_NUM_LOCK = wlr_keyboard_led::WLR_LED_NUM_LOCK as u32;
         const WLR_LED_CAPS_LOCK = wlr_keyboard_led::WLR_LED_CAPS_LOCK as u32;
         const WLR_LED_SCROLL_LOCK = wlr_keyboard_led::WLR_LED_SCROLL_LOCK as u32;
@@ -353,7 +239,7 @@ bitflags! {
 }
 
 bitflags! {
-    pub struct KeyboardModifier: u32 {
+    pub struct Modifier: u32 {
         const WLR_MODIFIER_SHIFT = wlr_keyboard_modifier::WLR_MODIFIER_SHIFT as u32;
         const WLR_MODIFIER_CAPS = wlr_keyboard_modifier::WLR_MODIFIER_CAPS as u32;
         const WLR_MODIFIER_CTRL = wlr_keyboard_modifier::WLR_MODIFIER_CTRL as u32;
@@ -365,16 +251,16 @@ bitflags! {
     }
 }
 
-impl fmt::Display for KeyboardModifier {
+impl fmt::Display for Modifier {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let mod_vec = vec![("Shift", KeyboardModifier::WLR_MODIFIER_SHIFT),
-                           ("Caps lock", KeyboardModifier::WLR_MODIFIER_CAPS),
-                           ("Ctrl", KeyboardModifier::WLR_MODIFIER_CTRL),
-                           ("Alt", KeyboardModifier::WLR_MODIFIER_ALT),
-                           ("Mod2", KeyboardModifier::WLR_MODIFIER_MOD2),
-                           ("Mod3", KeyboardModifier::WLR_MODIFIER_MOD3),
-                           ("Logo", KeyboardModifier::WLR_MODIFIER_LOGO),
-                           ("Mod5", KeyboardModifier::WLR_MODIFIER_MOD5)];
+        let mod_vec = vec![("Shift", Modifier::WLR_MODIFIER_SHIFT),
+                           ("Caps lock", Modifier::WLR_MODIFIER_CAPS),
+                           ("Ctrl", Modifier::WLR_MODIFIER_CTRL),
+                           ("Alt", Modifier::WLR_MODIFIER_ALT),
+                           ("Mod2", Modifier::WLR_MODIFIER_MOD2),
+                           ("Mod3", Modifier::WLR_MODIFIER_MOD3),
+                           ("Logo", Modifier::WLR_MODIFIER_LOGO),
+                           ("Mod5", Modifier::WLR_MODIFIER_MOD5)];
 
         let mods: Vec<&str> = mod_vec.into_iter()
                                      .filter(|&(_, flag)| self.contains(flag))
@@ -384,11 +270,3 @@ impl fmt::Display for KeyboardModifier {
         write!(formatter, "{:?}", mods)
     }
 }
-
-impl PartialEq for KeyboardHandle {
-    fn eq(&self, other: &KeyboardHandle) -> bool {
-        self.keyboard == other.keyboard
-    }
-}
-
-impl Eq for KeyboardHandle {}

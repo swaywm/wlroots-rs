@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
-extern crate libc;
+pub extern crate libc;
 pub extern crate wayland_commons;
 pub extern crate wayland_server;
 #[macro_use]
@@ -39,9 +39,12 @@ mod generated {
 }
 pub use self::generated::*;
 
+#[cfg(feature = "unstable")]
 pub type wlr_output_events = self::generated::wlr_output__bindgen_ty_1;
+#[cfg(feature = "unstable")]
 pub type wlr_input_device_pointer = self::generated::wlr_input_device__bindgen_ty_1;
 
+#[cfg(feature = "unstable")]
 impl wl_output_transform {
     /// Returns the transform that, when composed with `self`, gives
     /// `WL_OUTPUT_TRANSFORM_NORMAL`.

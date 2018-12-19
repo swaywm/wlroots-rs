@@ -10,31 +10,42 @@ use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_su
                   wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_surface_at,
                   wlr_surface_is_xdg_surface, wlr_surface_get_texture};
 
-use super::{Subsurface, SubsurfaceHandle, SubsurfaceHandler, SubsurfaceManager, SurfaceState,
-            InternalSubsurface};
-use compositor::{compositor_handle, CompositorHandle};
-use Output;
-use errors::{HandleErr, HandleResult};
-use render::Texture;
-use utils::c_to_rust_string;
+use {compositor,
+     surface::{self,
+               subsurface::{self, Subsurface, InternalSubsurface},
+               subsurface_manager::SubsurfaceManager},
+     output::Output,
+     render::Texture,
+     utils::{self, Handleable, HandleErr, HandleResult, c_to_rust_string}};
 
-pub trait SurfaceHandler {
-    fn on_commit(&mut self, CompositorHandle, SurfaceHandle) {}
+pub type Handle = utils::Handle<Weak<Box<SubsurfaceManager>>,
+                                wlr_surface,
+                                Surface>;
 
-    fn new_subsurface(&mut self, CompositorHandle, SurfaceHandle, SubsurfaceHandle) -> Option<Box<SubsurfaceHandler>> {
+#[allow(unused_variables)]
+pub trait Handler {
+    fn on_commit(&mut self,
+                 compositor_handle: compositor::Handle,
+                 suface_handle: Handle) {}
+
+    fn new_subsurface(&mut self,
+                      compositor_hadle: compositor::Handle,
+                      surface_handle: Handle,
+                      subsurface_handle: subsurface::Handle)
+                      -> Option<Box<subsurface::Handler>> {
         None
     }
 
-    fn on_destroy(&mut self, CompositorHandle, SurfaceHandle) {}
+    fn on_destroy(&mut self, compositor::Handle, Handle) {}
 }
 
-impl SurfaceHandler for () {}
+impl Handler for () {}
 
-wayland_listener!(InternalSurface, (Surface, Box<SurfaceHandler>), [
+wayland_listener!(pub(crate) InternalSurface, (Surface, Box<Handler>), [
     on_commit_listener => on_commit_notify: |this: &mut InternalSurface, _data: *mut libc::c_void,|
     unsafe {
         let (ref mut surface, ref mut manager) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -44,7 +55,7 @@ wayland_listener!(InternalSurface, (Surface, Box<SurfaceHandler>), [
                                                      data: *mut libc::c_void,|
     unsafe {
         let (ref mut surface, ref mut manager) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -62,13 +73,13 @@ wayland_listener!(InternalSurface, (Surface, Box<SurfaceHandler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut InternalSurface, data: *mut libc::c_void,|
     unsafe {
         let (ref mut surface, ref mut manager) = this.data;
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
         manager.on_destroy(compositor, surface.weak_reference());
         let surface_ptr = data as *mut wlr_surface;
-        let surface_state_ptr = (*surface_ptr).data as *mut InternalSurfaceState;
+        let surface_state_ptr = (*surface_ptr).data as *mut InternalState;
         // NOTE that wlroots cleans up the wlr_surface properly (so the Surface drop is called).
         // This just insures we clean up our listeners.
         Box::<InternalSurface>::from_raw((*surface_state_ptr).surface);
@@ -76,19 +87,19 @@ wayland_listener!(InternalSurface, (Surface, Box<SurfaceHandler>), [
 ]);
 
 impl InternalSurface {
-    pub(crate) unsafe fn data(&mut self) -> &mut (Surface, Box<SurfaceHandler>) {
+    pub(crate) unsafe fn data(&mut self) -> &mut (Surface, Box<Handler>) {
         &mut self.data
     }
 }
 
 /// The state stored in the wlr_surface user data.
-pub(crate) struct InternalSurfaceState {
+pub(crate) struct InternalState {
     /// Pointer to the backing storage of the surface.
     pub(crate) surface: *mut InternalSurface,
-    /// Used to reconstruct a SurfaceHandle from just an *mut wlr_surface.
+    /// Used to reconstruct a surface::Handle from just an *mut wlr_surface.
     handle: Weak<Cell<bool>>,
     /// Weak reference to the manager for the list of subsurfaces.
-    /// This is here so that we can reconstruct the Surface from a SurfaceHandle.
+    /// This is here so that we can reconstruct the Surface from a surface::Handle.
     subsurfaces_manager: Weak<Box<SubsurfaceManager>>
 }
 
@@ -103,10 +114,10 @@ pub struct Surface {
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
     ///
-    /// If this is `None`, then this is from an upgraded `SurfaceHandle`, and
+    /// If this is `None`, then this is from an upgraded `surface::Handle`, and
     /// the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
-    /// marked function `upgrade` on a `SurfaceHandle`.
+    /// marked function `upgrade` on a `surface::Handle`.
     liveliness: Rc<Cell<bool>>,
     /// The manager of the list of subsurfaces for this surface.
     ///
@@ -120,23 +131,6 @@ pub struct Surface {
     surface: *mut wlr_surface
 }
 
-/// See `Surface` for more information on how to use this structure.
-#[derive(Clone, Debug)]
-pub struct SurfaceHandle {
-    /// The Rc that ensures that this handle is still alive.
-    ///
-    /// When wlroots deallocates the pointer associated with this handle,
-    /// this can no longer be used.
-    handle: Weak<Cell<bool>>,
-    /// Weak reference to the manager of the list of subsurfaces for this surface.
-    ///
-    /// Used when reconstructing a `Surface` so that we can access
-    /// the list of subsurfaces.
-    subsurfaces_manager: Weak<Box<SubsurfaceManager>>,
-    /// The pointer to the wlroots object that wraps a wl_surface.
-    surface: *mut wlr_surface
-}
-
 impl Surface {
     pub(crate) unsafe fn new(surface: *mut wlr_surface) -> Self {
         if !(*surface).data.is_null() {
@@ -146,7 +140,7 @@ impl Surface {
         let handle = Rc::downgrade(&liveliness);
         let subsurfaces_manager = Rc::new(Surface::create_manager(surface));
         let weak_manager = Rc::downgrade(&subsurfaces_manager);
-        (*surface).data = Box::into_raw(Box::new(InternalSurfaceState { surface: ptr::null_mut(),
+        (*surface).data = Box::into_raw(Box::new(InternalState { surface: ptr::null_mut(),
                                                                         handle,
                                                                         subsurfaces_manager:
                                                                         weak_manager }))
@@ -181,23 +175,23 @@ impl Surface {
     }
 
     /// Get the surface state.
-    pub fn current_state<'surface>(&'surface mut self) -> SurfaceState<'surface> {
+    pub fn current_state<'surface>(&'surface mut self) -> surface::State<'surface> {
         unsafe {
             let state = (*self.surface).current;
-            SurfaceState::new(state)
+            surface::State::new(state)
         }
     }
 
     /// Get the pending surface state.
-    pub fn pending_state<'surface>(&'surface mut self) -> SurfaceState<'surface> {
+    pub fn pending_state<'surface>(&'surface mut self) -> surface::State<'surface> {
         unsafe {
             let state = (*self.surface).current;
-            SurfaceState::new(state)
+            surface::State::new(state)
         }
     }
 
     /// Gets a list of handles to the `Subsurface`s of this `Surface`.
-    pub fn subsurfaces(&self) -> Vec<SubsurfaceHandle> {
+    pub fn subsurfaces(&self) -> Vec<subsurface::Handle> {
         self.subsurfaces_manager.subsurfaces()
     }
 
@@ -255,25 +249,25 @@ impl Surface {
                          sy: f64,
                          sub_x: &mut f64,
                          sub_y: &mut f64)
-                         -> Option<SurfaceHandle> {
+                         -> Option<Handle> {
         unsafe {
             let surface = wlr_surface_surface_at(self.surface, sx, sy, sub_x, sub_y);
             if surface.is_null() {
                 None
             } else {
-                Some(SurfaceHandle::from_ptr(surface))
+                Some(Handle::from_ptr(surface))
             }
         }
     }
 
     /// Get the top of the subsurface tree for this surface.
-    pub fn get_root_surface(&self) -> Option<SurfaceHandle> {
+    pub fn get_root_surface(&self) -> Option<Handle> {
         unsafe {
             let surface = wlr_surface_get_root_surface(self.surface);
             if surface.is_null() {
                 None
             } else {
-                Some(SurfaceHandle::from_ptr(surface))
+                Some(Handle::from_ptr(surface))
             }
         }
     }
@@ -297,136 +291,45 @@ impl Surface {
             wlr_surface_send_frame_done(self.surface, &when);
         }
     }
+}
 
-    /// Get the matrix used to convert the internal byte buffer to use in the
-    /// surface.
-    /*pub fn buffer_to_surface_matrix(&self) -> [f32; 9] {
-        unsafe { (*self.surface).buffer_to_surface_matrix }
+impl Handleable<Weak<Box<SubsurfaceManager>>, wlr_surface> for Surface {
+    #[doc(hidden)]
+    unsafe fn from_ptr(surface: *mut wlr_surface) -> Self {
+        let data = (*surface).data as *mut InternalState;
+        let liveliness = (*data).handle.upgrade().unwrap();
+        let subsurfaces_manager = (*data).subsurfaces_manager.clone().upgrade().unwrap();
+        Surface { surface,
+                  liveliness,
+                  subsurfaces_manager
+        }
     }
 
-    /// Get the matrix used to convert the surface back to the internal byte
-    /// buffer.
-    pub fn surface_to_buffer_matrix(&self) -> [f32; 9] {
-        unsafe { (*self.surface).surface_to_buffer_matrix }
-    }
-    */
-
-    /// Creates a weak reference to a `Surface`.
-    ///
-    /// # Panics
-    /// If this `Surface` is a previously upgraded `SurfaceHandle`
-    /// then this function will panic.
-    pub fn weak_reference(&self) -> SurfaceHandle {
-        SurfaceHandle { handle: Rc::downgrade(&self.liveliness),
-                        surface: self.surface,
-                        subsurfaces_manager: Rc::downgrade(&self.subsurfaces_manager) }
+    #[doc(hidden)]
+    unsafe fn as_ptr(&self) -> *mut wlr_surface {
+        self.surface
     }
 
-    unsafe fn from_handle(handle: &SurfaceHandle) -> HandleResult<Self> {
-        let data = (*handle.surface).data as *mut InternalSurfaceState;
+    #[doc(hidden)]
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
+        let data = (*handle.ptr).data as *mut InternalState;
         let subsurfaces_manager = (*data).subsurfaces_manager
-                                         .clone()
-                                         .upgrade()
-                                         .expect("Could not upgrade subsurfaces list");
+            .clone()
+            .upgrade()
+            .expect("Could not upgrade subsurfaces list");
         let liveliness = handle.handle
-                               .upgrade()
-                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
+            .upgrade()
+            .ok_or_else(|| HandleErr::AlreadyDropped)?;
         Ok(Surface { liveliness,
                      subsurfaces_manager,
-                     surface: handle.surface })
-    }
-}
-
-impl SurfaceHandle {
-    /// Constructs a new SurfaceHandle that is always invalid. Calling `run` on this
-    /// will always fail.
-    ///
-    /// This is useful for pre-filling a value before it's provided by the server, or
-    /// for mocking/testing.
-    pub fn new() -> Self {
-        unsafe {
-            SurfaceHandle { handle: Weak::new(),
-                            subsurfaces_manager: Weak::new(),
-                            surface: ptr::null_mut() }
-        }
-    }
-    /// Creates an SurfaceHandle from the raw pointer, using the saved
-    /// user data to recreate the memory model.
-    pub(crate) unsafe fn from_ptr(surface: *mut wlr_surface) -> Self {
-        let data = (*surface).data as *mut InternalSurfaceState;
-        if data.is_null() {
-            panic!("Surface has not been set up");
-        }
-        let handle = (*data).handle.clone();
-        let subsurfaces_manager = (*data).subsurfaces_manager.clone();
-        SurfaceHandle { handle,
-                        surface,
-                        subsurfaces_manager }
+                     surface: handle.ptr })
     }
 
-    /// Upgrades the surface handle to a reference to the backing `Surface`.
-    ///
-    /// # Unsafety
-    /// This function is unsafe, because it creates an unbound `Surface`
-    /// which may live forever..
-    /// But no surface lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> HandleResult<Surface> {
-        self.handle.upgrade()
-            .ok_or(HandleErr::AlreadyDropped)
-            // NOTE
-            // We drop the Rc here because having two would allow a dangling
-            // pointer to exist!
-            .and_then(|check| {
-                if check.get() {
-                    return Err(HandleErr::AlreadyBorrowed)
-                }
-                check.set(true);
-                Surface::from_handle(self)
-            })
-    }
-
-    /// Run a function on the referenced Surface, if it still exists
-    ///
-    /// Returns the result of the function, if successful
-    ///
-    /// # Safety
-    /// By enforcing a rather harsh limit on the lifetime of the surface
-    /// to a short lived scope of an anonymous function,
-    /// this function ensures the Surface does not live longer
-    /// than it exists.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
-    /// This will happen if you call `upgrade` directly within this callback,
-    /// or if you run this function within the another run to the same `Surface`.
-    ///
-    /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut Surface) -> R
-    {
-        let mut surface = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut surface)));
-        self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running surface callback, mutable lock \
-                                                    was false for: {:?}",
-                                                   surface);
-                                          panic!("Lock in incorrect state!");
-                                      }
-                                      check.set(false);
-                                  });
-        match res {
-            Ok(res) => Ok(res),
-            Err(err) => panic::resume_unwind(err)
-        }
-    }
-}
-
-impl Default for SurfaceHandle {
-    fn default() -> Self {
-        SurfaceHandle::new()
+    fn weak_reference(&self) -> Handle {
+        Handle { handle: Rc::downgrade(&self.liveliness),
+                 ptr: self.surface,
+                 data: Rc::downgrade(&self.subsurfaces_manager),
+                 _marker: std::marker::PhantomData }
     }
 }
 
@@ -444,7 +347,7 @@ impl Drop for Surface {
                      self.surface);
         }
         unsafe {
-            Box::from_raw((*self.surface).data as *mut InternalSurfaceState);
+            Box::from_raw((*self.surface).data as *mut InternalState);
         }
     }
 }

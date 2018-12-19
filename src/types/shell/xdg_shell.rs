@@ -1,39 +1,59 @@
 //! TODO Documentation
 
-use std::{panic, ptr};
-use std::cell::Cell;
-use std::rc::{Rc, Weak};
+use std::{cell::Cell, rc::{Rc, Weak}, panic, ptr};
 
+use libc::c_void;
 use wlroots_sys::{wlr_xdg_popup, wlr_xdg_surface, wlr_xdg_surface_ping,
                   wlr_xdg_surface_role, wlr_xdg_surface_send_close,
                   wlr_xdg_surface_surface_at, wlr_xdg_toplevel,
                   wlr_xdg_toplevel_set_activated, wlr_xdg_toplevel_set_fullscreen,
                   wlr_xdg_toplevel_set_maximized, wlr_xdg_toplevel_set_resizing,
                   wlr_xdg_toplevel_set_size, wlr_xdg_toplevel_state,
-                  wlr_xdg_surface_for_each_surface, wlr_surface, wlr_xdg_surface_from_wlr_surface};
+                  wlr_xdg_surface_for_each_surface, wlr_surface};
 
-use {Area, SeatHandle, SurfaceHandle, Surface};
-use errors::{HandleErr, HandleResult};
-use utils::c_to_rust_string;
-use manager::XdgShell;
-use libc::c_void;
+
+use {area::Area,
+     seat,
+     surface,
+     utils::{self, HandleErr, HandleResult, Handleable, c_to_rust_string}};
+pub use manager::{xdg_shell_manager::*, xdg_shell_handler::*};
+pub use events::xdg_shell_events as event;
+
+pub type Handle = utils::Handle<OptionalShellState, wlr_xdg_surface, Surface>;
+
+/// A hack to ensure we can clone a shell handle.
+#[derive(Debug, Eq, PartialEq, Hash)]
+#[doc(hidden)]
+pub struct OptionalShellState(Option<ShellState>);
 
 /// Used internally to reclaim a handle from just a *mut wlr_xdg_surface.
-pub(crate) struct XdgShellSurfaceState {
+pub(crate) struct SurfaceState {
     /// Pointer to the backing storage.
     pub(crate) shell: *mut XdgShell,
     handle: Weak<Cell<bool>>,
-    shell_state: Option<XdgShellState>
+    shell_state: Option<ShellState>
+}
+
+impl Clone for OptionalShellState {
+    fn clone(&self) -> Self {
+        OptionalShellState ( match self.0 {
+            None => None,
+            // NOTE Rationale for safety:
+            // This is only stored in the handle, and it's fine to clone
+            // the raw pointer when we just have a handle.
+            Some(ref state) => Some(unsafe { state.clone() })
+        })
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub struct XdgTopLevel {
+pub struct TopLevel {
     shell_surface: *mut wlr_xdg_surface,
     toplevel: *mut wlr_xdg_toplevel
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub struct XdgPopup {
+pub struct Popup {
     shell_surface: *mut wlr_xdg_surface,
     popup: *mut wlr_xdg_popup
 }
@@ -42,74 +62,46 @@ pub struct XdgPopup {
 ///
 /// Uses the tag to disambiguate the union in `wlr_xdg_surface`.
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub enum XdgShellState {
-    TopLevel(XdgTopLevel),
-    Popup(XdgPopup)
+pub enum ShellState {
+    TopLevel(TopLevel),
+    Popup(Popup)
 }
 
 #[derive(Debug)]
-pub struct XdgShellSurface {
+pub struct Surface {
     liveliness: Rc<Cell<bool>>,
-    state: Option<XdgShellState>,
+    state: Option<ShellState>,
     shell_surface: *mut wlr_xdg_surface
 }
 
-#[derive(Debug)]
-pub struct XdgShellSurfaceHandle {
-    state: Option<XdgShellState>,
-    handle: Weak<Cell<bool>>,
-    shell_surface: *mut wlr_xdg_surface
-}
-
-impl Clone for XdgShellSurfaceHandle {
-    fn clone(&self) -> Self {
-        let state = match self.state {
-            None => None,
-            Some(ref state) => Some(unsafe { state.clone() })
-        };
-        XdgShellSurfaceHandle { state,
-                                  handle: self.handle.clone(),
-                                  shell_surface: self.shell_surface }
-    }
-}
-
-impl XdgShellSurface {
+impl Surface {
     pub(crate) unsafe fn new<T>(shell_surface: *mut wlr_xdg_surface, state: T) -> Self
-        where T: Into<Option<XdgShellState>>
+        where T: Into<Option<ShellState>>
     {
         let state = state.into();
         (*shell_surface).data = ptr::null_mut();
         let liveliness = Rc::new(Cell::new(false));
         let shell_state =
-            Box::new(XdgShellSurfaceState { shell: ptr::null_mut(),
-                                            handle: Rc::downgrade(&liveliness),
-                                            shell_state: match state {
-                                                None => None,
-                                                Some(ref state) => Some(state.clone())
-                                            } });
+            Box::new(SurfaceState { shell: ptr::null_mut(),
+                                    handle: Rc::downgrade(&liveliness),
+                                    shell_state: match state {
+                                        None => None,
+                                        Some(ref state) => Some(state.clone())
+                                    } });
         (*shell_surface).data = Box::into_raw(shell_state) as *mut _;
-        XdgShellSurface { liveliness,
+        Surface { liveliness,
                           state: state,
                           shell_surface }
     }
 
-    unsafe fn from_handle(handle: &XdgShellSurfaceHandle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-                               .upgrade()
-                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(XdgShellSurface { liveliness,
-                               state: handle.clone().state,
-                               shell_surface: handle.as_ptr() })
-    }
-
     /// Gets the surface used by this XDG shell.
-    pub fn surface(&mut self) -> SurfaceHandle {
+    pub fn surface(&mut self) -> surface::Handle {
         unsafe {
             let surface = (*self.shell_surface).surface;
             if surface.is_null() {
                 panic!("xdg shell had a null surface!")
             }
-            SurfaceHandle::from_ptr(surface)
+            surface::Handle::from_ptr(surface)
         }
     }
 
@@ -118,7 +110,7 @@ impl XdgShellSurface {
         unsafe { (*self.shell_surface).role }
     }
 
-    pub fn state(&mut self) -> Option<&mut XdgShellState> {
+    pub fn state(&mut self) -> Option<&mut ShellState> {
         self.state.as_mut()
     }
 
@@ -170,48 +162,34 @@ impl XdgShellSurface {
                       sy: f64,
                       sub_sx: &mut f64,
                       sub_sy: &mut f64)
-                      -> Option<SurfaceHandle> {
+                      -> Option<surface::Handle> {
         unsafe {
             let sub_surface =
                 wlr_xdg_surface_surface_at(self.shell_surface, sx, sy, sub_sx, sub_sy);
             if sub_surface.is_null() {
                 None
             } else {
-                Some(SurfaceHandle::from_ptr(sub_surface))
+                Some(surface::Handle::from_ptr(sub_surface))
             }
         }
     }
 
     pub fn for_each_surface<F>(&self, mut iterator: F)
-            where F: FnMut(SurfaceHandle, i32, i32) {
-        let mut iterator_ref: &mut FnMut(SurfaceHandle, i32, i32) = &mut iterator;
+            where F: FnMut(surface::Handle, i32, i32) {
+        let mut iterator_ref: &mut FnMut(surface::Handle, i32, i32) = &mut iterator;
         unsafe {
             unsafe extern "C" fn c_iterator(wlr_surface: *mut wlr_surface, sx: i32, sy: i32, data: *mut c_void) {
-                let iterator_fn = &mut *(data as *mut &mut FnMut(SurfaceHandle, i32, i32));
-                let surface = SurfaceHandle::from_ptr(wlr_surface);
+                let iterator_fn = &mut *(data as *mut &mut FnMut(surface::Handle, i32, i32));
+                let surface = surface::Handle::from_ptr(wlr_surface);
                 iterator_fn(surface, sx, sy);
             }
             let iterator_ptr: *mut c_void = &mut iterator_ref as *mut _ as *mut c_void;
             wlr_xdg_surface_for_each_surface(self.shell_surface, Some(c_iterator), iterator_ptr);
         }
     }
-
-    /// Creates a weak reference to an `XdgShellSurface`.
-    ///
-    /// # Panics
-    /// If this `XdgShellSurface` is a previously upgraded `XdgShellSurfaceHandle`,
-    /// then this function will panic.
-    pub fn weak_reference(&self) -> XdgShellSurfaceHandle {
-        XdgShellSurfaceHandle { handle: Rc::downgrade(&self.liveliness),
-                                  state: match self.state {
-                                      None => None,
-                                      Some(ref state) => unsafe { Some(state.clone()) }
-                                  },
-                                  shell_surface: self.shell_surface }
-    }
 }
 
-impl Drop for XdgShellSurface {
+impl Drop for Surface {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) == 1 {
             wlr_log!(WLR_DEBUG, "Dropped xdg shell {:p}", self.shell_surface);
@@ -226,138 +204,56 @@ impl Drop for XdgShellSurface {
             return
         }
         unsafe {
-            let _ = Box::from_raw((*self.shell_surface).data as *mut XdgShellSurfaceState);
+            let _ = Box::from_raw((*self.shell_surface).data as *mut SurfaceState);
         }
     }
 }
 
-impl XdgShellSurfaceHandle {
-    /// Constructs a new XdgShellSurfaceHandle that is always invalid. Calling `run` on this
-    /// will always fail.
-    ///
-    /// This is useful for pre-filling a value before it's provided by the server, or
-    /// for mocking/testing.
-    pub fn new() -> Self {
-        unsafe {
-            XdgShellSurfaceHandle { handle: Weak::new(),
-                                      state: None,
-                                      shell_surface: ptr::null_mut() }
-        }
-    }
-
-    /// If the surface is an XDG surface, get a handle to the XDG surface.
-    pub fn from_surface(surface: &Surface) -> Option<XdgShellSurfaceHandle> {
-        unsafe {
-            if !surface.is_xdg_surface() {
-                None
-            } else {
-                let xdg_surface_ptr = wlr_xdg_surface_from_wlr_surface(surface.as_ptr());
-                Some(XdgShellSurfaceHandle::from_ptr(xdg_surface_ptr))
-            }
-        }
-    }
-
-    /// Creates a XdgShellSurfaceHandle from the raw pointer, using the saved
-    /// user data to recreate the memory model.
-    pub(crate) unsafe fn from_ptr(shell_surface: *mut wlr_xdg_surface) -> Self {
-        let data = (*shell_surface).data as *mut XdgShellSurfaceState;
-        if data.is_null() {
-            panic!("Cannot construct handle from a shell surface that has not been set up!");
-        }
-        let handle = (*data).handle.clone();
-        let state = match (*data).shell_state {
+impl Handleable<OptionalShellState, wlr_xdg_surface> for Surface {
+    #[doc(hidden)]
+    unsafe fn from_ptr(shell_surface: *mut wlr_xdg_surface) -> Self {
+        let data = &mut *((*shell_surface).data as *mut SurfaceState);
+        let state = match data.shell_state {
             None => None,
-            Some(ref state) => Some(unsafe { state.clone() })
+            Some(ref state) => Some(state.clone())
         };
-        XdgShellSurfaceHandle { handle,
-                                  state,
-                                  shell_surface }
+        let liveliness = data.handle.upgrade().unwrap();
+        Surface { liveliness,
+                  state,
+                  shell_surface }
     }
 
-    /// Upgrades the wayland shell handle to a reference to the backing `XdgShellSurface`.
-    ///
-    /// # Unsafety
-    /// This function is unsafe, because it creates an unbound `XdgShellSurface`
-    /// which may live forever..
-    /// But no surface lives forever and might be disconnected at any time.
-    pub(crate) unsafe fn upgrade(&self) -> HandleResult<XdgShellSurface> {
-        self.handle.upgrade()
-            .ok_or(HandleErr::AlreadyDropped)
-            // NOTE
-            // We drop the Rc here because having two would allow a dangling
-            // pointer to exist!
-            .and_then(|check| {
-                let shell_surface = XdgShellSurface::from_handle(self)?;
-                if check.get() {
-                    return Err(HandleErr::AlreadyBorrowed)
-                }
-                check.set(true);
-                Ok(shell_surface)
-            })
-    }
-
-    /// Run a function on the referenced XdgShellSurface, if it still exists
-    ///
-    /// Returns the result of the function, if successful
-    ///
-    /// # Safety
-    /// By enforcing a rather harsh limit on the lifetime of the output
-    /// to a short lived scope of an anonymous function,
-    /// this function ensures the XdgShellSurface does not live longer
-    /// than it exists.
-    ///
-    /// # Panics
-    /// This function will panic if multiple mutable borrows are detected.
-    /// This will happen if you call `upgrade` directly within this callback,
-    /// or if you run this function within the another run to the same `Output`.
-    ///
-    /// So don't nest `run` calls and everything will be ok :).
-    pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut XdgShellSurface) -> R
-    {
-        let mut xdg_surface = unsafe { self.upgrade()? };
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut xdg_surface)));
-        self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running XdgShellSurface callback, \
-                                                    mutable lock was false for: {:?}",
-                                                   xdg_surface);
-                                          panic!("Lock in incorrect state!");
-                                      }
-                                      check.set(false);
-                                  });
-        match res {
-            Ok(res) => Ok(res),
-            Err(err) => panic::resume_unwind(err)
-        }
-    }
-
+    #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut wlr_xdg_surface {
         self.shell_surface
     }
-}
 
-impl Default for XdgShellSurfaceHandle {
-    fn default() -> Self {
-        XdgShellSurfaceHandle::new()
+    #[doc(hidden)]
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
+        let liveliness = handle.handle
+            .upgrade()
+            .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Surface { liveliness,
+                     shell_surface: handle.ptr,
+                     state: handle.data.clone().0 })
+    }
+
+    fn weak_reference(&self) -> Handle {
+        Handle { ptr: self.shell_surface,
+                 handle: Rc::downgrade(&self.liveliness),
+                 data: OptionalShellState(match self.state {
+                     None => None,
+                     Some(ref state) => Some(unsafe { state.clone() })
+                 }),
+                 _marker: std::marker::PhantomData }
     }
 }
 
-impl PartialEq for XdgShellSurfaceHandle {
-    fn eq(&self, other: &XdgShellSurfaceHandle) -> bool {
-        self.shell_surface == other.shell_surface
-    }
-}
-
-impl Eq for XdgShellSurfaceHandle {}
-
-impl XdgTopLevel {
+impl TopLevel {
     pub(crate) unsafe fn from_shell(shell_surface: *mut wlr_xdg_surface,
                                     toplevel: *mut wlr_xdg_toplevel)
-                                    -> XdgTopLevel {
-        XdgTopLevel { shell_surface,
+                                    -> TopLevel {
+        TopLevel { shell_surface,
                         toplevel }
     }
 
@@ -374,13 +270,13 @@ impl XdgTopLevel {
     }
 
     /// Get a handle to the base surface of the xdg tree.
-    pub fn base(&self) -> XdgShellSurfaceHandle {
-        unsafe { XdgShellSurfaceHandle::from_ptr((*self.toplevel).base) }
+    pub fn base(&self) -> Handle {
+        unsafe { Handle::from_ptr((*self.toplevel).base) }
     }
 
     /// Get a handle to the parent surface of the xdg tree.
-    pub fn parent(&self) -> XdgShellSurfaceHandle {
-        unsafe { XdgShellSurfaceHandle::from_ptr((*self.toplevel).parent) }
+    pub fn parent(&self) -> Handle {
+        unsafe { Handle::from_ptr((*self.toplevel).parent) }
     }
 
     pub fn added(&self) -> bool {
@@ -451,22 +347,22 @@ impl XdgTopLevel {
     }
 }
 
-impl XdgPopup {
+impl Popup {
     pub(crate) unsafe fn from_shell(shell_surface: *mut wlr_xdg_surface,
                                     popup: *mut wlr_xdg_popup)
-                                    -> XdgPopup {
-        XdgPopup { shell_surface,
+                                    -> Popup {
+        Popup { shell_surface,
                    popup }
     }
 
     /// Get a handle to the base surface of the xdg tree.
-    pub fn base(&self) -> XdgShellSurfaceHandle {
-        unsafe { XdgShellSurfaceHandle::from_ptr((*self.popup).base) }
+    pub fn base(&self) -> Handle {
+        unsafe { Handle::from_ptr((*self.popup).base) }
     }
 
     /// Get a handle to the parent surface of the xdg tree.
-    pub fn parent(&self) -> SurfaceHandle {
-        unsafe { SurfaceHandle::from_ptr((*self.popup).parent) }
+    pub fn parent(&self) -> surface::Handle {
+        unsafe { surface::Handle::from_ptr((*self.popup).parent) }
     }
 
     pub fn committed(&self) -> bool {
@@ -474,13 +370,13 @@ impl XdgPopup {
     }
 
     /// Get a handle to the seat associated with this popup.
-    pub fn seat_handle(&self) -> Option<SeatHandle> {
+    pub fn seat_handle(&self) -> Option<seat::Handle> {
         unsafe {
             let seat = (*self.popup).seat;
             if seat.is_null() {
                 None
             } else {
-                Some(SeatHandle::from_ptr(seat))
+                Some(seat::Handle::from_ptr(seat))
             }
         }
     }
@@ -490,19 +386,18 @@ impl XdgPopup {
     }
 }
 
-impl XdgShellState {
+impl ShellState {
     /// Unsafe copy of the pointer
     unsafe fn clone(&self) -> Self {
-        use XdgShellState::*;
         match *self {
-            TopLevel(XdgTopLevel { shell_surface,
+            ShellState::TopLevel(TopLevel { shell_surface,
                                      toplevel }) => {
-                TopLevel(XdgTopLevel { shell_surface,
+                ShellState::TopLevel(TopLevel { shell_surface,
                                          toplevel })
             }
-            Popup(XdgPopup { shell_surface,
+            ShellState::Popup(Popup { shell_surface,
                                popup }) => {
-                Popup(XdgPopup { shell_surface,
+                ShellState::Popup(Popup { shell_surface,
                                    popup })
             }
         }

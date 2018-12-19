@@ -13,6 +13,7 @@ packages:
     - rustup
     - clang
     - libxcb
+    - xorg-xinput
     - xcb-util-image
     - xcb-util-cursor
     - xcb-util-wm
@@ -39,6 +40,10 @@ tasks:
       cd ../
 
       cargo build --verbose
+      cargo build --verbose --features=unstable
       cargo build --examples
+      cargo build --examples --features=unstable
+      # For doc tests
       cargo doc
-      cargo test --all
+      cargo doc --features=unstable
+      cargo test --all --features=unstable

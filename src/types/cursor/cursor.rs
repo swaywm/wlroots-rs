@@ -13,85 +13,111 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_absolute_to_layout_coords,
                   wlr_cursor_set_image, wlr_cursor_set_surface, wlr_cursor_warp,
                   wlr_cursor_warp_absolute};
 
-use {Area, InputDevice, Output, OutputHandle, OutputLayout, OutputLayoutHandle, Surface,
-     XCursorImage};
-use compositor::{compositor_handle, CompositorHandle};
-use errors::{HandleErr, HandleResult};
-use events::{pointer_events, tablet_tool_events, touch_events};
+use {area::Area,
+     compositor,
+     input::{self, pointer, tablet_tool, touch},
+     output::{self, Output, layout::Layout},
+     surface::Surface,
+     cursor::xcursor,
+     utils::{HandleErr, HandleResult, Handleable}};
 
 #[derive(Debug)]
-pub struct CursorState {
-    output_layout: Option<OutputLayoutHandle>,
+pub(crate) struct CursorState {
+    output_layout: Option<output::layout::Handle>,
     /// A counter that will always have a strong count of 1.
     ///
-    /// Once the cursor is destroyed, this will signal to the `CursorHandle`s that
+    /// Once the cursor is destroyed, this will signal to the `cursor::Handle`s that
     /// they cannot be upgraded.
     counter: Rc<Cell<bool>>,
     /// A raw pointer to the Cursor on the heap
     cursor: *mut Cursor
 }
 
+// NOTE We can't use `utils::Handle` because we own the cursor.
+// So this is special cased, just like `output::Layout`.
 #[derive(Debug, Clone)]
-pub struct CursorHandle {
+pub struct Handle {
     cursor: *mut wlr_cursor,
     handle: Weak<Cell<bool>>
 }
 
-pub trait CursorHandler {
+#[allow(unused_variables)]
+pub trait Handler {
     /// Callback that is triggered when the cursor moves.
-    fn on_pointer_motion(&mut self, CompositorHandle, CursorHandle, &pointer_events::MotionEvent) {}
+    fn on_pointer_motion(&mut self,
+                         compositor_handle: compositor::Handle,
+                         cursor_handle: Handle,
+                         event: &pointer::event::Motion) {}
 
     fn on_pointer_motion_absolute(&mut self,
-                                  CompositorHandle,
-                                  CursorHandle,
-                                  &pointer_events::AbsoluteMotionEvent) {
+                                  compositor_handle: compositor::Handle,
+                                  cursor_handle: Handle,
+                                  event: &pointer::event::AbsoluteMotion) {
     }
 
     /// Callback that is triggered when the buttons on the pointer are pressed.
-    fn on_pointer_button(&mut self, CompositorHandle, CursorHandle, &pointer_events::ButtonEvent) {}
+    fn on_pointer_button(&mut self,
+                         compositor_handle: compositor::Handle,
+                         cursor_handle: Handle,
+                         event: &pointer::event::Button) {}
 
-    fn on_pointer_axis(&mut self, CompositorHandle, CursorHandle, &pointer_events::AxisEvent) {}
+    fn on_pointer_axis(&mut self,
+                       compositor_handle: compositor::Handle,
+                       cursor_handle: Handle,
+                       event: &pointer::event::Axis) {}
 
-    fn on_touch_up(&mut self, CompositorHandle, CursorHandle, &touch_events::UpEvent) {}
+    fn on_touch_up(&mut self,
+                   compositor_handle: compositor::Handle,
+                   cursor_handle: Handle,
+                   event: &touch::event::Up) {}
 
-    fn on_touch_down(&mut self, CompositorHandle, CursorHandle, &touch_events::DownEvent) {}
+    fn on_touch_down(&mut self,
+                     compositor_handle: compositor::Handle,
+                     cursor_handle: Handle,
+                     event: &touch::event::Down) {}
 
-    fn on_touch_motion(&mut self, CompositorHandle, CursorHandle, &touch_events::MotionEvent) {}
+    fn on_touch_motion(&mut self,
+                       compositor_handle: compositor::Handle,
+                       cursor_handle: Handle,
+                       event: &touch::event::Motion) {}
 
-    fn on_touch_cancel(&mut self, CompositorHandle, CursorHandle, &touch_events::CancelEvent) {}
+    fn on_touch_cancel(&mut self,
+                       compositor_handle: compositor::Handle,
+                       cursor_handle: Handle,
+                       event: &touch::event::Cancel) {}
 
     fn on_tablet_tool_axis(&mut self,
-                           CompositorHandle,
-                           CursorHandle,
-                           &tablet_tool_events::AxisEvent) {
+                           compositor_handle: compositor::Handle,
+                           cursor_handle: Handle,
+                           event: &tablet_tool::event::Axis) {
     }
 
     fn on_tablet_tool_proximity(&mut self,
-                                CompositorHandle,
-                                CursorHandle,
-                                &tablet_tool_events::ProximityEvent) {
+                                compositor_handle: compositor::Handle,
+                                cursor_handle: Handle,
+                                event: &tablet_tool::event::Proximity) {
     }
 
     fn on_tablet_tool_tip(&mut self,
-                          CompositorHandle,
-                          CursorHandle,
-                          &tablet_tool_events::TipEvent) {
+                          compositor_handle: compositor::Handle,
+                          cursor_handle: Handle,
+                          event: &tablet_tool::event::Tip) {
     }
 
     fn on_tablet_tool_button(&mut self,
-                             CompositorHandle,
-                             CursorHandle,
-                             &tablet_tool_events::ButtonEvent) {
+                             compositor_handle: compositor::Handle,
+                             cursor_handle: Handle,
+                             event: &tablet_tool::event::Button) {
     }
 }
 
-wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLayoutHandle>), [
+wayland_listener!(pub Cursor, (*mut wlr_cursor, Box<Handler>, Option<output::layout::Handle>), [
     pointer_motion_listener => pointer_motion_notify: |this: &mut Cursor, event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = pointer_events::MotionEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = pointer::event::Motion::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -106,9 +132,9 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     |this: &mut Cursor, event: *mut libc::c_void,|
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
-        let event = pointer_events::AbsoluteMotionEvent::from_ptr(event as _);
+        let event = pointer::event::AbsoluteMotion::from_ptr(event as _);
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let compositor = match compositor_handle() {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -123,8 +149,8 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = pointer_events::ButtonEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = pointer::event::Button::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -139,8 +165,8 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = pointer_events::AxisEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = pointer::event::Axis::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -155,8 +181,8 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = touch_events::UpEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = touch::event::Up::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -171,8 +197,8 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = touch_events::DownEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = touch::event::Down::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -187,8 +213,8 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = touch_events::MotionEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = touch::event::Motion::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -203,8 +229,8 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = touch_events::CancelEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = touch::event::Cancel::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -220,8 +246,8 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = tablet_tool_events::AxisEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = tablet_tool::event::Axis::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -237,8 +263,8 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = tablet_tool_events::ProximityEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = tablet_tool::event::Proximity::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -254,8 +280,8 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = tablet_tool_events::TipEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = tablet_tool::event::Tip::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -271,8 +297,8 @@ wayland_listener!(Cursor, (*mut wlr_cursor, Box<CursorHandler>, Option<OutputLay
     unsafe {
         let (cursor_ptr, ref mut cursor_handler, _) = this.data;
         let cursor = Cursor::from_ptr(cursor_ptr);
-        let event = tablet_tool_events::ButtonEvent::from_ptr(event as _);
-        let compositor = match compositor_handle() {
+        let event = tablet_tool::event::Button::from_ptr(event as _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -292,7 +318,7 @@ impl fmt::Debug for Cursor {
 }
 
 impl Cursor {
-    pub fn create(cursor_handler: Box<CursorHandler>) -> CursorHandle {
+    pub fn create(cursor_handler: Box<Handler>) -> Handle {
         unsafe {
             let cursor_ptr = wlr_cursor_create();
             if cursor_ptr.is_null() {
@@ -329,7 +355,7 @@ impl Cursor {
                                                cursor: Box::into_raw(cursor),
                                                output_layout: None });
             (*cursor_ptr).data = Box::into_raw(state) as *mut libc::c_void;
-            CursorHandle { cursor: cursor_ptr,
+            Handle { cursor: cursor_ptr,
                            handle }
         }
     }
@@ -347,16 +373,16 @@ impl Cursor {
     }
 
     /// Get a weak reference to this `Cursor`.
-    pub fn weak_reference(&self) -> CursorHandle {
+    pub fn weak_reference(&self) -> Handle {
         unsafe {
             let handle = Rc::downgrade(&(*((*self.data.0).data as *mut CursorState)).counter);
-            CursorHandle { cursor: self.data.0,
+            Handle { cursor: self.data.0,
                            handle }
         }
     }
 
     /// Attach this cursor to an output layout.
-    pub fn attach_output_layout(&mut self, output_layout: &mut OutputLayout) {
+    pub fn attach_output_layout(&mut self, output_layout: &mut Layout) {
         unsafe {
             let weak_reference = Some(output_layout.weak_reference().clone());
             self.data.2 = weak_reference.clone();
@@ -391,7 +417,7 @@ impl Cursor {
     ///
     /// Returns true when the mouse warp was successful.
     pub fn warp<'this, O>(&'this mut self, dev: O, x: f64, y: f64) -> bool
-        where O: Into<Option<&'this InputDevice>>
+        where O: Into<Option<&'this input::Device>>
     {
         self.assert_layout();
         unsafe {
@@ -402,7 +428,7 @@ impl Cursor {
     }
 
     pub fn warp_absolute<'this, O>(&'this mut self, dev: O, x_mm: f64, y_mm: f64)
-        where O: Into<Option<&'this InputDevice>>
+        where O: Into<Option<&'this input::Device>>
     {
         self.assert_layout();
         unsafe {
@@ -417,7 +443,7 @@ impl Cursor {
     /// `dev` may be passed to respect device mapping constraints. If `dev` is None,
     /// device mapping constraints will be ignored.
     pub fn move_to<'this, O>(&'this mut self, dev: O, delta_x: f64, delta_y: f64)
-        where O: Into<Option<&'this InputDevice>>
+        where O: Into<Option<&'this input::Device>>
     {
         self.assert_layout();
         unsafe {
@@ -429,7 +455,7 @@ impl Cursor {
 
     //TODO USE IMAGE
     /// Sets the image of the cursor to the image.
-    pub fn set_cursor_image(&mut self, image: &XCursorImage) {
+    pub fn set_cursor_image(&mut self, image: &xcursor::Image) {
         unsafe {
             // NOTE Rationale for why lifetime isn't attached:
             //
@@ -470,17 +496,17 @@ impl Cursor {
     ///
     /// TODO Make this impossible to mess up with using an enum
     /// Note that it's safe to use the wrong type.
-    pub fn attach_input_device(&mut self, dev: &InputDevice) {
+    pub fn attach_input_device(&mut self, dev: &input::Device) {
         // NOTE Rationale for not storing handle:
         //
         // Internally, on the destroy event this will automatically
         // destroy the internal wlr_cursor_device used to refer to
-        // this InputDevice.
+        // this input::Device.
         unsafe { wlr_cursor_attach_input_device(self.data.0, dev.as_ptr()) }
     }
 
     /// Deattaches the input device from this cursor.
-    pub fn deattach_input_device(&mut self, dev: &InputDevice) {
+    pub fn deattach_input_device(&mut self, dev: &input::Device) {
         unsafe { wlr_cursor_detach_input_device(self.data.0, dev.as_ptr()) }
     }
 
@@ -492,7 +518,7 @@ impl Cursor {
             None => unsafe { wlr_cursor_map_to_output(self.data.0, ptr::null_mut()) },
             Some(output) => {
                 if !self.output_in_output_layout(output.weak_reference()) {
-                    wlr_log!(WLR_ERROR, "Tried to map output not in the OutputLayout");
+                    wlr_log!(WLR_ERROR, "Tried to map output not in the Layout");
                     return
                 }
                 unsafe { wlr_cursor_map_to_output(self.data.0, output.as_ptr()) }
@@ -504,7 +530,7 @@ impl Cursor {
     ///
     /// The input device must be attached to this cursor
     /// and the output must be among the outputs in the attached output layout.
-    pub fn map_input_to_output<'output, O>(&mut self, dev: &InputDevice, output: O)
+    pub fn map_input_to_output<'output, O>(&mut self, dev: &input::Device, output: O)
         where O: Into<Option<&'output Output>>
     {
         self.assert_layout();
@@ -520,7 +546,7 @@ impl Cursor {
             Some(output) => {
                 if !self.output_in_output_layout(output.weak_reference()) {
                     wlr_log!(WLR_ERROR,
-                             "Tried to map input to an output not in the OutputLayout");
+                             "Tried to map input to an output not in the Layout");
                     return
                 }
                 unsafe {
@@ -541,7 +567,7 @@ impl Cursor {
     /// wlr_output_layout.
     ///
     /// The input device must be attached to this cursor.
-    pub fn map_input_to_region(&mut self, dev: &InputDevice, area: Area) {
+    pub fn map_input_to_region(&mut self, dev: &input::Device, area: Area) {
         self.assert_layout();
         // NOTE Rationale for why we don't check input:
         //
@@ -554,7 +580,7 @@ impl Cursor {
     ///
     /// Coordinates are in (x, y).
     pub fn absolute_to_layout_coords(&mut self,
-                                     dev: &InputDevice,
+                                     dev: &input::Device,
                                      x_mm: f64,
                                      y_mm: f64)
                                      -> (f64, f64) {
@@ -579,12 +605,12 @@ impl Cursor {
         }
     }
 
-    /// Checks if the output is in the OutputLayout associated with this
+    /// Checks if the output is in the Layout associated with this
     /// cursor.
     ///
-    /// If it isn't, or the OutputLayout has been dropped, this returns `false`.
+    /// If it isn't, or the Layout has been dropped, this returns `false`.
     /// Otherwise it returns `true`.
-    fn output_in_output_layout(&mut self, output: OutputHandle) -> bool {
+    fn output_in_output_layout(&mut self, output: output::Handle) -> bool {
         self.assert_layout();
         match self.data.2.clone().unwrap().run(|output_layout| {
                                                    for (cur_output, _) in output_layout.outputs() {
@@ -653,14 +679,14 @@ impl Drop for Cursor {
     }
 }
 
-impl CursorHandle {
-    /// Constructs a CursorHandle that is always invalid. Calling `run` on this
+impl Handle {
+    /// Constructs a `cursor::Handle` that is always invalid. Calling `run` on this
     /// will always fail.
     ///
     /// This is useful for pre-filling a value before it's provided by the server,
     /// or for mocking/testing.
     pub fn new() -> Self {
-        CursorHandle { handle: Weak::new(),
+        Handle { handle: Weak::new(),
                        cursor: ptr::null_mut() }
     }
     /// Upgrades the cursor handle to a reference to the backing `Cursor`.
@@ -737,8 +763,8 @@ impl CursorHandle {
     }
 }
 
-impl Default for CursorHandle {
+impl Default for Handle {
     fn default() -> Self {
-        CursorHandle::new()
+        Handle::new()
     }
 }

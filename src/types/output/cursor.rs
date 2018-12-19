@@ -1,43 +1,47 @@
 //! TODO documentation
 
 use std::ptr;
+
 use wlroots_sys::{wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor_destroy,
                   wlr_output_cursor_move, wlr_output_cursor_set_image,
                   wlr_output_cursor_set_surface};
 
-use {HandleErr, Image, Output, OutputHandle, Surface, SurfaceHandle, Texture};
+use {render,
+     output::{self, Output},
+     surface::{self, Surface},
+     utils::{HandleErr, Handleable}};
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct OutputCursor {
+pub struct Cursor {
     cursor: *mut wlr_output_cursor,
-    output_handle: OutputHandle
+    output_handle: output::Handle
 }
 
-impl OutputCursor {
-    /// Creates a new `OutputCursor` that's bound to the given `Output`.
+impl Cursor {
+    /// Creates a new `output::Cursor` that's bound to the given `Output`.
     ///
     /// When the `Output` is destroyed, this can no longer be used.
     ///
     /// # Ergonomics
     ///
-    /// To make this easier for you, I would suggest putting the `OutputCursor` in your
+    /// To make this easier for you, I would suggest putting the `output::Cursor` in your
     /// `OutputHandler` implementor's state so that when the `Output` is removed you
     /// just don't have to think about it and it will clean itself up by itself.
-    pub fn new(output: &mut Output) -> Option<OutputCursor> {
+    pub fn new(output: &mut Output) -> Option<Cursor> {
         unsafe {
             let output_handle = output.weak_reference();
             let cursor = wlr_output_cursor_create(output.as_ptr());
             if cursor.is_null() {
                 None
             } else {
-                Some(OutputCursor { cursor,
+                Some(Cursor { cursor,
                                     output_handle })
             }
         }
     }
 
     /// Sets the hardware cursor's image.
-    pub fn set_image(&mut self, image: &Image) -> bool {
+    pub fn set_image(&mut self, image: &render::Image) -> bool {
         unsafe {
             let cursor = self.cursor;
             let res = self.output_handle.run(|_| {
@@ -125,31 +129,31 @@ impl OutputCursor {
 
     /// Gets the texture for the cursor, if a software cursor is used without a
     /// surface.
-    pub fn texture<'surface>(&'surface self) -> Option<Texture<'surface>> {
+    pub fn texture<'surface>(&'surface self) -> Option<render::Texture<'surface>> {
         unsafe {
             let texture = (*self.cursor).texture;
             if texture.is_null() {
                 None
             } else {
-                Some(Texture::from_ptr(texture))
+                Some(render::Texture::from_ptr(texture))
             }
         }
     }
 
     /// Gets the surface for the cursor, if using a cursor surface.
-    pub fn surface(&self) -> Option<SurfaceHandle> {
+    pub fn surface(&self) -> Option<surface::Handle> {
         unsafe {
             let surface = (*self.cursor).surface;
             if surface.is_null() {
                 None
             } else {
-                Some(SurfaceHandle::from_ptr(surface))
+                Some(surface::Handle::from_ptr(surface))
             }
         }
     }
 }
 
-impl Drop for OutputCursor {
+impl Drop for Cursor {
     fn drop(&mut self) {
         unsafe { wlr_output_cursor_destroy(self.cursor) }
     }

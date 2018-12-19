@@ -7,3 +7,5 @@ pub mod touch_events;
 pub mod seat_events;
 pub mod tablet_pad_events;
 pub mod xwayland_events;
+
+pub use self::key_events::Key;

@@ -3,20 +3,21 @@ use std::ptr;
 use wlroots_sys::{wlr_backend, wl_display, wlr_wl_backend_create,
                   wlr_wl_output_create, wlr_input_device_is_wl, wlr_output_is_wl};
 
-use {OutputHandle, InputDevice, Output};
-use utils::safe_as_cstring;
-use super::UnsafeRenderSetupFunction;
+use {backend::UnsafeRenderSetupFunction,
+     output::{self, Output},
+     input,
+     utils::{Handleable, safe_as_cstring}};
 
 /// When the compositor is running in a nested Wayland environment.
 /// e.g. your compositor is executed while the user is running Gnome+Mutter or Weston.
 ///
 /// This is useful for testing and iterating on the design of the compositor.
 #[derive(Debug, Hash, Eq, PartialEq)]
-pub struct WaylandBackend {
+pub struct Wayland {
     pub(crate) backend: *mut wlr_backend
 }
 
-impl WaylandBackend {
+impl Wayland {
     /// Creates a new wlr_wl_backend. This backend will be created with no outputs;
     /// you must use wlr_wl_output_create to add them.
     ///
@@ -33,7 +34,7 @@ impl WaylandBackend {
         if backend.is_null() {
             panic!("Could not construct Wayland backend");
         }
-        WaylandBackend { backend }
+        Wayland { backend }
     }
 
 
@@ -44,20 +45,20 @@ impl WaylandBackend {
     /// Note that if called before initializing the backend, this will return None
     /// and your outputs will be created during initialization (and given to you via
     /// the output_add signal).
-    pub fn create_output(&self) -> Option<OutputHandle> {
+    pub fn create_output(&self) -> Option<output::Handle> {
         unsafe {
             let output_ptr = wlr_wl_output_create(self.backend);
             if output_ptr.is_null() {
                 None
             } else {
-                Some(OutputHandle::from_ptr(output_ptr))
+                Some(output::Handle::from_ptr(output_ptr))
             }
 
         }
     }
 
     /// True if the given input device is a wlr_wl_input_device.
-    pub fn is_wl_input_device(&self, input_device: &InputDevice) -> bool {
+    pub fn is_wl_input_device(&self, input_device: &input::Device) -> bool {
         unsafe {
             wlr_input_device_is_wl(input_device.as_ptr())
         }

@@ -1,38 +1,52 @@
 //! Handler for pointers
 
 use libc;
-use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wlroots_sys::{wlr_input_device, wlr_event_pointer_axis, wlr_event_pointer_button,
+                  wlr_event_pointer_motion};
 
-use {Pointer, PointerHandle};
-use compositor::{compositor_handle, CompositorHandle};
-use events::pointer_events::{AbsoluteMotionEvent, AxisEvent, ButtonEvent, MotionEvent};
+use {compositor,
+     input::pointer::{self, Pointer},
+     utils::Handleable};
 
-use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion};
-
-pub trait PointerHandler {
+#[allow(unused_variables)]
+pub trait Handler {
     /// Callback that is triggered when the pointer moves.
-    fn on_motion(&mut self, CompositorHandle, PointerHandle, &MotionEvent) {}
+    fn on_motion(&mut self,
+                 compositor_handle: compositor::Handle,
+                 pointer_handle: pointer::Handle,
+                 event: &pointer::event::Motion) {}
 
-    fn on_motion_absolute(&mut self, CompositorHandle, PointerHandle, &AbsoluteMotionEvent) {}
+    fn on_motion_absolute(&mut self,
+                          compositor_handle: compositor::Handle,
+                          pointer_handle: pointer::Handle,
+                          event: &pointer::event::AbsoluteMotion) {}
 
     /// Callback that is triggered when the buttons on the pointer are pressed.
-    fn on_button(&mut self, CompositorHandle, PointerHandle, &ButtonEvent) {}
+    fn on_button(&mut self,
+                 compositor_handle: compositor::Handle,
+                 pointer_handle: pointer::Handle,
+                 event: &pointer::event::Button) {}
 
     /// Callback that is triggered when an axis event fires.
-    fn on_axis(&mut self, CompositorHandle, PointerHandle, &AxisEvent) {}
+    fn on_axis(&mut self,
+               compositor_handle: compositor::Handle,
+               pointer_handle: pointer::Handle,
+               event: &pointer::event::Axis) {}
 
     /// Callback that is triggered when the pointer is destroyed.
-    fn destroyed(&mut self, CompositorHandle, PointerHandle) {}
+    fn destroyed(&mut self,
+                 compositor_handle: compositor::Handle,
+                 pointer_handle: pointer::Handle) {}
 }
 
-wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
+wayland_listener!(pub(crate) PointerWrapper, (Pointer, Box<Handler>), [
     on_destroy_listener => on_destroy_notify: |this: &mut PointerWrapper, data: *mut libc::c_void,|
     unsafe {
         let input_device_ptr = data as *mut wlr_input_device;
         {
             let (ref mut pointer, ref mut pointer_handler) = this.data;
-            let compositor = match compositor_handle() {
+            let compositor = match compositor::handle() {
                 Some(handle) => handle,
                 None => return
             };
@@ -57,8 +71,8 @@ wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
     };
     button_listener => key_notify: |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
         let pointer = &mut this.data.0;
-        let event = ButtonEvent::from_ptr(data as *mut wlr_event_pointer_button);
-        let compositor = match compositor_handle() {
+        let event = pointer::event::Button::from_ptr(data as *mut wlr_event_pointer_button);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -68,8 +82,8 @@ wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
     motion_listener => motion_notify:  |this: &mut PointerWrapper, data: *mut libc::c_void,|
     unsafe {
         let pointer = &mut this.data.0;
-        let event = MotionEvent::from_ptr(data as *mut wlr_event_pointer_motion);
-        let compositor = match compositor_handle() {
+        let event = pointer::event::Motion::from_ptr(data as *mut wlr_event_pointer_motion);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -79,8 +93,8 @@ wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
     motion_absolute_listener => motion_absolute_notify:
     |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
         let pointer = &mut this.data.0;
-        let event = AbsoluteMotionEvent::from_ptr(data as *mut _);
-        let compositor = match compositor_handle() {
+        let event = pointer::event::AbsoluteMotion::from_ptr(data as *mut _);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
@@ -89,8 +103,8 @@ wayland_listener!(PointerWrapper, (Pointer, Box<PointerHandler>), [
     };
     axis_listener => axis_notify:  |this: &mut PointerWrapper, data: *mut libc::c_void,| unsafe {
         let pointer = &mut this.data.0;
-        let event = AxisEvent::from_ptr(data as *mut wlr_event_pointer_axis);
-        let compositor = match compositor_handle() {
+        let event = pointer::event::Axis::from_ptr(data as *mut wlr_event_pointer_axis);
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };

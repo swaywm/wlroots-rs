@@ -12,9 +12,9 @@ use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_subsurface;
 
-use super::{Subsurface, SubsurfaceHandle};
+use {surface::subsurface::{self, Subsurface}, utils::Handleable};
 
-wayland_listener!(SubsurfaceManager, Vec<Subsurface>, [
+wayland_listener!(pub SubsurfaceManager, Vec<Subsurface>, [
     subsurface_created_listener => subsurface_created_notify:
                                    |this: &mut SubsurfaceManager, data: *mut libc::c_void,|
     unsafe {
@@ -36,7 +36,7 @@ wayland_listener!(SubsurfaceManager, Vec<Subsurface>, [
 ]);
 
 impl SubsurfaceManager {
-    pub(crate) fn subsurfaces(&self) -> Vec<SubsurfaceHandle> {
+    pub(crate) fn subsurfaces(&self) -> Vec<subsurface::Handle> {
         self.data.iter()
             .map(|surface| surface.weak_reference())
             .collect()

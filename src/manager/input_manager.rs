@@ -4,36 +4,42 @@
 
 use libc;
 
-use std::{env, panic};
-use std::process::abort;
-
-use super::{KeyboardHandler, KeyboardWrapper, PointerHandler, PointerWrapper, TabletPadHandler,
-            TabletPadWrapper, TabletToolHandler, TabletToolWrapper, TouchHandler, TouchWrapper};
-use compositor::{compositor_handle, CompositorHandle};
-use types::input::{InputDevice, Keyboard, KeyboardHandle, Pointer, PointerHandle, TabletPad,
-                   TabletPadHandle, TabletTool, TabletToolHandle, Touch, TouchHandle};
-use utils::safe_as_cstring;
+use std::{env, panic, process::abort};
 
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_input_device, wlr_input_device_type, wlr_keyboard_set_keymap,
                   wlr_keyboard_set_repeat_info, xkb_context_new, xkb_context_unref,
-                  xkb_keymap_new_from_names, xkb_keymap_unref, xkb_rule_names};
-use wlroots_sys::xkb_context_flags::*;
-use wlroots_sys::xkb_keymap_compile_flags::*;
+                  xkb_keymap_new_from_names, xkb_keymap_unref, xkb_rule_names,
+                  xkb_context_flags::*, xkb_keymap_compile_flags::*};
+
+use {compositor,
+     input::{self,
+             keyboard::{self, Keyboard, KeyboardWrapper},
+             pointer::{self, Pointer, PointerWrapper},
+             tablet_pad::{self, TabletPad, TabletPadWrapper},
+             tablet_tool::{self, TabletTool, TabletToolWrapper},
+             touch::{self, Touch, TouchWrapper}},
+     utils::{Handleable, safe_as_cstring}};
 
 /// Handles input addition and removal.
-pub trait InputManagerHandler {
+#[allow(unused_variables)]
+pub trait ManagerHandler {
     /// Callback triggered when an input device is added.
     ///
     /// # Panics
     /// Any panic in this function will cause the process to abort.
-    fn input_added(&mut self, CompositorHandle, &mut InputDevice) {}
+    fn input_added(&mut self,
+                   compositor_handle: compositor::Handle,
+                   device: &mut input::Device) {}
 
     /// Callback triggered when a keyboard device is added.
     ///
     /// # Panics
     /// Any panic in this function will cause the process to abort.
-    fn keyboard_added(&mut self, CompositorHandle, KeyboardHandle) -> Option<Box<KeyboardHandler>> {
+    fn keyboard_added(&mut self,
+                      compositor_handle: compositor::Handle,
+                      keyboard_handle: keyboard::Handle)
+                      -> Option<Box<keyboard::Handler>> {
         None
     }
 
@@ -41,7 +47,10 @@ pub trait InputManagerHandler {
     ///
     /// # Panics
     /// Any panic in this function will cause the process to abort.
-    fn pointer_added(&mut self, CompositorHandle, PointerHandle) -> Option<Box<PointerHandler>> {
+    fn pointer_added(&mut self,
+                     compositor_handle: compositor::Handle,
+                     pointer_handle: pointer::Handle)
+                     -> Option<Box<pointer::Handler>> {
         None
     }
 
@@ -49,7 +58,10 @@ pub trait InputManagerHandler {
     ///
     /// # Panics
     /// Any panic in this function will cause the process to abort.
-    fn touch_added(&mut self, CompositorHandle, TouchHandle) -> Option<Box<TouchHandler>> {
+    fn touch_added(&mut self,
+                   compositor_handle: compositor::Handle,
+                   touch_handle: touch::Handle)
+                   -> Option<Box<touch::Handler>> {
         None
     }
 
@@ -59,9 +71,9 @@ pub trait InputManagerHandler {
     /// # Panics
     /// Any panic in this function will cause the process to abort.
     fn tablet_tool_added(&mut self,
-                         CompositorHandle,
-                         TabletToolHandle)
-                         -> Option<Box<TabletToolHandler>> {
+                         compositor_handle: compositor::Handle,
+                         tablet_tool_handle: tablet_tool::Handle)
+                         -> Option<Box<tablet_tool::Handler>> {
         None
     }
 
@@ -71,23 +83,23 @@ pub trait InputManagerHandler {
     /// # Panics
     /// Any panic in this function will cause the process to abort.
     fn tablet_pad_added(&mut self,
-                        CompositorHandle,
-                        TabletPadHandle)
-                        -> Option<Box<TabletPadHandler>> {
+                        compositor_handle: compositor::Handle,
+                        tablet_pad_handle: tablet_pad::Handle)
+                        -> Option<Box<tablet_pad::Handler>> {
         None
     }
 }
 
-wayland_listener!(InputManager, Box<InputManagerHandler>, [
-    add_listener => add_notify: |this: &mut InputManager, data: *mut libc::c_void,| unsafe {
-        let compositor = match compositor_handle() {
+wayland_listener!(pub(crate) Manager, Box<ManagerHandler>, [
+    add_listener => add_notify: |this: &mut Manager, data: *mut libc::c_void,| unsafe {
+        let compositor = match compositor::handle() {
             Some(handle) => handle,
             None => return
         };
         let data = data as *mut wlr_input_device;
         let ref mut manager = this.data;
         use self::wlr_input_device_type::*;
-        let mut dev = InputDevice::from_ptr(data);
+        let mut dev = input::Device::from_ptr(data);
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             match dev.dev_type() {
                 WLR_INPUT_DEVICE_KEYBOARD => {
@@ -240,7 +252,7 @@ wayland_listener!(InputManager, Box<InputManagerHandler>, [
     };
 ]);
 
-pub(crate) unsafe fn add_keyboard(dev: &mut InputDevice) {
+pub(crate) unsafe fn add_keyboard(dev: &mut input::Device) {
     // Set the XKB settings
     let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES").unwrap_or("".into()));
     let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL").unwrap_or("".into()));

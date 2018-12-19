@@ -1,37 +1,35 @@
 #[macro_use]
 extern crate wlroots;
-extern crate libc;
 
-use std::process::Command;
-use std::thread;
+use std::{thread, process::Command};
 
-use wlroots::{project_box, Area, Capability, CompositorBuilder, CompositorHandle, Cursor,
-              CursorHandle, CursorHandler, InputManagerHandler, KeyboardHandle, KeyboardHandler,
-              Origin, OutputBuilder, OutputBuilderResult, OutputHandle, OutputHandler,
-              OutputLayout, OutputLayoutHandle, OutputLayoutHandler, OutputManagerHandler,
-              PointerHandle, PointerHandler, Renderer, Seat, SeatHandle, SeatHandler, Size,
-              XCursorManager, XdgV6ShellHandler, XdgV6ShellManagerHandler, XdgV6ShellState,
-              XdgV6ShellSurfaceHandle, SurfaceHandler, SurfaceHandle};
-use wlroots::key_events::KeyEvent;
-use wlroots::pointer_events::{AbsoluteMotionEvent, ButtonEvent, MotionEvent};
-use wlroots::utils::{init_logging, WLR_DEBUG, current_time};
+use wlroots::{area::{Area, Origin, Size},
+              compositor,
+              cursor::{self, Cursor, xcursor},
+              input::{self, keyboard, pointer},
+              output::{self, layout::Layout},
+              render::{matrix, Renderer},
+              seat::{self, Seat},
+              shell::xdg_shell_v6,
+              surface,
+              utils::{Handleable, log::{init_logging, WLR_DEBUG}, current_time}};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 use wlroots::wlroots_dehandle;
 
 struct State {
-    xcursor_manager: XCursorManager,
-    keyboard: Option<KeyboardHandle>,
-    layout: OutputLayoutHandle,
-    cursor: CursorHandle,
-    shells: Vec<XdgV6ShellSurfaceHandle>,
-    seat_handle: Option<SeatHandle>
+    xcursor_manager: xcursor::Manager,
+    keyboard: Option<keyboard::Handle>,
+    layout: output::layout::Handle,
+    cursor: cursor::Handle,
+    shells: Vec<xdg_shell_v6::Handle>,
+    seat_handle: Option<seat::Handle>
 }
 
 impl State {
-    fn new(xcursor_manager: XCursorManager,
-           layout: OutputLayoutHandle,
-           cursor: CursorHandle)
+    fn new(xcursor_manager: xcursor::Manager,
+           layout: output::layout::Handle,
+           cursor: cursor::Handle)
            -> Self {
         State { xcursor_manager,
                 layout,
@@ -48,18 +46,18 @@ struct SeatHandlerEx;
 
 struct CursorEx;
 
-impl CursorHandler for CursorEx {}
+impl cursor::Handler for CursorEx {}
 
-impl SeatHandler for SeatHandlerEx {}
+impl seat::Handler for SeatHandlerEx {}
 
 struct XdgV6ShellHandlerEx;
 struct XdgV6ShellManager;
 struct OutputLayoutEx;
 
-impl OutputLayoutHandler for OutputLayoutEx {}
+impl output::layout::Handler for OutputLayoutEx {}
 
-impl XdgV6ShellHandler for XdgV6ShellHandlerEx {
-    fn destroyed(&mut self, compositor: CompositorHandle, shell: XdgV6ShellSurfaceHandle) {
+impl xdg_shell_v6::Handler for XdgV6ShellHandlerEx {
+    fn destroyed(&mut self, compositor: compositor::Handle, shell: xdg_shell_v6::Handle) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.into();
             let weak = shell;
@@ -73,18 +71,18 @@ impl XdgV6ShellHandler for XdgV6ShellHandlerEx {
 
 struct SurfaceEx;
 
-impl SurfaceHandler for SurfaceEx {
-    fn on_commit(&mut self, _: CompositorHandle, surface: SurfaceHandle) {
+impl surface::Handler for SurfaceEx {
+    fn on_commit(&mut self, _: compositor::Handle, surface: surface::Handle) {
         wlr_log!(WLR_DEBUG, "Commiting for surface {:?}", surface);
     }
 }
 
-impl XdgV6ShellManagerHandler for XdgV6ShellManager {
+impl xdg_shell_v6::ManagerHandler for XdgV6ShellManager {
     #[wlroots_dehandle(compositor, shell, layout, output)]
     fn new_surface(&mut self,
-                   compositor: CompositorHandle,
-                   shell: XdgV6ShellSurfaceHandle)
-                   -> (Option<Box<XdgV6ShellHandler>>, Option<Box<SurfaceHandler>>) {
+                   compositor: compositor::Handle,
+                   shell: xdg_shell_v6::Handle)
+                   -> (Option<Box<xdg_shell_v6::Handler>>, Option<Box<surface::Handler>>) {
         {
             use compositor as compositor;
             use shell as shell;
@@ -112,12 +110,12 @@ struct ExPointer;
 
 struct ExKeyboardHandler;
 
-impl OutputManagerHandler for OutputManager {
+impl output::ManagerHandler for OutputManager {
     #[wlroots_dehandle(compositor, output, layout, cursor)]
     fn output_added<'output>(&mut self,
-                             compositor: CompositorHandle,
-                             builder: OutputBuilder<'output>)
-                             -> Option<OutputBuilderResult<'output>> {
+                             compositor: compositor::Handle,
+                             builder: output::Builder<'output>)
+                             -> Option<output::BuilderResult<'output>> {
         let result = builder.build_best_mode(ExOutput);
         {
             let output_handle = &result.output;
@@ -142,16 +140,15 @@ impl OutputManagerHandler for OutputManager {
     }
 }
 
-impl KeyboardHandler for ExKeyboardHandler {
+impl keyboard::Handler for ExKeyboardHandler {
     #[wlroots_dehandle(compositor, seat)]
     fn on_key(&mut self,
-              compositor: CompositorHandle,
-              _: KeyboardHandle,
-              key_event: &KeyEvent) {
-        use compositor as compositor;
+              compositor_handle: compositor::Handle,
+              _: keyboard::Handle,
+              key_event: &keyboard::event::Key) {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
-                wlroots::terminate();
+                compositor::terminate();
             } else if key_event.key_state() == WLR_KEY_PRESSED {
                 if key == KEY_F1 {
                     thread::spawn(move || {
@@ -161,6 +158,7 @@ impl KeyboardHandler for ExKeyboardHandler {
                 }
             }
         };
+        use compositor_handle as compositor;
         let state: &mut State = compositor.into();
         let seat_handle = state.seat_handle.clone().unwrap();
         use seat_handle as seat;
@@ -170,12 +168,12 @@ impl KeyboardHandler for ExKeyboardHandler {
     }
 }
 
-impl PointerHandler for ExPointer {
+impl pointer::Handler for ExPointer {
     #[wlroots_dehandle(compositor, cursor)]
     fn on_motion_absolute(&mut self,
-                          compositor: CompositorHandle,
-                          _: PointerHandle,
-                          event: &AbsoluteMotionEvent) {
+                          compositor: compositor::Handle,
+                          _: pointer::Handle,
+                          event: &pointer::event::AbsoluteMotion) {
         use compositor as compositor;
         let state: &mut State = compositor.into();
         let (x, y) = event.pos();
@@ -185,7 +183,10 @@ impl PointerHandler for ExPointer {
     }
 
     #[wlroots_dehandle(compositor, cursor)]
-    fn on_motion(&mut self, compositor: CompositorHandle, _: PointerHandle, event: &MotionEvent) {
+    fn on_motion(&mut self,
+                 compositor: compositor::Handle,
+                 _: pointer::Handle,
+                 event: &pointer::event::Motion) {
         use compositor as compositor;
         let state: &mut State = compositor.into();
         let (delta_x, delta_y) = event.delta();
@@ -195,7 +196,10 @@ impl PointerHandler for ExPointer {
     }
 
     #[wlroots_dehandle(compositor, shell, seat, keyboard, surface)]
-    fn on_button(&mut self, compositor: CompositorHandle, _: PointerHandle, _: &ButtonEvent) {
+    fn on_button(&mut self,
+                 compositor: compositor::Handle, _:
+                 pointer::Handle,
+                 _: &pointer::event::Button) {
         use compositor as compositor;
         let state: &mut State = compositor.into();
         let seat = state.seat_handle.clone().unwrap();
@@ -203,7 +207,7 @@ impl PointerHandler for ExPointer {
         let shell_handle = &state.shells[0];
         use shell_handle as shell;
         match shell.state() {
-            Some(&mut XdgV6ShellState::TopLevel(ref mut toplevel)) => {
+            Some(&mut xdg_shell_v6::ShellState::TopLevel(ref mut toplevel)) => {
                 toplevel.set_activated(true);
             }
             _ => {}
@@ -219,9 +223,9 @@ impl PointerHandler for ExPointer {
     }
 }
 
-impl OutputHandler for ExOutput {
+impl output::Handler for ExOutput {
     #[wlroots_dehandle(compositor, output)]
-    fn on_frame(&mut self, compositor: CompositorHandle, output: OutputHandle) {
+    fn on_frame(&mut self, compositor: compositor::Handle, output: output::Handle) {
         use compositor as compositor;
         use output as output;
         let state: &mut State = compositor.data.downcast_mut().unwrap();
@@ -234,19 +238,19 @@ impl OutputHandler for ExOutput {
     }
 }
 
-impl InputManagerHandler for InputManager {
+impl input::ManagerHandler for InputManager {
     fn pointer_added(&mut self,
-                     _: CompositorHandle,
-                     _: PointerHandle)
-                     -> Option<Box<PointerHandler>> {
+                     _: compositor::Handle,
+                     _: pointer::Handle)
+                     -> Option<Box<pointer::Handler>> {
         Some(Box::new(ExPointer))
     }
 
     #[wlroots_dehandle(compositor, keyboard, seat)]
     fn keyboard_added(&mut self,
-                      compositor: CompositorHandle,
-                      keyboard: KeyboardHandle)
-                      -> Option<Box<KeyboardHandler>> {
+                      compositor: compositor::Handle,
+                      keyboard: keyboard::Handle)
+                      -> Option<Box<keyboard::Handler>> {
         {
             use compositor as compositor;
             use keyboard as keyboard;
@@ -264,25 +268,25 @@ fn main() {
     init_logging(WLR_DEBUG, None);
     let cursor = Cursor::create(Box::new(CursorEx));
     let mut xcursor_manager =
-        XCursorManager::create("default".to_string(), 24).expect("Could not create xcursor \
+        xcursor::Manager::create("default".to_string(), 24).expect("Could not create xcursor \
                                                                   manager");
     xcursor_manager.load(1.0);
     cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c))
           .unwrap();
-    let layout = OutputLayout::create(Box::new(OutputLayoutEx));
+    let layout = Layout::create(Box::new(OutputLayoutEx));
 
     let mut compositor =
-        CompositorBuilder::new().gles2(true)
-                                .input_manager(Box::new(InputManager))
-                                .output_manager(Box::new(OutputManager))
-                                .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
-                                .build_auto(State::new(xcursor_manager, layout, cursor));
+        compositor::Builder::new().gles2(true)
+                                  .input_manager(Box::new(InputManager))
+                                  .output_manager(Box::new(OutputManager))
+                                  .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
+                                  .build_auto(State::new(xcursor_manager, layout, cursor));
 
     {
         let seat_handle =
             Seat::create(&mut compositor, "seat0".into(), Box::new(SeatHandlerEx));
         seat_handle.run(|seat| {
-                            seat.set_capabilities(Capability::all());
+                            seat.set_capabilities(seat::Capability::all());
                         })
                    .unwrap();
         let state: &mut State = (&mut compositor).into();
@@ -311,11 +315,11 @@ fn render_shells(state: &mut State, renderer: &mut Renderer) {
                                              render_height));
         if layout.intersects(renderer.output, render_box) {
             let transform = renderer.output.get_transform().invert();
-            let matrix = project_box(render_box,
-                                     transform,
-                                     0.0,
-                                     renderer.output
-                                     .transform_matrix());
+            let matrix = matrix::project_box(render_box,
+                                             transform,
+                                             0.0,
+                                             renderer.output
+                                             .transform_matrix());
             if let Some(texture) = surface.texture().as_ref() {
                 renderer.render_texture_with_matrix(texture, matrix);
             }

@@ -9,25 +9,25 @@ pub use wlroots_sys::{wlr_button_state, wlr_tablet_pad_ring_source, wlr_tablet_p
 
 #[derive(Debug)]
 /// Event that is triggered when a tablet pad button event occurs.
-pub struct ButtonEvent {
+pub struct Button {
     event: *mut wlr_event_tablet_pad_button
 }
 
 #[derive(Debug)]
 /// Event that is triggered when a ring event occurs.
-pub struct RingEvent {
+pub struct Ring {
     event: *mut wlr_event_tablet_pad_ring
 }
 
 #[derive(Debug)]
 /// Event that is triggered wen a strip event occurs
-pub struct StripEvent {
+pub struct Strip {
     event: *mut wlr_event_tablet_pad_strip
 }
 
-impl ButtonEvent {
+impl Button {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_tablet_pad_button) -> Self {
-        ButtonEvent { event }
+        Button { event }
     }
 
     pub fn time_msec(&self) -> u32 {
@@ -47,9 +47,9 @@ impl ButtonEvent {
     }
 }
 
-impl RingEvent {
+impl Ring {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_tablet_pad_ring) -> Self {
-        RingEvent { event }
+        Ring { event }
     }
 
     pub fn time_msec(&self) -> u32 {
@@ -73,9 +73,9 @@ impl RingEvent {
     }
 }
 
-impl StripEvent {
+impl Strip {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_tablet_pad_strip) -> Self {
-        StripEvent { event }
+        Strip { event }
     }
 
     pub fn time_msec(&self) -> u32 {

@@ -10,8 +10,7 @@ use wlroots_sys::{wl_shm_format, wlr_backend, wlr_backend_get_renderer,
                   wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
                   wlr_texture_from_pixels, wlr_texture_destroy, wlr_renderer_scissor};
 
-use {Area, Output, PixmanRegion};
-use render::Texture;
+use {area::Area, output::Output, render::{PixmanRegion, texture::Texture}};
 
 /// A generic interface for rendering to the screen.
 ///

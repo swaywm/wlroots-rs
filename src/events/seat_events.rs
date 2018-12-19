@@ -1,30 +1,30 @@
 use wlroots_sys::wlr_seat_pointer_request_set_cursor_event;
 
-use {SeatClient, SurfaceHandle};
+use {seat, surface};
 
 #[derive(Debug)]
-pub struct SetCursorEvent {
+pub struct SetCursor {
     event: *mut wlr_seat_pointer_request_set_cursor_event
 }
 
-impl SetCursorEvent {
+impl SetCursor {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_seat_pointer_request_set_cursor_event) -> Self {
-        SetCursorEvent { event }
+        SetCursor { event }
     }
     /// Get the seat client associated with the seat where this
     /// event is occurring.
-    pub fn seat_client<'seat>(&'seat self) -> SeatClient<'seat> {
-        unsafe { SeatClient::from_ptr((*self.event).seat_client) }
+    pub fn seat_client<'seat>(&'seat self) -> seat::Client<'seat> {
+        unsafe { seat::Client::from_ptr((*self.event).seat_client) }
     }
 
     /// Get the surface that is providing the cursor to the seat.
-    pub fn surface(&self) -> Option<SurfaceHandle> {
+    pub fn surface(&self) -> Option<surface::Handle> {
         unsafe {
             let surface = (*self.event).surface;
             if surface.is_null() {
                 None
             } else {
-                Some(SurfaceHandle::from_ptr(surface))
+                Some(surface::Handle::from_ptr(surface))
             }
         }
     }

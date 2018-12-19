@@ -3,32 +3,50 @@ members = ["wlroots-sys", "wlroots-dehandle"]
 
 [package]
 name = "wlroots"
-version = "0.0.0"
+version = "0.2.0"
 authors = ["Timidger <APragmaticPlace@gmail.com>"]
-description = "Rust wrapping for Wayland compositor library wlroots"
+description = "Wayland compositor framework"
 keywords = ["wayland", "compositor", "bindings"]
 categories = ["external-ffi-bindings", "gui"]
 license = "MIT"
 exclude = [".travis.yml"]
-
-[badges]
-travis-ci = { repository = "way-cooler/wlroots-rs/" }
-
+autoexamples = true
 
 [dependencies]
-libc = "^0.2.*"
-rust-ini = "0.10.0"
 wlroots-sys = { path = "wlroots-sys", default-features = false }
 wlroots-dehandle = { path = "wlroots-dehandle" }
-lazy_static = "0.2"
 xkbcommon = "0.3"
 bitflags = "1.0"
 vsprintf = "1.0.1"
 
 [features]
-default = ["static", "libcap", "systemd", "elogind", "unstable-features"]
+default = ["static", "libcap", "systemd", "elogind"]
 static = ["wlroots-sys/static"]
 libcap = ["wlroots-sys/libcap"]
 systemd = ["wlroots-sys/systemd"]
 elogind = ["wlroots-sys/elogind"]
-unstable-features = ["wlroots-sys/unstable-features"]
+unstable = ["wlroots-sys/unstable"]
+
+[[example]]
+name = "minimal"
+required-features = ["unstable"]
+
+[[example]]
+name = "pointer"
+required-features = ["unstable"]
+
+[[example]]
+name = "rotation"
+required-features = ["unstable"]
+
+[[example]]
+name = "touch"
+required-features = ["unstable"]
+
+[[example]]
+name = "tablet"
+required-features = ["unstable"]
+
+[[example]]
+name = "xdg_shell_v6_test"
+required-features = ["unstable"]

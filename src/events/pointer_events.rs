@@ -1,12 +1,11 @@
 //! Pointers and their events
 
-use InputDevice;
-
 use libc::c_double;
-
-pub use wlroots_sys::{wlr_axis_orientation, wlr_axis_source, wlr_button_state};
 use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion,
-                  wlr_event_pointer_motion_absolute};
+                  wlr_event_pointer_motion_absolute, wlr_axis_orientation,
+                  wlr_axis_source, wlr_button_state};
+
+use input;
 
 // NOTE Taken from linux/input-event-codes.h
 // TODO Find a way to automatically parse and fetch from there.
@@ -23,24 +22,24 @@ pub const BTN_TASK: u32 = 0x117;
 /// Event that triggers when the pointer device scrolls (e.g using a wheel
 // or in the case of a touchpad when you use two fingers to scroll).
 #[derive(Debug)]
-pub struct AxisEvent {
+pub struct Axis {
     event: *mut wlr_event_pointer_axis,
-    device: InputDevice
+    device: input::Device
 }
 
 /// Event that triggers when a button is pressed (e.g left click, right click,
 /// a gaming mouse button, etc.).
 #[derive(Debug)]
-pub struct ButtonEvent {
+pub struct Button {
     event: *mut wlr_event_pointer_button,
-    device: InputDevice
+    device: input::Device
 }
 
 /// Event that triggers when the pointer moves.
 #[derive(Debug)]
-pub struct MotionEvent {
+pub struct Motion {
     event: *mut wlr_event_pointer_motion,
-    device: InputDevice
+    device: input::Device
 }
 
 /// Event that triggers when data from a device that supports absolute motion
@@ -48,20 +47,20 @@ pub struct MotionEvent {
 ///
 /// For more information on absolute motion, [see this link](https://wayland.freedesktop.org/libinput/doc/latest/absolute_axes.html).
 #[derive(Debug)]
-pub struct AbsoluteMotionEvent {
+pub struct AbsoluteMotion {
     event: *mut wlr_event_pointer_motion_absolute,
-    device: InputDevice
+    device: input::Device
 }
 
-impl ButtonEvent {
-    /// Constructs a `ButtonEvent` from the raw event pointer.
+impl Button {
+    /// Constructs a `Button` from the raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_button) -> Self {
-        ButtonEvent { device: InputDevice::from_ptr((*event).device),
+        Button { device: input::Device::from_ptr((*event).device),
                       event }
     }
 
     /// Get the device this event refers to.
-    pub fn device(&self) -> &InputDevice {
+    pub fn device(&self) -> &input::Device {
         &self.device
     }
 
@@ -85,15 +84,15 @@ impl ButtonEvent {
     }
 }
 
-impl AxisEvent {
-    /// Constructs a `AxisEvent` from a raw event pointer.
+impl Axis {
+    /// Constructs a `Axis` from a raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_axis) -> Self {
-        AxisEvent { device: InputDevice::from_ptr((*event).device),
+        Axis { device: input::Device::from_ptr((*event).device),
                     event }
     }
 
     /// Get the device this event refers to.
-    pub fn device(&self) -> &InputDevice {
+    pub fn device(&self) -> &input::Device {
         &self.device
     }
 
@@ -118,15 +117,15 @@ impl AxisEvent {
     }
 }
 
-impl MotionEvent {
-    /// Constructs a `MotionEvent` from a raw event pointer.
+impl Motion {
+    /// Constructs a `Motion` from a raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_motion) -> Self {
-        MotionEvent { device: InputDevice::from_ptr((*event).device),
+        Motion { device: input::Device::from_ptr((*event).device),
                       event }
     }
 
     /// Get the device this event refers to.
-    pub fn device(&self) -> &InputDevice {
+    pub fn device(&self) -> &input::Device {
         &self.device
     }
 
@@ -147,10 +146,10 @@ impl MotionEvent {
     }
 }
 
-impl AbsoluteMotionEvent {
-    /// Construct an `AbsoluteMotionEvent` from a raw event pointer.
+impl AbsoluteMotion {
+    /// Construct an `AbsoluteMotion` from a raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_motion_absolute) -> Self {
-        AbsoluteMotionEvent { device: InputDevice::from_ptr((*event).device),
+        AbsoluteMotion { device: input::Device::from_ptr((*event).device),
                               event }
     }
 
@@ -165,7 +164,7 @@ impl AbsoluteMotionEvent {
     }
 
     /// Get the device this event refers to.
-    pub fn device(&self) -> &InputDevice {
+    pub fn device(&self) -> &input::Device {
         &self.device
     }
 }

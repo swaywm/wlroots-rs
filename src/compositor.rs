@@ -1,40 +1,44 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
-use libc;
 use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{Rc, Weak}};
 
-use {UnsafeRenderSetupFunction, Backend, MultiBackend, WaylandBackend,
-     DataDeviceManager, Surface, X11Backend, DRMBackend, HeadlessBackend,
-     SurfaceHandle, XWaylandManagerHandler, XWaylandServer, Session};
-use errors::{HandleErr, HandleResult};
-use types::surface::{InternalSurface, InternalSurfaceState};
-use extensions::server_decoration::ServerDecorationManager;
-use manager::{InputManager, InputManagerHandler, OutputManager, OutputManagerHandler,
-              XdgShellManager,
-              XdgShellManagerHandler, XdgV6ShellManager, XdgV6ShellManagerHandler};
-use render::GenericRenderer;
-
+use libc;
 use wayland_sys::server::{wl_display, wl_event_loop, signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{wlr_backend_destroy, wlr_backend_start,
                   wlr_compositor, wlr_compositor_create, wlr_compositor_destroy,
                   wlr_xdg_shell_v6, wlr_xdg_shell_v6_create,
                   wlr_xdg_shell, wlr_xdg_shell_create};
 
+
+use {backend::{self, UnsafeRenderSetupFunction, Backend, Session},
+     data_device,
+     extensions::server_decoration,
+     surface::{self, Surface, InternalSurface},
+     input,
+     output,
+     render::GenericRenderer,
+     shell::{xdg_shell, xdg_shell_v6},
+     xwayland,
+     utils::{HandleErr, HandleResult, Handleable}};
+
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 pub(crate) static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
-pub trait CompositorHandler {
+#[allow(unused_variables)]
+pub trait Handler {
     /// Callback that's triggered when a surface is provided to the compositor.
-    fn new_surface(&mut self, CompositorHandle, SurfaceHandle) {}
+    fn new_surface(&mut self,
+                   compositor_handle: Handle,
+                   surface_handle: surface::Handle) {}
 
     /// Callback that's triggered during shutdown.
     fn on_shutdown(&mut self) {}
 }
 
-impl CompositorHandler for () {}
+impl Handler for () {}
 
-wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
+wayland_listener!(InternalCompositor, Box<Handler>, [
     new_surface_listener => new_surface_notify: |this: &mut InternalCompositor,
                                                  surface_ptr: *mut libc::c_void,|
     unsafe {
@@ -50,7 +54,7 @@ wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
                       internal_surface.new_subsurface_listener() as _);
         wl_signal_add(&mut (*surface_ptr).events.destroy as *mut _ as _,
                         internal_surface.on_destroy_listener() as _);
-        let surface_data = (*surface_ptr).data as *mut InternalSurfaceState;
+        let surface_data = (*surface_ptr).data as *mut surface::InternalState;
         (*surface_data).surface = Box::into_raw(internal_surface);
     };
     shutdown_listener => shutdown_notify: |this: &mut InternalCompositor,
@@ -61,8 +65,12 @@ wayland_listener!(InternalCompositor, Box<CompositorHandler>, [
     };
 ]);
 
+// NOTE This handle is handled differently from the others, so we can't use
+// the generic `utils::Handle` implementation. This is due to how we need
+// to be able to return a "full" `Compositor` for `upgrade` but that's
+// impossible.
 #[derive(Debug, Clone)]
-pub struct CompositorHandle {
+pub struct Handle {
     /// This ensures that this handle is still alive and not already borrowed.
     handle: Weak<Cell<bool>>
 }
@@ -74,13 +82,13 @@ pub struct Compositor {
     /// Internal compositor handler
     compositor_handler: Option<Box<InternalCompositor>>,
     /// Manager for the inputs.
-    input_manager: Option<Box<InputManager>>,
+    input_manager: Option<Box<input::Manager>>,
     /// Manager for the outputs.
-    output_manager: Option<Box<OutputManager>>,
+    output_manager: Option<Box<output::Manager>>,
     /// Manager for stable XDG shells.
-    xdg_shell_manager: Option<Box<XdgShellManager>>,
+    xdg_shell_manager: Option<Box<xdg_shell::Manager>>,
     /// Manager for XDG shells v6.
-    xdg_v6_shell_manager: Option<Box<XdgV6ShellManager>>,
+    xdg_v6_shell_manager: Option<Box<xdg_shell_v6::Manager>>,
     /// Pointer to the xdg_shell global.
     /// If xdg_shell_manager is `None`, this value will be `NULL`.
     xdg_shell_global: *mut wlr_xdg_shell,
@@ -100,13 +108,13 @@ pub struct Compositor {
     /// Name of the Wayland socket that we are binding to.
     socket_name: String,
     /// Optional decoration manager extension.
-    pub server_decoration_manager: Option<ServerDecorationManager>,
+    pub server_decoration_manager: Option<server_decoration::Manager>,
     /// The renderer used to draw things to the screen.
     pub renderer: Option<GenericRenderer>,
     /// XWayland server, only Some if it is enabled
-    pub xwayland: Option<XWaylandServer>,
+    pub xwayland: Option<xwayland::Server>,
     /// The DnD manager
-    data_device_manager: Option<DataDeviceManager>,
+    data_device_manager: Option<data_device::Manager>,
     /// The error from the panic, if there was one.
     panic_error: Option<Box<Any + Send>>,
     /// Custom function to run at shutdown (or when a panic occurs).
@@ -118,50 +126,50 @@ pub struct Compositor {
 }
 
 #[derive(Default)]
-pub struct CompositorBuilder {
-    compositor_handler: Option<Box<CompositorHandler>>,
-    input_manager_handler: Option<Box<InputManagerHandler>>,
-    output_manager_handler: Option<Box<OutputManagerHandler>>,
-    xdg_shell_manager_handler: Option<Box<XdgShellManagerHandler>>,
-    xdg_v6_shell_manager_handler: Option<Box<XdgV6ShellManagerHandler>>,
+pub struct Builder {
+    compositor_handler: Option<Box<Handler>>,
+    input_manager_handler: Option<Box<input::ManagerHandler>>,
+    output_manager_handler: Option<Box<output::ManagerHandler>>,
+    xdg_shell_manager_handler: Option<Box<xdg_shell::ManagerHandler>>,
+    xdg_v6_shell_manager_handler: Option<Box<xdg_shell_v6::ManagerHandler>>,
     gles2: bool,
     render_setup_function: Option<UnsafeRenderSetupFunction>,
     server_decoration_manager: bool,
     wayland_remote: Option<String>,
     x11_display: Option<String>,
     data_device_manager: bool,
-    xwayland: Option<Box<XWaylandManagerHandler>>,
+    xwayland: Option<Box<xwayland::ManagerHandler>>,
     user_terminate: Option<fn()>
 }
 
-impl CompositorBuilder {
+impl Builder {
     /// Make a new compositor builder.
     ///
     /// Unless otherwise noted, each option is `false`/`None`.
     pub fn new() -> Self {
-        CompositorBuilder::default()
+        Builder::default()
     }
 
     /// Set the handler for global compositor callbacks.
-    pub fn compositor_handler(mut self, compositor_handler: Box<CompositorHandler>) -> Self {
+    pub fn compositor_handler(mut self, compositor_handler: Box<Handler>) -> Self {
         self.compositor_handler = Some(compositor_handler);
         self
     }
 
     /// Set the handler for inputs.
-    pub fn input_manager(mut self, input_manager_handler: Box<InputManagerHandler>) -> Self {
+    pub fn input_manager(mut self, input_manager_handler: Box<input::ManagerHandler>) -> Self {
         self.input_manager_handler = Some(input_manager_handler);
         self
     }
 
     /// Set the handler for outputs.
-    pub fn output_manager(mut self, output_manager_handler: Box<OutputManagerHandler>) -> Self {
+    pub fn output_manager(mut self, output_manager_handler: Box<output::ManagerHandler>) -> Self {
         self.output_manager_handler = Some(output_manager_handler);
         self
     }
 
     pub fn xdg_shell_manager(mut self,
-                             xdg_shell_manager_handler: Box<XdgShellManagerHandler>)
+                             xdg_shell_manager_handler: Box<xdg_shell::ManagerHandler>)
                              -> Self {
         self.xdg_shell_manager_handler = Some(xdg_shell_manager_handler);
         self
@@ -169,7 +177,7 @@ impl CompositorBuilder {
 
     /// Set the handler for xdg v6 shells.
     pub fn xdg_shell_v6_manager(mut self,
-                                xdg_v6_shell_manager_handler: Box<XdgV6ShellManagerHandler>)
+                                xdg_v6_shell_manager_handler: Box<xdg_shell_v6::ManagerHandler>)
                                 -> Self {
         self.xdg_v6_shell_manager_handler = Some(xdg_v6_shell_manager_handler);
         self
@@ -199,7 +207,7 @@ impl CompositorBuilder {
     /// Add a handler for xwayland.
     ///
     /// If you do not provide a handler then the xwayland server does not run.
-    pub fn xwayland(mut self, xwayland: Box<XWaylandManagerHandler>) -> Self {
+    pub fn xwayland(mut self, xwayland: Box<xwayland::ManagerHandler>) -> Self {
         self.xwayland = Some(xwayland);
         self
     }
@@ -230,8 +238,8 @@ impl CompositorBuilder {
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = Backend::Multi(MultiBackend::auto_create(display as *mut _,
-                                                                   self.render_setup_function));
+            let backend = Backend::Multi(backend::Multi::auto_create(display as *mut _,
+                                                                     self.render_setup_function));
             self.finish_build(data, display, event_loop, backend)
         }
     }
@@ -259,7 +267,7 @@ impl CompositorBuilder {
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = Backend::X11(X11Backend::new(display as *mut _,
+            let backend = Backend::X11(backend::X11::new(display as *mut _,
                                                        self.x11_display.take(),
                                                        self.render_setup_function));
             self.finish_build(data, display, event_loop, backend)
@@ -277,7 +285,7 @@ impl CompositorBuilder {
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = Backend::Wayland(WaylandBackend::new(display as *mut _,
+            let backend = Backend::Wayland(backend::Wayland::new(display as *mut _,
                                                                self.wayland_remote.take(),
                                                                self.render_setup_function));
             self.finish_build(data, display, event_loop, backend)
@@ -288,7 +296,7 @@ impl CompositorBuilder {
                                data: D,
                                session: Session,
                                gpu_fd: libc::c_int,
-                               parent: Option<DRMBackend>)
+                               parent: Option<backend::Drm>)
                                -> Compositor
         where D: Any + 'static
     {
@@ -297,7 +305,7 @@ impl CompositorBuilder {
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = Backend::DRM(DRMBackend::new(display as *mut _,
+            let backend = Backend::DRM(backend::Drm::new(display as *mut _,
                                                        session,
                                                        gpu_fd,
                                                        parent,
@@ -314,7 +322,7 @@ impl CompositorBuilder {
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
             let event_loop =
                 ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = Backend::Headless(HeadlessBackend::new(display as *mut _,
+            let backend = Backend::Headless(backend::Headless::new(display as *mut _,
                                                                  self.render_setup_function));
             self.finish_build(data, display, event_loop, backend)
         }
@@ -333,12 +341,12 @@ impl CompositorBuilder {
                                        display as *mut _);
             // Create optional extensions.
             let server_decoration_manager = if self.server_decoration_manager {
-                ServerDecorationManager::new(display)
+                server_decoration::Manager::new(display)
             } else {
                 None
             };
             let data_device_manager = if self.data_device_manager {
-                DataDeviceManager::new(display as _)
+                data_device::Manager::new(display as _)
             } else {
                 None
             };
@@ -367,7 +375,7 @@ impl CompositorBuilder {
 
             // Set up input manager, if the user provided it.
             let input_manager = self.input_manager_handler.map(|handler| {
-                let mut input_manager = InputManager::new(handler);
+                let mut input_manager = input::Manager::new(handler);
                 wl_signal_add(&mut (*backend.as_ptr()).events.new_input as *mut _ as _,
                               input_manager.add_listener() as *mut _ as _);
                 input_manager
@@ -375,7 +383,7 @@ impl CompositorBuilder {
 
             // Set up output manager, if the user provided it.
             let output_manager = self.output_manager_handler.map(|handler| {
-                let mut output_manager = OutputManager::new(handler);
+                let mut output_manager = output::Manager::new(handler);
                 wl_signal_add(&mut (*backend.as_ptr()).events.new_output as *mut _ as _,
                               output_manager.add_listener() as *mut _ as _);
                 output_manager
@@ -386,7 +394,7 @@ impl CompositorBuilder {
             let mut xdg_shell_global = ptr::null_mut();
             let xdg_shell_manager = self.xdg_shell_manager_handler.map(|handler| {
                 xdg_shell_global = wlr_xdg_shell_create(display as *mut _);
-                let mut xdg_shell_manager = XdgShellManager::new(handler);
+                let mut xdg_shell_manager = xdg_shell::Manager::new(handler);
                 wl_signal_add(&mut (*xdg_shell_global).events.new_surface as *mut _ as _,
                               xdg_shell_manager.add_listener() as *mut _ as _);
                 xdg_shell_manager
@@ -397,7 +405,7 @@ impl CompositorBuilder {
             let mut xdg_v6_shell_global = ptr::null_mut();
             let xdg_v6_shell_manager = self.xdg_v6_shell_manager_handler.map(|handler| {
                 xdg_v6_shell_global = wlr_xdg_shell_v6_create(display as *mut _);
-                let mut xdg_v6_shell_manager = XdgV6ShellManager::new(handler);
+                let mut xdg_v6_shell_manager = xdg_shell_v6::Manager::new(handler);
                 wl_signal_add(&mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
                               xdg_v6_shell_manager.add_listener() as *mut _ as _);
                 xdg_v6_shell_manager
@@ -405,7 +413,7 @@ impl CompositorBuilder {
 
             // Set up the XWayland server, if the user wants it.
             let xwayland = self.xwayland.and_then(|manager| {
-                                                      Some(XWaylandServer::new(display as _,
+                                                      Some(xwayland::Server::new(display as _,
                                                                                compositor,
                                                                                manager,
                                                                                false))
@@ -455,9 +463,9 @@ impl CompositorBuilder {
 
 impl Compositor {
     /// Creates a weak reference to the `Compositor`.
-    pub fn weak_reference(&self) -> CompositorHandle {
+    pub fn weak_reference(&self) -> Handle {
         let handle = Rc::downgrade(&self.lock);
-        CompositorHandle { handle }
+        Handle { handle }
     }
 
     /// Enters the wayland event loop. Won't return until the compositor is
@@ -545,14 +553,14 @@ impl Drop for Compositor {
     }
 }
 
-impl CompositorHandle {
-    /// Constructs a new `CompositorHandle` that is always invalid. Calling `run` on this
+impl Handle {
+    /// Constructs a new `compositor::Handle` that is always invalid. Calling `run` on this
     /// will always fail.
     ///
     /// This is useful for pre-filling a value before it's provided by the server, or
     /// for mocking/testing.
     pub fn new() -> Self {
-        CompositorHandle { handle: Weak::new() }
+        Handle { handle: Weak::new() }
     }
 
     /// Upgrades the compositor handle to a reference to the backing `Compositor`.
@@ -560,7 +568,7 @@ impl CompositorHandle {
     /// # Unsafety
     /// To be honest this function is probably safe.
     ///
-    /// However, the CompositorHandle will behave like the other handles in order
+    /// However, the `compositor::Handle` will behave like the other handles in order
     /// to reduce confusion.
     unsafe fn upgrade(&self) -> HandleResult<&mut Compositor> {
         self.handle.upgrade()
@@ -633,7 +641,7 @@ pub fn terminate() {
 ///
 /// If the compositor has not started running yet, or if it has stopped,
 /// then this function will return None.
-pub fn compositor_handle() -> Option<CompositorHandle> {
+pub fn handle() -> Option<Handle> {
     unsafe {
         if COMPOSITOR_PTR.is_null() {
             None
