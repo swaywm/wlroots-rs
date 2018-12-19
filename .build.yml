@@ -40,10 +40,10 @@ tasks:
       cd ../
 
       cargo build --verbose
-      cargo build --verbose --features=unstable
+      cargo build --verbose --features="static, unstable"
       cargo build --examples
-      cargo build --examples --features=unstable
+      cargo build --examples --features="static, unstable"
       # For doc tests
       cargo doc
-      cargo doc --features=unstable
-      cargo test --all --features=unstable
+      cargo doc --features="static, unstable"
+      cargo test --all --features="static, unstable"
