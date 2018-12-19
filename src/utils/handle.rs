@@ -176,10 +176,10 @@ impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
             // We drop the Rc here because having two would allow a dangling
             // pointer to exist!
             .and_then(|check| {
-                let wrapper_obj = W::from_handle(self)?;
                 if check.get() {
                     return Err(HandleErr::AlreadyDropped)
                 }
+                let wrapper_obj = W::from_handle(self)?;
                 check.set(true);
                 Ok(wrapper_obj)
             })
