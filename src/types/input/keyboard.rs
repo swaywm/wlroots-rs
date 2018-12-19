@@ -10,8 +10,7 @@ use xkbcommon::xkb::ffi::{xkb_keymap, xkb_state};
 
 use {KeyboardModifiers,
      input::{self, InputState},
-     errors::{HandleErr, HandleResult},
-     utils::{self, Handleable}};
+     utils::{self, Handleable, HandleErr, HandleResult}};
 pub use manager::keyboard_handler::*;
 pub use events::key_events as event;
 

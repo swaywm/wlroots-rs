@@ -5,9 +5,8 @@ use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_output;
 
 use {compositor,
-     errors::HandleErr,
      output::{self, Output, OutputState},
-     utils::Handleable};
+     utils::{HandleErr, Handleable}};
 
 #[allow(unused_variables)]
 pub trait Handler {

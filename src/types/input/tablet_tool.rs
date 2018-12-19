@@ -1,10 +1,10 @@
 //! TODO Documentation
 use std::{cell::Cell, rc::Rc};
 
-use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_tablet, wlr_tablet_tool_axes};
 
-use {input::{self, InputState}, utils::{self, Handleable}};
+use {input::{self, InputState},
+     utils::{self, Handleable, HandleErr, HandleResult}};
 pub use manager::tablet_tool_handler::*;
 pub use events::tablet_tool_events as event;
 

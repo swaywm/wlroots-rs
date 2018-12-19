@@ -15,8 +15,7 @@ use wlroots_sys::{wlr_output_effective_resolution, wlr_output_layout, wlr_output
 use {area::{Area, Origin},
      compositor,
      output,
-     errors::{HandleErr, HandleResult},
-     utils::Handleable};
+     utils::{HandleErr, HandleResult, Handleable}};
 
 struct OutputLayoutState {
     /// A counter that will always have a strong count of 1.

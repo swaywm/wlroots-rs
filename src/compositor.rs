@@ -13,7 +13,6 @@ use wlroots_sys::{wlr_backend_destroy, wlr_backend_start,
 
 use {backend::{self, UnsafeRenderSetupFunction, Backend, Session},
      data_device,
-     errors::{HandleErr, HandleResult},
      extensions::server_decoration,
      surface::{self, Surface, InternalSurface},
      input,
@@ -21,7 +20,7 @@ use {backend::{self, UnsafeRenderSetupFunction, Backend, Session},
      render::GenericRenderer,
      shell::{xdg_shell, xdg_shell_v6},
      xwayland,
-     utils::Handleable};
+     utils::{HandleErr, HandleResult, Handleable}};
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 pub(crate) static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;

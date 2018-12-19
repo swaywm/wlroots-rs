@@ -2,10 +2,10 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_touch};
 
-use {input::{self, InputState}, utils::{self, Handleable}};
+use {input::{self, InputState},
+     utils::{self, Handleable, HandleErr, HandleResult}};
 pub use manager::touch_handler::*;
 pub use events::touch_events as event;
 

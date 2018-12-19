@@ -260,11 +260,11 @@ macro_rules! with_handles {
       $($rest: tt)*] => $body: block) => {
         $unhandle_name1.run(|$handle_name1| {
             with_handles!([($handle_name2: $unhandle_name2), $($rest)*] => $body)
-        }).and_then(|n: $crate::HandleResult<_>| n)
+        }).and_then(|n: $crate::utils::HandleResult<_>| n)
     };
     ([($handle_name: ident: $unhandle_name: block), $($rest: tt)*] => $body: block) => {
         $unhandle_name.run(|$handle_name| {
             with_handles!([$($rest)*] => $body)
-        }).and_then(|n: $crate::HandleResult<_>| n)
+        }).and_then(|n: $crate::utils::HandleResult<_>| n)
     };
 }

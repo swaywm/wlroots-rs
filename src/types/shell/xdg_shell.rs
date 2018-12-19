@@ -13,10 +13,9 @@ use wlroots_sys::{wlr_xdg_popup, wlr_xdg_surface, wlr_xdg_surface_ping,
 
 
 use {area::Area,
-     errors::{HandleErr, HandleResult},
      seat,
      surface,
-     utils::{self, Handleable, c_to_rust_string}};
+     utils::{self, HandleErr, HandleResult, Handleable, c_to_rust_string}};
 pub use manager::{xdg_shell_manager::*, xdg_shell_handler::*};
 pub use events::xdg_shell_events as event;
 

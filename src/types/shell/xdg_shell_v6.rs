@@ -12,10 +12,9 @@ use wlroots_sys::{wlr_xdg_popup_v6, wlr_xdg_surface_v6, wlr_xdg_surface_v6_ping,
                   wlr_xdg_surface_v6_for_each_surface, wlr_surface};
 
 use {area::Area,
-     errors::{HandleErr, HandleResult},
      seat,
      surface,
-     utils::{self, Handleable, c_to_rust_string}};
+     utils::{self, HandleErr, HandleResult, Handleable, c_to_rust_string}};
 pub use manager::{xdg_shell_v6_manager::*, xdg_shell_v6_handler::*};
 pub use events::xdg_shell_v6_events as event;
 

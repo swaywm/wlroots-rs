@@ -23,7 +23,6 @@ mod macros;
 pub(crate) mod manager;
 #[cfg(feature = "unstable")]
 pub mod compositor;
-mod errors;
 #[cfg(feature = "unstable")]
 pub(crate) mod events;
 mod types;
@@ -49,6 +48,4 @@ pub use wlroots_sys::{wlr_keyboard_modifiers as KeyboardModifiers,
                       wlr_tablet_pad_ring_source::{self, *},
                       wlr_tablet_pad_strip_source::{self, *},
                       wlr_tablet_tool_proximity_state::{self, *}};
-
-pub use self::errors::*;
 

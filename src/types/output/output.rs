@@ -14,8 +14,7 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
                   wlr_output_swap_buffers, wlr_output_transformed_resolution};
 
 use {area::{Origin, Size},
-     errors::{HandleErr, HandleResult},
-     utils::{self, Handleable, c_to_rust_string},
+     utils::{self, HandleErr, HandleResult, Handleable, c_to_rust_string},
      output::{self, layout},
      render::PixmanRegion};
 pub use manager::{output_manager::*, output_handler::*};

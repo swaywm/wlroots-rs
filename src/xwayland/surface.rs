@@ -8,10 +8,9 @@ use wlroots_sys::{pid_t, wl_event_source, wlr_xwayland_surface, xcb_atom_t, xcb_
 
 use {area::{Area, Size, Origin},
      compositor,
-     errors::{HandleErr, HandleResult},
      surface::{self, InternalState},
      xwayland,
-     utils::{self, Handleable, c_to_rust_string}};
+     utils::{self, HandleErr, HandleResult, Handleable, c_to_rust_string}};
 pub use xwayland::hints::{Hints, SizeHints};
 
 pub type Handle = utils::Handle<(), wlr_xwayland_surface, Surface>;

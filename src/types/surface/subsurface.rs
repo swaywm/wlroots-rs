@@ -7,9 +7,8 @@ use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_subsurface;
 
 use {compositor,
-     errors::{HandleErr, HandleResult},
      surface,
-     utils::{self, Handleable}};
+     utils::{self, HandleErr, HandleResult, Handleable}};
 
 pub type Handle = utils::Handle<(), wlr_subsurface, Subsurface>;
 

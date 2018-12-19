@@ -1,9 +1,21 @@
 //! The generic implementation of a "handle" proxy object used throughout wlroots-rs.
 
-use std::{clone::Clone, cell::Cell, fmt, rc::Weak, hash::{Hash, Hasher}, ptr,
-          panic, marker::PhantomData};
+use std::{clone::Clone, cell::Cell, error::Error, fmt, rc::Weak,
+          hash::{Hash, Hasher}, ptr, panic, marker::PhantomData};
 
-use errors::{HandleErr, HandleResult};
+/// The result of trying to upgrade a handle, either using `run` or
+/// `with_handles!`.
+pub type HandleResult<T> = Result<T, HandleErr>;
+
+/// The types of ways upgrading a handle can fail.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum HandleErr {
+    /// Attempting a handle that already has a mutable borrow to its
+    /// backing structure.
+    AlreadyBorrowed,
+    /// Tried to upgrade a handle for a structure that has already been dropped.
+    AlreadyDropped
+}
 
 /// A non-owned reference counted handle to a resource.
 ///
@@ -184,5 +196,25 @@ impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
                 Ok(wrapper_obj)
             })
 
+    }
+}
+
+impl fmt::Display for HandleErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::HandleErr::*;
+        match *self {
+            AlreadyBorrowed => write!(f, "already borrowed"),
+            AlreadyDropped => write!(f, "already dropped")
+        }
+    }
+}
+
+impl Error for HandleErr {
+    fn description(&self) -> &str {
+        use self::HandleErr::*;
+        match *self {
+            AlreadyBorrowed => "Structure is already mutably borrowed",
+            AlreadyDropped => "Structure has already been dropped"
+        }
     }
 }

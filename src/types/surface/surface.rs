@@ -11,13 +11,12 @@ use wlroots_sys::{timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_su
                   wlr_surface_is_xdg_surface, wlr_surface_get_texture};
 
 use {compositor,
-     errors::{HandleErr, HandleResult},
      surface::{self,
                subsurface::{self, Subsurface, InternalSubsurface},
                subsurface_manager::SubsurfaceManager},
      output::Output,
      render::Texture,
-     utils::{self, Handleable, c_to_rust_string}};
+     utils::{self, Handleable, HandleErr, HandleResult, c_to_rust_string}};
 
 pub type Handle = utils::Handle<Weak<Box<SubsurfaceManager>>,
                                 wlr_surface,

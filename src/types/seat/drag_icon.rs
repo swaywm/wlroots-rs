@@ -2,7 +2,7 @@ use std::{cell::Cell, rc::{Rc, Weak}, hash::{Hash, Hasher}, panic};
 
 use wlroots_sys::wlr_drag_icon;
 
-use {surface, errors::{HandleErr, HandleResult}};
+use {surface, utils::{HandleErr, HandleResult}};
 pub use manager::drag_icon_handler::*;
 
 #[derive(Debug)]

@@ -2,11 +2,10 @@
 
 use std::{cell::Cell, rc::Rc};
 
-use errors::{HandleErr, HandleResult};
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
 use {input::{self, InputState},
-     utils::{self, Handleable}};
+     utils::{self, Handleable, HandleErr, HandleResult}};
 pub use manager::pointer_handler::*;
 pub use events::pointer_events as event;
 

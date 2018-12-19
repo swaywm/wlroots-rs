@@ -33,10 +33,9 @@ use xkbcommon::xkb::Keycode;
 use {KeyboardModifiers,
      compositor::{self, Compositor},
      input::{self, keyboard},
-     errors::{HandleErr, HandleResult},
      surface::{self, Surface},
      seat::{self, grab, touch_point::{TouchId, TouchPoint}, drag_icon::{self, DragIcon}},
-     utils::{ToMs, c_to_rust_string, safe_as_cstring}};
+     utils::{ToMs, HandleErr, HandleResult, c_to_rust_string, safe_as_cstring}};
 pub use events::seat_events as event;
 
 struct SeatState {

@@ -15,12 +15,11 @@ use wlroots_sys::{wlr_cursor, wlr_cursor_absolute_to_layout_coords,
 
 use {area::Area,
      compositor,
-     errors::{HandleErr, HandleResult},
      input::{self, pointer, tablet_tool, touch},
      output::{self, Output, layout::Layout},
      surface::Surface,
      cursor::xcursor,
-     utils::Handleable};
+     utils::{HandleErr, HandleResult, Handleable}};
 
 #[derive(Debug)]
 pub(crate) struct CursorState {
