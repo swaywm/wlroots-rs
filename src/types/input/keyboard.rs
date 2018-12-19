@@ -16,7 +16,7 @@ pub use manager::keyboard_handler::*;
 pub use events::key_events as event;
 
 pub type Key = xkb_keysym_t;
-pub type Handle = utils::Handle<input::Device, wlr_keyboard, Keyboard>;
+pub type Handle = utils::Handle<*mut wlr_input_device, wlr_keyboard, Keyboard>;
 
 /// Information about repeated keypresses for a particular Keyboard.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -189,7 +189,7 @@ impl Drop for Keyboard {
     }
 }
 
-impl Handleable<input::Device, wlr_keyboard> for Keyboard {
+impl Handleable<*mut wlr_input_device, wlr_keyboard> for Keyboard {
     #[doc(hidden)]
     unsafe fn from_ptr(keyboard: *mut wlr_keyboard) -> Self {
         let data = Box::from_raw((*keyboard).data as *mut InputState);
@@ -214,7 +214,7 @@ impl Handleable<input::Device, wlr_keyboard> for Keyboard {
         Ok(Keyboard { liveliness,
                       // NOTE Rationale for cloning:
                       // If we already dropped we don't reach this point.
-                      device: unsafe { handle.data.clone() },
+                      device: input::Device { device: handle.data },
                       keyboard: handle.as_ptr()
         })
     }
@@ -225,18 +225,8 @@ impl Handleable<input::Device, wlr_keyboard> for Keyboard {
                  // NOTE Rationale for cloning:
                  // Since we have a strong reference already,
                  // the input must still be alive.
-                 data: unsafe { self.device.clone() },
+                 data: unsafe { self.device.as_ptr() },
                  _marker: std::marker::PhantomData
-        }
-    }
-}
-
-impl Handle {
-    /// Gets the wlr_input_device associated with this keyboard::Handle
-    pub fn input_device(&self) -> HandleResult<&input::Device> {
-        match self.handle.upgrade() {
-            Some(_) => Ok(&self.data),
-            None => Err(HandleErr::AlreadyDropped)
         }
     }
 }
@@ -279,19 +269,5 @@ impl fmt::Display for Modifier {
                                      .collect();
 
         write!(formatter, "{:?}", mods)
-    }
-}
-
-impl Clone for Handle {
-    fn clone(&self) -> Self {
-        Handle { ptr: self.ptr,
-                 handle: self.handle.clone(),
-                 /// NOTE Rationale for unsafe clone:
-                 ///
-                 /// You can only access the device after a call to `upgrade`,
-                 /// and that implicitly checks that it is valid.
-                 data: unsafe { self.data.clone() },
-                 _marker: std::marker::PhantomData }
-
     }
 }

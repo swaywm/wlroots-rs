@@ -21,14 +21,14 @@ use errors::{HandleErr, HandleResult};
 ///
 /// Please refer to the specific resource documentation for a description of
 /// the lifetime particular to that resource.
-pub struct Handle<D, T, W: Handleable<D, T> + Sized> {
+pub struct Handle<D: Clone, T, W: Handleable<D, T> + Sized> {
     pub(crate) ptr: *mut T,
     pub(crate) handle: Weak<Cell<bool>>,
     pub(crate) _marker: PhantomData<W>,
     pub(crate) data: D
 }
 
-pub trait Handleable<D, T> {
+pub trait Handleable<D: Clone, T> {
     /// Constructs the resource manager from a raw pointer of the resource
     /// this handleable manages. **This should increment the reference count**.
     ///
@@ -65,27 +65,27 @@ impl <D: Clone, T, W: Handleable<D, T>> Clone for Handle<D, T, W> {
     }
 }
 
-impl <D, T, W: Handleable<D, T>> fmt::Debug for Handle<D, T, W> {
+impl <D: Clone, T, W: Handleable<D, T>> fmt::Debug for Handle<D, T, W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Handle with pointer: {:p}", self.ptr)
     }
 }
 
-impl <D, T, W: Handleable<D, T>> Hash for Handle<D, T, W> {
+impl <D: Clone, T, W: Handleable<D, T>> Hash for Handle<D, T, W> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.ptr.hash(state);
     }
 }
 
-impl <D, T, W: Handleable<D, T>> PartialEq for Handle<D, T, W> {
+impl <D: Clone, T, W: Handleable<D, T>> PartialEq for Handle<D, T, W> {
     fn eq(&self, other: &Handle<D, T, W>) -> bool {
         self.ptr == other.ptr
     }
 }
 
-impl <D, T, W: Handleable<D, T>> Eq for Handle<D, T, W> {}
+impl <D: Clone, T, W: Handleable<D, T>> Eq for Handle<D, T, W> {}
 
-impl <D: Default, T, W: Handleable<D, T>> Default for Handle<D, T, W> {
+impl <D: Default + Clone, T, W: Handleable<D, T>> Default for Handle<D, T, W> {
     /// Constructs a new handle that is always invalid. Calling `run` on this
     /// will always fail.
     ///
@@ -99,7 +99,7 @@ impl <D: Default, T, W: Handleable<D, T>> Default for Handle<D, T, W> {
     }
 }
 
-impl <D, T, W: Handleable<D, T>> Handle<D, T, W> {
+impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
     /// Creates an output::Handle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     ///

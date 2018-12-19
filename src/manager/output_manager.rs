@@ -55,13 +55,6 @@ pub trait ManagerHandler {
 }
 
 impl<'output> Builder<'output> {
-    /// Get a handle to the output this is building.
-    ///
-    /// This is so you can use this output later.
-    pub fn handle(&self) -> output::Handle {
-        self.output.clone()
-    }
-
     /// Build the output with the best mode.
     ///
     /// To complete construction, return this in your implementation of
@@ -73,8 +66,8 @@ impl<'output> Builder<'output> {
             output.choose_best_mode();
         }).expect("Output was borrowed");
         BuilderResult { output: self.output,
-                              result: Box::new(data),
-                              phantom: PhantomData }
+                        result: Box::new(data),
+                        phantom: PhantomData }
     }
 }
 

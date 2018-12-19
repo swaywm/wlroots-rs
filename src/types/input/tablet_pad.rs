@@ -8,7 +8,7 @@ use {input::{self, InputState}, utils::{self, Handleable}};
 pub use manager::tablet_pad_handler::*;
 pub use events::tablet_pad_events as event;
 
-pub type Handle = utils::Handle<input::Device, wlr_tablet_pad, TabletPad>;
+pub type Handle = utils::Handle<*mut wlr_input_device, wlr_tablet_pad, TabletPad>;
 
 #[derive(Debug)]
 pub struct TabletPad {
@@ -79,7 +79,7 @@ impl Drop for TabletPad {
     }
 }
 
-impl Handleable<input::Device, wlr_tablet_pad> for TabletPad {
+impl Handleable<*mut wlr_input_device, wlr_tablet_pad> for TabletPad {
     #[doc(hidden)]
     unsafe fn from_ptr(pad: *mut wlr_tablet_pad) -> Self {
         let data = Box::from_raw((*pad).data as *mut InputState);
@@ -104,7 +104,7 @@ impl Handleable<input::Device, wlr_tablet_pad> for TabletPad {
         Ok(TabletPad { liveliness,
                        // NOTE Rationale for cloning:
                        // If we already dropped we don't reach this point.
-                       device: unsafe { handle.data.clone() },
+                       device: input::Device { device: handle.data },
                        pad: handle.as_ptr()
         })
     }
@@ -115,31 +115,7 @@ impl Handleable<input::Device, wlr_tablet_pad> for TabletPad {
                  // NOTE Rationale for cloning:
                  // Since we have a strong reference already,
                  // the input must still be alive.
-                 data: unsafe { self.device.clone() },
-                 _marker: std::marker::PhantomData
-        }
-    }
-}
-
-impl Handle {
-    /// Gets the wlr_input_device associated with this keyboard::Handle
-    pub fn input_device(&self) -> HandleResult<&input::Device> {
-        match self.handle.upgrade() {
-            Some(_) => Ok(&self.data),
-            None => Err(HandleErr::AlreadyDropped)
-        }
-    }
-}
-
-impl Clone for Handle {
-    fn clone(&self) -> Self {
-        Handle { ptr: self.ptr,
-                 handle: self.handle.clone(),
-                 /// NOTE Rationale for unsafe clone:
-                 ///
-                 /// You can only access it after a call to `upgrade`,
-                 /// and that implicitly checks that it is valid.
-                 data: unsafe { self.data.clone() },
+                 data: unsafe { self.device.as_ptr() },
                  _marker: std::marker::PhantomData
         }
     }

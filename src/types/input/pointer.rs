@@ -10,7 +10,7 @@ use {input::{self, InputState},
 pub use manager::pointer_handler::*;
 pub use events::pointer_events as event;
 
-pub type Handle = utils::Handle<input::Device, wlr_pointer, Pointer>;
+pub type Handle = utils::Handle<*mut wlr_input_device, wlr_pointer, Pointer>;
 
 #[derive(Debug)]
 pub struct Pointer {
@@ -86,7 +86,7 @@ impl Drop for Pointer {
     }
 }
 
-impl Handleable<input::Device, wlr_pointer> for Pointer {
+impl Handleable<*mut wlr_input_device, wlr_pointer> for Pointer {
     #[doc(hidden)]
     unsafe fn from_ptr(pointer: *mut wlr_pointer) -> Self {
         let data = Box::from_raw((*pointer).data as *mut InputState);
@@ -111,7 +111,7 @@ impl Handleable<input::Device, wlr_pointer> for Pointer {
         Ok(Pointer { liveliness,
                      // NOTE Rationale for cloning:
                      // If we already dropped we don't reach this point.
-                     device: unsafe { handle.data.clone() },
+                     device: input::Device { device: handle.data },
                      pointer: handle.as_ptr()
         })
     }
@@ -122,21 +122,7 @@ impl Handleable<input::Device, wlr_pointer> for Pointer {
                  // NOTE Rationale for cloning:
                  // Since we have a strong reference already,
                  // the input must still be alive.
-                 data: unsafe { self.device.clone() },
-                 _marker: std::marker::PhantomData
-        }
-    }
-}
-
-impl Clone for Handle {
-    fn clone(&self) -> Self {
-        Handle { ptr: self.ptr,
-                 handle: self.handle.clone(),
-                 /// NOTE Rationale for unsafe clone:
-                 ///
-                 /// You can only access it after a call to `upgrade`,
-                 /// and that implicitly checks that it is valid.
-                 data: unsafe { self.data.clone() },
+                 data: unsafe { self.device.as_ptr() },
                  _marker: std::marker::PhantomData
         }
     }
