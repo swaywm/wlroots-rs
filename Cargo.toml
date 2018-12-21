@@ -3,7 +3,7 @@ members = ["wlroots-sys", "wlroots-dehandle"]
 
 [package]
 name = "wlroots"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Timidger <APragmaticPlace@gmail.com>"]
 description = "Wayland compositor framework"
 keywords = ["wayland", "compositor", "bindings"]
