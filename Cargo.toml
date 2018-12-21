@@ -55,4 +55,4 @@ required-features = ["unstable"]
 
 # This will build the unstable features for documentation on docs.rs
 [package.metadata.docs.rs]
-features = ["unstable"]
+features = ["libcap", "systemd", "elogind", "unstable"]
