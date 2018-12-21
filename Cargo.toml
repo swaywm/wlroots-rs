@@ -3,7 +3,7 @@ members = ["wlroots-sys", "wlroots-dehandle"]
 
 [package]
 name = "wlroots"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Timidger <APragmaticPlace@gmail.com>"]
 repository = "https://github.com/swaywm/wlroots-rs"
 documentation = "https://docs.rs/wlroots"
