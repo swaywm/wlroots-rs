@@ -15,7 +15,7 @@ exclude = [".travis.yml"]
 autoexamples = true
 
 [dependencies]
-wlroots-sys = { path = "wlroots-sys", default-features = false, version = "0.2" }
+wlroots-sys = { path = "wlroots-sys", default-features = false, version = "0.2.1" }
 wlroots-dehandle = { path = "wlroots-dehandle", version = "1.0" }
 xkbcommon = "0.3"
 bitflags = "1.0"
