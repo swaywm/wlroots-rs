@@ -43,6 +43,25 @@ fn main() {
     if cfg!(feature = "unstable") {
         builder = builder.clang_arg("-DWLR_USE_UNSTABLE");
     }
+    if !cfg!(feature = "static") {
+        // config.h won't exist, so make a dummy file.
+        // We don't need it because of the following -D defines.
+        fs::create_dir_all(format!("{}{}", target_dir, "/include/wlr/"))
+            .expect("Could not create <out>/include/wlr");
+        fs::File::create(format!("{}{}", target_dir, "/include/wlr/config.h"))
+            .expect("Could not create dummy config.h file");
+        // meson automatically sets up variables, but if we are linking
+        // dynamically bindgen will no longer have them.
+        builder = builder.clang_args([
+            format!("-DWLR_HAS_LIBCAP={}", cfg!(feature = "libcap") as u8),
+            format!("-DWLR_HAS_SYSTEMD={}", cfg!(feature = "systemd") as u8),
+            format!("-DWLR_HAS_ELOGIND={}", cfg!(feature = "elogind") as u8),
+            format!("-DWLR_HAS_X11_BACKEND={}", cfg!(feature = "x11_backend") as u8),
+            format!("-DWLR_HAS_XWAYLAND={}", cfg!(feature = "xwayland") as u8),
+            format!("-DWLR_HAS_XCB_ERRORS={}", cfg!(feature = "xcb_errors") as u8),
+            format!("-DWLR_HAS_XCB_ICCCM={}", cfg!(feature = "xcb_icccm") as u8)
+        ].iter())
+    }
     let generated = builder.generate().unwrap();
 
     println!("cargo:rustc-link-lib=dylib=X11");

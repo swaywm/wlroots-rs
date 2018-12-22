@@ -24,9 +24,13 @@ wayland-server = { version = "0.21.*", features = ["native_lib"] }
 wayland-sys = { version = "0.21.*", features = ["dlopen", "server"] }
 
 [features]
-default = ["libcap", "systemd", "elogind"]
+default = ["libcap", "systemd", "elogind", "xwayland", "x11_backend"]
 static = ["meson"]
 libcap = []
 systemd = []
 elogind = []
+x11_backend = []
+xwayland = []
+xcb_errors = []
+xcb_icccm = []
 unstable = []
