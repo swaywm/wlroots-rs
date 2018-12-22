@@ -22,11 +22,15 @@ bitflags = "1.0"
 vsprintf = "1.0.1"
 
 [features]
-default = ["libcap", "systemd", "elogind"]
+default = ["libcap", "systemd", "elogind", "xwayland", "x11_backend"]
 static = ["wlroots-sys/static"]
 libcap = ["wlroots-sys/libcap"]
 systemd = ["wlroots-sys/systemd"]
 elogind = ["wlroots-sys/elogind"]
+x11_backend = ["wlroots-sys/x11_backend"]
+xwayland = ["wlroots-sys/xwayland"]
+xcb_errors = ["wlroots-sys/xcb_errors"]
+xcb_icccm = ["wlroots-sys/xcb_icccm"]
 unstable = ["wlroots-sys/unstable"]
 
 [[example]]
