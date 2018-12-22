@@ -43,6 +43,21 @@ fn main() {
     if cfg!(feature = "unstable") {
         builder = builder.clang_arg("-DWLR_USE_UNSTABLE");
     }
+    if !cfg!(feature = "static") {
+        // meson automatically sets up variables, but if we are linking
+        // dynamically bindgen will no longer have them.
+        builder = builder.clang_args([
+            format!("-DWLR_HAS_LIBCAP={}", cfg!(feature = "libcap") as u8),
+            format!("-DWLR_HAS_SYSTEMD={}", cfg!(feature = "systemd") as u8),
+            format!("-DWLR_HAS_ELOGIND={}", cfg!(feature = "elogind") as u8),
+            format!("-DWLR_HAS_X11_BACKEND={}", cfg!(feature = "x11_backend") as u8),
+            format!("-DWLR_HAS_XWAYLAND={}", cfg!(feature = "xwayland") as u8),
+            format!("-DWLR_HAS_XCB_ERRORS={}", cfg!(feature = "xcb_errors") as u8),
+            format!("-DWLR_HAS_XCB_ICCCM={}", cfg!(feature = "xcb_icccm") as u8),
+            // FIXME For some reason if this is removed, the egl header won't compile
+            "-DWLR_CONFIG_H".into()
+        ].iter())
+    }
     let generated = builder.generate().unwrap();
 
     println!("cargo:rustc-link-lib=dylib=X11");
