@@ -41,6 +41,8 @@ tasks:
 
       cargo build --verbose
       cargo build --verbose --features="static, unstable"
+      # Test dynamic building as well
+      cargo build --verbose --features="unstable"
       cargo build --examples
       cargo build --examples --features="static, unstable"
       # For doc tests
