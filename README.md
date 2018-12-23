@@ -6,7 +6,7 @@ Safe Rust bindings for [wlroots](https://github.com/SirCmpwn/wlroots).
 
 This library is currently tracking the wlroots version for its minor version. Patch versions are wlroots-rs specific.
 
-# [Documentation](https://docs.rs/wlroots/)
+# [Documentation](http://way-cooler.org/docs/wlroots/index.html)
 
 # Building
 To build wlroots-rs you have to init the wlroots submodule first and have all wlroots dependencies.
