@@ -277,6 +277,7 @@ fn main() {
 
     let mut compositor =
         compositor::Builder::new().gles2(true)
+                                  .wl_shm(true)
                                   .input_manager(Box::new(InputManager))
                                   .output_manager(Box::new(OutputManager))
                                   .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))

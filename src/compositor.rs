@@ -80,7 +80,7 @@ pub struct Compositor {
     /// User data.
     pub data: Box<Any>,
     /// Internal compositor handler
-    compositor_handler: Option<Box<InternalCompositor>>,
+    compositor_handler: Box<InternalCompositor>,
     /// Manager for the inputs.
     input_manager: Option<Box<input::Manager>>,
     /// Manager for the outputs.
@@ -103,8 +103,9 @@ pub struct Compositor {
     pub display: *mut wl_display,
     /// Pointer to the event loop.
     pub event_loop: *mut wl_event_loop,
-    /// Shared memory buffer file descriptor.
-    shm_fd: i32,
+    /// Shared memory buffer file descriptor. If the feature was not activated,
+    /// this will be None.
+    wl_shm_fd: Option<i32>,
     /// Name of the Wayland socket that we are binding to.
     socket_name: String,
     /// Optional decoration manager extension.
@@ -132,6 +133,7 @@ pub struct Builder {
     output_manager_handler: Option<Box<output::ManagerHandler>>,
     xdg_shell_manager_handler: Option<Box<xdg_shell::ManagerHandler>>,
     xdg_v6_shell_manager_handler: Option<Box<xdg_shell_v6::ManagerHandler>>,
+    wl_shm: bool,
     gles2: bool,
     render_setup_function: Option<UnsafeRenderSetupFunction>,
     server_decoration_manager: bool,
@@ -180,6 +182,15 @@ impl Builder {
                                 xdg_v6_shell_manager_handler: Box<xdg_shell_v6::ManagerHandler>)
                                 -> Self {
         self.xdg_v6_shell_manager_handler = Some(xdg_v6_shell_manager_handler);
+        self
+    }
+
+    /// Decide whether or not to enable the wl_shm global.
+    ///
+    /// This is used to allocate shared memory between clients and the
+    /// compositor.
+    pub fn wl_shm(mut self, wl_shm: bool) -> Self {
+        self.wl_shm = wl_shm;
         self
     }
 
@@ -334,130 +345,130 @@ impl Builder {
                               event_loop: *mut wl_event_loop,
                               backend: Backend)
                               -> Compositor
-        where D: Any + 'static {
-            // Set up shared memory buffer for Wayland clients.
-            let shm_fd = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                       wl_display_init_shm,
-                                       display as *mut _);
-            // Create optional extensions.
-            let server_decoration_manager = if self.server_decoration_manager {
-                server_decoration::Manager::new(display)
-            } else {
-                None
-            };
-            let data_device_manager = if self.data_device_manager {
-                data_device::Manager::new(display as _)
-            } else {
-                None
-            };
-            let compositor;
-            let renderer = if self.gles2 {
-                let gles2 = GenericRenderer::gles2_renderer(backend.as_ptr());
-                // Set up wlr_compositor
-                let gles2_ptr = gles2.as_ptr();
-                compositor = wlr_compositor_create(display as *mut _, gles2_ptr);
-                Some(gles2)
-            } else {
-                compositor = wlr_compositor_create(display as *mut _, ptr::null_mut());
-                None
-            };
+    where D: Any + 'static {
+        // Set up the wl_compositor and wl_subcompositor globals,
+        // along with gles2 if that was enabled.
+        let (compositor, renderer) = if self.gles2 {
+            let gles2 = GenericRenderer::gles2_renderer(backend.as_ptr());
+            (wlr_compositor_create(display as *mut _, gles2.as_ptr()), Some(gles2))
+        } else {
+            (wlr_compositor_create(display as *mut _, ptr::null_mut()), None)
+        };
 
-            // Set up compositor handler, if the user provided it.
-            let compositor_handler = self.compositor_handler.or_else(|| Some(Box::new(())));
-            let compositor_handler = compositor_handler.map(|handler| {
-                let mut compositor_handler = InternalCompositor::new(handler);
-                wl_signal_add(&mut (*compositor).events.new_surface as *mut _ as _,
-                              compositor_handler.new_surface_listener() as *mut _ as _);
-                wl_signal_add(&mut (*compositor).events.destroy as *mut _ as _,
-                              compositor_handler.shutdown_listener() as *mut _ as _);
-                compositor_handler
-            });
+        // Set up shared memory buffer for Wayland clients.
+        let wl_shm_fd = if self.wl_shm {
+            Some(ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                               wl_display_init_shm,
+                               display as *mut _))
+        } else {
+            None
+        };
 
-            // Set up input manager, if the user provided it.
-            let input_manager = self.input_manager_handler.map(|handler| {
-                let mut input_manager = input::Manager::new(handler);
-                wl_signal_add(&mut (*backend.as_ptr()).events.new_input as *mut _ as _,
-                              input_manager.add_listener() as *mut _ as _);
-                input_manager
-            });
+        // Create optional extensions.
+        let server_decoration_manager = if self.server_decoration_manager {
+            server_decoration::Manager::new(display)
+        } else {
+            None
+        };
+        let data_device_manager = if self.data_device_manager {
+            data_device::Manager::new(display as _)
+        } else {
+            None
+        };
 
-            // Set up output manager, if the user provided it.
-            let output_manager = self.output_manager_handler.map(|handler| {
-                let mut output_manager = output::Manager::new(handler);
-                wl_signal_add(&mut (*backend.as_ptr()).events.new_output as *mut _ as _,
-                              output_manager.add_listener() as *mut _ as _);
-                output_manager
-            });
+        // Set up compositor handler, if the user provided it.
+        let compositor_handler = self.compositor_handler.unwrap_or_else(||Box::new(()));
+        let mut compositor_handler = InternalCompositor::new(compositor_handler);
+        wl_signal_add(&mut (*compositor).events.new_surface as *mut _ as _,
+                    compositor_handler.new_surface_listener() as *mut _ as _);
+        wl_signal_add(&mut (*compositor).events.destroy as *mut _ as _,
+                        compositor_handler.shutdown_listener() as *mut _ as _);
 
-            // Set up the xdg_shell handler and associated Wayland global,
-            // if user provided a manager for it.
-            let mut xdg_shell_global = ptr::null_mut();
-            let xdg_shell_manager = self.xdg_shell_manager_handler.map(|handler| {
-                xdg_shell_global = wlr_xdg_shell_create(display as *mut _);
-                let mut xdg_shell_manager = xdg_shell::Manager::new(handler);
-                wl_signal_add(&mut (*xdg_shell_global).events.new_surface as *mut _ as _,
-                              xdg_shell_manager.add_listener() as *mut _ as _);
-                xdg_shell_manager
-            });
+        // Set up input manager, if the user provided it.
+        let input_manager = self.input_manager_handler.map(|handler| {
+            let mut input_manager = input::Manager::new(handler);
+            wl_signal_add(&mut (*backend.as_ptr()).events.new_input as *mut _ as _,
+                          input_manager.add_listener() as *mut _ as _);
+            input_manager
+        });
 
-            // Set up the xdg_shell_v6 handler and associated Wayland global,
-            // if user provided a manager for it.
-            let mut xdg_v6_shell_global = ptr::null_mut();
-            let xdg_v6_shell_manager = self.xdg_v6_shell_manager_handler.map(|handler| {
-                xdg_v6_shell_global = wlr_xdg_shell_v6_create(display as *mut _);
-                let mut xdg_v6_shell_manager = xdg_shell_v6::Manager::new(handler);
-                wl_signal_add(&mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
-                              xdg_v6_shell_manager.add_listener() as *mut _ as _);
-                xdg_v6_shell_manager
-            });
+        // Set up output manager, if the user provided it.
+        let output_manager = self.output_manager_handler.map(|handler| {
+            let mut output_manager = output::Manager::new(handler);
+            wl_signal_add(&mut (*backend.as_ptr()).events.new_output as *mut _ as _,
+                          output_manager.add_listener() as *mut _ as _);
+            output_manager
+        });
 
-            // Set up the XWayland server, if the user wants it.
-            let xwayland = self.xwayland.and_then(|manager| {
-                                                      Some(xwayland::Server::new(display as _,
-                                                                               compositor,
-                                                                               manager,
-                                                                               false))
-                                                  });
+        // Set up the xdg_shell handler and associated Wayland global,
+        // if user provided a manager for it.
+        let mut xdg_shell_global = ptr::null_mut();
+        let xdg_shell_manager = self.xdg_shell_manager_handler.map(|handler| {
+            xdg_shell_global = wlr_xdg_shell_create(display as *mut _);
+            let mut xdg_shell_manager = xdg_shell::Manager::new(handler);
+            wl_signal_add(&mut (*xdg_shell_global).events.new_surface as *mut _ as _,
+                          xdg_shell_manager.add_listener() as *mut _ as _);
+            xdg_shell_manager
+        });
 
-            let user_terminate = self.user_terminate;
+        // Set up the xdg_shell_v6 handler and associated Wayland global,
+        // if user provided a manager for it.
+        let mut xdg_v6_shell_global = ptr::null_mut();
+        let xdg_v6_shell_manager = self.xdg_v6_shell_manager_handler.map(|handler| {
+            xdg_v6_shell_global = wlr_xdg_shell_v6_create(display as *mut _);
+            let mut xdg_v6_shell_manager = xdg_shell_v6::Manager::new(handler);
+            wl_signal_add(&mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
+                          xdg_v6_shell_manager.add_listener() as *mut _ as _);
+            xdg_v6_shell_manager
+        });
 
-            // Open the socket to the Wayland server.
-            let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
-            if socket.is_null() {
-                // NOTE Rationale for panicking:
-                // * Won't be in C land just yet, so it's safe to panic
-                // * Can always be returned in a Result instead, but for now
-                //   if you auto create it's assumed you can't recover.
-                panic!("Unable to open wayland socket");
-            }
-            let socket_name = CStr::from_ptr(socket).to_string_lossy().into_owned();
-            wlr_log!(WLR_DEBUG,
-                     "Running compositor on wayland display {}",
-                     socket_name);
-            env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
-            let compositor = Compositor { data: Box::new(data),
-                                          compositor_handler,
-                                          socket_name,
-                                          input_manager,
-                                          output_manager,
-                                          xdg_shell_manager,
-                                          xdg_shell_global,
-                                          xdg_v6_shell_manager,
-                                          xdg_v6_shell_global,
-                                          data_device_manager,
-                                          compositor,
-                                          backend,
-                                          display,
-                                          event_loop,
-                                          shm_fd,
-                                          server_decoration_manager,
-                                          renderer,
-                                          xwayland,
-                                          user_terminate,
-                                          panic_error: None,
-                                          lock: Rc::new(Cell::new(false)) };
-            compositor.set_lock(true);
-            compositor
+        // Set up the XWayland server, if the user wants it.
+        let xwayland = self.xwayland.and_then(|manager| {
+            Some(xwayland::Server::new(display as _,
+                                       compositor,
+                                       manager,
+                                       false))
+        });
+
+        let user_terminate = self.user_terminate;
+
+        // Open the socket to the Wayland server.
+        let socket = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_add_socket_auto, display);
+        if socket.is_null() {
+            // NOTE Rationale for panicking:
+            // * Won't be in C land just yet, so it's safe to panic
+            // * Can always be returned in a Result instead, but for now
+            //   if you auto create it's assumed you can't recover.
+            panic!("Unable to open wayland socket");
+        }
+        let socket_name = CStr::from_ptr(socket).to_string_lossy().into_owned();
+        wlr_log!(WLR_DEBUG,
+                 "Running compositor on wayland display {}",
+                 socket_name);
+        env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
+        let compositor = Compositor { data: Box::new(data),
+                                      compositor_handler,
+                                      socket_name,
+                                      input_manager,
+                                      output_manager,
+                                      xdg_shell_manager,
+                                      xdg_shell_global,
+                                      xdg_v6_shell_manager,
+                                      xdg_v6_shell_global,
+                                      data_device_manager,
+                                      compositor,
+                                      backend,
+                                      display,
+                                      event_loop,
+                                      wl_shm_fd,
+                                      server_decoration_manager,
+                                      renderer,
+                                      xwayland,
+                                      user_terminate,
+                                      panic_error: None,
+                                      lock: Rc::new(Cell::new(false)) };
+        compositor.set_lock(true);
+        compositor
     }
 }
 
