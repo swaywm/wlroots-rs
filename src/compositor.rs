@@ -80,7 +80,7 @@ pub struct Compositor {
     /// User data.
     pub data: Box<Any>,
     /// Internal compositor handler
-    compositor_handler: Option<Box<InternalCompositor>>,
+    compositor_handler: Box<InternalCompositor>,
     /// Manager for the inputs.
     input_manager: Option<Box<input::Manager>>,
     /// Manager for the outputs.
@@ -377,15 +377,12 @@ impl Builder {
         };
 
         // Set up compositor handler, if the user provided it.
-        let compositor_handler = self.compositor_handler.or_else(|| Some(Box::new(())));
-        let compositor_handler = compositor_handler.map(|handler| {
-            let mut compositor_handler = InternalCompositor::new(handler);
-            wl_signal_add(&mut (*compositor).events.new_surface as *mut _ as _,
-                          compositor_handler.new_surface_listener() as *mut _ as _);
-            wl_signal_add(&mut (*compositor).events.destroy as *mut _ as _,
-                          compositor_handler.shutdown_listener() as *mut _ as _);
-            compositor_handler
-        });
+        let compositor_handler = self.compositor_handler.unwrap_or_else(||Box::new(()));
+        let mut compositor_handler = InternalCompositor::new(compositor_handler);
+        wl_signal_add(&mut (*compositor).events.new_surface as *mut _ as _,
+                    compositor_handler.new_surface_listener() as *mut _ as _);
+        wl_signal_add(&mut (*compositor).events.destroy as *mut _ as _,
+                        compositor_handler.shutdown_listener() as *mut _ as _);
 
         // Set up input manager, if the user provided it.
         let input_manager = self.input_manager_handler.map(|handler| {
