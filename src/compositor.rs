@@ -346,6 +346,24 @@ impl Builder {
                               backend: Backend)
                               -> Compositor
     where D: Any + 'static {
+        // Set up the wl_compositor and wl_subcompositor globals,
+        // along with gles2 if that was enabled.
+        let (compositor, renderer) = if self.gles2 {
+            let gles2 = GenericRenderer::gles2_renderer(backend.as_ptr());
+            (wlr_compositor_create(display as *mut _, gles2.as_ptr()), Some(gles2))
+        } else {
+            (wlr_compositor_create(display as *mut _, ptr::null_mut()), None)
+        };
+
+        // Set up shared memory buffer for Wayland clients.
+        let wl_shm_fd = if self.wl_shm {
+            Some(ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                               wl_display_init_shm,
+                               display as *mut _))
+        } else {
+            None
+        };
+
         // Create optional extensions.
         let server_decoration_manager = if self.server_decoration_manager {
             server_decoration::Manager::new(display)
@@ -357,27 +375,6 @@ impl Builder {
         } else {
             None
         };
-        let compositor;
-        let renderer = if self.gles2 {
-            let gles2 = GenericRenderer::gles2_renderer(backend.as_ptr());
-            // Set up wlr_compositor
-            let gles2_ptr = gles2.as_ptr();
-            compositor = wlr_compositor_create(display as *mut _, gles2_ptr);
-            Some(gles2)
-        } else {
-            compositor = wlr_compositor_create(display as *mut _, ptr::null_mut());
-            None
-        };
-
-        let wl_shm_fd;
-        if self.wl_shm {
-            wl_shm_fd = Some(ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                           wl_display_init_shm,
-                                           display as *mut _));
-        } else {
-            wl_shm_fd = None;
-        }
-        // Set up shared memory buffer for Wayland clients.
 
         // Set up compositor handler, if the user provided it.
         let compositor_handler = self.compositor_handler.or_else(|| Some(Box::new(())));
