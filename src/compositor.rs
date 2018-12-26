@@ -103,8 +103,9 @@ pub struct Compositor {
     pub display: *mut wl_display,
     /// Pointer to the event loop.
     pub event_loop: *mut wl_event_loop,
-    /// Shared memory buffer file descriptor.
-    shm_fd: i32,
+    /// Shared memory buffer file descriptor. If the feature was not activated,
+    /// this will be None.
+    wl_shm_fd: Option<i32>,
     /// Name of the Wayland socket that we are binding to.
     socket_name: String,
     /// Optional decoration manager extension.
@@ -132,6 +133,7 @@ pub struct Builder {
     output_manager_handler: Option<Box<output::ManagerHandler>>,
     xdg_shell_manager_handler: Option<Box<xdg_shell::ManagerHandler>>,
     xdg_v6_shell_manager_handler: Option<Box<xdg_shell_v6::ManagerHandler>>,
+    wl_shm: bool,
     gles2: bool,
     render_setup_function: Option<UnsafeRenderSetupFunction>,
     server_decoration_manager: bool,
@@ -180,6 +182,15 @@ impl Builder {
                                 xdg_v6_shell_manager_handler: Box<xdg_shell_v6::ManagerHandler>)
                                 -> Self {
         self.xdg_v6_shell_manager_handler = Some(xdg_v6_shell_manager_handler);
+        self
+    }
+
+    /// Decide whether or not to enable the wl_shm global.
+    ///
+    /// This is used to allocate shared memory between clients and the
+    /// compositor.
+    pub fn wl_shm(mut self, wl_shm: bool) -> Self {
+        self.wl_shm = wl_shm;
         self
     }
 
@@ -335,10 +346,6 @@ impl Builder {
                               backend: Backend)
                               -> Compositor
         where D: Any + 'static {
-            // Set up shared memory buffer for Wayland clients.
-            let shm_fd = ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                       wl_display_init_shm,
-                                       display as *mut _);
             // Create optional extensions.
             let server_decoration_manager = if self.server_decoration_manager {
                 server_decoration::Manager::new(display)
@@ -361,6 +368,16 @@ impl Builder {
                 compositor = wlr_compositor_create(display as *mut _, ptr::null_mut());
                 None
             };
+
+            let wl_shm_fd;
+            if self.wl_shm {
+                wl_shm_fd = Some(ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                                wl_display_init_shm,
+                                                display as *mut _));
+            } else {
+                wl_shm_fd = None;
+            }
+            // Set up shared memory buffer for Wayland clients.
 
             // Set up compositor handler, if the user provided it.
             let compositor_handler = self.compositor_handler.or_else(|| Some(Box::new(())));
@@ -449,7 +466,7 @@ impl Builder {
                                           backend,
                                           display,
                                           event_loop,
-                                          shm_fd,
+                                          wl_shm_fd,
                                           server_decoration_manager,
                                           renderer,
                                           xwayland,
