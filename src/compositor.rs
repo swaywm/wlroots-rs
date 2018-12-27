@@ -86,7 +86,7 @@ pub struct Compositor {
     /// Manager for the outputs.
     output_manager: Option<&'static mut output::Manager>,
     /// Manager for stable XDG shells.
-    xdg_shell_manager: Option<Box<xdg_shell::Manager>>,
+    xdg_shell_manager: Option<&'static mut xdg_shell::Manager>,
     /// Manager for XDG shells v6.
     xdg_v6_shell_manager: Option<&'static mut xdg_shell_v6::Manager>,
     /// Pointer to the xdg_shell global.
@@ -131,7 +131,7 @@ pub struct Builder {
     compositor_handler: Option<Box<Handler>>,
     input_manager_builder: Option<input::ManagerBuilder>,
     output_manager_builder: Option<output::ManagerBuilder>,
-    xdg_shell_manager_handler: Option<Box<xdg_shell::ManagerHandler>>,
+    xdg_shell_manager_builder: Option<xdg_shell::ManagerBuilder>,
     xdg_v6_shell_manager_builder: Option<xdg_shell_v6::ManagerBuilder>,
     wl_shm: bool,
     gles2: bool,
@@ -171,9 +171,9 @@ impl Builder {
     }
 
     pub fn xdg_shell_manager(mut self,
-                             xdg_shell_manager_handler: Box<xdg_shell::ManagerHandler>)
+                             xdg_shell_manager_builder: xdg_shell::ManagerBuilder)
                              -> Self {
-        self.xdg_shell_manager_handler = Some(xdg_shell_manager_handler);
+        self.xdg_shell_manager_builder = Some(xdg_shell_manager_builder);
         self
     }
 
@@ -403,11 +403,11 @@ impl Builder {
         // Set up the xdg_shell handler and associated Wayland global,
         // if user provided a manager for it.
         let mut xdg_shell_global = ptr::null_mut();
-        let xdg_shell_manager = self.xdg_shell_manager_handler.map(|handler| {
+        let xdg_shell_manager = self.xdg_shell_manager_builder.map(|builder| {
             xdg_shell_global = wlr_xdg_shell_create(display as *mut _);
-            let mut xdg_shell_manager = xdg_shell::Manager::new(handler);
+            let xdg_shell_manager = xdg_shell::Manager::build(builder);
             wl_signal_add(&mut (*xdg_shell_global).events.new_surface as *mut _ as _,
-                          xdg_shell_manager.add_listener() as *mut _ as _);
+                          (&mut xdg_shell_manager.add_listener) as *mut _ as _);
             xdg_shell_manager
         });
 
