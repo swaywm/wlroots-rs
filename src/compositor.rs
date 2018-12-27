@@ -88,7 +88,7 @@ pub struct Compositor {
     /// Manager for stable XDG shells.
     xdg_shell_manager: Option<Box<xdg_shell::Manager>>,
     /// Manager for XDG shells v6.
-    xdg_v6_shell_manager: Option<Box<xdg_shell_v6::Manager>>,
+    xdg_v6_shell_manager: Option<&'static mut xdg_shell_v6::Manager>,
     /// Pointer to the xdg_shell global.
     /// If xdg_shell_manager is `None`, this value will be `NULL`.
     xdg_shell_global: *mut wlr_xdg_shell,
@@ -132,7 +132,7 @@ pub struct Builder {
     input_manager_builder: Option<input::ManagerBuilder>,
     output_manager_builder: Option<output::ManagerBuilder>,
     xdg_shell_manager_handler: Option<Box<xdg_shell::ManagerHandler>>,
-    xdg_v6_shell_manager_handler: Option<Box<xdg_shell_v6::ManagerHandler>>,
+    xdg_v6_shell_manager_builder: Option<xdg_shell_v6::ManagerBuilder>,
     wl_shm: bool,
     gles2: bool,
     render_setup_function: Option<UnsafeRenderSetupFunction>,
@@ -179,9 +179,9 @@ impl Builder {
 
     /// Set the handler for xdg v6 shells.
     pub fn xdg_shell_v6_manager(mut self,
-                                xdg_v6_shell_manager_handler: Box<xdg_shell_v6::ManagerHandler>)
+                                xdg_v6_shell_manager_builder: xdg_shell_v6::ManagerBuilder)
                                 -> Self {
-        self.xdg_v6_shell_manager_handler = Some(xdg_v6_shell_manager_handler);
+        self.xdg_v6_shell_manager_builder = Some(xdg_v6_shell_manager_builder);
         self
     }
 
@@ -414,11 +414,11 @@ impl Builder {
         // Set up the xdg_shell_v6 handler and associated Wayland global,
         // if user provided a manager for it.
         let mut xdg_v6_shell_global = ptr::null_mut();
-        let xdg_v6_shell_manager = self.xdg_v6_shell_manager_handler.map(|handler| {
+        let xdg_v6_shell_manager = self.xdg_v6_shell_manager_builder.map(|builder| {
             xdg_v6_shell_global = wlr_xdg_shell_v6_create(display as *mut _);
-            let mut xdg_v6_shell_manager = xdg_shell_v6::Manager::new(handler);
+            let xdg_v6_shell_manager = xdg_shell_v6::Manager::build(builder);
             wl_signal_add(&mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
-                          xdg_v6_shell_manager.add_listener() as *mut _ as _);
+                          (&mut xdg_v6_shell_manager.add_listener) as *mut _ as _);
             xdg_v6_shell_manager
         });
 

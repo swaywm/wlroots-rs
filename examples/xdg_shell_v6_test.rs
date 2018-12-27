@@ -51,7 +51,6 @@ impl cursor::Handler for CursorEx {}
 impl seat::Handler for SeatHandlerEx {}
 
 struct XdgV6ShellHandlerEx;
-struct XdgV6ShellManager;
 struct OutputLayoutEx;
 
 impl output::layout::Handler for OutputLayoutEx {}
@@ -77,27 +76,24 @@ impl surface::Handler for SurfaceEx {
     }
 }
 
-impl xdg_shell_v6::ManagerHandler for XdgV6ShellManager {
-    #[wlroots_dehandle(compositor, shell, layout, output)]
-    fn new_surface(&mut self,
-                   compositor: compositor::Handle,
-                   shell: xdg_shell_v6::Handle)
-                   -> (Option<Box<xdg_shell_v6::Handler>>, Option<Box<surface::Handler>>) {
-        {
-            use compositor as compositor;
-            use shell as shell;
-            shell.ping();
-            let state: &mut State = compositor.into();
-            state.shells.push(shell.weak_reference());
-            let layout_handle = &state.layout;
-            use layout_handle as layout;
-            for (output, _) in layout.outputs() {
-                use output as output;
-                output.schedule_frame()
-            }
+#[wlroots_dehandle(compositor, shell, layout, output)]
+fn new_surface(compositor: compositor::Handle,
+               shell: xdg_shell_v6::Handle)
+               -> (Option<Box<xdg_shell_v6::Handler>>, Option<Box<surface::Handler>>) {
+    {
+        use compositor as compositor;
+        use shell as shell;
+        shell.ping();
+        let state: &mut State = compositor.into();
+        state.shells.push(shell.weak_reference());
+        let layout_handle = &state.layout;
+        use layout_handle as layout;
+        for (output, _) in layout.outputs() {
+            use output as output;
+            output.schedule_frame()
         }
-        (Some(Box::new(XdgV6ShellHandlerEx)), Some(Box::new(SurfaceEx)))
     }
+    (Some(Box::new(XdgV6ShellHandlerEx)), Some(Box::new(SurfaceEx)))
 }
 
 struct ExOutput;
@@ -268,12 +264,14 @@ fn main() {
     let input_builder = input::ManagerBuilder::default()
         .keyboard_added(keyboard_added)
         .pointer_added(pointer_added);
+    let xdg_shell_v6_builder = xdg_shell_v6::ManagerBuilder::default()
+        .surface_added(new_surface);
     let mut compositor =
         compositor::Builder::new().gles2(true)
         .wl_shm(true)
         .input_manager(input_builder)
         .output_manager(output_builder)
-        .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
+        .xdg_shell_v6_manager(xdg_shell_v6_builder)
         .build_auto(State::new(xcursor_manager, layout, cursor));
 
     {
