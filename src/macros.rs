@@ -212,7 +212,7 @@ macro_rules! wayland_listener_static {
             #[derive(Default)]
             #[allow(dead_code)]
             pub struct $builder {
-                $($($callback: ::std::option::Option<$fn_type>)*,
+                $($($callback: ::std::option::Option<$fn_type>,)*
                   $($($($extra_callback_name: ::std::option::Option<$extra_callback_type>,)*)*)*)*
             }
 
@@ -274,7 +274,7 @@ macro_rules! wayland_listener_static {
                             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                                           wl_list_init,
                                           &mut listener.link as *mut _ as _);
-                            ::std::ptr::write(&mut listener.notify, std::option::Option::Some(add_notify));
+                            ::std::ptr::write(&mut listener.notify, std::option::Option::Some($notify));
                             listener
                         };
                         $static_manager.$callback = builder.$callback;
