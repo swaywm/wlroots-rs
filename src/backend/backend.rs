@@ -15,7 +15,7 @@
 use libc;
 use wlroots_sys::{self, wlr_backend, wlr_backend_is_wl, wlr_backend_is_x11,
                   wlr_backend_is_drm, wlr_backend_is_headless, wlr_backend_is_multi,
-                  wlr_backend_is_libinput};
+                  wlr_backend_is_libinput, wlr_backend_get_session};
 
 use backend;
 
@@ -39,6 +39,20 @@ pub enum Backend {
 }
 
 impl Backend {
+    /// Obtains the wlr_session reference from this backend if there is any.
+    ///
+    /// Might return None for backends that don't use a session.
+    pub fn get_session<'backend>(&'backend mut self) -> Option<backend::Session<'backend>> {
+        unsafe {
+            let session_ptr = wlr_backend_get_session(self.as_ptr());
+            if session_ptr.is_null() {
+                None
+            } else {
+                Some(backend::Session::from_ptr(session_ptr))
+            }
+        }
+    }
+
     /// Create a backend from a `*mut wlr_backend`.
     pub unsafe fn from_backend(backend: *mut wlr_backend) -> Self {
         if wlr_backend_is_wl(backend) {

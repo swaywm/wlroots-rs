@@ -538,6 +538,11 @@ impl Compositor {
         &self.backend
     }
 
+    /// Get a mutable reference to the currently running backend.
+    pub fn backend_mut(&mut self) -> &mut Backend {
+        &mut self.backend
+    }
+
     /// Saves the panic error information in the compositor, to be re-thrown
     /// later when we are out of the C callback stack.
     pub(crate) fn save_panic_error(&mut self, error: Box<Any + Send>) {
