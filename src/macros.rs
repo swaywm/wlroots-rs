@@ -196,6 +196,102 @@ macro_rules! wayland_listener {
     }
 }
 
+macro_rules! wayland_listener_static {
+    (static mut $static_manager: ident;
+     $(($manager: ident, $builder: ident):
+       $([
+           $(
+               ($fn_type: ty, $listener: ident, $builder_func: ident) => ($notify: ident, $callback: ident):
+               |$($func_arg: ident: $func_type: ty,)*| unsafe $body: block;
+           )*
+       ])+
+     )+
+    ) => {
+        $(
+            #[derive(Default)]
+            pub struct $builder {
+                $($($callback: ::std::option::Option<$fn_type>,)*)*
+            }
+
+            impl $builder {
+                $($(pub fn $builder_func(mut self, $callback: $fn_type) -> Self {
+                    self.$callback = ::std::option::Option::Some($callback);
+                    self
+                })*)*
+            }
+        )*
+
+        $(
+            #[repr(C)]
+            pub(crate) struct $manager {
+                $($(
+                    pub(crate) $listener: $crate::wlroots_sys::wl_listener,
+                    $callback: ::std::option::Option<$fn_type>,
+                )*)*
+            }
+
+            pub(crate) static mut $static_manager: $manager = $manager {
+                $($(
+                    $listener: $crate::wlroots_sys::wl_listener {
+                        link: {
+                            $crate::wlroots_sys::wl_list {
+                                prev: ::std::ptr::null_mut(),
+                                next: ::std::ptr::null_mut()}},
+                        notify: ::std::option::Option::None },
+                    $callback: ::std::option::Option::None
+                )*)*
+            };
+
+            impl Manager {
+                /// Sets the functions on the builder as the global manager functions.
+                ///
+                /// # Safety
+                /// Returns a mutable reference to static data, which is unsafe to have
+                /// multiple of. Do all your mutation through this reference and don't
+                /// call this function multiple times.
+                pub(crate) unsafe fn build(builder: $builder) -> &'static mut $manager {
+                    $($(
+                        $static_manager.$listener = {
+                            // NOTE Rationale for zeroed memory:
+                            // * Need to pass a pointer to wl_list_init
+                            // * The list is initialized by Wayland, which doesn't "drop"
+                            // * The listener is written to without dropping any of the data
+                            let mut listener: $crate::wlroots_sys::wl_listener = ::std::mem::zeroed();
+                            use $crate::wlroots_sys::server::WAYLAND_SERVER_HANDLE;
+                            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
+                                          wl_list_init,
+                                          &mut listener.link as *mut _ as _);
+                            ::std::ptr::write(&mut listener.notify, std::option::Option::Some(add_notify));
+                            listener
+                        };
+                        $static_manager.$callback = builder.$callback;
+                    )*)*
+                    &mut $static_manager
+                }
+            }
+        )*
+
+
+        $(
+            $(
+                $(
+                    unsafe extern "C" fn $notify(listener: *mut $crate::wlroots_sys::wl_listener,
+                                                 data: *mut $crate::libc::c_void) {
+                        let manager: &mut $manager = &mut *container_of!(listener,
+                                                                         $manager,
+                                                                         $listener);
+                        $crate::utils::handle_unwind(
+                            ::std::panic::catch_unwind(
+                                ::std::panic::AssertUnwindSafe(|| {
+                                    (|$($func_arg: $func_type,)*| { $body })(manager, data)
+                                })))
+                    }
+                )*
+            )*
+        )*
+    }
+}
+
 /// Used to indicate what data is global compositor data.
 /// It will automatically implement the CompositorData trait for the struct,
 /// and also add a method to `Compositor` to unwrap the data from the fat

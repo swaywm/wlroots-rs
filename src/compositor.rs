@@ -394,8 +394,7 @@ impl Builder {
 
         // Set up output manager, if the user provided it.
         let output_manager = self.output_manager_builder.map(|builder| {
-            output::Manager::build(builder);
-            let output_manager = &mut output::MANAGER;
+            let output_manager = output::Manager::build(builder);
             wl_signal_add(&mut (*backend.as_ptr()).events.new_output as *mut _ as _,
                           (&mut output_manager.add_listener) as *mut _ as _);
             output_manager
