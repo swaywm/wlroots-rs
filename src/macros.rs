@@ -201,6 +201,7 @@ macro_rules! wayland_listener_static {
      $(($manager: ident, $builder: ident):
        $([
            $(
+               $([$($extra_callback_name: ident: $extra_callback_type: ty),+])*
                ($fn_type: ty, $listener: ident, $builder_func: ident) => ($notify: ident, $callback: ident):
                |$($func_arg: ident: $func_type: ty,)*| unsafe $body: block;
            )*
@@ -209,15 +210,25 @@ macro_rules! wayland_listener_static {
     ) => {
         $(
             #[derive(Default)]
+            #[allow(dead_code)]
             pub struct $builder {
-                $($($callback: ::std::option::Option<$fn_type>,)*)*
+                $($($callback: ::std::option::Option<$fn_type>)*,
+                  $($($($extra_callback_name: ::std::option::Option<$extra_callback_type>,)*)*)*)*
             }
 
             impl $builder {
-                $($(pub fn $builder_func(mut self, $callback: $fn_type) -> Self {
-                    self.$callback = ::std::option::Option::Some($callback);
-                    self
-                })*)*
+                $($(
+                    pub fn $builder_func(mut self, $callback: $fn_type) -> Self {
+                        self.$callback = ::std::option::Option::Some($callback);
+                        self
+                    }
+                    $($(
+                        pub fn $extra_callback_name(mut self, $extra_callback_name: $extra_callback_type) -> Self {
+                            self.$extra_callback_name = ::std::option::Option::Some($extra_callback_name);
+                            self
+                        }
+                    )*)*
+                )*)*
             }
         )*
 
@@ -227,6 +238,7 @@ macro_rules! wayland_listener_static {
                 $($(
                     pub(crate) $listener: $crate::wlroots_sys::wl_listener,
                     $callback: ::std::option::Option<$fn_type>,
+                    $($($extra_callback_name: ::std::option::Option<$extra_callback_type>),*)*
                 )*)*
             }
 
@@ -238,7 +250,8 @@ macro_rules! wayland_listener_static {
                                 prev: ::std::ptr::null_mut(),
                                 next: ::std::ptr::null_mut()}},
                         notify: ::std::option::Option::None },
-                    $callback: ::std::option::Option::None
+                    $callback: ::std::option::Option::None,
+                    $($($extra_callback_name: ::std::option::Option::None),*)*
                 )*)*
             };
 
@@ -265,6 +278,9 @@ macro_rules! wayland_listener_static {
                             listener
                         };
                         $static_manager.$callback = builder.$callback;
+                        $($(
+                            $static_manager.$extra_callback_name = builder.$extra_callback_name;
+                        )*)*
                     )*)*
                     &mut $static_manager
                 }

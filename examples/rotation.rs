@@ -111,14 +111,10 @@ impl output::Handler for ExOutput {
     }
 }
 
-struct InputManager;
-impl input::ManagerHandler for InputManager {
-    fn keyboard_added(&mut self,
-                      _compositor_handle: compositor::Handle,
-                      _keyboard_handle: keyboard::Handle)
-                      -> Option<Box<keyboard::Handler>> {
-        Some(Box::new(KeyboardManager))
-    }
+fn keyboard_added(_compositor_handle: compositor::Handle,
+                  _keyboard_handle: keyboard::Handle)
+                  -> Option<Box<keyboard::Handler>> {
+    Some(Box::new(KeyboardManager))
 }
 
 struct KeyboardManager;
@@ -164,8 +160,10 @@ fn main() {
     let rotation_transform = rotation_transform_from_str(&rotation_argument_string);
     let compositor_state = CompositorState::new(rotation_transform);
     let output_builder = output::ManagerBuilder::default().output_added(output_added);
+    let input_builder = input::ManagerBuilder::default()
+        .keyboard_added(keyboard_added);
     let mut compositor = compositor::Builder::new().gles2(true)
-                                                   .input_manager(Box::new(InputManager))
+                                                   .input_manager(input_builder)
                                                    .output_manager(output_builder)
                                                    .build_auto(compositor_state);
     {

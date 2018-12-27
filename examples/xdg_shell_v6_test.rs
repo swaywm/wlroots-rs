@@ -102,8 +102,6 @@ impl xdg_shell_v6::ManagerHandler for XdgV6ShellManager {
 
 struct ExOutput;
 
-struct InputManager;
-
 struct ExPointer;
 
 struct ExKeyboardHandler;
@@ -233,30 +231,26 @@ impl output::Handler for ExOutput {
     }
 }
 
-impl input::ManagerHandler for InputManager {
-    fn pointer_added(&mut self,
-                     _: compositor::Handle,
-                     _: pointer::Handle)
-                     -> Option<Box<pointer::Handler>> {
-        Some(Box::new(ExPointer))
-    }
+fn pointer_added(_: compositor::Handle,
+                 _: pointer::Handle)
+                 -> Option<Box<pointer::Handler>> {
+    Some(Box::new(ExPointer))
+}
 
-    #[wlroots_dehandle(compositor, keyboard, seat)]
-    fn keyboard_added(&mut self,
-                      compositor: compositor::Handle,
-                      keyboard: keyboard::Handle)
-                      -> Option<Box<keyboard::Handler>> {
-        {
-            use compositor as compositor;
-            use keyboard as keyboard;
-            let state: &mut State = compositor.into();
-            state.keyboard = Some(keyboard.weak_reference());
-            let seat_handle = state.seat_handle.as_ref().unwrap();
-            use seat_handle as seat;
-            seat.set_keyboard(keyboard.input_device());
-        }
-        Some(Box::new(ExKeyboardHandler))
+#[wlroots_dehandle(compositor, keyboard, seat)]
+fn keyboard_added(compositor: compositor::Handle,
+                  keyboard: keyboard::Handle)
+                  -> Option<Box<keyboard::Handler>> {
+    {
+        use compositor as compositor;
+        use keyboard as keyboard;
+        let state: &mut State = compositor.into();
+        state.keyboard = Some(keyboard.weak_reference());
+        let seat_handle = state.seat_handle.as_ref().unwrap();
+        use seat_handle as seat;
+        seat.set_keyboard(keyboard.input_device());
     }
+    Some(Box::new(ExKeyboardHandler))
 }
 
 fn main() {
@@ -264,20 +258,23 @@ fn main() {
     let cursor = Cursor::create(Box::new(CursorEx));
     let mut xcursor_manager =
         xcursor::Manager::create("default".to_string(), 24).expect("Could not create xcursor \
-                                                                  manager");
+                                                                    manager");
     xcursor_manager.load(1.0);
     cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c))
-          .unwrap();
+        .unwrap();
     let layout = Layout::create(Box::new(OutputLayoutEx));
 
     let output_builder = output::ManagerBuilder::default().output_added(output_added);
+    let input_builder = input::ManagerBuilder::default()
+        .keyboard_added(keyboard_added)
+        .pointer_added(pointer_added);
     let mut compositor =
         compositor::Builder::new().gles2(true)
-                                  .wl_shm(true)
-                                  .input_manager(Box::new(InputManager))
-                                  .output_manager(output_builder)
-                                  .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
-                                  .build_auto(State::new(xcursor_manager, layout, cursor));
+        .wl_shm(true)
+        .input_manager(input_builder)
+        .output_manager(output_builder)
+        .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
+        .build_auto(State::new(xcursor_manager, layout, cursor));
 
     {
         let seat_handle =

@@ -35,42 +35,36 @@ impl State {
     }
 }
 
-struct InputManagerEx;
 struct OutputEx;
 struct KeyboardEx;
 struct TabletEx;
 
-impl input::ManagerHandler for InputManagerEx {
-    fn keyboard_added(&mut self,
-                      _: compositor::Handle,
-                      _: keyboard::Handle)
-                      -> Option<Box<keyboard::Handler>> {
-        Some(Box::new(KeyboardEx))
-    }
+fn keyboard_added(_: compositor::Handle,
+                  _: keyboard::Handle)
+                  -> Option<Box<keyboard::Handler>> {
+    Some(Box::new(KeyboardEx))
+}
 
-    fn tablet_tool_added(&mut self,
-                         compositor: compositor::Handle,
-                         tool: tablet_tool::Handle)
-                         -> Option<Box<tablet_tool::Handler>> {
-        with_handles!([(compositor: {compositor}), (tool: {tool})] => {
-            let state: &mut State = compositor.into();
-            state.size_mm = tool.input_device().size();
-            if state.size_mm.0 == 0.0 {
-                state.size_mm.0 = 20.0;
-            }
-            if state.size_mm.1 == 0.0 {
-                state.size_mm.1 = 10.0;
-            }
-        }).unwrap();
-        Some(Box::new(TabletEx))
-    }
+fn tablet_tool_added(compositor: compositor::Handle,
+                     tool: tablet_tool::Handle)
+                     -> Option<Box<tablet_tool::Handler>> {
+    with_handles!([(compositor: {compositor}), (tool: {tool})] => {
+        let state: &mut State = compositor.into();
+        state.size_mm = tool.input_device().size();
+        if state.size_mm.0 == 0.0 {
+            state.size_mm.0 = 20.0;
+        }
+        if state.size_mm.1 == 0.0 {
+            state.size_mm.1 = 10.0;
+        }
+    }).unwrap();
+    Some(Box::new(TabletEx))
+}
 
-    fn tablet_pad_added(&mut self,
-                        _: compositor::Handle,
-                        _: tablet_pad::Handle)
-                        -> Option<Box<tablet_pad::Handler>> {
-        Some(Box::new(TabletEx))
-    }
+fn tablet_pad_added(_: compositor::Handle,
+                    _: tablet_pad::Handle)
+                    -> Option<Box<tablet_pad::Handler>> {
+    Some(Box::new(TabletEx))
 }
 
 fn output_added<'output>(_: compositor::Handle,
@@ -247,8 +241,12 @@ compositor_data!(State);
 fn main() {
     log::init_logging(log::WLR_DEBUG, None);
     let output_builder = output::ManagerBuilder::default().output_added(output_added);
+    let input_builder = input::ManagerBuilder::default()
+        .keyboard_added(keyboard_added)
+        .tablet_tool_added(tablet_tool_added)
+        .tablet_pad_added(tablet_pad_added);
     compositor::Builder::new().gles2(true)
-                            .input_manager(Box::new(InputManagerEx))
+                            .input_manager(input_builder)
                             .output_manager(output_builder)
                             .build_auto(State::new())
                             .run()

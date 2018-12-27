@@ -37,8 +37,6 @@ struct TouchHandlerEx;
 
 struct ExOutput;
 
-struct InputManager;
-
 struct ExKeyboardHandler;
 
 fn output_added<'output>(_: compositor::Handle,
@@ -135,24 +133,24 @@ impl touch::Handler for TouchHandlerEx {
     }
 }
 
-impl input::ManagerHandler for InputManager {
-    fn touch_added(&mut self, _: compositor::Handle, _: touch::Handle) -> Option<Box<touch::Handler>> {
-        Some(Box::new(TouchHandlerEx))
-    }
+fn touch_added(_: compositor::Handle, _: touch::Handle) -> Option<Box<touch::Handler>> {
+    Some(Box::new(TouchHandlerEx))
+}
 
-    fn keyboard_added(&mut self,
-                      _: compositor::Handle,
-                      _: keyboard::Handle)
-                      -> Option<Box<keyboard::Handler>> {
-        Some(Box::new(ExKeyboardHandler))
-    }
+fn keyboard_added(_: compositor::Handle,
+                  _: keyboard::Handle)
+                  -> Option<Box<keyboard::Handler>> {
+    Some(Box::new(ExKeyboardHandler))
 }
 
 fn main() {
     init_logging(WLR_DEBUG, None);
     let output_builder = output::ManagerBuilder::default().output_added(output_added);
+    let input_builder = input::ManagerBuilder::default()
+        .keyboard_added(keyboard_added)
+        .touch_added(touch_added);
     let mut compositor = compositor::Builder::new().gles2(true)
-                                                   .input_manager(Box::new(InputManager))
+                                                   .input_manager(input_builder)
                                                    .output_manager(output_builder)
                                                    .build_auto(State::new());
     {

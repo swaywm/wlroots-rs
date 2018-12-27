@@ -82,7 +82,7 @@ pub struct Compositor {
     /// Internal compositor handler
     compositor_handler: Box<InternalCompositor>,
     /// Manager for the inputs.
-    input_manager: Option<Box<input::Manager>>,
+    input_manager: Option<&'static mut input::Manager>,
     /// Manager for the outputs.
     output_manager: Option<&'static mut output::Manager>,
     /// Manager for stable XDG shells.
@@ -129,7 +129,7 @@ pub struct Compositor {
 #[derive(Default)]
 pub struct Builder {
     compositor_handler: Option<Box<Handler>>,
-    input_manager_handler: Option<Box<input::ManagerHandler>>,
+    input_manager_builder: Option<input::ManagerBuilder>,
     output_manager_builder: Option<output::ManagerBuilder>,
     xdg_shell_manager_handler: Option<Box<xdg_shell::ManagerHandler>>,
     xdg_v6_shell_manager_handler: Option<Box<xdg_shell_v6::ManagerHandler>>,
@@ -159,8 +159,8 @@ impl Builder {
     }
 
     /// Set the handler for inputs.
-    pub fn input_manager(mut self, input_manager_handler: Box<input::ManagerHandler>) -> Self {
-        self.input_manager_handler = Some(input_manager_handler);
+    pub fn input_manager(mut self, input_manager_builder: input::ManagerBuilder) -> Self {
+        self.input_manager_builder = Some(input_manager_builder);
         self
     }
 
@@ -385,10 +385,10 @@ impl Builder {
                         compositor_handler.shutdown_listener() as *mut _ as _);
 
         // Set up input manager, if the user provided it.
-        let input_manager = self.input_manager_handler.map(|handler| {
-            let mut input_manager = input::Manager::new(handler);
+        let input_manager = self.input_manager_builder.map(|builder| {
+            let input_manager = input::Manager::build(builder);
             wl_signal_add(&mut (*backend.as_ptr()).events.new_input as *mut _ as _,
-                          input_manager.add_listener() as *mut _ as _);
+                          (&mut input_manager.add_listener) as *mut _ as _);
             input_manager
         });
 
