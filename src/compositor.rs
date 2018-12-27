@@ -140,7 +140,7 @@ pub struct Builder {
     wayland_remote: Option<String>,
     x11_display: Option<String>,
     data_device_manager: bool,
-    xwayland: Option<Box<xwayland::ManagerHandler>>,
+    xwayland: Option<xwayland::ManagerBuilder>,
     user_terminate: Option<fn()>
 }
 
@@ -218,7 +218,7 @@ impl Builder {
     /// Add a handler for xwayland.
     ///
     /// If you do not provide a handler then the xwayland server does not run.
-    pub fn xwayland(mut self, xwayland: Box<xwayland::ManagerHandler>) -> Self {
+    pub fn xwayland(mut self, xwayland: xwayland::ManagerBuilder) -> Self {
         self.xwayland = Some(xwayland);
         self
     }
@@ -423,10 +423,10 @@ impl Builder {
         });
 
         // Set up the XWayland server, if the user wants it.
-        let xwayland = self.xwayland.and_then(|manager| {
+        let xwayland = self.xwayland.and_then(|builder| {
             Some(xwayland::Server::new(display as _,
                                        compositor,
-                                       manager,
+                                       builder,
                                        false))
         });
 
