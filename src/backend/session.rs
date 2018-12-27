@@ -79,10 +79,6 @@ impl <'session> Session<'session> {
         }
     }
 
-    pub unsafe fn as_ptr(&self) -> *mut wlr_session {
-        self.session
-    }
-
     /// Opens a session, taking control of the current virtual terminal.
     /// This should not be called if another program is already in control
     /// of the terminal (Xorg, another Wayland compositor, etc.).
@@ -129,5 +125,13 @@ impl <'session> Session<'session> {
 
     pub unsafe fn signal_add(&mut self, fd: c_int, listener: *mut wl_listener) {
         wlr_session_signal_add(self.session, fd, listener)
+    }
+
+    pub unsafe fn as_ptr(&self) -> *mut wlr_session {
+        self.session
+    }
+
+    pub unsafe fn from_ptr(session: *mut wlr_session) -> Self {
+        Session { session, phantom: PhantomData }
     }
 }
