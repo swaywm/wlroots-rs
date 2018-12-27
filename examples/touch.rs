@@ -35,21 +35,16 @@ compositor_data!(State);
 
 struct TouchHandlerEx;
 
-struct OutputManager;
-
 struct ExOutput;
 
 struct InputManager;
 
 struct ExKeyboardHandler;
 
-impl output::ManagerHandler for OutputManager {
-    fn output_added<'output>(&mut self,
-                             _: compositor::Handle,
-                             builder: output::Builder<'output>)
-                             -> Option<output::BuilderResult<'output>> {
-        Some(builder.build_best_mode(ExOutput))
-    }
+fn output_added<'output>(_: compositor::Handle,
+                         builder: output::Builder<'output>)
+                         -> Option<output::BuilderResult<'output>> {
+    Some(builder.build_best_mode(ExOutput))
 }
 
 impl keyboard::Handler for ExKeyboardHandler {
@@ -155,9 +150,10 @@ impl input::ManagerHandler for InputManager {
 
 fn main() {
     init_logging(WLR_DEBUG, None);
+    let output_builder = output::ManagerBuilder::default().output_added(output_added);
     let mut compositor = compositor::Builder::new().gles2(true)
                                                    .input_manager(Box::new(InputManager))
-                                                   .output_manager(Box::new(OutputManager))
+                                                   .output_manager(output_builder)
                                                    .build_auto(State::new());
     {
         let gles2 = &mut compositor.renderer.as_mut().unwrap();

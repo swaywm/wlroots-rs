@@ -63,20 +63,16 @@ impl CompositorState {
 
 compositor_data!(CompositorState);
 
-struct OutputManager;
-impl output::ManagerHandler for OutputManager {
-    fn output_added<'output>(&mut self,
-                             compositor_handle: compositor::Handle,
-                             output_builder: output::Builder<'output>)
-                             -> Option<output::BuilderResult<'output>> {
-        let ex_output = ExOutput;
-        let mut result = output_builder.build_best_mode(ex_output);
-        with_handles!([(compositor: {compositor_handle}), (output: {&mut result.output})] => {
-            let compositor_state: &mut CompositorState = compositor.into();
-            output.transform(compositor_state.rotation_transform);
-        }).unwrap();
-        Some(result)
-    }
+fn output_added<'output>(compositor_handle: compositor::Handle,
+                         output_builder: output::Builder<'output>)
+                         -> Option<output::BuilderResult<'output>> {
+    let ex_output = ExOutput;
+    let mut result = output_builder.build_best_mode(ex_output);
+    with_handles!([(compositor: {compositor_handle}), (output: {&mut result.output})] => {
+        let compositor_state: &mut CompositorState = compositor.into();
+        output.transform(compositor_state.rotation_transform);
+    }).unwrap();
+    Some(result)
 }
 
 struct ExOutput;
@@ -167,9 +163,10 @@ fn main() {
     let rotation_argument_string = args.nth(1).unwrap_or_else(|| "".to_string());
     let rotation_transform = rotation_transform_from_str(&rotation_argument_string);
     let compositor_state = CompositorState::new(rotation_transform);
+    let output_builder = output::ManagerBuilder::default().output_added(output_added);
     let mut compositor = compositor::Builder::new().gles2(true)
                                                    .input_manager(Box::new(InputManager))
-                                                   .output_manager(Box::new(OutputManager))
+                                                   .output_manager(output_builder)
                                                    .build_auto(compositor_state);
     {
         let gles2 = &mut compositor.renderer.as_mut().unwrap();

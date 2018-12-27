@@ -35,7 +35,6 @@ impl State {
     }
 }
 
-struct OutputManagerEx;
 struct InputManagerEx;
 struct OutputEx;
 struct KeyboardEx;
@@ -74,14 +73,11 @@ impl input::ManagerHandler for InputManagerEx {
     }
 }
 
-impl output::ManagerHandler for OutputManagerEx {
-    fn output_added<'output>(&mut self,
-                             _: compositor::Handle,
-                             builder: output::Builder<'output>)
-                             -> Option<output::BuilderResult<'output>> {
-        let result = builder.build_best_mode(OutputEx);
-        Some(result)
-    }
+fn output_added<'output>(_: compositor::Handle,
+                         builder: output::Builder<'output>)
+                         -> Option<output::BuilderResult<'output>> {
+    let result = builder.build_best_mode(OutputEx);
+    Some(result)
 }
 
 impl keyboard::Handler for KeyboardEx {
@@ -250,9 +246,10 @@ compositor_data!(State);
 
 fn main() {
     log::init_logging(log::WLR_DEBUG, None);
+    let output_builder = output::ManagerBuilder::default().output_added(output_added);
     compositor::Builder::new().gles2(true)
                             .input_manager(Box::new(InputManagerEx))
-                            .output_manager(Box::new(OutputManagerEx))
+                            .output_manager(output_builder)
                             .build_auto(State::new())
                             .run()
 }

@@ -84,7 +84,7 @@ pub struct Compositor {
     /// Manager for the inputs.
     input_manager: Option<Box<input::Manager>>,
     /// Manager for the outputs.
-    output_manager: Option<Box<output::Manager>>,
+    output_manager: Option<&'static mut output::Manager>,
     /// Manager for stable XDG shells.
     xdg_shell_manager: Option<Box<xdg_shell::Manager>>,
     /// Manager for XDG shells v6.
@@ -130,7 +130,7 @@ pub struct Compositor {
 pub struct Builder {
     compositor_handler: Option<Box<Handler>>,
     input_manager_handler: Option<Box<input::ManagerHandler>>,
-    output_manager_handler: Option<Box<output::ManagerHandler>>,
+    output_manager_builder: Option<output::ManagerBuilder>,
     xdg_shell_manager_handler: Option<Box<xdg_shell::ManagerHandler>>,
     xdg_v6_shell_manager_handler: Option<Box<xdg_shell_v6::ManagerHandler>>,
     wl_shm: bool,
@@ -165,8 +165,8 @@ impl Builder {
     }
 
     /// Set the handler for outputs.
-    pub fn output_manager(mut self, output_manager_handler: Box<output::ManagerHandler>) -> Self {
-        self.output_manager_handler = Some(output_manager_handler);
+    pub fn output_manager(mut self, output_manager_builder: output::ManagerBuilder) -> Self {
+        self.output_manager_builder = Some(output_manager_builder);
         self
     }
 
@@ -393,10 +393,11 @@ impl Builder {
         });
 
         // Set up output manager, if the user provided it.
-        let output_manager = self.output_manager_handler.map(|handler| {
-            let mut output_manager = output::Manager::new(handler);
+        let output_manager = self.output_manager_builder.map(|builder| {
+            output::Manager::build(builder);
+            let output_manager = &mut output::MANAGER;
             wl_signal_add(&mut (*backend.as_ptr()).events.new_output as *mut _ as _,
-                          output_manager.add_listener() as *mut _ as _);
+                          (&mut output_manager.add_listener) as *mut _ as _);
             output_manager
         });
 

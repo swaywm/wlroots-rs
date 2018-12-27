@@ -100,8 +100,6 @@ impl xdg_shell_v6::ManagerHandler for XdgV6ShellManager {
     }
 }
 
-struct OutputManager;
-
 struct ExOutput;
 
 struct InputManager;
@@ -110,34 +108,31 @@ struct ExPointer;
 
 struct ExKeyboardHandler;
 
-impl output::ManagerHandler for OutputManager {
-    #[wlroots_dehandle(compositor, output, layout, cursor)]
-    fn output_added<'output>(&mut self,
-                             compositor: compositor::Handle,
-                             builder: output::Builder<'output>)
-                             -> Option<output::BuilderResult<'output>> {
-        let result = builder.build_best_mode(ExOutput);
-        {
-            let output_handle = &result.output;
-            use compositor as compositor;
-            use output_handle as output;
-            let state: &mut State = compositor.data.downcast_mut().unwrap();
-            let xcursor_manager = &mut state.xcursor_manager;
-            // TODO use output config if present instead of auto
-            let layout = &mut state.layout;
-            let cursor = &mut state.cursor;
-            use layout as layout;
-            use cursor as cursor;
-            layout.add_auto(output);
-            cursor.attach_output_layout(layout);
-            xcursor_manager.load(output.scale());
-            xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
-            let (x, y) = cursor.coords();
-            // https://en.wikipedia.org/wiki/Mouse_warping
-            cursor.warp(None, x, y);
-        }
-        Some(result)
+#[wlroots_dehandle(compositor, output, layout, cursor)]
+fn output_added<'output>(compositor: compositor::Handle,
+                         builder: output::Builder<'output>)
+                         -> Option<output::BuilderResult<'output>> {
+    let result = builder.build_best_mode(ExOutput);
+    {
+        let output_handle = &result.output;
+        use compositor as compositor;
+        use output_handle as output;
+        let state: &mut State = compositor.data.downcast_mut().unwrap();
+        let xcursor_manager = &mut state.xcursor_manager;
+        // TODO use output config if present instead of auto
+        let layout = &mut state.layout;
+        let cursor = &mut state.cursor;
+        use layout as layout;
+        use cursor as cursor;
+        layout.add_auto(output);
+        cursor.attach_output_layout(layout);
+        xcursor_manager.load(output.scale());
+        xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
+        let (x, y) = cursor.coords();
+        // https://en.wikipedia.org/wiki/Mouse_warping
+        cursor.warp(None, x, y);
     }
+    Some(result)
 }
 
 impl keyboard::Handler for ExKeyboardHandler {
@@ -275,11 +270,12 @@ fn main() {
           .unwrap();
     let layout = Layout::create(Box::new(OutputLayoutEx));
 
+    let output_builder = output::ManagerBuilder::default().output_added(output_added);
     let mut compositor =
         compositor::Builder::new().gles2(true)
                                   .wl_shm(true)
                                   .input_manager(Box::new(InputManager))
-                                  .output_manager(Box::new(OutputManager))
+                                  .output_manager(output_builder)
                                   .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
                                   .build_auto(State::new(xcursor_manager, layout, cursor));
 
