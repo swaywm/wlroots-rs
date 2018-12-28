@@ -317,27 +317,6 @@ macro_rules! wayland_listener_static {
     }
 }
 
-/// Used to indicate what data is global compositor data.
-/// It will automatically implement the CompositorData trait for the struct,
-/// and also add a method to `Compositor` to unwrap the data from the fat
-/// pointer.
-#[cfg(feature = "unstable")]
-#[macro_export]
-macro_rules! compositor_data {
-    ($struct_name: ty) => {
-        impl<'a>::std::convert::From<&'a mut $crate::compositor::Compositor> for &'a mut $struct_name {
-            fn from(compositor: &'a mut $crate::compositor::Compositor) -> &'a mut $struct_name {
-                &mut *compositor.data.downcast_mut::<$struct_name>()
-                    .unwrap_or_else(|| {
-                        wlr_log!(WLR_ERROR, "Could not cast compositor state to {:#?}",
-                                 stringify!($struct_name));
-                        panic!("Could not cast compositor state to correct value")
-                    })
-            }
-        }
-    }
-}
-
 /// A convenience macro designed for use with Handle types.
 ///
 /// This allows you to avoid the rightward drift of death that is often found

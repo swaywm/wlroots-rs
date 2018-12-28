@@ -32,8 +32,6 @@ impl CompositorState {
     }
 }
 
-compositor_data!(CompositorState);
-
 struct ExCursor;
 impl cursor::Handler for ExCursor {}
 

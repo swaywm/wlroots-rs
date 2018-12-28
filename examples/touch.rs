@@ -31,8 +31,6 @@ impl State {
     }
 }
 
-compositor_data!(State);
-
 struct TouchHandlerEx;
 
 struct ExOutput;

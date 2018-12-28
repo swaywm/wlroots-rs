@@ -61,8 +61,6 @@ impl CompositorState {
     }
 }
 
-compositor_data!(CompositorState);
-
 fn output_added<'output>(compositor_handle: compositor::Handle,
                          output_builder: output::Builder<'output>)
                          -> Option<output::BuilderResult<'output>> {

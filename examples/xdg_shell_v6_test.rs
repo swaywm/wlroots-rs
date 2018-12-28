@@ -40,8 +40,6 @@ impl State {
     }
 }
 
-compositor_data!(State);
-
 struct SeatHandlerEx;
 
 struct CursorEx;

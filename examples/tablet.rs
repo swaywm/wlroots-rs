@@ -236,8 +236,6 @@ impl output::Handler for OutputEx {
     }
 }
 
-compositor_data!(State);
-
 fn main() {
     log::init_logging(log::WLR_DEBUG, None);
     let output_builder = output::manager::Builder::default().output_added(output_added);
