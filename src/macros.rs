@@ -264,7 +264,7 @@ macro_rules! wayland_listener_static {
                 )*)*
             };
 
-            impl Manager {
+            impl $manager {
                 /// Sets the functions on the builder as the global manager functions.
                 ///
                 /// # Safety
