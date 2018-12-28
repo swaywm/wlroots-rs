@@ -211,6 +211,11 @@ macro_rules! wayland_listener_static {
         $(
             #[derive(Default)]
             #[allow(dead_code)]
+            /// A builder of static functions to manage and create resources.
+            ///
+            /// Implement the functions with the necessary signature, pass them
+            /// to the builder, and then give the builder to the necessary
+            /// structure in order to utilize them (usually it's `compositor::Builder`).
             pub struct $builder {
                 $($($callback: ::std::option::Option<$fn_type>,)*
                   $($($($extra_callback_name: ::std::option::Option<$extra_callback_type>,)*)*)*)*
@@ -218,11 +223,15 @@ macro_rules! wayland_listener_static {
 
             impl $builder {
                 $($(
+                    /// Uses the provided callback as the receiver for the
+                    /// event the type signature describes.
                     pub fn $builder_func(mut self, $callback: $fn_type) -> Self {
                         self.$callback = ::std::option::Option::Some($callback);
                         self
                     }
                     $($(
+                        /// Uses the provided callback as the receiver for the
+                        /// event the type signature describes.
                         pub fn $extra_callback_name(mut self, $extra_callback_name: $extra_callback_type) -> Self {
                             self.$extra_callback_name = ::std::option::Option::Some($extra_callback_name);
                             self
