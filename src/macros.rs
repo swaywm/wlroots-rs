@@ -217,7 +217,7 @@ macro_rules! wayland_listener_static {
             /// to the builder, and then give the builder to the necessary
             /// structure in order to utilize them (usually it's `compositor::Builder`).
             pub struct $builder {
-                $($($callback: ::std::option::Option<$fn_type>,)*
+                $($(pub(crate) $callback: ::std::option::Option<$fn_type>,)*
                   $($($($extra_callback_name: ::std::option::Option<$extra_callback_type>,)*)*)*)*
             }
 
