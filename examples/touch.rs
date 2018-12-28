@@ -83,7 +83,7 @@ impl touch::Handler for TouchHandlerEx {
                _: touch::Handle,
                event: &touch::event::Down) {
         with_handles!([(compositor: {compositor})] => {
-            let state: &mut State = compositor.into();
+            let state: &mut State = compositor.downcast();
             let (x, y) = event.location();
             let point = TouchPoint { touch_id: event.touch_id(),
                                     x: x,
@@ -98,7 +98,7 @@ impl touch::Handler for TouchHandlerEx {
              _: touch::Handle,
              event: &touch::event::Up) {
         with_handles!([(compositor: {compositor})] => {
-            let state: &mut State = compositor.into();
+            let state: &mut State = compositor.downcast();
             wlr_log!(WLR_ERROR,
                     "Removing {:?} from {:#?}",
                     event.touch_id(),
@@ -118,7 +118,7 @@ impl touch::Handler for TouchHandlerEx {
                  _: touch::Handle,
                  event: &touch::event::Motion) {
         with_handles!([(compositor: {compositor})] => {
-            let state: &mut State = compositor.into();
+            let state: &mut State = compositor.downcast();
             let (x, y) = event.location();
             wlr_log!(WLR_ERROR, "New location: {:?}", (x, y));
             for touch_point in &mut state.touch_points {

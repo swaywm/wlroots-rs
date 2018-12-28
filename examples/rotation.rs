@@ -67,7 +67,7 @@ fn output_added<'output>(compositor_handle: compositor::Handle,
     let ex_output = ExOutput;
     let mut result = output_builder.build_best_mode(ex_output);
     with_handles!([(compositor: {compositor_handle}), (output: {&mut result.output})] => {
-        let compositor_state: &mut CompositorState = compositor.into();
+        let compositor_state: &mut CompositorState = compositor.downcast();
         output.transform(compositor_state.rotation_transform);
     }).unwrap();
     Some(result)

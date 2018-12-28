@@ -479,12 +479,10 @@ impl Builder {
 impl Compositor {
     /// Attempts to get the state struct the compositor was constructed with.
     ///
-    /// **Note this is not an implementation of the Into trait**
-    ///
     /// # Panicking
     /// If the data was not of the type specified in the type arguments this
     /// function will panic.
-    pub fn into<D: 'static>(&mut self) -> &mut D {
+    pub fn downcast<D: 'static>(&mut self) -> &mut D {
         self.data.downcast_mut::<D>()
             .unwrap_or_else(|| {
                 wlr_log!(WLR_ERROR, "Incorrect type given for compositor state");
