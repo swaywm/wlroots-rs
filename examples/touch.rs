@@ -35,21 +35,14 @@ compositor_data!(State);
 
 struct TouchHandlerEx;
 
-struct OutputManager;
-
 struct ExOutput;
-
-struct InputManager;
 
 struct ExKeyboardHandler;
 
-impl output::ManagerHandler for OutputManager {
-    fn output_added<'output>(&mut self,
-                             _: compositor::Handle,
-                             builder: output::Builder<'output>)
-                             -> Option<output::BuilderResult<'output>> {
-        Some(builder.build_best_mode(ExOutput))
-    }
+fn output_added<'output>(_: compositor::Handle,
+                         builder: output::Builder<'output>)
+                         -> Option<output::BuilderResult<'output>> {
+    Some(builder.build_best_mode(ExOutput))
 }
 
 impl keyboard::Handler for ExKeyboardHandler {
@@ -140,24 +133,25 @@ impl touch::Handler for TouchHandlerEx {
     }
 }
 
-impl input::ManagerHandler for InputManager {
-    fn touch_added(&mut self, _: compositor::Handle, _: touch::Handle) -> Option<Box<touch::Handler>> {
-        Some(Box::new(TouchHandlerEx))
-    }
+fn touch_added(_: compositor::Handle, _: touch::Handle) -> Option<Box<touch::Handler>> {
+    Some(Box::new(TouchHandlerEx))
+}
 
-    fn keyboard_added(&mut self,
-                      _: compositor::Handle,
-                      _: keyboard::Handle)
-                      -> Option<Box<keyboard::Handler>> {
-        Some(Box::new(ExKeyboardHandler))
-    }
+fn keyboard_added(_: compositor::Handle,
+                  _: keyboard::Handle)
+                  -> Option<Box<keyboard::Handler>> {
+    Some(Box::new(ExKeyboardHandler))
 }
 
 fn main() {
     init_logging(WLR_DEBUG, None);
+    let output_builder = output::manager::Builder::default().output_added(output_added);
+    let input_builder = input::manager::Builder::default()
+        .keyboard_added(keyboard_added)
+        .touch_added(touch_added);
     let mut compositor = compositor::Builder::new().gles2(true)
-                                                   .input_manager(Box::new(InputManager))
-                                                   .output_manager(Box::new(OutputManager))
+                                                   .input_manager(input_builder)
+                                                   .output_manager(output_builder)
                                                    .build_auto(State::new());
     {
         let gles2 = &mut compositor.renderer.as_mut().unwrap();

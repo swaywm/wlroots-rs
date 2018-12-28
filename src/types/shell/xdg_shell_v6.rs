@@ -15,8 +15,20 @@ use {area::Area,
      seat,
      surface,
      utils::{self, HandleErr, HandleResult, Handleable, c_to_rust_string}};
-pub use manager::{xdg_shell_v6_manager::*, xdg_shell_v6_handler::*};
+pub use manager::xdg_shell_v6_handler::*;
+pub(crate) use manager::xdg_shell_v6_manager::Manager;
 pub use events::xdg_shell_v6_events as event;
+
+pub mod manager {
+    //! XDG shell v6 resources are managed by the XDG shell v6 resource manager.
+    //!
+    //! To manage XDG shells v6 from clients implement a function with
+    //! [`NewSurface`](./type.NewSurface.html) as the signature.
+    //!
+    //! Pass that function to the [`xdg_shell_v6::Builder`](./struct.Builder.html)
+    //! which is then passed to the `compositor::Builder`.
+    pub use manager::xdg_shell_v6_manager::*;
+}
 
 pub type Handle = utils::Handle<OptionalShellState,
                                 wlr_xdg_surface_v6,

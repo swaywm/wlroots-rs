@@ -51,7 +51,6 @@ impl cursor::Handler for CursorEx {}
 impl seat::Handler for SeatHandlerEx {}
 
 struct XdgV6ShellHandlerEx;
-struct XdgV6ShellManager;
 struct OutputLayoutEx;
 
 impl output::layout::Handler for OutputLayoutEx {}
@@ -77,67 +76,57 @@ impl surface::Handler for SurfaceEx {
     }
 }
 
-impl xdg_shell_v6::ManagerHandler for XdgV6ShellManager {
-    #[wlroots_dehandle(compositor, shell, layout, output)]
-    fn new_surface(&mut self,
-                   compositor: compositor::Handle,
-                   shell: xdg_shell_v6::Handle)
-                   -> (Option<Box<xdg_shell_v6::Handler>>, Option<Box<surface::Handler>>) {
-        {
-            use compositor as compositor;
-            use shell as shell;
-            shell.ping();
-            let state: &mut State = compositor.into();
-            state.shells.push(shell.weak_reference());
-            let layout_handle = &state.layout;
-            use layout_handle as layout;
-            for (output, _) in layout.outputs() {
-                use output as output;
-                output.schedule_frame()
-            }
+#[wlroots_dehandle(compositor, shell, layout, output)]
+fn new_surface(compositor: compositor::Handle,
+               shell: xdg_shell_v6::Handle)
+               -> (Option<Box<xdg_shell_v6::Handler>>, Option<Box<surface::Handler>>) {
+    {
+        use compositor as compositor;
+        use shell as shell;
+        shell.ping();
+        let state: &mut State = compositor.into();
+        state.shells.push(shell.weak_reference());
+        let layout_handle = &state.layout;
+        use layout_handle as layout;
+        for (output, _) in layout.outputs() {
+            use output as output;
+            output.schedule_frame()
         }
-        (Some(Box::new(XdgV6ShellHandlerEx)), Some(Box::new(SurfaceEx)))
     }
+    (Some(Box::new(XdgV6ShellHandlerEx)), Some(Box::new(SurfaceEx)))
 }
 
-struct OutputManager;
-
 struct ExOutput;
-
-struct InputManager;
 
 struct ExPointer;
 
 struct ExKeyboardHandler;
 
-impl output::ManagerHandler for OutputManager {
-    #[wlroots_dehandle(compositor, output, layout, cursor)]
-    fn output_added<'output>(&mut self,
-                             compositor: compositor::Handle,
-                             builder: output::Builder<'output>)
-                             -> Option<output::BuilderResult<'output>> {
-        let result = builder.build_best_mode(ExOutput);
-        {
-            let output_handle = &result.output;
-            use compositor as compositor;
-            use output_handle as output;
-            let state: &mut State = compositor.data.downcast_mut().unwrap();
-            let xcursor_manager = &mut state.xcursor_manager;
-            // TODO use output config if present instead of auto
-            let layout = &mut state.layout;
-            let cursor = &mut state.cursor;
-            use layout as layout;
-            use cursor as cursor;
-            layout.add_auto(output);
-            cursor.attach_output_layout(layout);
-            xcursor_manager.load(output.scale());
-            xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
-            let (x, y) = cursor.coords();
-            // https://en.wikipedia.org/wiki/Mouse_warping
-            cursor.warp(None, x, y);
-        }
-        Some(result)
+#[wlroots_dehandle(compositor, output, layout, cursor)]
+fn output_added<'output>(compositor: compositor::Handle,
+                         builder: output::Builder<'output>)
+                         -> Option<output::BuilderResult<'output>> {
+    let result = builder.build_best_mode(ExOutput);
+    {
+        let output_handle = &result.output;
+        use compositor as compositor;
+        use output_handle as output;
+        let state: &mut State = compositor.data.downcast_mut().unwrap();
+        let xcursor_manager = &mut state.xcursor_manager;
+        // TODO use output config if present instead of auto
+        let layout = &mut state.layout;
+        let cursor = &mut state.cursor;
+        use layout as layout;
+        use cursor as cursor;
+        layout.add_auto(output);
+        cursor.attach_output_layout(layout);
+        xcursor_manager.load(output.scale());
+        xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
+        let (x, y) = cursor.coords();
+        // https://en.wikipedia.org/wiki/Mouse_warping
+        cursor.warp(None, x, y);
     }
+    Some(result)
 }
 
 impl keyboard::Handler for ExKeyboardHandler {
@@ -238,30 +227,26 @@ impl output::Handler for ExOutput {
     }
 }
 
-impl input::ManagerHandler for InputManager {
-    fn pointer_added(&mut self,
-                     _: compositor::Handle,
-                     _: pointer::Handle)
-                     -> Option<Box<pointer::Handler>> {
-        Some(Box::new(ExPointer))
-    }
+fn pointer_added(_: compositor::Handle,
+                 _: pointer::Handle)
+                 -> Option<Box<pointer::Handler>> {
+    Some(Box::new(ExPointer))
+}
 
-    #[wlroots_dehandle(compositor, keyboard, seat)]
-    fn keyboard_added(&mut self,
-                      compositor: compositor::Handle,
-                      keyboard: keyboard::Handle)
-                      -> Option<Box<keyboard::Handler>> {
-        {
-            use compositor as compositor;
-            use keyboard as keyboard;
-            let state: &mut State = compositor.into();
-            state.keyboard = Some(keyboard.weak_reference());
-            let seat_handle = state.seat_handle.as_ref().unwrap();
-            use seat_handle as seat;
-            seat.set_keyboard(keyboard.input_device());
-        }
-        Some(Box::new(ExKeyboardHandler))
+#[wlroots_dehandle(compositor, keyboard, seat)]
+fn keyboard_added(compositor: compositor::Handle,
+                  keyboard: keyboard::Handle)
+                  -> Option<Box<keyboard::Handler>> {
+    {
+        use compositor as compositor;
+        use keyboard as keyboard;
+        let state: &mut State = compositor.into();
+        state.keyboard = Some(keyboard.weak_reference());
+        let seat_handle = state.seat_handle.as_ref().unwrap();
+        use seat_handle as seat;
+        seat.set_keyboard(keyboard.input_device());
     }
+    Some(Box::new(ExKeyboardHandler))
 }
 
 fn main() {
@@ -269,19 +254,25 @@ fn main() {
     let cursor = Cursor::create(Box::new(CursorEx));
     let mut xcursor_manager =
         xcursor::Manager::create("default".to_string(), 24).expect("Could not create xcursor \
-                                                                  manager");
+                                                                    manager");
     xcursor_manager.load(1.0);
     cursor.run(|c| xcursor_manager.set_cursor_image("left_ptr".to_string(), c))
-          .unwrap();
+        .unwrap();
     let layout = Layout::create(Box::new(OutputLayoutEx));
 
+    let output_builder = output::manager::Builder::default().output_added(output_added);
+    let input_builder = input::manager::Builder::default()
+        .keyboard_added(keyboard_added)
+        .pointer_added(pointer_added);
+    let xdg_shell_v6_builder = xdg_shell_v6::manager::Builder::default()
+        .surface_added(new_surface);
     let mut compositor =
         compositor::Builder::new().gles2(true)
-                                  .wl_shm(true)
-                                  .input_manager(Box::new(InputManager))
-                                  .output_manager(Box::new(OutputManager))
-                                  .xdg_shell_v6_manager(Box::new(XdgV6ShellManager))
-                                  .build_auto(State::new(xcursor_manager, layout, cursor));
+        .wl_shm(true)
+        .input_manager(input_builder)
+        .output_manager(output_builder)
+        .xdg_shell_v6_manager(xdg_shell_v6_builder)
+        .build_auto(State::new(xcursor_manager, layout, cursor));
 
     {
         let seat_handle =

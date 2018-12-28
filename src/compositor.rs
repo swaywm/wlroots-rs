@@ -25,45 +25,39 @@ use {backend::{self, UnsafeRenderSetupFunction, Backend, Session},
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 pub(crate) static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
-#[allow(unused_variables)]
-pub trait Handler {
-    /// Callback that's triggered when a surface is provided to the compositor.
-    fn new_surface(&mut self,
-                   compositor_handle: Handle,
-                   surface_handle: surface::Handle) {}
+/// Callback that's triggered when a surface is provided to the compositor.
+pub type NewSurface = fn(compositor_handle: Handle,
+                            surface_handle: surface::Handle);
 
-    /// Callback that's triggered during shutdown.
-    fn on_shutdown(&mut self) {}
+/// Callback that's triggered during shutdown.
+pub type OnShutdown = fn();
+
+wayland_listener_static!{
+    static mut INTERNAL_COMPOSITOR;
+    (InternalCompositor, EventBuilder): [
+        (NewSurface, new_surface_listener, surface_added) => (add_notify, surface_added):
+        |handler: &mut InternalCompositor, data: *mut libc::c_void,| unsafe {
+            let surface_ptr = data as _;
+            let compositor = (&mut *COMPOSITOR_PTR).weak_reference();
+            let surface = Surface::new(surface_ptr);
+            handler.surface_added.map(|f| f(compositor.clone(), surface.weak_reference()));
+            let mut internal_surface = InternalSurface::new((surface, Box::new(())));
+            wl_signal_add(&mut (*surface_ptr).events.commit as *mut _ as _,
+                          internal_surface.on_commit_listener() as _);
+            wl_signal_add(&mut (*surface_ptr).events.new_subsurface as *mut _ as _,
+                          internal_surface.new_subsurface_listener() as _);
+            wl_signal_add(&mut (*surface_ptr).events.destroy as *mut _ as _,
+                          internal_surface.on_destroy_listener() as _);
+            let surface_data = (*surface_ptr).data as *mut surface::InternalState;
+            (*surface_data).surface = Box::into_raw(internal_surface);
+        };
+
+        (OnShutdown, shutdown_listener, on_shutdown) => (shutdown_notify, on_shutdown):
+        |handler: &mut InternalCompositor, _data: *mut libc::c_void,| unsafe {
+            handler.on_shutdown.map(|f| f())
+        };
+    ]
 }
-
-impl Handler for () {}
-
-wayland_listener!(InternalCompositor, Box<Handler>, [
-    new_surface_listener => new_surface_notify: |this: &mut InternalCompositor,
-                                                 surface_ptr: *mut libc::c_void,|
-    unsafe {
-        let handler = &mut this.data;
-        let surface_ptr = surface_ptr as _;
-        let compositor = (&mut *COMPOSITOR_PTR).weak_reference();
-        let surface = Surface::new(surface_ptr);
-        handler.new_surface(compositor.clone(), surface.weak_reference());
-        let mut internal_surface = InternalSurface::new((surface, Box::new(())));
-        wl_signal_add(&mut (*surface_ptr).events.commit as *mut _ as _,
-                      internal_surface.on_commit_listener() as _);
-        wl_signal_add(&mut (*surface_ptr).events.new_subsurface as *mut _ as _,
-                      internal_surface.new_subsurface_listener() as _);
-        wl_signal_add(&mut (*surface_ptr).events.destroy as *mut _ as _,
-                        internal_surface.on_destroy_listener() as _);
-        let surface_data = (*surface_ptr).data as *mut surface::InternalState;
-        (*surface_data).surface = Box::into_raw(internal_surface);
-    };
-    shutdown_listener => shutdown_notify: |this: &mut InternalCompositor,
-                                           _data: *mut libc::c_void,|
-    unsafe {
-        let handler = &mut this.data;
-        handler.on_shutdown();
-    };
-]);
 
 // NOTE This handle is handled differently from the others, so we can't use
 // the generic `utils::Handle` implementation. This is due to how we need
@@ -80,15 +74,15 @@ pub struct Compositor {
     /// User data.
     pub data: Box<Any>,
     /// Internal compositor handler
-    compositor_handler: Box<InternalCompositor>,
+    compositor_handler: Option<&'static mut InternalCompositor>,
     /// Manager for the inputs.
-    input_manager: Option<Box<input::Manager>>,
+    input_manager: Option<&'static mut input::Manager>,
     /// Manager for the outputs.
-    output_manager: Option<Box<output::Manager>>,
+    output_manager: Option<&'static mut output::Manager>,
     /// Manager for stable XDG shells.
-    xdg_shell_manager: Option<Box<xdg_shell::Manager>>,
+    xdg_shell_manager: Option<&'static mut xdg_shell::Manager>,
     /// Manager for XDG shells v6.
-    xdg_v6_shell_manager: Option<Box<xdg_shell_v6::Manager>>,
+    xdg_v6_shell_manager: Option<&'static mut xdg_shell_v6::Manager>,
     /// Pointer to the xdg_shell global.
     /// If xdg_shell_manager is `None`, this value will be `NULL`.
     xdg_shell_global: *mut wlr_xdg_shell,
@@ -128,11 +122,11 @@ pub struct Compositor {
 
 #[derive(Default)]
 pub struct Builder {
-    compositor_handler: Option<Box<Handler>>,
-    input_manager_handler: Option<Box<input::ManagerHandler>>,
-    output_manager_handler: Option<Box<output::ManagerHandler>>,
-    xdg_shell_manager_handler: Option<Box<xdg_shell::ManagerHandler>>,
-    xdg_v6_shell_manager_handler: Option<Box<xdg_shell_v6::ManagerHandler>>,
+    compositor_event_builder: Option<EventBuilder>,
+    input_manager_builder: Option<input::manager::Builder>,
+    output_manager_builder: Option<output::manager::Builder>,
+    xdg_shell_manager_builder: Option<xdg_shell::manager::Builder>,
+    xdg_v6_shell_manager_builder: Option<xdg_shell_v6::manager::Builder>,
     wl_shm: bool,
     gles2: bool,
     render_setup_function: Option<UnsafeRenderSetupFunction>,
@@ -140,7 +134,7 @@ pub struct Builder {
     wayland_remote: Option<String>,
     x11_display: Option<String>,
     data_device_manager: bool,
-    xwayland: Option<Box<xwayland::ManagerHandler>>,
+    xwayland: Option<xwayland::manager::Builder>,
     user_terminate: Option<fn()>
 }
 
@@ -152,36 +146,37 @@ impl Builder {
         Builder::default()
     }
 
-    /// Set the handler for global compositor callbacks.
-    pub fn compositor_handler(mut self, compositor_handler: Box<Handler>) -> Self {
-        self.compositor_handler = Some(compositor_handler);
+    /// Set callbacks for miscellaneous compositor events.
+    pub fn compositor_events(mut self, compositor_event_builder: EventBuilder) -> Self {
+        self.compositor_event_builder = Some(compositor_event_builder);
         self
     }
 
-    /// Set the handler for inputs.
-    pub fn input_manager(mut self, input_manager_handler: Box<input::ManagerHandler>) -> Self {
-        self.input_manager_handler = Some(input_manager_handler);
+    /// Set callbacks for managing input resources.
+    pub fn input_manager(mut self, input_manager_builder: input::manager::Builder) -> Self {
+        self.input_manager_builder = Some(input_manager_builder);
         self
     }
 
-    /// Set the handler for outputs.
-    pub fn output_manager(mut self, output_manager_handler: Box<output::ManagerHandler>) -> Self {
-        self.output_manager_handler = Some(output_manager_handler);
+    /// Set callbacks for managing output resources.
+    pub fn output_manager(mut self, output_manager_builder: output::manager::Builder) -> Self {
+        self.output_manager_builder = Some(output_manager_builder);
         self
     }
 
+    /// Set callbacks for managing XDG shell resources.
     pub fn xdg_shell_manager(mut self,
-                             xdg_shell_manager_handler: Box<xdg_shell::ManagerHandler>)
+                             xdg_shell_manager_builder: xdg_shell::manager::Builder)
                              -> Self {
-        self.xdg_shell_manager_handler = Some(xdg_shell_manager_handler);
+        self.xdg_shell_manager_builder = Some(xdg_shell_manager_builder);
         self
     }
 
-    /// Set the handler for xdg v6 shells.
+    /// Set callbacks for managing XDG shell v6 resources.
     pub fn xdg_shell_v6_manager(mut self,
-                                xdg_v6_shell_manager_handler: Box<xdg_shell_v6::ManagerHandler>)
+                                xdg_v6_shell_manager_builder: xdg_shell_v6::manager::Builder)
                                 -> Self {
-        self.xdg_v6_shell_manager_handler = Some(xdg_v6_shell_manager_handler);
+        self.xdg_v6_shell_manager_builder = Some(xdg_v6_shell_manager_builder);
         self
     }
 
@@ -215,10 +210,10 @@ impl Builder {
         self
     }
 
-    /// Add a handler for xwayland.
+    /// Set callbacks for managing XDG shell v6 resources.
     ///
-    /// If you do not provide a handler then the xwayland server does not run.
-    pub fn xwayland(mut self, xwayland: Box<xwayland::ManagerHandler>) -> Self {
+    /// If this function is not called then the xwayland server does not run.
+    pub fn xwayland(mut self, xwayland: xwayland::manager::Builder) -> Self {
         self.xwayland = Some(xwayland);
         self
     }
@@ -376,57 +371,66 @@ impl Builder {
             None
         };
 
-        // Set up compositor handler, if the user provided it.
-        let compositor_handler = self.compositor_handler.unwrap_or_else(||Box::new(()));
-        let mut compositor_handler = InternalCompositor::new(compositor_handler);
-        wl_signal_add(&mut (*compositor).events.new_surface as *mut _ as _,
-                    compositor_handler.new_surface_listener() as *mut _ as _);
-        wl_signal_add(&mut (*compositor).events.destroy as *mut _ as _,
-                        compositor_handler.shutdown_listener() as *mut _ as _);
+        // Set up compositor event callbacks, if the user provided it.
+        let compositor_handler = self.compositor_event_builder
+            // NOTE if it's not defined, we still need to have it execute
+            // the code above to properly set up wayland surfaces.
+            .or_else(|| Some(EventBuilder::default()))
+            .map(|mut builder| {
+                if builder.surface_added.is_none() {
+                    builder = builder.surface_added(|_,_|{});
+                }
+                let compositor_handler = InternalCompositor::build(builder);
+                wl_signal_add(&mut (*compositor).events.new_surface as *mut _ as _,
+                              (&mut compositor_handler.new_surface_listener) as *mut _ as _);
+                wl_signal_add(&mut (*compositor).events.destroy as *mut _ as _,
+                              (&mut compositor_handler.shutdown_listener) as *mut _ as _);
+                compositor_handler
+        });
 
         // Set up input manager, if the user provided it.
-        let input_manager = self.input_manager_handler.map(|handler| {
-            let mut input_manager = input::Manager::new(handler);
+        let input_manager = self.input_manager_builder.map(|builder| {
+            let input_manager = input::Manager::build(builder);
             wl_signal_add(&mut (*backend.as_ptr()).events.new_input as *mut _ as _,
-                          input_manager.add_listener() as *mut _ as _);
+                          (&mut input_manager.add_listener) as *mut _ as _);
             input_manager
         });
 
         // Set up output manager, if the user provided it.
-        let output_manager = self.output_manager_handler.map(|handler| {
-            let mut output_manager = output::Manager::new(handler);
+        let output_manager = self.output_manager_builder.map(|builder| {
+            let output_manager = output::Manager::build(builder);
             wl_signal_add(&mut (*backend.as_ptr()).events.new_output as *mut _ as _,
-                          output_manager.add_listener() as *mut _ as _);
+                          (&mut output_manager.add_listener) as *mut _ as _);
             output_manager
         });
 
         // Set up the xdg_shell handler and associated Wayland global,
         // if user provided a manager for it.
         let mut xdg_shell_global = ptr::null_mut();
-        let xdg_shell_manager = self.xdg_shell_manager_handler.map(|handler| {
+        let xdg_shell_manager = self.xdg_shell_manager_builder.map(|builder| {
             xdg_shell_global = wlr_xdg_shell_create(display as *mut _);
-            let mut xdg_shell_manager = xdg_shell::Manager::new(handler);
+            let xdg_shell_manager = xdg_shell::Manager::build(builder);
             wl_signal_add(&mut (*xdg_shell_global).events.new_surface as *mut _ as _,
-                          xdg_shell_manager.add_listener() as *mut _ as _);
+                          (&mut xdg_shell_manager.add_listener) as *mut _ as _);
             xdg_shell_manager
         });
 
         // Set up the xdg_shell_v6 handler and associated Wayland global,
         // if user provided a manager for it.
         let mut xdg_v6_shell_global = ptr::null_mut();
-        let xdg_v6_shell_manager = self.xdg_v6_shell_manager_handler.map(|handler| {
+        let xdg_v6_shell_manager = self.xdg_v6_shell_manager_builder.map(|builder| {
             xdg_v6_shell_global = wlr_xdg_shell_v6_create(display as *mut _);
-            let mut xdg_v6_shell_manager = xdg_shell_v6::Manager::new(handler);
+            let xdg_v6_shell_manager = xdg_shell_v6::Manager::build(builder);
             wl_signal_add(&mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
-                          xdg_v6_shell_manager.add_listener() as *mut _ as _);
+                          (&mut xdg_v6_shell_manager.add_listener) as *mut _ as _);
             xdg_v6_shell_manager
         });
 
         // Set up the XWayland server, if the user wants it.
-        let xwayland = self.xwayland.and_then(|manager| {
+        let xwayland = self.xwayland.and_then(|builder| {
             Some(xwayland::Server::new(display as _,
                                        compositor,
-                                       manager,
+                                       builder,
                                        false))
         });
 
