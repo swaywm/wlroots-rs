@@ -6,7 +6,7 @@ use wlroots_sys::{wlr_input_device, wlr_input_device_pointer, wlr_input_device_t
 
 use {input::{keyboard, pointer, touch, tablet_pad, tablet_tool},
      utils::c_to_rust_string};
-pub use manager::input_manager::*;
+pub(crate) use manager::input_manager::Manager;
 
 /// A handle to an input device.
 pub enum Handle {

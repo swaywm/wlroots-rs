@@ -17,7 +17,9 @@ use {area::{Origin, Size},
      utils::{self, HandleErr, HandleResult, Handleable, c_to_rust_string},
      output::{self, layout},
      render::PixmanRegion};
-pub use manager::{output_manager::*, output_handler::*};
+pub use manager::output_handler::*;
+pub use manager::output_manager::{OutputBuilder as Builder, BuilderResult};
+pub(crate) use manager::output_manager::Manager;
 
 pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;

@@ -145,8 +145,8 @@ fn keyboard_added(_: compositor::Handle,
 
 fn main() {
     init_logging(WLR_DEBUG, None);
-    let output_builder = output::ManagerBuilder::default().output_added(output_added);
-    let input_builder = input::ManagerBuilder::default()
+    let output_builder = output::manager::Builder::default().output_added(output_added);
+    let input_builder = input::manager::Builder::default()
         .keyboard_added(keyboard_added)
         .touch_added(touch_added);
     let mut compositor = compositor::Builder::new().gles2(true)

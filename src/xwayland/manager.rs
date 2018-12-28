@@ -1,4 +1,11 @@
-//! Global manager for the XWayland server.
+//! XWayland client resources are managed by the XWayland resource manager
+//! and server.
+//!
+//! To manage XWayland clients (and run an XServer) implement a function
+//! with [`NewSurface`](./type.NewSurface.html) as the signature.
+//!
+//! Pass that function to the [`xwayland::Builder`](./struct.Builder.html)
+//! which is then passed to the `compositor::Builder`.
 
 use libc;
 use wayland_sys::server::signal::wl_signal_add;
@@ -17,7 +24,7 @@ pub type NewSurface = fn(compositor_handle: compositor::Handle,
 
 wayland_listener_static! {
     static mut MANAGER;
-    (Manager, ManagerBuilder): [
+    (Manager, Builder): [
         (OnReady, on_ready_listener, xwayland_ready) => (ready_notify, xwayland_ready):
         |manager: &mut Manager, _data: *mut libc::c_void,|
         unsafe {

@@ -240,8 +240,8 @@ compositor_data!(State);
 
 fn main() {
     log::init_logging(log::WLR_DEBUG, None);
-    let output_builder = output::ManagerBuilder::default().output_added(output_added);
-    let input_builder = input::ManagerBuilder::default()
+    let output_builder = output::manager::Builder::default().output_added(output_added);
+    let input_builder = input::manager::Builder::default()
         .keyboard_added(keyboard_added)
         .tablet_tool_added(tablet_tool_added)
         .tablet_pad_added(tablet_pad_added);

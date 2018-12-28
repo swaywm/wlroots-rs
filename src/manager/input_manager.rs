@@ -72,7 +72,7 @@ pub type TabletPadAdded = fn (compositor_handle: compositor::Handle,
 
 wayland_listener_static! {
     static mut MANAGER;
-    (Manager, ManagerBuilder): [
+    (Manager, Builder): [
         // NOTE
         // This is a macro hack to add these as arguments to the builder.
         // The callbacks will be storted in the manager, but they'll have no

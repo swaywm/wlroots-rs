@@ -13,7 +13,7 @@ use {compositor,
 
 /// Used to ensure the output sets the mode before doing any other
 /// operation on the Output.
-pub struct Builder<'output> {
+pub struct OutputBuilder<'output> {
     output: output::Handle,
     phantom: PhantomData<&'output Output>
 }
@@ -30,7 +30,7 @@ pub struct BuilderResult<'output> {
 /// unsafe methods (e.g anything like setting the mode).
 pub struct Destroyed(output::Handle);
 
-impl<'output> Builder<'output> {
+impl<'output> OutputBuilder<'output> {
     /// Build the output with the best mode.
     ///
     /// To complete construction, return this in your implementation of
@@ -52,12 +52,12 @@ impl Destroyed {
 }
 
 pub type OutputAdded = fn(compositor_handle: compositor::Handle,
-                          output_builder: Builder)
+                          output_builder: OutputBuilder)
                           -> Option<BuilderResult>;
 
 wayland_listener_static! {
     static mut MANAGER;
-    (Manager, ManagerBuilder): [
+    (Manager, Builder): [
         (OutputAdded, add_listener, output_added) => (add_notify, add_callback):
         |manager: &mut Manager, data: *mut libc::c_void,| unsafe {
             let data = data as *mut wlr_output;
@@ -72,7 +72,7 @@ wayland_listener_static! {
             // This is not a real clone, but an pub(crate) unsafe one we added, so it doesn't
             // break safety concerns in user code. Just an unfortunate hack we have to put here.
             let output_clone = output.clone();
-            let builder = Builder { output: output.weak_reference(), phantom: PhantomData };
+            let builder = OutputBuilder { output: output.weak_reference(), phantom: PhantomData };
             let compositor = match compositor::handle() {
                 Some(handle) => handle,
                 None => return

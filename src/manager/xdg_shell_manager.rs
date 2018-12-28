@@ -12,12 +12,12 @@ use super::xdg_shell_handler::XdgShell;
 
 /// Callback that is triggered when a new stable XDG shell surface appears.
 pub type NewSurface = fn(compositor_handle: compositor::Handle,
-                            xdg_shell_handle: xdg_shell::Handle)
-                            -> (Option<Box<xdg_shell::Handler>>, Option<Box<surface::Handler>>);
+                         xdg_shell_handle: xdg_shell::Handle)
+                         -> (Option<Box<xdg_shell::Handler>>, Option<Box<surface::Handler>>);
 
 wayland_listener_static! {
     static mut MANAGER;
-    (Manager, ManagerBuilder): [
+    (Manager, Builder): [
         (NewSurface, add_listener, surface_added) => (add_notify, surface_added):
         |manager: &mut Manager, data: *mut libc::c_void,|
         unsafe {

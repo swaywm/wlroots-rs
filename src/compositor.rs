@@ -129,10 +129,10 @@ pub struct Compositor {
 #[derive(Default)]
 pub struct Builder {
     compositor_handler: Option<Box<Handler>>,
-    input_manager_builder: Option<input::ManagerBuilder>,
-    output_manager_builder: Option<output::ManagerBuilder>,
-    xdg_shell_manager_builder: Option<xdg_shell::ManagerBuilder>,
-    xdg_v6_shell_manager_builder: Option<xdg_shell_v6::ManagerBuilder>,
+    input_manager_builder: Option<input::manager::Builder>,
+    output_manager_builder: Option<output::manager::Builder>,
+    xdg_shell_manager_builder: Option<xdg_shell::manager::Builder>,
+    xdg_v6_shell_manager_builder: Option<xdg_shell_v6::manager::Builder>,
     wl_shm: bool,
     gles2: bool,
     render_setup_function: Option<UnsafeRenderSetupFunction>,
@@ -140,7 +140,7 @@ pub struct Builder {
     wayland_remote: Option<String>,
     x11_display: Option<String>,
     data_device_manager: bool,
-    xwayland: Option<xwayland::ManagerBuilder>,
+    xwayland: Option<xwayland::manager::Builder>,
     user_terminate: Option<fn()>
 }
 
@@ -159,19 +159,19 @@ impl Builder {
     }
 
     /// Set the handler for inputs.
-    pub fn input_manager(mut self, input_manager_builder: input::ManagerBuilder) -> Self {
+    pub fn input_manager(mut self, input_manager_builder: input::manager::Builder) -> Self {
         self.input_manager_builder = Some(input_manager_builder);
         self
     }
 
     /// Set the handler for outputs.
-    pub fn output_manager(mut self, output_manager_builder: output::ManagerBuilder) -> Self {
+    pub fn output_manager(mut self, output_manager_builder: output::manager::Builder) -> Self {
         self.output_manager_builder = Some(output_manager_builder);
         self
     }
 
     pub fn xdg_shell_manager(mut self,
-                             xdg_shell_manager_builder: xdg_shell::ManagerBuilder)
+                             xdg_shell_manager_builder: xdg_shell::manager::Builder)
                              -> Self {
         self.xdg_shell_manager_builder = Some(xdg_shell_manager_builder);
         self
@@ -179,7 +179,7 @@ impl Builder {
 
     /// Set the handler for xdg v6 shells.
     pub fn xdg_shell_v6_manager(mut self,
-                                xdg_v6_shell_manager_builder: xdg_shell_v6::ManagerBuilder)
+                                xdg_v6_shell_manager_builder: xdg_shell_v6::manager::Builder)
                                 -> Self {
         self.xdg_v6_shell_manager_builder = Some(xdg_v6_shell_manager_builder);
         self
@@ -218,7 +218,7 @@ impl Builder {
     /// Add a handler for xwayland.
     ///
     /// If you do not provide a handler then the xwayland server does not run.
-    pub fn xwayland(mut self, xwayland: xwayland::ManagerBuilder) -> Self {
+    pub fn xwayland(mut self, xwayland: xwayland::manager::Builder) -> Self {
         self.xwayland = Some(xwayland);
         self
     }

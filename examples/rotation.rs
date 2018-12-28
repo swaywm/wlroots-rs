@@ -159,8 +159,8 @@ fn main() {
     let rotation_argument_string = args.nth(1).unwrap_or_else(|| "".to_string());
     let rotation_transform = rotation_transform_from_str(&rotation_argument_string);
     let compositor_state = CompositorState::new(rotation_transform);
-    let output_builder = output::ManagerBuilder::default().output_added(output_added);
-    let input_builder = input::ManagerBuilder::default()
+    let output_builder = output::manager::Builder::default().output_added(output_added);
+    let input_builder = input::manager::Builder::default()
         .keyboard_added(keyboard_added);
     let mut compositor = compositor::Builder::new().gles2(true)
                                                    .input_manager(input_builder)

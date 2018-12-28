@@ -193,9 +193,9 @@ fn main() {
     let (xcursor_manager, cursor_handle) = load_xcursor();
     let layout_handle = output::layout::Layout::create(Box::new(ExOutputLayout));
 
-    let output_builder = output::ManagerBuilder::default()
+    let output_builder = output::manager::Builder::default()
         .output_added(output_added);
-    let input_builder = input::ManagerBuilder::default()
+    let input_builder = input::manager::Builder::default()
         .pointer_added(pointer_added)
         .keyboard_added(keyboard_added);
     let compositor =

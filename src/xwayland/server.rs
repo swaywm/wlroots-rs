@@ -8,20 +8,20 @@ use xwayland;
 #[allow(dead_code)]
 pub struct Server {
     xwayland: *mut wlr_xwayland,
-    manager: &'static mut xwayland::Manager
+    manager: &'static mut xwayland::manager::Manager
 }
 
 impl Server {
     pub(crate) unsafe fn new(display: *mut wl_display,
                              compositor: *mut wlr_compositor,
-                             builder: xwayland::ManagerBuilder,
+                             builder: xwayland::manager::Builder,
                              lazy: bool)
                              -> Self {
         let xwayland = wlr_xwayland_create(display, compositor, lazy);
         if xwayland.is_null() {
             panic!("Could not start XWayland server")
         }
-        let manager = xwayland::Manager::build(builder);
+        let manager = xwayland::manager::Manager::build(builder);
         wl_signal_add(&mut (*xwayland).events.ready as *mut _ as _,
                       (&mut manager.on_ready_listener) as *mut _ as _);
         wl_signal_add(&mut (*xwayland).events.new_surface as *mut _ as _,

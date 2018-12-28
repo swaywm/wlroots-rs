@@ -260,11 +260,11 @@ fn main() {
         .unwrap();
     let layout = Layout::create(Box::new(OutputLayoutEx));
 
-    let output_builder = output::ManagerBuilder::default().output_added(output_added);
-    let input_builder = input::ManagerBuilder::default()
+    let output_builder = output::manager::Builder::default().output_added(output_added);
+    let input_builder = input::manager::Builder::default()
         .keyboard_added(keyboard_added)
         .pointer_added(pointer_added);
-    let xdg_shell_v6_builder = xdg_shell_v6::ManagerBuilder::default()
+    let xdg_shell_v6_builder = xdg_shell_v6::manager::Builder::default()
         .surface_added(new_surface);
     let mut compositor =
         compositor::Builder::new().gles2(true)
