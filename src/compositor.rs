@@ -1,7 +1,8 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
-use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell}, ffi::CStr, rc::{Rc, Weak}};
+use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell},
+          ffi::CStr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
 
 use libc;
 use wayland_sys::server::{wl_display, wl_event_loop, signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
@@ -31,6 +32,14 @@ pub type NewSurface = fn(compositor_handle: Handle,
 
 /// Callback that's triggered during shutdown.
 pub type OnShutdown = fn();
+
+/// A check to ensure that we only have one builder at a time.
+/// This is necessary because it uses global state to keep track
+/// of callback pointers.
+///
+/// Once the builder has been built with `Build` then this will
+/// only be set to false once the `Compositor` is dropped.
+static mut BUILDER_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 wayland_listener_static!{
     static mut INTERNAL_COMPOSITOR;
@@ -142,7 +151,21 @@ impl Builder {
     /// Make a new compositor builder.
     ///
     /// Unless otherwise noted, each option is `false`/`None`.
+    ///
+    /// # Panicking
+    /// There can only be one `compositor::Builder` per process. If you construct
+    /// a `compositor::Builder` with any of the `build` operations then another
+    /// `compositor::Builder` cannot be constructed until the built `Compositor`
+    /// is dropped.
+    ///
+    /// This requirement is enforced by a check that will panic if this
+    /// constraint is broken. This applies across threads.
     pub fn new() -> Self {
+        unsafe {
+            assert_eq!(BUILDER_ACTIVE.compare_and_swap(false, true, Ordering::AcqRel),
+                       false,
+                       "A compositor builder already exists or has already been built");
+        }
         Builder::default()
     }
 
@@ -334,7 +357,7 @@ impl Builder {
         }
     }
 
-    unsafe fn finish_build<D>(self,
+    unsafe fn finish_build<D>(mut self,
                               data: D,
                               display: *mut wl_display,
                               event_loop: *mut wl_event_loop,
@@ -372,7 +395,7 @@ impl Builder {
         };
 
         // Set up compositor event callbacks, if the user provided it.
-        let compositor_handler = self.compositor_event_builder
+        let compositor_handler = self.compositor_event_builder.take()
             // NOTE if it's not defined, we still need to have it execute
             // the code above to properly set up wayland surfaces.
             .or_else(|| Some(EventBuilder::default()))
@@ -389,7 +412,7 @@ impl Builder {
         });
 
         // Set up input manager, if the user provided it.
-        let input_manager = self.input_manager_builder.map(|builder| {
+        let input_manager = self.input_manager_builder.take().map(|builder| {
             let input_manager = input::Manager::build(builder);
             wl_signal_add(&mut (*backend.as_ptr()).events.new_input as *mut _ as _,
                           (&mut input_manager.add_listener) as *mut _ as _);
@@ -397,7 +420,7 @@ impl Builder {
         });
 
         // Set up output manager, if the user provided it.
-        let output_manager = self.output_manager_builder.map(|builder| {
+        let output_manager = self.output_manager_builder.take().map(|builder| {
             let output_manager = output::Manager::build(builder);
             wl_signal_add(&mut (*backend.as_ptr()).events.new_output as *mut _ as _,
                           (&mut output_manager.add_listener) as *mut _ as _);
@@ -407,7 +430,7 @@ impl Builder {
         // Set up the xdg_shell handler and associated Wayland global,
         // if user provided a manager for it.
         let mut xdg_shell_global = ptr::null_mut();
-        let xdg_shell_manager = self.xdg_shell_manager_builder.map(|builder| {
+        let xdg_shell_manager = self.xdg_shell_manager_builder.take().map(|builder| {
             xdg_shell_global = wlr_xdg_shell_create(display as *mut _);
             let xdg_shell_manager = xdg_shell::Manager::build(builder);
             wl_signal_add(&mut (*xdg_shell_global).events.new_surface as *mut _ as _,
@@ -418,7 +441,7 @@ impl Builder {
         // Set up the xdg_shell_v6 handler and associated Wayland global,
         // if user provided a manager for it.
         let mut xdg_v6_shell_global = ptr::null_mut();
-        let xdg_v6_shell_manager = self.xdg_v6_shell_manager_builder.map(|builder| {
+        let xdg_v6_shell_manager = self.xdg_v6_shell_manager_builder.take().map(|builder| {
             xdg_v6_shell_global = wlr_xdg_shell_v6_create(display as *mut _);
             let xdg_v6_shell_manager = xdg_shell_v6::Manager::build(builder);
             wl_signal_add(&mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
@@ -427,7 +450,7 @@ impl Builder {
         });
 
         // Set up the XWayland server, if the user wants it.
-        let xwayland = self.xwayland.and_then(|builder| {
+        let xwayland = self.xwayland.take().and_then(|builder| {
             Some(xwayland::Server::new(display as _,
                                        compositor,
                                        builder,
@@ -471,8 +494,23 @@ impl Builder {
                                       user_terminate,
                                       panic_error: None,
                                       lock: Rc::new(Cell::new(false)) };
+        // Forget so we can't construct another builder.
+        std::mem::forget(self);
         compositor.set_lock(true);
         compositor
+    }
+}
+
+impl Drop for Builder {
+    fn drop(&mut self) {
+        unsafe {
+            // NOTE This will only happen if dropped outside of `finish_build`,
+            // which mem::forgets(self) in order to not be able to use a builder
+            // while the compositor is running.
+            assert_eq!(BUILDER_ACTIVE.compare_and_swap(true, false, Ordering::AcqRel),
+                       true,
+                       "Builder was in improper state");
+        }
     }
 }
 
@@ -496,7 +534,7 @@ impl Compositor {
     }
 
     /// Enters the wayland event loop. Won't return until the compositor is
-    /// shut off
+    /// shut off.
     pub fn run(self) {
         self.run_with(|_| unsafe {
                           ffi_dispatch!(WAYLAND_SERVER_HANDLE,
@@ -577,6 +615,9 @@ impl Compositor {
 impl Drop for Compositor {
     fn drop(&mut self) {
         unsafe {
+            assert_eq!(BUILDER_ACTIVE.compare_and_swap(true, false, Ordering::AcqRel),
+                       true,
+                       "Builder was in improper state");
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_display_destroy_clients,
                           self.display);
