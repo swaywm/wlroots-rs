@@ -32,8 +32,6 @@ impl CompositorState {
     }
 }
 
-compositor_data!(CompositorState);
-
 struct ExCursor;
 impl cursor::Handler for ExCursor {}
 
@@ -87,7 +85,7 @@ impl pointer::Handler for ExPointer {
                           _pointer_handle: pointer::Handle,
                           absolute_motion_event: &pointer::event::AbsoluteMotion) {
         with_handles!([(compositor: {compositor_handle})] => {
-            let compositor_state: &mut CompositorState = compositor.into();
+            let compositor_state: &mut CompositorState = compositor.downcast();
             let (x, y) = absolute_motion_event.pos();
             compositor_state.cursor_handle
                 .run(|cursor| cursor.warp_absolute(absolute_motion_event.device(), x, y))
@@ -100,7 +98,7 @@ impl pointer::Handler for ExPointer {
                  _pointer_handle: pointer::Handle,
                  motion_event: &pointer::event::Motion) {
         with_handles!([(compositor: {compositor_handle})] => {
-            let compositor_state: &mut CompositorState = compositor.into();
+            let compositor_state: &mut CompositorState = compositor.downcast();
             let (delta_x, delta_y) = motion_event.delta();
             compositor_state.cursor_handle
                 .run(|cursor| cursor.move_to(None, delta_x, delta_y))
@@ -113,7 +111,7 @@ impl pointer::Handler for ExPointer {
                  _pointer_handle: pointer::Handle,
                  button_event: &pointer::event::Button) {
         with_handles!([(compositor: {compositor_handle})] => {
-            let compositor_state: &mut CompositorState = compositor.into();
+            let compositor_state: &mut CompositorState = compositor.downcast();
             compositor_state.color =
                 if button_event.state() == WLR_BUTTON_RELEASED {
                     compositor_state.default_color
@@ -130,7 +128,7 @@ impl pointer::Handler for ExPointer {
                _pointer_handle: pointer::Handle,
                axis_event: &pointer::event::Axis) {
         with_handles!([(compositor: {compositor_handle})] => {
-            let compositor_state: &mut CompositorState = compositor.into();
+            let compositor_state: &mut CompositorState = compositor.downcast();
             let color_diff = if axis_event.delta() > 0.0 { -MOUSE_AXIS_STEP_DIFF } else { MOUSE_AXIS_STEP_DIFF };
             for color_byte in &mut compositor_state.default_color[..3] {
                 *color_byte += color_diff;
@@ -163,7 +161,7 @@ fn pointer_added(compositor_handle: compositor::Handle,
                  pointer_handle: pointer::Handle)
                  -> Option<Box<pointer::Handler>> {
     with_handles!([(compositor: {compositor_handle}), (pointer: {pointer_handle})] => {
-        let compositor_state: &mut CompositorState = compositor.into();
+        let compositor_state: &mut CompositorState = compositor.downcast();
         compositor_state.cursor_handle
             .run(|cursor| cursor.attach_input_device(pointer.input_device()))
             .unwrap();

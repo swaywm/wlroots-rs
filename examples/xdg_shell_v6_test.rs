@@ -40,8 +40,6 @@ impl State {
     }
 }
 
-compositor_data!(State);
-
 struct SeatHandlerEx;
 
 struct CursorEx;
@@ -58,7 +56,7 @@ impl output::layout::Handler for OutputLayoutEx {}
 impl xdg_shell_v6::Handler for XdgV6ShellHandlerEx {
     fn destroyed(&mut self, compositor: compositor::Handle, shell: xdg_shell_v6::Handle) {
         with_handles!([(compositor: {compositor})] => {
-            let state: &mut State = compositor.into();
+            let state: &mut State = compositor.downcast();
             let weak = shell;
             if let Some(index) = state.shells.iter().position(|s| *s == weak) {
                 state.shells.remove(index);
@@ -84,7 +82,7 @@ fn new_surface(compositor: compositor::Handle,
         use compositor as compositor;
         use shell as shell;
         shell.ping();
-        let state: &mut State = compositor.into();
+        let state: &mut State = compositor.downcast();
         state.shells.push(shell.weak_reference());
         let layout_handle = &state.layout;
         use layout_handle as layout;
@@ -148,7 +146,7 @@ impl keyboard::Handler for ExKeyboardHandler {
             }
         };
         use compositor_handle as compositor;
-        let state: &mut State = compositor.into();
+        let state: &mut State = compositor.downcast();
         let seat_handle = state.seat_handle.clone().unwrap();
         use seat_handle as seat;
         seat.keyboard_notify_key(key_event.time_msec(),
@@ -164,7 +162,7 @@ impl pointer::Handler for ExPointer {
                           _: pointer::Handle,
                           event: &pointer::event::AbsoluteMotion) {
         use compositor as compositor;
-        let state: &mut State = compositor.into();
+        let state: &mut State = compositor.downcast();
         let (x, y) = event.pos();
         let cursor_handle = &state.cursor;
         use cursor_handle as cursor;
@@ -177,7 +175,7 @@ impl pointer::Handler for ExPointer {
                  _: pointer::Handle,
                  event: &pointer::event::Motion) {
         use compositor as compositor;
-        let state: &mut State = compositor.into();
+        let state: &mut State = compositor.downcast();
         let (delta_x, delta_y) = event.delta();
         let cursor_handle = &state.cursor;
         use cursor_handle as cursor;
@@ -190,7 +188,7 @@ impl pointer::Handler for ExPointer {
                  pointer::Handle,
                  _: &pointer::event::Button) {
         use compositor as compositor;
-        let state: &mut State = compositor.into();
+        let state: &mut State = compositor.downcast();
         let seat = state.seat_handle.clone().unwrap();
         let keyboard = state.keyboard.clone().unwrap();
         let shell_handle = &state.shells[0];
@@ -240,7 +238,7 @@ fn keyboard_added(compositor: compositor::Handle,
     {
         use compositor as compositor;
         use keyboard as keyboard;
-        let state: &mut State = compositor.into();
+        let state: &mut State = compositor.downcast();
         state.keyboard = Some(keyboard.weak_reference());
         let seat_handle = state.seat_handle.as_ref().unwrap();
         use seat_handle as seat;
@@ -281,7 +279,7 @@ fn main() {
                             seat.set_capabilities(seat::Capability::all());
                         })
                    .unwrap();
-        let state: &mut State = (&mut compositor).into();
+        let state: &mut State = compositor.downcast();
         state.seat_handle = Some(seat_handle);
     }
     compositor.run();
