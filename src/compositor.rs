@@ -494,9 +494,9 @@ impl Builder {
                                       user_terminate,
                                       panic_error: None,
                                       lock: Rc::new(Cell::new(false)) };
-        compositor.set_lock(true);
         // Forget so we can't construct another builder.
         std::mem::forget(self);
+        compositor.set_lock(true);
         compositor
     }
 }
