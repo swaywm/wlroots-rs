@@ -549,7 +549,8 @@ impl Seat {
     ///
     /// Compositors should use `Seat::keyboard_notify_modifiers()` to respect any keyboard grabs.
     pub fn keyboard_send_modifiers(&self, modifiers: &mut keyboard::Modifiers) {
-        unsafe { wlr_seat_keyboard_send_modifiers(self.data.0, &mut (*modifiers).into()) }
+        let mut mods = (*modifiers).into();
+        unsafe { wlr_seat_keyboard_send_modifiers(self.data.0, &mut mods) }
     }
 
     /// Get the keyboard associated with this Seat, if there is one.
@@ -573,12 +574,13 @@ impl Seat {
                                  keycodes: &mut [Keycode],
                                  modifiers: &mut keyboard::Modifiers) {
         let keycodes_length = keycodes.len();
+        let mut mods = (*modifiers).into();
         unsafe {
             wlr_seat_keyboard_notify_enter(self.data.0,
                                            surface.as_ptr(),
                                            keycodes.as_mut_ptr(),
                                            keycodes_length,
-                                           &mut (*modifiers).into())
+                                           &mut mods)
         }
     }
 
@@ -594,12 +596,13 @@ impl Seat {
                           keycodes: &mut [Keycode],
                           modifiers: &mut keyboard::Modifiers) {
         let keycodes_length = keycodes.len();
+        let mut mods = (*modifiers).into();
         unsafe {
             wlr_seat_keyboard_enter(self.data.0,
                                     surface.as_ptr(),
                                     keycodes.as_mut_ptr(),
                                     keycodes_length,
-                                    &mut (*modifiers).into())
+                                    &mut mods)
         }
     }
 
@@ -630,7 +633,8 @@ impl Seat {
     ///
     /// Defers to any keyboard grabs.
     pub fn keyboard_notify_modifiers(&self, modifiers: &mut keyboard::Modifiers) {
-        unsafe { wlr_seat_keyboard_notify_modifiers(self.data.0, &mut (*modifiers).into()) }
+        let mut mods = (*modifiers).into();
+        unsafe { wlr_seat_keyboard_notify_modifiers(self.data.0, &mut mods) }
     }
 
     // TODO Wrapper type for Key and State
