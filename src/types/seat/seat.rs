@@ -548,7 +548,7 @@ impl Seat {
     /// Send the modifier state to focused keyboard resources.
     ///
     /// Compositors should use `Seat::keyboard_notify_modifiers()` to respect any keyboard grabs.
-    pub fn keyboard_send_modifiers(&self, modifiers: &mut keyboard::KeyboardModifiers) {
+    pub fn keyboard_send_modifiers(&self, modifiers: &mut keyboard::Modifiers) {
         unsafe { wlr_seat_keyboard_send_modifiers(self.data.0, &mut (*modifiers).into()) }
     }
 
@@ -571,7 +571,7 @@ impl Seat {
     pub fn keyboard_notify_enter(&self,
                                  surface: &mut Surface,
                                  keycodes: &mut [Keycode],
-                                 modifiers: &mut keyboard::KeyboardModifiers) {
+                                 modifiers: &mut keyboard::Modifiers) {
         let keycodes_length = keycodes.len();
         unsafe {
             wlr_seat_keyboard_notify_enter(self.data.0,
@@ -592,7 +592,7 @@ impl Seat {
     pub fn keyboard_enter(&self,
                           surface: &mut Surface,
                           keycodes: &mut [Keycode],
-                          modifiers: &mut keyboard::KeyboardModifiers) {
+                          modifiers: &mut keyboard::Modifiers) {
         let keycodes_length = keycodes.len();
         unsafe {
             wlr_seat_keyboard_enter(self.data.0,
@@ -629,7 +629,7 @@ impl Seat {
     /// Notify the seat that the modifiers for the keyboard have changed.
     ///
     /// Defers to any keyboard grabs.
-    pub fn keyboard_notify_modifiers(&self, modifiers: &mut keyboard::KeyboardModifiers) {
+    pub fn keyboard_notify_modifiers(&self, modifiers: &mut keyboard::Modifiers) {
         unsafe { wlr_seat_keyboard_notify_modifiers(self.data.0, &mut (*modifiers).into()) }
     }
 

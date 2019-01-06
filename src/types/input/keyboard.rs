@@ -27,16 +27,16 @@ pub struct RepeatInfo {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct KeyboardModifiers {
+pub struct Modifiers {
     pub depressed: Modifier,
     pub latched: Modifier,
     pub locked: Modifier,
     pub group: Modifier,
 }
 
-impl From<wlr_keyboard_modifiers> for KeyboardModifiers {
+impl From<wlr_keyboard_modifiers> for Modifiers {
     fn from(mods: wlr_keyboard_modifiers) -> Self{
-        KeyboardModifiers {
+        Modifiers {
             depressed: Modifier::from_bits_truncate(mods.depressed),
             latched: Modifier::from_bits_truncate(mods.latched),
             locked: Modifier::from_bits_truncate(mods.locked),
@@ -44,7 +44,7 @@ impl From<wlr_keyboard_modifiers> for KeyboardModifiers {
         }
     }
 }
-impl Into<wlr_keyboard_modifiers> for KeyboardModifiers {
+impl Into<wlr_keyboard_modifiers> for Modifiers {
     fn into(self) -> wlr_keyboard_modifiers {
         wlr_keyboard_modifiers {
             depressed: self.depressed.bits(),
@@ -194,7 +194,7 @@ impl Keyboard {
     }
 
     /// Get the modifier masks for each group.
-    pub fn get_modifier_masks(&self) -> KeyboardModifiers {
+    pub fn get_modifier_masks(&self) -> Modifiers {
         From::from(unsafe { (*self.keyboard).modifiers })
     }
 }
