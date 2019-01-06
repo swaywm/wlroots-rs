@@ -1,15 +1,15 @@
 //! TODO Documentation
 use std::{fmt, cell::Cell, rc::Rc};
 
-use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led,
-                  wlr_keyboard_led_update, wlr_keyboard_modifier, wlr_keyboard_set_keymap,
+use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_led, wlr_keyboard_led_update,
+                  wlr_keyboard_get_modifiers, wlr_keyboard_modifier, wlr_keyboard_modifiers,
+                  wlr_keyboard_set_keymap,
                   xkb_keysym_t};
 pub use wlroots_sys::wlr_key_state;
 use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex};
 use xkbcommon::xkb::ffi::{xkb_keymap, xkb_state};
 
-use {KeyboardModifiers,
-     input::{self, InputState},
+use {input::{self, InputState},
      utils::{self, Handleable, HandleErr, HandleResult}};
 pub use manager::keyboard_handler::*;
 pub use events::key_events as event;
@@ -24,6 +24,35 @@ pub struct RepeatInfo {
     pub rate: i32,
     /// How long it takes for a keypress to register on this device.
     pub delay: i32
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct KeyboardModifiers {
+    pub depressed: Modifier,
+    pub latched: Modifier,
+    pub locked: Modifier,
+    pub group: Modifier,
+}
+
+impl From<wlr_keyboard_modifiers> for KeyboardModifiers {
+    fn from(mods: wlr_keyboard_modifiers) -> Self{
+        KeyboardModifiers {
+            depressed: Modifier::from_bits_truncate(mods.depressed),
+            latched: Modifier::from_bits_truncate(mods.latched),
+            locked: Modifier::from_bits_truncate(mods.locked),
+            group: Modifier::from_bits_truncate(mods.group),
+        }
+    }
+}
+impl Into<wlr_keyboard_modifiers> for KeyboardModifiers {
+    fn into(self) -> wlr_keyboard_modifiers {
+        wlr_keyboard_modifiers {
+            depressed: self.depressed.bits(),
+            latched: self.latched.bits(),
+            locked: self.locked.bits(),
+            group: self.group.bits(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -166,7 +195,7 @@ impl Keyboard {
 
     /// Get the modifier masks for each group.
     pub fn get_modifier_masks(&self) -> KeyboardModifiers {
-        unsafe { (*self.keyboard).modifiers }
+        From::from(unsafe { (*self.keyboard).modifiers })
     }
 }
 

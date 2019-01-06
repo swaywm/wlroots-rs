@@ -30,8 +30,7 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_dest
 pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
-use {KeyboardModifiers,
-     compositor::{self, Compositor},
+use {compositor::{self, Compositor},
      input::{self, keyboard},
      surface::{self, Surface},
      seat::{self, grab, touch_point::{TouchId, TouchPoint}, drag_icon::{self, DragIcon}},
@@ -549,8 +548,8 @@ impl Seat {
     /// Send the modifier state to focused keyboard resources.
     ///
     /// Compositors should use `Seat::keyboard_notify_modifiers()` to respect any keyboard grabs.
-    pub fn keyboard_send_modifiers(&self, modifiers: &mut KeyboardModifiers) {
-        unsafe { wlr_seat_keyboard_send_modifiers(self.data.0, modifiers) }
+    pub fn keyboard_send_modifiers(&self, modifiers: &mut keyboard::KeyboardModifiers) {
+        unsafe { wlr_seat_keyboard_send_modifiers(self.data.0, &mut (*modifiers).into()) }
     }
 
     /// Get the keyboard associated with this Seat, if there is one.
@@ -572,14 +571,14 @@ impl Seat {
     pub fn keyboard_notify_enter(&self,
                                  surface: &mut Surface,
                                  keycodes: &mut [Keycode],
-                                 modifiers: &mut KeyboardModifiers) {
+                                 modifiers: &mut keyboard::KeyboardModifiers) {
         let keycodes_length = keycodes.len();
         unsafe {
             wlr_seat_keyboard_notify_enter(self.data.0,
                                            surface.as_ptr(),
                                            keycodes.as_mut_ptr(),
                                            keycodes_length,
-                                           modifiers)
+                                           &mut (*modifiers).into())
         }
     }
 
@@ -593,14 +592,14 @@ impl Seat {
     pub fn keyboard_enter(&self,
                           surface: &mut Surface,
                           keycodes: &mut [Keycode],
-                          modifiers: &mut KeyboardModifiers) {
+                          modifiers: &mut keyboard::KeyboardModifiers) {
         let keycodes_length = keycodes.len();
         unsafe {
             wlr_seat_keyboard_enter(self.data.0,
                                     surface.as_ptr(),
                                     keycodes.as_mut_ptr(),
                                     keycodes_length,
-                                    modifiers)
+                                    &mut (*modifiers).into())
         }
     }
 
@@ -630,8 +629,8 @@ impl Seat {
     /// Notify the seat that the modifiers for the keyboard have changed.
     ///
     /// Defers to any keyboard grabs.
-    pub fn keyboard_notify_modifiers(&self, modifiers: &mut KeyboardModifiers) {
-        unsafe { wlr_seat_keyboard_notify_modifiers(self.data.0, modifiers) }
+    pub fn keyboard_notify_modifiers(&self, modifiers: &mut keyboard::KeyboardModifiers) {
+        unsafe { wlr_seat_keyboard_notify_modifiers(self.data.0, &mut (*modifiers).into()) }
     }
 
     // TODO Wrapper type for Key and State
