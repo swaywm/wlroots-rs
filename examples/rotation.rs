@@ -1,13 +1,16 @@
+extern crate log;
 #[macro_use]
 extern crate wlroots;
 
 use std::{env, time::Instant};
 
+use log::LevelFilter;
+
 use wlroots::{compositor,
               input::{self, keyboard},
               output,
               render::{Texture, TextureFormat},
-              utils::log::{init_logging, WLR_DEBUG}};
+              utils::log::Logger};
 use wlroots::wlroots_sys::wl_output_transform;
 use wlroots::xkbcommon::xkb::keysyms;
 
@@ -152,7 +155,7 @@ fn rotation_transform_from_str(rotation_str: &str) -> wl_output_transform {
 }
 
 fn main() {
-    init_logging(WLR_DEBUG, None);
+    Logger::init(LevelFilter::Debug);    
     let mut args = env::args();
     let rotation_argument_string = args.nth(1).unwrap_or_else(|| "".to_string());
     let rotation_transform = rotation_transform_from_str(&rotation_argument_string);

@@ -20,6 +20,7 @@ wlroots-dehandle = { path = "wlroots-dehandle", version = "1.0" }
 xkbcommon = "0.3"
 bitflags = "1.0"
 vsprintf = "1.0.1"
+log = "0.4"
 
 [features]
 default = ["libcap", "systemd", "elogind", "xwayland", "x11_backend"]

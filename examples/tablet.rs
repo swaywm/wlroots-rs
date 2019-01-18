@@ -1,7 +1,10 @@
+extern crate log;
 #[macro_use]
 extern crate wlroots;
 
 use std::f64::consts::PI;
+
+use log::LevelFilter;
 
 use wlroots::{area::{Area, Size, Origin}, compositor,
               input::{self, keyboard, tablet_tool, tablet_pad},
@@ -9,7 +12,7 @@ use wlroots::{area::{Area, Size, Origin}, compositor,
               wlroots_sys::wl_output_transform::WL_OUTPUT_TRANSFORM_NORMAL,
               wlr_tablet_tool_proximity_state::*,
               wlr_button_state::*,
-              utils::log,
+              utils::log::Logger,
               xkbcommon::xkb::KEY_Escape};
 
 #[derive(Debug, Default)]
@@ -237,7 +240,7 @@ impl output::Handler for OutputEx {
 }
 
 fn main() {
-    log::init_logging(log::WLR_DEBUG, None);
+    Logger::init(LevelFilter::Debug);
     let output_builder = output::manager::Builder::default().output_added(output_added);
     let input_builder = input::manager::Builder::default()
         .keyboard_added(keyboard_added)

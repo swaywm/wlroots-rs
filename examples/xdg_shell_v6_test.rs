@@ -1,8 +1,10 @@
+extern crate log;
 #[macro_use]
 extern crate wlroots;
 
 use std::{thread, process::Command};
 
+use log::LevelFilter;
 use wlroots::{area::{Area, Origin, Size},
               compositor,
               cursor::{self, Cursor, xcursor},
@@ -12,7 +14,7 @@ use wlroots::{area::{Area, Origin, Size},
               seat::{self, Seat},
               shell::xdg_shell_v6,
               surface,
-              utils::{Handleable, log::{init_logging, WLR_DEBUG}, current_time}};
+              utils::{Handleable, log::Logger, current_time}};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
 use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
 use wlroots::wlroots_dehandle;
@@ -248,7 +250,7 @@ fn keyboard_added(compositor: compositor::Handle,
 }
 
 fn main() {
-    init_logging(WLR_DEBUG, None);
+    Logger::init(LevelFilter::Debug);
     let cursor = Cursor::create(Box::new(CursorEx));
     let mut xcursor_manager =
         xcursor::Manager::create("default".to_string(), 24).expect("Could not create xcursor \

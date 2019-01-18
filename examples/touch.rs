@@ -1,11 +1,13 @@
+extern crate log;
 #[macro_use]
 extern crate wlroots;
 
+use log::LevelFilter;
 use wlroots::{compositor,
               input::{self, keyboard, touch},
               output,
               render::{Texture, TextureFormat}};
-use wlroots::utils::log::{init_logging, WLR_DEBUG};
+use wlroots::utils::log::Logger;
 use wlroots::xkbcommon::xkb::keysyms::KEY_Escape;
 
 const CAT_WIDTH: u32 = 128;
@@ -142,7 +144,7 @@ fn keyboard_added(_: compositor::Handle,
 }
 
 fn main() {
-    init_logging(WLR_DEBUG, None);
+    Logger::init(LevelFilter::Debug);
     let output_builder = output::manager::Builder::default().output_added(output_added);
     let input_builder = input::manager::Builder::default()
         .keyboard_added(keyboard_added)
