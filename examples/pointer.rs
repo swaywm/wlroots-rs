@@ -189,7 +189,7 @@ fn load_xcursor() -> (xcursor::Manager, cursor::Handle) {
 }
 
 fn main() {
-    Logger::init(LevelFilter::Debug);    
+    Logger::init(LevelFilter::Debug, None);
     let (xcursor_manager, cursor_handle) = load_xcursor();
     let layout_handle = output::layout::Layout::create(Box::new(ExOutputLayout));
 

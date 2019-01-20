@@ -144,7 +144,7 @@ fn keyboard_added(_: compositor::Handle,
 }
 
 fn main() {
-    Logger::init(LevelFilter::Debug);
+    Logger::init(LevelFilter::Debug, None);
     let output_builder = output::manager::Builder::default().output_added(output_added);
     let input_builder = input::manager::Builder::default()
         .keyboard_added(keyboard_added)

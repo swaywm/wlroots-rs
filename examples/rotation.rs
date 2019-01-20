@@ -155,7 +155,7 @@ fn rotation_transform_from_str(rotation_str: &str) -> wl_output_transform {
 }
 
 fn main() {
-    Logger::init(LevelFilter::Debug);    
+    Logger::init(LevelFilter::Debug, None);
     let mut args = env::args();
     let rotation_argument_string = args.nth(1).unwrap_or_else(|| "".to_string());
     let rotation_transform = rotation_transform_from_str(&rotation_argument_string);

@@ -250,7 +250,7 @@ fn keyboard_added(compositor: compositor::Handle,
 }
 
 fn main() {
-    Logger::init(LevelFilter::Debug);
+    Logger::init(LevelFilter::Debug, None);
     let cursor = Cursor::create(Box::new(CursorEx));
     let mut xcursor_manager =
         xcursor::Manager::create("default".to_string(), 24).expect("Could not create xcursor \

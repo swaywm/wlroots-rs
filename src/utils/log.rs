@@ -6,7 +6,6 @@
 //! To log using this system please utilize the [`wlr_log!`](../../macro.wlr_log.html) macro.
 
 use libc::c_char;
-use log::{info, max_level, set_boxed_logger, set_max_level, Level, LevelFilter, Metadata, Record};
 use vsprintf::vsprintf;
 use wlroots_sys::{wlr_log_importance, __va_list_tag, wlr_log_init, _wlr_log};
 
@@ -64,47 +63,58 @@ unsafe extern "C" fn log_callback(importance: wlr_log_importance,
 
 pub struct Logger;
 
+static LOGGER: Logger = Logger;
+
 impl Logger {
-    pub fn init(level: LevelFilter) {
+    /// Attempts to initialize the global logger with a Logger around _wlr_log.
+    ///
+    /// This should be called early in the execution of the program, as all log events
+    /// that occur before initialization with be ignored.
+    ///
+    /// # Errors
+    ///
+    /// This function will fail if it is called more than once, or if another library
+    /// has already initialized a global logger.
+    pub fn init<F>(level: log::LevelFilter, callback: F)
+        where F: Into<Option<LogCallback>>
+        {
         init_logging(
             match level {
-                LevelFilter::Off => WLR_SILENT,
-                LevelFilter::Warn | LevelFilter::Error => WLR_ERROR,
-                LevelFilter::Info => WLR_INFO,
-                LevelFilter::Debug | LevelFilter::Trace => WLR_DEBUG,
+                log::LevelFilter::Off => WLR_SILENT,
+                log::LevelFilter::Warn | log::LevelFilter::Error => WLR_ERROR,
+                log::LevelFilter::Info => WLR_INFO,
+                log::LevelFilter::Debug | log::LevelFilter::Trace => WLR_DEBUG,
             },
-            None,
+            callback,
         );
 
-        let _ = set_boxed_logger(Box::new(Logger)).map(|_| set_max_level(level));
-
-        info!("Logger initialized!");
+        log::set_logger(&LOGGER).expect(
+            "Attempted to set a logger after the logging system was already initialized"
+        );
+        log::set_max_level(level);
     }
 }
 
 impl log::Log for Logger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= max_level()
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::max_level()
     }
 
-    fn log(&self, record: &Record) {
+    fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
             let wlr_level = match record.level() {
-                Level::Warn | Level::Error => WLR_ERROR,
-                Level::Info => WLR_INFO,
-                Level::Debug | Level::Trace => WLR_DEBUG,
+                log::Level::Warn | log::Level::Error => WLR_ERROR,
+                log::Level::Info => WLR_INFO,
+                log::Level::Debug | log::Level::Trace => WLR_DEBUG,
             };
 
-            let msg = CString::new(if let Some(file) = record.file() {
-                if let Some(line) = record.line() {
-                    format!("[{}:{}] {}", file, line, record.args())
-                } else {
-                    format!("[{}] {}", file, record.args())
-                }
-            } else {
-                format!("{}", record.args())
-            })
-            .expect("Could not convert log message to CString");
+            let formatted_msg = match (record.file(), record.line()) {
+                (Some(file), Some(line)) => format!("[{}:{}] {}", file, line, record.args()),
+                (Some(file), None) => format!("[{}] {}", file, record.args()),
+                (None, _) => format!("{}", record.args()),
+            };
+            let msg = CString::new(formatted_msg)
+                .expect("Could not convert log message to CString");
 
             unsafe {
                 _wlr_log(wlr_level, msg.as_ptr());
