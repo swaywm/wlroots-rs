@@ -1,10 +1,12 @@
 #[macro_use]
 extern crate wlroots;
+extern crate log;
 
+use log::LevelFilter;
 use wlroots::{compositor,
               cursor::{self, Cursor, xcursor},
               input::{self, pointer, keyboard},
-              utils::log::{init_logging, WLR_DEBUG},
+              utils::log::Logger,
               output};
 use wlroots::wlroots_sys::wlr_button_state::WLR_BUTTON_RELEASED;
 use wlroots::xkbcommon::xkb::keysyms;
@@ -187,7 +189,7 @@ fn load_xcursor() -> (xcursor::Manager, cursor::Handle) {
 }
 
 fn main() {
-    init_logging(WLR_DEBUG, None);
+    Logger::init(LevelFilter::Debug, None);
     let (xcursor_manager, cursor_handle) = load_xcursor();
     let layout_handle = output::layout::Layout::create(Box::new(ExOutputLayout));
 
