@@ -14,7 +14,7 @@ use wlroots_sys::{wlr_backend_destroy, wlr_backend_start,
 
 use {backend::{self, UnsafeRenderSetupFunction, Backend, Session},
      data_device,
-     extensions::server_decoration,
+     extensions::{server_decoration, gamma_control},
      surface::{self, Surface, InternalSurface},
      input,
      output,
@@ -113,6 +113,8 @@ pub struct Compositor {
     socket_name: String,
     /// Optional decoration manager extension.
     pub server_decoration_manager: Option<server_decoration::Manager>,
+    /// Optional gamma manager extension.
+    pub gamma_control_manager: Option<gamma_control::Manager>,
     /// The renderer used to draw things to the screen.
     pub renderer: Option<GenericRenderer>,
     /// XWayland server, only Some if it is enabled
@@ -140,6 +142,7 @@ pub struct Builder {
     gles2: bool,
     render_setup_function: Option<UnsafeRenderSetupFunction>,
     server_decoration_manager: bool,
+    gamma_control_manager: bool,
     wayland_remote: Option<String>,
     x11_display: Option<String>,
     data_device_manager: bool,
@@ -232,6 +235,14 @@ impl Builder {
         self.server_decoration_manager = server_decoration_manager;
         self
     }
+
+    /// Decide whether or not to enable the gamma control manager protocol
+    /// extension.
+    pub fn gamma_control_manager(mut self, gamma_control_manager: bool) -> Self {
+        self.gamma_control_manager = gamma_control_manager;
+        self
+    }
+
 
     /// Set callbacks for managing XDG shell v6 resources.
     ///
@@ -388,6 +399,11 @@ impl Builder {
         } else {
             None
         };
+        let gamma_control_manager = if self.gamma_control_manager {
+            gamma_control::Manager::new(display)
+        } else {
+            None
+        };
         let data_device_manager = if self.data_device_manager {
             data_device::Manager::new(display as _)
         } else {
@@ -489,6 +505,7 @@ impl Builder {
                                       event_loop,
                                       wl_shm_fd,
                                       server_decoration_manager,
+                                      gamma_control_manager,
                                       renderer,
                                       xwayland,
                                       user_terminate,
