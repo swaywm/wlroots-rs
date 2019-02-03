@@ -104,8 +104,9 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
                         _ => {}
                     }
                 };
-                // Check if this is prefaced with #[dehandle]
-                match (dehandle, local.pats.first().map(Pair::into_value).cloned(), local.init.clone()) {
+                let left_side = local.pats.first().map(Pair::into_value).cloned();
+                let right_side = local.init.clone();
+                match (dehandle, left_side, right_side) {
                     (true,
                      Some(Pat::Ident(dehandle_name)),
                      Some((_, body))) => {
@@ -120,7 +121,7 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
                         local.init.as_mut().unwrap().1 = Box::new(body);
                         output.push(Stmt::Local(local))
                     },
-                    _ => {}
+                    _ => output.push(Stmt::Local(local))
                 }
             },
             Stmt::Expr(expr) => {
