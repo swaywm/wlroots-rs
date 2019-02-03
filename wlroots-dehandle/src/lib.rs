@@ -5,13 +5,9 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 
-use std::collections::HashMap;
-
 use proc_macro::TokenStream;
-use proc_macro2::Ident;
-use syn::{Attribute, ItemFn, Stmt, UseTree, ItemUse, Item, Block, Expr,
-          parse::{self, Parse, ParseStream},
-          punctuated::Punctuated,
+use syn::{ItemFn, Stmt, Item, Block, Expr,
+          spanned::Spanned,
           fold::Fold};
 
 /// Parses a list of variable names separated by commas
@@ -21,33 +17,11 @@ use syn::{Attribute, ItemFn, Stmt, UseTree, ItemUse, Item, Block, Expr,
 ///```rust,ignore
 ///     #[wlroots_dehandle(a, b, c)]
 ///```
-struct Args {
-    vars: HashMap<Ident, bool>
-}
-
-impl Parse for Args {
-    fn parse(input: ParseStream) -> parse::Result<Self> {
-        let vars = Punctuated::<Ident, Token![,]>::parse_terminated(input)?;
-        Ok(Args {
-            vars: vars.into_iter().map(|k| (k, false)).collect(),
-        })
-    }
-}
+struct Args;
 
 impl Fold for Args {
     fn fold_block(&mut self, block: Block) -> Block {
         build_block(block.stmts.iter(), self)
-    }
-}
-
-impl Args {
-    fn is_handle(&mut self, name: Ident) -> bool {
-        if let Some(seen) = self.vars.get_mut(&name) {
-            *seen = true;
-            true
-        } else {
-            false
-        }
     }
 }
 
@@ -97,10 +71,9 @@ impl Args {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn wlroots_dehandle(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn wlroots_dehandle(_args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemFn);
-    let mut args = parse_macro_input!(args as Args);
-    let output = args.fold_item_fn(input);
+    let output = Args.fold_item_fn(input);
     TokenStream::from(quote!(#output))
 }
 
@@ -108,7 +81,7 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
     let mut output = vec![];
     let mut inner = None;
     while let Some(stmt) = input.next().cloned() {
-        use syn::{AttrStyle::Inner, Pat, punctuated::Pair};
+        use syn::{Pat, punctuated::Pair};
         match stmt.clone() {
             // Recurse into function body
             Stmt::Item(Item::Fn(mut function)) => {
@@ -120,10 +93,9 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
                 // Ensure attribute is prefaced here
                 let mut dehandle = false;
                 for attribute in &local.attrs {
-                    // TODO unwrap
-                    let meta = attribute.parse_meta().unwrap();
+                    let meta = attribute.parse_meta();
                     match meta {
-                        syn::Meta::Word(name) => {
+                        Ok(syn::Meta::Word(name)) => {
                             if name.to_string() == "dehandle" {
                                 dehandle = true;
                                 break;
@@ -137,21 +109,15 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
                     (true,
                      Some(Pat::Ident(dehandle_name)),
                      Some((_, body))) => {
-                        if let Expr::Path(body) = *body {
-                            if body.path.segments.len() == 1 {
-                                let handle_name = body.path.segments.first().unwrap().into_value().clone().ident;
-                                inner = Some((handle_name, dehandle_name));
-                                break;
-                            }
-                        }
-                        // TODO error message
-                        panic!("Invalid use of #[dehandle]")
+                        inner = Some((body, dehandle_name));
+                        break;
                     },
                     // Recurse into let call
                     (false, _, Some((_, body))) => {
                         let body = build_block_expr(*body.clone(), args);
-                        let body = parse_quote!(#body);
-                        local.init.as_mut().unwrap().1 = body;
+                        let stream = quote_spanned!(stmt.span()=> #body);
+                        let body: Expr = syn::parse_quote::parse(stream.into());
+                        local.init.as_mut().unwrap().1 = Box::new(body);
                         output.push(Stmt::Local(local))
                     },
                     _ => {}
@@ -159,24 +125,24 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
             },
             Stmt::Expr(expr) => {
                 let body = build_block_expr(expr, args);
-                output.push(parse_quote!({#body}))
+                output.push(syn::parse_quote::parse(quote_spanned!(stmt.span()=> {#body}).into()))
             }
             Stmt::Semi(expr, _) => {
                 let body = build_block_expr(expr, args);
-                output.push(parse_quote!({#body;}))
+                output.push(syn::parse_quote::parse(quote_spanned!(stmt.span()=> {#body;}).into()))
             }
             _ => output.push(stmt)
         }
     }
     if let Some((handle, dehandle)) = inner {
         let inner_block = build_block(input, args);
-        let handle_call = parse_quote!(
+        let handle_call = syn::parse_quote::parse(quote_spanned!(handle.span()=>
             {(#handle).run(|#dehandle|{
                 #inner_block
             }).expect(concat!("Could not upgrade handle ",
                               stringify!(#handle), " to ",
                               stringify!(#dehandle)))}
-        );
+        ).into());
         output.push(handle_call);
     }
     parse_quote!({#(#output)*})
@@ -187,7 +153,7 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
     match expr {
         Expr::Block(block) => {
             let block = build_block(block.block.stmts.iter(), args);
-            parse_quote!(#block)
+            syn::parse_quote::parse(quote_spanned!(block.span()=> #block))
         }
         Expr::Let(mut let_expr) => {
             *let_expr.expr = build_block_expr(*let_expr.expr.clone(), args);
@@ -195,8 +161,11 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
         },
         Expr::If(mut if_expr) => {
             let then_branch = if_expr.then_branch.clone();
-            let then_branch = build_block_expr(parse_quote!(#then_branch), args);
-            if_expr.then_branch = parse_quote!(#then_branch);
+            let then_parsed = syn::parse_quote::parse(
+                quote_spanned!(then_branch.span()=> #then_branch));
+            let then_branch = build_block_expr(then_parsed, args);
+            if_expr.then_branch = syn::parse_quote::parse(
+                quote_spanned!(then_branch.span()=> #then_branch));
             if_expr.else_branch = match if_expr.else_branch.clone() {
                 None => if_expr.else_branch,
                 Some((token, else_branch)) => {
@@ -207,7 +176,8 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
         },
         Expr::While(mut while_expr) => {
             let body = while_expr.body.clone();
-            let body = build_block_expr(parse_quote!(#body), args);
+            let body = build_block_expr(syn::parse_quote::parse(
+                quote_spanned!(body.span()=> #body)), args);
             while_expr.body = parse_quote!(#body);
             Expr::While(while_expr)
         },
