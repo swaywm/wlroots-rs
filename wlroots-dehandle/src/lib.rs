@@ -80,6 +80,7 @@ pub fn wlroots_dehandle(_args: TokenStream, input: TokenStream) -> TokenStream {
 fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
     let mut output = vec![];
     let mut inner = None;
+    let mut is_try = false;
     while let Some(stmt) = input.next().cloned() {
         use syn::{Pat, punctuated::Pair};
         match stmt.clone() {
@@ -110,6 +111,14 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
                     (true,
                      Some(Pat::Ident(dehandle_name)),
                      Some((_, body))) => {
+                        let mut body = *body;
+                        is_try = match body.clone() {
+                            syn::Expr::Try(syn::ExprTry { expr, .. }) => {
+                                body = *expr.clone();
+                                true
+                            },
+                            _ => false
+                        };
                         inner = Some((body, dehandle_name));
                         break;
                     },
@@ -137,13 +146,21 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
     }
     if let Some((handle, dehandle)) = inner {
         let inner_block = build_block(input, args);
-        let handle_call = syn::parse_quote::parse(quote_spanned!(handle.span()=>
-            {(#handle).run(|#dehandle|{
-                #inner_block
-            }).expect(concat!("Could not upgrade handle ",
-                              stringify!(#handle), " to ",
-                              stringify!(#dehandle)))}
-        ).into());
+        let handle_call = if !is_try {
+            syn::parse_quote::parse(
+                quote_spanned!(handle.span()=>
+                               {(#handle).run(|#dehandle|{
+                                   #inner_block
+                               }).expect(concat!("Could not upgrade handle ",
+                                                 stringify!(#handle), " to ",
+                                                 stringify!(#dehandle)))}).into())
+        } else {
+            syn::parse_quote::parse(
+                quote_spanned!(handle.span()=>
+                               {(#handle).run(|#dehandle|{
+                                   #inner_block
+                               })?}).into())
+        };
         output.push(handle_call);
     }
     parse_quote!({#(#output)*})
