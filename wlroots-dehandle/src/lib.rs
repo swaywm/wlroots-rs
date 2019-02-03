@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
-use syn::{ItemFn, Stmt, UseTree, ItemUse, Item, Block, Expr,
+use syn::{Attribute, ItemFn, Stmt, UseTree, ItemUse, Item, Block, Expr,
           parse::{self, Parse, ParseStream},
           punctuated::Punctuated,
           fold::Fold};
@@ -100,16 +100,7 @@ impl Args {
 pub fn wlroots_dehandle(args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemFn);
     let mut args = parse_macro_input!(args as Args);
-    if args.vars.len() == 0 {
-        panic!("wlroots_dehandle requires at least one argument")
-    }
     let output = args.fold_item_fn(input);
-    for (arg, seen) in args.vars {
-        if !seen {
-            panic!(format!("Must use all declared handles, didn't use `{}`",
-                           arg))
-        }
-    }
     TokenStream::from(quote!(#output))
 }
 
@@ -117,28 +108,53 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
     let mut output = vec![];
     let mut inner = None;
     while let Some(stmt) = input.next().cloned() {
-        use {Item::Use, UseTree::Rename};
+        use syn::{AttrStyle::Inner, Pat, punctuated::Pair};
         match stmt.clone() {
-            Stmt::Item(Use(ItemUse { tree: Rename(use_stmt), ..})) => {
-                if args.is_handle(use_stmt.rename.clone()) {
-                    inner = Some((use_stmt.ident, use_stmt.rename));
-                    break
-                }
-                output.push(stmt)
-            },
             // Recurse into function body
             Stmt::Item(Item::Fn(mut function)) => {
                 let inner_block = function.block.clone();
                 *function.block = build_block(inner_block.stmts.iter(), args);
                 output.push(Stmt::Item(Item::Fn(function)))
             },
-            // Recurse into let call
             Stmt::Local(mut local) => {
-                if let Some((_, body)) = local.init.clone() {
-                    let body = build_block_expr(*body.clone(), args);
-                    let body = parse_quote!(#body);
-                    local.init.as_mut().unwrap().1 = body;
-                    output.push(Stmt::Local(local))
+                // Ensure attribute is prefaced here
+                let mut dehandle = false;
+                for attribute in &local.attrs {
+                    // TODO unwrap
+                    let meta = attribute.parse_meta().unwrap();
+                    match meta {
+                        syn::Meta::Word(name) => {
+                            if name.to_string() == "dehandle" {
+                                dehandle = true;
+                                break;
+                            }
+                        },
+                        _ => {}
+                    }
+                };
+                // Check if this is prefaced with #[dehandle]
+                match (dehandle, local.pats.first().map(Pair::into_value).cloned(), local.init.clone()) {
+                    (true,
+                     Some(Pat::Ident(dehandle_name)),
+                     Some((_, body))) => {
+                        if let Expr::Path(body) = *body {
+                            if body.path.segments.len() == 1 {
+                                let handle_name = body.path.segments.first().unwrap().into_value().clone().ident;
+                                inner = Some((handle_name, dehandle_name));
+                                break;
+                            }
+                        }
+                        // TODO error message
+                        panic!("Invalid use of #[dehandle]")
+                    },
+                    // Recurse into let call
+                    (false, _, Some((_, body))) => {
+                        let body = build_block_expr(*body.clone(), args);
+                        let body = parse_quote!(#body);
+                        local.init.as_mut().unwrap().1 = body;
+                        output.push(Stmt::Local(local))
+                    },
+                    _ => {}
                 }
             },
             Stmt::Expr(expr) => {
