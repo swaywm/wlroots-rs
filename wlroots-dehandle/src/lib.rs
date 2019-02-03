@@ -73,19 +73,18 @@ impl Args {
 ///
 /// ```rust,ignore
 /// impl InputManagerHandler for InputManager {
-///     #[wlroots_dehandle(compositor, keyboard, seat)]
+///     #[wlroots_dehandle]
 ///     fn keyboard_added(&mut self,
 ///                       compositor_handle: CompositorHandle,
 ///                       keyboard: KeyboardHandle)
 ///                       -> Option<Box<Keyboard Handler>> {
 ///         {
-///             use compositor_handle as compositor;
-///             use keyboard as keyboard;
+///             #[dehandle] let compositor = compositor_handle;
+///             #[dehandle] let keyboard = keyboard;
 ///             let server: &mut ::Server = compositor.into();
 ///             server.keyboards.push(keyboard.weak_reference());
 ///             // Now that we have at least one keyboard, update the seat capabilities.
-///             let server_seat = &server.seat.seat;
-///             use server_seat as seat;
+///             #[dehandle] let seat = &server.seat.seat;
 ///             let mut capabilities = seat.capabilities();
 ///             capabilities.insert(Capability::Keyboard);
 ///             seat.set_capabilities(capabilities);
