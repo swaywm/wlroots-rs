@@ -76,20 +76,19 @@ impl surface::Handler for SurfaceEx {
     }
 }
 
-#[wlroots_dehandle(compositor, shell, layout, output)]
+#[wlroots_dehandle]
 fn new_surface(compositor: compositor::Handle,
                shell: xdg_shell_v6::Handle)
                -> (Option<Box<xdg_shell_v6::Handler>>, Option<Box<surface::Handler>>) {
     {
-        use compositor as compositor;
-        use shell as shell;
+        #[dehandle] let compositor = compositor;
+        #[dehandle] let shell = shell;
         shell.ping();
         let state: &mut State = compositor.downcast();
         state.shells.push(shell.weak_reference());
-        let layout_handle = &state.layout;
-        use layout_handle as layout;
+        #[dehandle] let layout = &state.layout;
         for (output, _) in layout.outputs() {
-            use output as output;
+            #[dehandle] let output = output;
             output.schedule_frame()
         }
     }
@@ -102,26 +101,22 @@ struct ExPointer;
 
 struct ExKeyboardHandler;
 
-#[wlroots_dehandle(compositor, output, layout, cursor)]
+#[wlroots_dehandle]
 fn output_added<'output>(compositor: compositor::Handle,
                          builder: output::Builder<'output>)
                          -> Option<output::BuilderResult<'output>> {
     let result = builder.build_best_mode(ExOutput);
     {
-        let output_handle = &result.output;
-        use compositor as compositor;
-        use output_handle as output;
+        #[dehandle] let compositor = compositor;
+        #[dehandle] let output = &result.output;
         let state: &mut State = compositor.data.downcast_mut().unwrap();
-        let xcursor_manager = &mut state.xcursor_manager;
         // TODO use output config if present instead of auto
-        let layout = &mut state.layout;
-        let cursor = &mut state.cursor;
-        use layout as layout;
-        use cursor as cursor;
+        #[dehandle] let layout = state.layout.clone();
+        #[dehandle] let cursor = state.cursor.clone();
         layout.add_auto(output);
         cursor.attach_output_layout(layout);
-        xcursor_manager.load(output.scale());
-        xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
+        state.xcursor_manager.load(output.scale());
+        state.xcursor_manager.set_cursor_image("left_ptr".to_string(), cursor);
         let (x, y) = cursor.coords();
         // https://en.wikipedia.org/wiki/Mouse_warping
         cursor.warp(None, x, y);
@@ -130,7 +125,7 @@ fn output_added<'output>(compositor: compositor::Handle,
 }
 
 impl keyboard::Handler for ExKeyboardHandler {
-    #[wlroots_dehandle(compositor, seat)]
+    #[wlroots_dehandle]
     fn on_key(&mut self,
               compositor_handle: compositor::Handle,
               _: keyboard::Handle,
@@ -147,64 +142,60 @@ impl keyboard::Handler for ExKeyboardHandler {
                 }
             }
         };
-        use compositor_handle as compositor;
+        #[dehandle] let compositor = compositor_handle;
         let state: &mut State = compositor.downcast();
-        let seat_handle = state.seat_handle.clone().unwrap();
-        use seat_handle as seat;
+        #[dehandle] let seat = state.seat_handle.clone().unwrap();
         seat.keyboard_notify_key(key_event.time_msec(),
-                                    key_event.keycode(),
-                                    key_event.key_state() as u32);
+                                 key_event.keycode(),
+                                 key_event.key_state() as u32);
     }
 }
 
 impl pointer::Handler for ExPointer {
-    #[wlroots_dehandle(compositor, cursor)]
+    #[wlroots_dehandle]
     fn on_motion_absolute(&mut self,
                           compositor: compositor::Handle,
                           _: pointer::Handle,
                           event: &pointer::event::AbsoluteMotion) {
-        use compositor as compositor;
+        #[dehandle] let compositor = compositor;
         let state: &mut State = compositor.downcast();
         let (x, y) = event.pos();
-        let cursor_handle = &state.cursor;
-        use cursor_handle as cursor;
+        #[dehandle] let cursor = &state.cursor;
         cursor.warp_absolute(event.device(), x, y)
     }
 
-    #[wlroots_dehandle(compositor, cursor)]
+    #[wlroots_dehandle]
     fn on_motion(&mut self,
                  compositor: compositor::Handle,
                  _: pointer::Handle,
                  event: &pointer::event::Motion) {
-        use compositor as compositor;
+        #[dehandle] let compositor = compositor;
         let state: &mut State = compositor.downcast();
         let (delta_x, delta_y) = event.delta();
-        let cursor_handle = &state.cursor;
-        use cursor_handle as cursor;
+        #[dehandle] let cursor = &state.cursor;
         cursor.move_to(event.device(), delta_x, delta_y)
     }
 
-    #[wlroots_dehandle(compositor, shell, seat, keyboard, surface)]
+    #[wlroots_dehandle]
     fn on_button(&mut self,
                  compositor: compositor::Handle, _:
                  pointer::Handle,
                  _: &pointer::event::Button) {
-        use compositor as compositor;
+        #[dehandle] let compositor = compositor;
         let state: &mut State = compositor.downcast();
         let seat = state.seat_handle.clone().unwrap();
         let keyboard = state.keyboard.clone().unwrap();
         let shell_handle = &state.shells[0];
-        use shell_handle as shell;
+        #[dehandle] let shell = &state.shells[0];
         match shell.state() {
             Some(&mut xdg_shell_v6::ShellState::TopLevel(ref mut toplevel)) => {
                 toplevel.set_activated(true);
             }
             _ => {}
         };
-        let surface = shell.surface();
-        use seat as seat;
-        use keyboard as keyboard;
-        use surface as surface;
+        #[dehandle] let seat = state.seat_handle.clone().unwrap();
+        #[dehandle] let keyboard = state.keyboard.clone().unwrap();
+        #[dehandle] let surface = shell.surface();
         seat.set_keyboard(keyboard.input_device());
         seat.keyboard_notify_enter(surface,
                                    &mut keyboard.keycodes(),
@@ -213,10 +204,10 @@ impl pointer::Handler for ExPointer {
 }
 
 impl output::Handler for ExOutput {
-    #[wlroots_dehandle(compositor, output)]
+    #[wlroots_dehandle]
     fn on_frame(&mut self, compositor: compositor::Handle, output: output::Handle) {
-        use compositor as compositor;
-        use output as output;
+        #[dehandle] let compositor = compositor;
+        #[dehandle] let output = output;
         let state: &mut State = compositor.data.downcast_mut().unwrap();
         let renderer = compositor.renderer
             .as_mut()
@@ -233,17 +224,16 @@ fn pointer_added(_: compositor::Handle,
     Some(Box::new(ExPointer))
 }
 
-#[wlroots_dehandle(compositor, keyboard, seat)]
+#[wlroots_dehandle]
 fn keyboard_added(compositor: compositor::Handle,
                   keyboard: keyboard::Handle)
                   -> Option<Box<keyboard::Handler>> {
     {
-        use compositor as compositor;
-        use keyboard as keyboard;
+        #[dehandle] let compositor = compositor;
+        #[dehandle] let keyboard = keyboard;
         let state: &mut State = compositor.downcast();
         state.keyboard = Some(keyboard.weak_reference());
-        let seat_handle = state.seat_handle.as_ref().unwrap();
-        use seat_handle as seat;
+        #[dehandle] let seat = state.seat_handle.as_ref().unwrap();
         seat.set_keyboard(keyboard.input_device());
     }
     Some(Box::new(ExKeyboardHandler))
@@ -278,9 +268,9 @@ fn main() {
         let seat_handle =
             Seat::create(&mut compositor, "seat0".into(), Box::new(SeatHandlerEx));
         seat_handle.run(|seat| {
-                            seat.set_capabilities(seat::Capability::all());
-                        })
-                   .unwrap();
+            seat.set_capabilities(seat::Capability::all());
+        })
+            .unwrap();
         let state: &mut State = compositor.downcast();
         state.seat_handle = Some(seat_handle);
     }
@@ -288,15 +278,13 @@ fn main() {
 }
 
 /// Render the shells in the current compositor state on the given output.
-#[wlroots_dehandle(shell, surface, layout)]
+#[wlroots_dehandle]
 fn render_shells(state: &mut State, renderer: &mut Renderer) {
     let shells = state.shells.clone();
-    let layout_handle = &state.layout;
     for mut shell in shells {
-        use shell as shell;
-        let surface_handle = shell.surface();
-        use surface_handle as surface;
-        use layout_handle as layout;
+        #[dehandle] let shell = shell;
+        #[dehandle] let surface = shell.surface();
+        #[dehandle] let layout = &state.layout;
         let (width, height) = surface.current_state().size();
         let (render_width, render_height) =
             (width * renderer.output.scale() as i32,
