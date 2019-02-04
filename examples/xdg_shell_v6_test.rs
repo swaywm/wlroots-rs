@@ -183,9 +183,6 @@ impl pointer::Handler for ExPointer {
                  _: &pointer::event::Button) {
         #[dehandle] let compositor = compositor;
         let state: &mut State = compositor.downcast();
-        let seat = state.seat_handle.clone().unwrap();
-        let keyboard = state.keyboard.clone().unwrap();
-        let shell_handle = &state.shells[0];
         #[dehandle] let shell = &state.shells[0];
         match shell.state() {
             Some(&mut xdg_shell_v6::ShellState::TopLevel(ref mut toplevel)) => {
