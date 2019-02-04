@@ -40,6 +40,13 @@ impl Cursor {
         }
     }
 
+    /// Return a copy of the output handle used by this cursor.
+    ///
+    /// There are no guarantees that it is valid to use.
+    pub fn output(&self) -> output::Handle {
+        self.output_handle.clone()
+    }
+
     /// Sets the hardware cursor's image.
     #[wlroots_dehandle]
     pub fn set_image(&mut self, image: &render::Image) -> HandleResult<bool> {
