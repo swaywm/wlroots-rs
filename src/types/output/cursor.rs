@@ -35,7 +35,7 @@ impl Cursor {
                 None
             } else {
                 Some(Cursor { cursor,
-                                    output_handle })
+                              output_handle })
             }
         }
     }
@@ -45,14 +45,14 @@ impl Cursor {
         unsafe {
             let cursor = self.cursor;
             let res = self.output_handle.run(|_| {
-                                                 wlr_output_cursor_set_image(cursor,
-                                                                             image.pixels.as_ptr(),
-                                                                             image.stride,
-                                                                             image.width,
-                                                                             image.height,
-                                                                             image.hotspot_x,
-                                                                             image.hotspot_y)
-                                             });
+                wlr_output_cursor_set_image(cursor,
+                                            image.pixels.as_ptr(),
+                                            image.stride,
+                                            image.width,
+                                            image.height,
+                                            image.hotspot_x,
+                                            image.hotspot_y)
+            });
             match res {
                 Ok(res) => res,
                 Err(HandleErr::AlreadyDropped) => false,
@@ -63,19 +63,19 @@ impl Cursor {
 
     /// Sets the hardware cursor's surface.
     pub fn set_surface<T>(&mut self, surface: T, hotspot_x: i32, hotspot_y: i32)
-        where T: Into<Option<Surface>>
+    where T: Into<Option<Surface>>
     {
         unsafe {
             let surface_ptr = surface.into()
-                                     .map(|surface| surface.as_ptr())
-                                     .unwrap_or_else(|| ptr::null_mut());
+                .map(|surface| surface.as_ptr())
+                .unwrap_or_else(|| ptr::null_mut());
             let cursor = self.cursor;
             let res = self.output_handle.run(|_| {
-                                                 wlr_output_cursor_set_surface(cursor,
-                                                                               surface_ptr,
-                                                                               hotspot_x,
-                                                                               hotspot_y)
-                                             });
+                wlr_output_cursor_set_surface(cursor,
+                                              surface_ptr,
+                                              hotspot_x,
+                                              hotspot_y)
+            });
             match res {
                 Ok(_) | Err(HandleErr::AlreadyDropped) => {}
                 err @ Err(HandleErr::AlreadyBorrowed) => panic!(err)
