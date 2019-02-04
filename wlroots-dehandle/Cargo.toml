@@ -1,6 +1,6 @@
 [package]
 name = "wlroots-dehandle"
-version = "1.0.0"
+version = "2.0.0"
 authors = ["Timidger <APragmaticPlace@gmail.com>"]
 description = "Procedural macro to upgrade wlroots handles without callback hell"
 license = "MIT"
