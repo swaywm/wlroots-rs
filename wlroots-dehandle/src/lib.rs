@@ -28,20 +28,18 @@ impl Fold for Args {
 /// Attribute to automatically call the `run` method on handles with the
 /// remaining block of code.
 ///
-/// The name of the variable you want to use as the upgraded handle should be
-/// provided as an argument to the attribute. It does not need to be the same
-/// as the handle variable.
+/// The syntax in the code to denote a handle being accessed is
+/// `#[dehandle] let $upgraded_handle = $handle`.
 ///
-/// The syntax in the code should be `use $handle as $upgraded_handle`.
-/// E.g the variable in the code that stores the handle should go on the
-/// **left** and the variable you used in the attribute declaration should
-/// go on the **right**.
 ///
 /// # Panics
-/// If the handle is invalid (e.g. default constructed, or is a dangling
-/// handle) then your code will `panic!`.
+/// If the handle is invalid (e.g. default constructed, borrowed multiple times,
+/// or it is a dangling handle) then your code will `panic!`.
 ///
-/// If this is undesirable, please use the non-proc macro `with_handles!`.
+/// If this is undesirable, please append `?` to the end like so:
+/// `#[dehandle] let $upgraded_handle = $handle?`. This will make it behave
+/// as you expect (i.e. the `Err` is returned early and the return type of the
+/// function should be `HandleResult<T>`)
 ///
 /// # Example
 ///
