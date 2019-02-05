@@ -4,7 +4,7 @@ use libc::{c_double, c_uint};
 use wlroots_sys::{wlr_input_device, wlr_input_device_pointer, wlr_input_device_type,
                   wlr_input_device_type::*};
 
-use {input::{keyboard, pointer, touch, tablet_pad, tablet_tool},
+use {input::{keyboard, pointer, switch, touch, tablet_pad, tablet_tool},
      utils::c_to_rust_string};
 pub(crate) use manager::input_manager::Manager;
 
@@ -14,7 +14,8 @@ pub enum Handle {
     Pointer(pointer::Handle),
     Touch(touch::Handle),
     TabletPad(tablet_pad::Handle),
-    TabletTool(tablet_tool::Handle)
+    TabletTool(tablet_tool::Handle),
+    Switch(switch::Handle)
 }
 
 pub(crate) struct InputState {
@@ -94,7 +95,10 @@ impl Device {
                     let tablet_pad_ptr = (*self.device).__bindgen_anon_1.tablet_pad;
                     Handle::TabletPad(tablet_pad::Handle::from_ptr(tablet_pad_ptr))
                 },
-                WLR_INPUT_DEVICE_SWITCH => unimplemented!()
+                WLR_INPUT_DEVICE_SWITCH => {
+                    let switch_ptr = (*self.device).__bindgen_anon_1.lid_switch;
+                    Handle::Switch(switch::Handle::from_ptr(switch_ptr))
+                }
             }
         }
     }
