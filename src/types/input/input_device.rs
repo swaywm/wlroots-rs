@@ -94,6 +94,7 @@ impl Device {
                     let tablet_pad_ptr = (*self.device).__bindgen_anon_1.tablet_pad;
                     Handle::TabletPad(tablet_pad::Handle::from_ptr(tablet_pad_ptr))
                 },
+                WLR_INPUT_DEVICE_SWITCH => unimplemented!()
             }
         }
     }

@@ -229,6 +229,10 @@ wayland_listener_static! {
                             (*data).data = Box::into_raw(tablet_pad) as _;
                         }
                     }
+                    WLR_INPUT_DEVICE_SWITCH => {
+                        wlr_log!(WLR_ERROR, "Switch management is not implemented");
+                        return None
+                    }
                 }
                 manager.input_added.map(|f| f(compositor, &mut dev))
             }));
