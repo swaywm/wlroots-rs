@@ -35,21 +35,22 @@ impl<'buffer> Image<'buffer> {
     }
 }
 
-impl<'buffer> Into<xcursor::Image<'buffer>> for Image<'buffer> {
-    fn into(self) -> xcursor::Image<'buffer> {
-        let Image { pixels,
-                    width,
-                    height,
-                    hotspot_x,
-                    hotspot_y,
-                    delay,
-                    .. } = self;
-        xcursor::Image { buffer: pixels,
-                       width,
-                       height,
-                       hotspot_x: hotspot_x as _,
-                       hotspot_y: hotspot_y as _,
-                       delay,
-                       _no_send: PhantomData }
+impl<'buffer> From<xcursor::Image<'buffer>> for Image<'buffer> {
+    fn from(image: xcursor::Image<'buffer>) -> Self {
+        let xcursor::Image { buffer,
+                             width,
+                             height,
+                             hotspot_x,
+                             hotspot_y,
+                             delay,
+                             .. } = image;
+        Image { pixels: buffer,
+                width,
+                height,
+                stride: width as i32 * 4,
+                scale: 1.0,
+                hotspot_x: hotspot_x as _,
+                hotspot_y: hotspot_y as _,
+                delay }
     }
 }
