@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use cursor::xcursor;
 
 /// An image that can be attached to a `Cursor` or `OutputCursor`.
