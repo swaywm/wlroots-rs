@@ -10,6 +10,7 @@ use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wl
                   wlr_output_get_gamma_size, wlr_output_make_current, wlr_output_mode,
                   wlr_output_schedule_frame, wlr_output_set_custom_mode,
                   wlr_output_set_gamma, wlr_output_set_mode,
+                  wlr_output_render_software_cursors,
                   wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
                   wlr_output_swap_buffers, wlr_output_transformed_resolution};
 
@@ -256,6 +257,23 @@ impl Output {
     /// Get the transform information about the output.
     pub fn get_transform(&self) -> Transform {
         unsafe { (*self.output).transform }
+    }
+
+    /// Renders software cursors. This is a utility function that can be called when
+    /// compositors render.
+    ///
+    /// If `Cursor` is used along with an `OutputLayout` then this is not necessary.
+    pub fn render_software_cursors<'a, U>(&self, damage: U)
+    where U: Into<Option<&'a mut PixmanRegion>>
+    {
+        unsafe {
+            let mut damage = damage.into();
+            let damage = match damage {
+                Some(ref mut region) => &mut region.region as *mut _,
+                None => ptr::null_mut()
+            };
+            wlr_output_render_software_cursors(self.output, damage)
+        }
     }
 
     /// Manually schedules a `frame` event.
