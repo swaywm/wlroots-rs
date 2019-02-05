@@ -4,12 +4,12 @@ use std::{cell::Cell, rc::{Rc, Weak}, panic, ptr};
 
 use libc::c_void;
 use wlroots_sys::{wlr_xdg_popup, wlr_xdg_surface, wlr_xdg_surface_ping,
-                  wlr_xdg_surface_role, wlr_xdg_surface_send_close,
-                  wlr_xdg_surface_surface_at, wlr_xdg_toplevel,
-                  wlr_xdg_toplevel_set_activated, wlr_xdg_toplevel_set_fullscreen,
-                  wlr_xdg_toplevel_set_maximized, wlr_xdg_toplevel_set_resizing,
-                  wlr_xdg_toplevel_set_size, wlr_xdg_toplevel_state,
-                  wlr_xdg_surface_for_each_surface, wlr_surface};
+                  wlr_xdg_surface_role, wlr_xdg_toplevel_send_close,
+                  wlr_xdg_popup_destroy, wlr_xdg_surface_surface_at,
+                  wlr_xdg_toplevel, wlr_xdg_toplevel_set_activated,
+                  wlr_xdg_toplevel_set_fullscreen, wlr_xdg_toplevel_set_maximized,
+                  wlr_xdg_toplevel_set_resizing, wlr_xdg_toplevel_set_size,
+                  wlr_xdg_toplevel_state, wlr_xdg_surface_for_each_surface, wlr_surface};
 
 
 use {area::Area,
@@ -351,7 +351,7 @@ impl TopLevel {
 
     /// Request that this toplevel surface closes.
     pub fn close(&mut self) {
-        unsafe { wlr_xdg_surface_send_close(self.shell_surface) }
+        unsafe { wlr_xdg_toplevel_send_close(self.shell_surface) }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_xdg_toplevel {
@@ -365,6 +365,11 @@ impl Popup {
                                     -> Popup {
         Popup { shell_surface,
                    popup }
+    }
+
+    /// Request that this popup closes.
+    pub fn close(&mut self) {
+        unsafe { wlr_xdg_popup_destroy(self.shell_surface) }
     }
 
     /// Get a handle to the base surface of the xdg tree.
