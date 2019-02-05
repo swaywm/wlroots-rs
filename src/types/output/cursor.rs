@@ -6,10 +6,10 @@ use wlroots_sys::{wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor
                   wlr_output_cursor_move, wlr_output_cursor_set_image,
                   wlr_output_cursor_set_surface};
 
-use {wlroots_dehandle, render,
+use {render,
      output::{self, Output},
      surface::{self, Surface},
-     utils::{Handleable, HandleResult}};
+     utils::{Handleable, HandleResult, HandleErr}};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Cursor {
@@ -48,11 +48,12 @@ impl Cursor {
     }
 
     /// Sets the hardware cursor's image.
-    #[wlroots_dehandle]
     pub fn set_image(&mut self, image: &render::Image) -> HandleResult<bool> {
         unsafe {
             let cursor = self.cursor;
-            #[dehandle] let _output = self.output_handle?;
+            if !self.output_handle.is_alive() {
+                return Err(HandleErr::AlreadyDropped)
+            }
             Ok(wlr_output_cursor_set_image(cursor,
                                            image.pixels.as_ptr(),
                                            image.stride,
@@ -64,7 +65,6 @@ impl Cursor {
     }
 
     /// Sets the hardware cursor's surface.
-    #[wlroots_dehandle]
     pub fn set_surface<'a, T>(&mut self, surface: T, hotspot_x: i32, hotspot_y: i32)
                               -> HandleResult<()>
     where T: Into<Option<&'a Surface>>
@@ -73,7 +73,9 @@ impl Cursor {
             let surface_ptr = surface.into()
                 .map(|surface| surface.as_ptr())
                 .unwrap_or_else(|| ptr::null_mut());
-            #[dehandle] let _output = self.output_handle?;
+            if !self.output_handle.is_alive() {
+                return Err(HandleErr::AlreadyDropped)
+            }
             Ok(wlr_output_cursor_set_surface(self.cursor,
                                              surface_ptr,
                                              hotspot_x,
@@ -82,10 +84,11 @@ impl Cursor {
     }
 
     /// Moves the hardware cursor to the desired location
-    #[wlroots_dehandle]
     pub fn move_to(&mut self, x: f64, y: f64) -> HandleResult<bool> {
         unsafe {
-            #[dehandle] let _output = self.output_handle?;
+            if !self.output_handle.is_alive() {
+                return Err(HandleErr::AlreadyDropped)
+            }
             Ok(wlr_output_cursor_move(self.cursor, x, y))
         }
     }
