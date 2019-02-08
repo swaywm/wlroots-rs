@@ -82,7 +82,9 @@ impl Theme {
     pub fn load_theme<T: Into<Option<String>>>(name: T, size: c_int) -> Option<Self> {
         unsafe {
             let name_str = name.into().map(safe_as_cstring);
-            let name_ptr = name_str.map(|s| s.as_ptr()).unwrap_or(ptr::null_mut());
+            let name_ptr = name_str.as_ref()
+                .map(|s| s.as_ptr())
+                .unwrap_or(ptr::null_mut());
             let theme = wlr_xcursor_theme_load(name_ptr, size);
             if theme.is_null() {
                 None

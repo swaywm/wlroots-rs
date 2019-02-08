@@ -24,7 +24,9 @@ impl X11 {
                       render_setup_func: Option<UnsafeRenderSetupFunction>)
                       -> Self {
         let x11_display_cstr = x11_display.map(|remote| safe_as_cstring(remote));
-        let x11_display_ptr = x11_display_cstr.map(|s| s.as_ptr()).unwrap_or_else(|| ptr::null_mut());
+        let x11_display_ptr = x11_display_cstr.as_ref()
+            .map(|s| s.as_ptr())
+            .unwrap_or_else(|| ptr::null_mut());
         let backend = wlr_x11_backend_create(display, x11_display_ptr, render_setup_func);
         if backend.is_null() {
             panic!("Could not construct X11 backend");
