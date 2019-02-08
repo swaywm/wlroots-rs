@@ -171,6 +171,20 @@ impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
         }
     }
 
+    /// Determines if the handle is alive or not.
+    ///
+    /// This does not check if it's already being borrowed.
+    pub fn is_alive(&self) -> bool {
+        self.handle.upgrade().map(|_| true).unwrap_or(false)
+    }
+
+    /// Determines if the handle is borrowed or not.
+    ///
+    /// If the handle is not alive it will return false.
+    pub fn is_borrowed(&self) -> bool {
+        self.handle.upgrade().map(|check| check.get()).unwrap_or(false)
+    }
+
     /// Upgrades a handle to a reference to the backing object.
     ///
     /// # Safety
@@ -189,7 +203,7 @@ impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
             // pointer to exist!
             .and_then(|check| {
                 if check.get() {
-                    return Err(HandleErr::AlreadyDropped)
+                    return Err(HandleErr::AlreadyBorrowed)
                 }
                 let wrapper_obj = W::from_handle(self)?;
                 check.set(true);
