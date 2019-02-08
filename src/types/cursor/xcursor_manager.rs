@@ -44,7 +44,9 @@ impl Manager {
     pub fn create<T: Into<Option<String>>>(name: T, size: u32) -> Option<Self> {
         unsafe {
             let name_str = name.into().map(safe_as_cstring);
-            let name_ptr = name_str.map(|s| s.as_ptr()).unwrap_or(ptr::null_mut());
+            let name_ptr = name_str.as_ref()
+                .map(|s| s.as_ptr())
+                .unwrap_or(ptr::null_mut());
             let manager = wlr_xcursor_manager_create(name_ptr, size);
             if manager.is_null() {
                 None
@@ -71,7 +73,9 @@ impl Manager {
                                                           scale: f32)
                                                           -> Option<XCursor<'manager>> {
         let name_str = name.into().map(safe_as_cstring);
-        let name_ptr = name_str.map(|s| s.as_ptr()).unwrap_or(ptr::null_mut());
+        let name_ptr = name_str.as_ref()
+            .map(|s| s.as_ptr())
+            .unwrap_or(ptr::null_mut());
         unsafe {
             let xcursor = wlr_xcursor_manager_get_xcursor(self.manager, name_ptr, scale);
             if xcursor.is_null() {
