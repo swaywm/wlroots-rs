@@ -442,8 +442,11 @@ impl Cursor {
     ///
     /// `dev` may be passed to respect device mapping constraints. If `dev` is None,
     /// device mapping constraints will be ignored.
-    pub fn move_to<'this, O>(&'this mut self, dev: O, delta_x: f64, delta_y: f64)
-        where O: Into<Option<&'this input::Device>>
+    pub fn move_relative<'this, O>(&'this mut self,
+                                   dev: O,
+                                   delta_x: f64,
+                                   delta_y: f64)
+    where O: Into<Option<&'this input::Device>>
     {
         self.assert_layout();
         unsafe {

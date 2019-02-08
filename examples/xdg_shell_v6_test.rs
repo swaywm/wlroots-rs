@@ -173,7 +173,7 @@ impl pointer::Handler for ExPointer {
         let state: &mut State = compositor.downcast();
         let (delta_x, delta_y) = event.delta();
         #[dehandle] let cursor = &state.cursor;
-        cursor.move_to(event.device(), delta_x, delta_y)
+        cursor.move_relative(event.device(), delta_x, delta_y)
     }
 
     #[wlroots_dehandle]
