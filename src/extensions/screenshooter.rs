@@ -1,27 +1,26 @@
 use wayland_sys::server::wl_display as wl_server_display;
-use wlroots_sys::{wl_display, wlr_screenshooter_manager, wlr_screenshooter_manager_create, 
-    wlr_screenshooter_manager_destroy};
+use wlroots_sys::{wl_display, wlr_screenshooter,wlr_screenshooter_create,
+                  wlr_screenshooter_destroy};
 
 #[derive(Debug)]
-pub struct Manager {
-    manager: *mut wlr_screenshooter_manager
+pub struct Screenshooter {
+    screenshooter: *mut wlr_screenshooter
 }
 
-impl Manager {
+impl Screenshooter {
     pub(crate) unsafe fn new(display: *mut wl_server_display) -> Option<Self> {
-        let manager_raw = wlr_screenshooter_manager_create(display as *mut wl_display);
+        let screenshooter_raw = wlr_screenshooter_create(display as *mut wl_display);
 
-        if !manager_raw.is_null() {
-            Some(Manager { manager: manager_raw })
+        if !screenshooter_raw.is_null() {
+            Some(Screenshooter { screenshooter: screenshooter_raw })
         } else {
             None
         }
     }
-
 }
 
-impl Drop for Manager {
+impl Drop for Screenshooter {
     fn drop(&mut self) {
-        unsafe { wlr_screenshooter_manager_destroy(self.manager) }
+        unsafe { wlr_screenshooter_destroy(self.screenshooter) }
     }
 }

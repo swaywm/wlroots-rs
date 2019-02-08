@@ -116,7 +116,7 @@ pub struct Compositor {
     /// Optional gamma manager extension.
     pub gamma_control_manager: Option<gamma_control::Manager>,
     /// Optional screenshooter manager extension
-    pub screenshooter_manager: Option<screenshooter_manager::Manager>,
+    pub screenshooter: Option<screenshooter::Screenshooter>,
     /// The renderer used to draw things to the screen.
     pub renderer: Option<GenericRenderer>,
     /// XWayland server, only Some if it is enabled
@@ -145,7 +145,7 @@ pub struct Builder {
     render_setup_function: Option<UnsafeRenderSetupFunction>,
     server_decoration_manager: bool,
     gamma_control_manager: bool,
-    screenshooter_manager: bool,
+    screenshooter: bool,
     wayland_remote: Option<String>,
     x11_display: Option<String>,
     data_device_manager: bool,
@@ -246,10 +246,10 @@ impl Builder {
         self
     }
 
-    /// Decide whether or not to enable the screenshooter manager protocol
+    /// Decide whether or not to enable the screenshooter protocol
     /// extension.
-    pub fn screenshooter_manager(mut self, screenshooter_manager: bool) -> Self {
-        self.screenshooter_manager = screenshooter_manager;
+    pub fn screenshooter(mut self, screenshooter: bool) -> Self {
+        self.screenshooter = screenshooter;
         self
     }
 
@@ -413,8 +413,8 @@ impl Builder {
         } else {
             None
         };
-        let screenshooter_manager = if self.screenshooter_manager {
-            screenshooter_manager::Manager::new(display)
+        let screenshooter = if self.screenshooter {
+            screenshooter::Screenshooter::new(display)
         } else {
             None
         };
@@ -520,7 +520,7 @@ impl Builder {
                                       wl_shm_fd,
                                       server_decoration_manager,
                                       gamma_control_manager,
-                                      screenshooter_manager,
+                                      screenshooter,
                                       renderer,
                                       xwayland,
                                       user_terminate,
