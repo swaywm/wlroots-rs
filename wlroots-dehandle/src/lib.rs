@@ -5,13 +5,9 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 
-use std::collections::HashMap;
-
 use proc_macro::TokenStream;
-use proc_macro2::Ident;
-use syn::{ItemFn, Stmt, UseTree, ItemUse, Item, Block, Expr,
-          parse::{self, Parse, ParseStream},
-          punctuated::Punctuated,
+use syn::{ItemFn, Stmt, Item, Block, Expr,
+          spanned::Spanned,
           fold::Fold};
 
 /// Parses a list of variable names separated by commas
@@ -21,18 +17,7 @@ use syn::{ItemFn, Stmt, UseTree, ItemUse, Item, Block, Expr,
 ///```rust,ignore
 ///     #[wlroots_dehandle(a, b, c)]
 ///```
-struct Args {
-    vars: HashMap<Ident, bool>
-}
-
-impl Parse for Args {
-    fn parse(input: ParseStream) -> parse::Result<Self> {
-        let vars = Punctuated::<Ident, Token![,]>::parse_terminated(input)?;
-        Ok(Args {
-            vars: vars.into_iter().map(|k| (k, false)).collect(),
-        })
-    }
-}
+struct Args;
 
 impl Fold for Args {
     fn fold_block(&mut self, block: Block) -> Block {
@@ -40,52 +25,38 @@ impl Fold for Args {
     }
 }
 
-impl Args {
-    fn is_handle(&mut self, name: Ident) -> bool {
-        if let Some(seen) = self.vars.get_mut(&name) {
-            *seen = true;
-            true
-        } else {
-            false
-        }
-    }
-}
-
 /// Attribute to automatically call the `run` method on handles with the
 /// remaining block of code.
 ///
-/// The name of the variable you want to use as the upgraded handle should be
-/// provided as an argument to the attribute. It does not need to be the same
-/// as the handle variable.
+/// The syntax in the code to denote a handle being accessed is
+/// `#[dehandle] let $upgraded_handle = $handle`.
 ///
-/// The syntax in the code should be `use $handle as $upgraded_handle`.
-/// E.g the variable in the code that stores the handle should go on the
-/// **left** and the variable you used in the attribute declaration should
-/// go on the **right**.
 ///
 /// # Panics
-/// If the handle is invalid (e.g. default constructed, or is a dangling
-/// handle) then your code will `panic!`.
+/// If the handle is invalid (e.g. default constructed, borrowed multiple times,
+/// or it is a dangling handle) then your code will `panic!`.
 ///
-/// If this is undesirable, please use the non-proc macro `with_handles!`.
+/// If this is undesirable, please append `?` to the end like so:
+/// `#[dehandle] let $upgraded_handle = $handle?`. This will make it behave
+/// as you expect (i.e. the `Err` is returned early and the return type of the
+/// function should be `HandleResult<T>`)
 ///
 /// # Example
 ///
 /// ```rust,ignore
 /// impl InputManagerHandler for InputManager {
-///     #[wlroots_dehandle(compositor, keyboard, seat)]
+///     #[wlroots_dehandle]
 ///     fn keyboard_added(&mut self,
 ///                       compositor_handle: CompositorHandle,
 ///                       keyboard: KeyboardHandle)
 ///                       -> Option<Box<Keyboard Handler>> {
 ///         {
-///             use compositor_handle as compositor;
-///             use keyboard as keyboard;
+///             #[dehandle] let compositor = compositor_handle;
+///             #[dehandle] let keyboard = keyboard;
 ///             let server: &mut ::Server = compositor.into();
 ///             server.keyboards.push(keyboard.weak_reference());
 ///             // Now that we have at least one keyboard, update the seat capabilities.
-///             let server_seat = &server.seat.seat;
-///             use server_seat as seat;
+///             #[dehandle] let seat = &server.seat.seat;
 ///             let mut capabilities = seat.capabilities();
 ///             capabilities.insert(Capability::Keyboard);
 ///             seat.set_capabilities(capabilities);
@@ -98,70 +69,96 @@ impl Args {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn wlroots_dehandle(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn wlroots_dehandle(_args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemFn);
-    let mut args = parse_macro_input!(args as Args);
-    if args.vars.len() == 0 {
-        panic!("wlroots_dehandle requires at least one argument")
-    }
-    let output = args.fold_item_fn(input);
-    for (arg, seen) in args.vars {
-        if !seen {
-            panic!(format!("Must use all declared handles, didn't use `{}`",
-                           arg))
-        }
-    }
+    let output = Args.fold_item_fn(input);
     TokenStream::from(quote!(#output))
 }
 
 fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
     let mut output = vec![];
     let mut inner = None;
+    let mut is_try = false;
     while let Some(stmt) = input.next().cloned() {
-        use {Item::Use, UseTree::Rename};
+        use syn::{Pat, punctuated::Pair};
         match stmt.clone() {
-            Stmt::Item(Use(ItemUse { tree: Rename(use_stmt), ..})) => {
-                if args.is_handle(use_stmt.rename.clone()) {
-                    inner = Some((use_stmt.ident, use_stmt.rename));
-                    break
-                }
-                output.push(stmt)
-            },
             // Recurse into function body
             Stmt::Item(Item::Fn(mut function)) => {
                 let inner_block = function.block.clone();
                 *function.block = build_block(inner_block.stmts.iter(), args);
                 output.push(Stmt::Item(Item::Fn(function)))
             },
-            // Recurse into let call
             Stmt::Local(mut local) => {
-                if let Some((_, body)) = local.init.clone() {
-                    let body = build_block_expr(*body.clone(), args);
-                    let body = parse_quote!(#body);
-                    local.init.as_mut().unwrap().1 = body;
-                    output.push(Stmt::Local(local))
+                // Ensure attribute is prefaced here
+                let mut dehandle = false;
+                for attribute in &local.attrs {
+                    let meta = attribute.parse_meta();
+                    match meta {
+                        Ok(syn::Meta::Word(name)) => {
+                            if name.to_string() == "dehandle" {
+                                dehandle = true;
+                                break;
+                            }
+                        },
+                        _ => {}
+                    }
+                };
+                let left_side = local.pats.first().map(Pair::into_value).cloned();
+                let right_side = local.init.clone();
+                match (dehandle, left_side, right_side) {
+                    (true,
+                     Some(Pat::Ident(dehandle_name)),
+                     Some((_, body))) => {
+                        let mut body = *body;
+                        is_try = match body.clone() {
+                            syn::Expr::Try(syn::ExprTry { expr, .. }) => {
+                                body = *expr.clone();
+                                true
+                            },
+                            _ => false
+                        };
+                        inner = Some((body, dehandle_name));
+                        break;
+                    },
+                    // Recurse into let call
+                    (false, _, Some((_, body))) => {
+                        let body = build_block_expr(*body.clone(), args);
+                        let stream = quote_spanned!(stmt.span()=> #body);
+                        let body: Expr = syn::parse_quote::parse(stream.into());
+                        local.init.as_mut().unwrap().1 = Box::new(body);
+                        output.push(Stmt::Local(local))
+                    },
+                    _ => output.push(Stmt::Local(local))
                 }
             },
             Stmt::Expr(expr) => {
                 let body = build_block_expr(expr, args);
-                output.push(parse_quote!({#body}))
+                output.push(syn::parse_quote::parse(quote_spanned!(stmt.span()=> {#body}).into()))
             }
             Stmt::Semi(expr, _) => {
                 let body = build_block_expr(expr, args);
-                output.push(parse_quote!({#body;}))
+                output.push(syn::parse_quote::parse(quote_spanned!(stmt.span()=> {#body;}).into()))
             }
             _ => output.push(stmt)
         }
     }
     if let Some((handle, dehandle)) = inner {
         let inner_block = build_block(input, args);
-        let handle_call = parse_quote!(
-            {(#handle).run(|#dehandle|{
-                #inner_block
-            }).expect(concat!("Could not upgrade handle ",
-                              stringify!(#handle), " to ",
-                              stringify!(#dehandle)))}
-        );
+        let handle_call = if !is_try {
+            syn::parse_quote::parse(
+                quote_spanned!(handle.span()=>
+                               {(#handle).run(|#dehandle|{
+                                   #inner_block
+                               }).expect(concat!("Could not upgrade handle ",
+                                                 stringify!(#handle), " to ",
+                                                 stringify!(#dehandle)))}).into())
+        } else {
+            syn::parse_quote::parse(
+                quote_spanned!(handle.span()=>
+                               {(#handle).run(|#dehandle|{
+                                   #inner_block
+                               })?}).into())
+        };
         output.push(handle_call);
     }
     parse_quote!({#(#output)*})
@@ -172,7 +169,7 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
     match expr {
         Expr::Block(block) => {
             let block = build_block(block.block.stmts.iter(), args);
-            parse_quote!(#block)
+            syn::parse_quote::parse(quote_spanned!(block.span()=> #block))
         }
         Expr::Let(mut let_expr) => {
             *let_expr.expr = build_block_expr(*let_expr.expr.clone(), args);
@@ -180,8 +177,11 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
         },
         Expr::If(mut if_expr) => {
             let then_branch = if_expr.then_branch.clone();
-            let then_branch = build_block_expr(parse_quote!(#then_branch), args);
-            if_expr.then_branch = parse_quote!(#then_branch);
+            let then_parsed = syn::parse_quote::parse(
+                quote_spanned!(then_branch.span()=> #then_branch));
+            let then_branch = build_block_expr(then_parsed, args);
+            if_expr.then_branch = syn::parse_quote::parse(
+                quote_spanned!(then_branch.span()=> #then_branch));
             if_expr.else_branch = match if_expr.else_branch.clone() {
                 None => if_expr.else_branch,
                 Some((token, else_branch)) => {
@@ -192,7 +192,8 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
         },
         Expr::While(mut while_expr) => {
             let body = while_expr.body.clone();
-            let body = build_block_expr(parse_quote!(#body), args);
+            let body = build_block_expr(syn::parse_quote::parse(
+                quote_spanned!(body.span()=> #body)), args);
             while_expr.body = parse_quote!(#body);
             Expr::While(while_expr)
         },
