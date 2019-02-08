@@ -1,3 +1,5 @@
+//! Support for the Orbital Screenshooter Protocol
+
 use wayland_sys::server::wl_display as wl_server_display;
 use wlroots_sys::{wl_display, wlr_screenshooter,wlr_screenshooter_create,
                   wlr_screenshooter_destroy};
