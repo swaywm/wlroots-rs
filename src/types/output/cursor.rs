@@ -84,7 +84,7 @@ impl Cursor {
     }
 
     /// Moves the hardware cursor to the desired location
-    pub fn move_to(&mut self, x: f64, y: f64) -> HandleResult<bool> {
+    pub fn move_relative(&mut self, x: f64, y: f64) -> HandleResult<bool> {
         unsafe {
             if !self.output_handle.is_alive() {
                 return Err(HandleErr::AlreadyDropped)
