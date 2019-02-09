@@ -1,3 +1,5 @@
+//! Support for the KDE Server Decoration Protocol
+
 use wayland_sys::server::wl_display as wl_server_display;
 use wlroots_sys::{wl_display, wlr_server_decoration_manager, wlr_server_decoration_manager_create,
                   wlr_server_decoration_manager_destroy,
@@ -6,6 +8,8 @@ pub use wlroots_sys::protocols::server_decoration
 ::server::org_kde_kwin_server_decoration_manager::Mode;
 
 #[derive(Debug)]
+/// Coordinates whether the server should create
+/// server-side window decorations.
 pub struct Manager {
     manager: *mut wlr_server_decoration_manager
 }
@@ -21,6 +25,7 @@ impl Manager {
         }
     }
 
+    /// Given a mode, set the server decoration mode
     pub fn set_default_mode(&mut self, mode: Mode) {
         wlr_log!(WLR_INFO, "New server decoration mode: {:?}", mode);
         unsafe { wlr_server_decoration_manager_set_default_mode(self.manager, mode.to_raw()) }

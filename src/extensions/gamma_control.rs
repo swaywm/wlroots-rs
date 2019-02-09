@@ -1,8 +1,11 @@
+//! Support for the wlroots Gamma Control Protocol
+
 use wayland_sys::server::wl_display as wl_server_display;
 use wlroots_sys::{wl_display, wlr_gamma_control_manager, wlr_gamma_control_manager_create, 
     wlr_gamma_control_manager_destroy};
 
 #[derive(Debug)]
+/// Manager that can adjust gamma controls for an output
 pub struct Manager {
     manager: *mut wlr_gamma_control_manager
 }
