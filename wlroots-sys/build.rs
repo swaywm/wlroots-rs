@@ -185,7 +185,7 @@ fn generate_protocols() {
     let output_dir = Path::new(&output_dir_str);
 
     let protocols = &[("./wlroots/protocol/server-decoration.xml", "server_decoration"),
-                      ("./wlroots/protocol/gamma-control.xml", "gamma_control")];
+                      ("./wlroots/protocol/wlr-gamma-control-unstable-v1.xml", "gamma_control")];
 
     for protocol in protocols {
         wayland_scanner::generate_c_code(protocol.0,
