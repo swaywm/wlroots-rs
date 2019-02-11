@@ -186,7 +186,7 @@ fn generate_protocols() {
 
     let protocols = &[("./wlroots/protocol/server-decoration.xml", "server_decoration"),
                       ("./wlroots/protocol/wlr-gamma-control-unstable-v1.xml", "gamma_control"),
-                      ("./wlroots/protocol/wlr-gamma-control-unstable-v1.xml", "screencopy"),
+                      ("./wlroots/protocol/wlr-screencopy-unstable-v1.xml", "screencopy"),
                       ("./wlroots/protocol/screenshooter.xml", "screenshooter")
     ];
 
