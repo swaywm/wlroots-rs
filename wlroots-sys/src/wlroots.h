@@ -44,6 +44,7 @@
 #include <wlr/types/wlr_region.h>
 #include <wlr/types/wlr_server_decoration.h>
 #include <wlr/types/wlr_screenshooter.h>
+#include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_surface.h>
 #include <wlr/types/wlr_tablet_pad.h>
