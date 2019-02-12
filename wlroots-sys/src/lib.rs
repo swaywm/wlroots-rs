@@ -35,6 +35,26 @@ mod generated {
                 include!(concat!(env!("OUT_DIR"), "/server_decoration_server_api.rs"));
             }
         }
+        pub mod idle {
+            #![allow(unused_imports)]
+            #![allow(unused_variables)]
+            mod c_interfaces {
+                use wayland_server::sys::protocol_interfaces::wl_seat_interface;
+                include!(concat!(env!("OUT_DIR"), "/idle_interfaces.rs"));
+            }
+
+            pub mod server {
+                pub(crate) use wayland_server::{NewResource, Resource};
+                pub(crate) use wayland_commons::{AnonymousObject, Interface, MessageGroup,
+                                                 wire::{Argument, ArgumentType, Message, MessageDesc},
+                                                 map::{Object, ObjectMetadata}};
+                pub(crate) use wayland_sys as sys;
+                use wayland_server::{*, protocol::wl_seat};
+                use wayland_sys::common::{wl_interface, wl_argument};
+                include!(concat!(env!("OUT_DIR"), "/idle_server_api.rs"));
+            }
+        }
+
     }
 }
 pub use self::generated::*;

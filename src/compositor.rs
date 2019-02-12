@@ -14,7 +14,7 @@ use wlroots_sys::{wlr_backend_destroy, wlr_backend_start,
 
 use {backend::{self, UnsafeRenderSetupFunction, Backend, Session},
      data_device,
-     extensions::{server_decoration, gamma_control, screencopy, screenshooter},
+     extensions::{server_decoration, gamma_control, screencopy, screenshooter, idle},
      surface::{self, Surface, InternalSurface},
      input,
      output,
@@ -115,6 +115,8 @@ pub struct Compositor {
     pub server_decoration_manager: Option<server_decoration::Manager>,
     /// Optional gamma manager extension.
     pub gamma_control_manager: Option<gamma_control::Manager>,
+    /// Optional idle manager extension.
+    pub idle_manager: Option<idle::Manager>,
     /// Optional screencopy manager extension
     pub screencopy_manager: Option<screencopy::ZManagerV1>,
     /// Optional screenshooter manager extension
@@ -147,6 +149,7 @@ pub struct Builder {
     render_setup_function: Option<UnsafeRenderSetupFunction>,
     server_decoration_manager: bool,
     gamma_control_manager: bool,
+    idle_manager: bool,
     screencopy_manager: bool,
     screenshooter: bool,
     wayland_remote: Option<String>,
@@ -246,6 +249,13 @@ impl Builder {
     /// extension.
     pub fn gamma_control_manager(mut self, gamma_control_manager: bool) -> Self {
         self.gamma_control_manager = gamma_control_manager;
+        self
+    }
+
+    /// Decide whether or not to enable the idle manager protocol
+    /// extension.
+    pub fn idle_manager(mut self, idle_manager: bool) -> Self {
+        self.idle_manager = idle_manager;
         self
     }
 
@@ -424,6 +434,11 @@ impl Builder {
         } else {
             None
         };
+        let idle_manager = if self.idle_manager {
+            idle::Manager::new(display)
+        } else {
+            None
+        };
         let screencopy_manager = if self.screencopy_manager {
             screencopy::ZManagerV1::new(display)
         } else {
@@ -536,6 +551,7 @@ impl Builder {
                                       wl_shm_fd,
                                       server_decoration_manager,
                                       gamma_control_manager,
+                                      idle_manager,
                                       screencopy_manager,
                                       screenshooter,
                                       renderer,
