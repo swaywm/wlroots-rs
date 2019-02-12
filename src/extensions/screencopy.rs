@@ -18,7 +18,7 @@ impl ZManagerV1 {
         let manager_raw = wlr_screencopy_manager_v1_create(display as *mut wl_display);
 
         if !manager_raw.is_null() {
-            Some(ZmanagerV1 { manager: manager_raw })
+            Some(ZManagerV1 { manager: manager_raw })
         } else {
             None
         }
