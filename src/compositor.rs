@@ -116,7 +116,7 @@ pub struct Compositor {
     /// Optional gamma manager extension.
     pub gamma_control_manager: Option<gamma_control::Manager>,
     /// Optional screencopy manager extension
-    pub screencopy_manager: Option<screencopy::Manager>,
+    pub screencopy_manager: Option<screencopy::ZManagerV1>,
     /// Optional screenshooter manager extension
     pub screenshooter: Option<screenshooter::Screenshooter>,
     /// The renderer used to draw things to the screen.
@@ -425,7 +425,7 @@ impl Builder {
             None
         };
         let screencopy_manager = if self.screencopy_manager {
-            screencopy::Manager::new(display)
+            screencopy::ZManagerV1::new(display)
         } else {
             None
         };
