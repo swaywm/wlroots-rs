@@ -14,7 +14,7 @@ use wlroots_sys::{wlr_backend_destroy, wlr_backend_start,
 
 use {backend::{self, UnsafeRenderSetupFunction, Backend, Session},
      data_device,
-     extensions::{server_decoration, gamma_control, screenshooter},
+     extensions::{server_decoration, gamma_control, screencopy, screenshooter},
      surface::{self, Surface, InternalSurface},
      input,
      output,
@@ -115,6 +115,8 @@ pub struct Compositor {
     pub server_decoration_manager: Option<server_decoration::Manager>,
     /// Optional gamma manager extension.
     pub gamma_control_manager: Option<gamma_control::Manager>,
+    /// Optional screencopy manager extension
+    pub screencopy_manager: Option<screencopy::ZManagerV1>,
     /// Optional screenshooter manager extension
     pub screenshooter: Option<screenshooter::Screenshooter>,
     /// The renderer used to draw things to the screen.
@@ -145,6 +147,7 @@ pub struct Builder {
     render_setup_function: Option<UnsafeRenderSetupFunction>,
     server_decoration_manager: bool,
     gamma_control_manager: bool,
+    screencopy_manager: bool,
     screenshooter: bool,
     wayland_remote: Option<String>,
     x11_display: Option<String>,
@@ -245,6 +248,14 @@ impl Builder {
         self.gamma_control_manager = gamma_control_manager;
         self
     }
+
+    /// Decide whether or not to enable the screencopy protocol
+    /// extension.
+    pub fn screencopy_manager(mut self, screencopy_manager: bool) -> Self {
+        self.screencopy_manager = screencopy_manager;
+        self
+    }
+
 
     /// Decide whether or not to enable the screenshooter protocol
     /// extension.
@@ -413,6 +424,11 @@ impl Builder {
         } else {
             None
         };
+        let screencopy_manager = if self.screencopy_manager {
+            screencopy::ZManagerV1::new(display)
+        } else {
+            None
+        };
         let screenshooter = if self.screenshooter {
             screenshooter::Screenshooter::new(display)
         } else {
@@ -520,6 +536,7 @@ impl Builder {
                                       wl_shm_fd,
                                       server_decoration_manager,
                                       gamma_control_manager,
+                                      screencopy_manager,
                                       screenshooter,
                                       renderer,
                                       xwayland,
