@@ -3,3 +3,4 @@ pub mod gamma_control;
 pub mod screenshooter;
 pub mod screencopy;
 pub mod idle;
+pub mod gtk_primary_selection;

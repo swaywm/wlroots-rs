@@ -188,7 +188,8 @@ fn generate_protocols() {
                       ("./wlroots/protocol/wlr-gamma-control-unstable-v1.xml", "gamma_control"),
                       ("./wlroots/protocol/wlr-screencopy-unstable-v1.xml", "screencopy"),
                       ("./wlroots/protocol/screenshooter.xml", "screenshooter"),
-                      ("./wlroots/protocol/idle.xml", "idle")
+                      ("./wlroots/protocol/idle.xml", "idle"),
+                      ("./wlroots/protocol/gtk-primary-selection.xml", "gtk_primary_selection")
     ];
 
     for protocol in protocols {
