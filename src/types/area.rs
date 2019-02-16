@@ -109,7 +109,7 @@ impl Area {
     pub fn intersection(self, other_box: Area) -> IntersectionResult {
         unsafe {
             let res = Area::default();
-            let is_empty = wlr_box_intersection(&self.into(), &other_box.into(), &mut res.into());
+            let is_empty = wlr_box_intersection(&mut res.into(), &self.into(), &other_box.into());
             if is_empty {
                 IntersectionResult::NoIntersection
             } else {
@@ -135,7 +135,7 @@ impl Area {
     pub fn transform(self, transform: wl_output_transform, width: c_int, height: c_int) -> Area {
         unsafe {
             let res = Area::default();
-            wlr_box_transform(&mut self.into(), transform, width, height, &mut res.into());
+            wlr_box_transform(&mut res.into(), &mut self.into(), transform, width, height);
             res
         }
     }
@@ -144,7 +144,7 @@ impl Area {
     pub fn rotated_bounds(self, rotation: c_float) -> Area {
         unsafe {
             let dest = Area::default();
-            wlr_box_rotated_bounds(&self.into(), rotation, &mut dest.into());
+            wlr_box_rotated_bounds(&mut dest.into(), &self.into(), rotation);
             dest
         }
     }

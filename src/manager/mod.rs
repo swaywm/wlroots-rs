@@ -3,6 +3,7 @@ pub(crate) mod input_manager;
 pub(crate) mod output_manager;
 pub(crate) mod keyboard_handler;
 pub(crate) mod pointer_handler;
+pub(crate) mod switch_handler;
 pub(crate) mod touch_handler;
 pub(crate) mod output_handler;
 pub(crate) mod xdg_shell_v6_manager;

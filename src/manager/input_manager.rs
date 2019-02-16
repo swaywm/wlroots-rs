@@ -16,6 +16,7 @@ use {compositor,
      input::{self,
              keyboard::{self, Keyboard, KeyboardWrapper},
              pointer::{self, Pointer, PointerWrapper},
+             switch::{self, Switch, SwitchWrapper},
              tablet_pad::{self, TabletPad, TabletPadWrapper},
              tablet_tool::{self, TabletTool, TabletToolWrapper},
              touch::{self, Touch, TouchWrapper}},
@@ -70,6 +71,10 @@ pub type TabletPadAdded = fn (compositor_handle: compositor::Handle,
                               tablet_pad_handle: tablet_pad::Handle)
                               -> Option<Box<tablet_pad::Handler>>;
 
+pub type SwitchAdded = fn (compositor_handle: compositor::Handle,
+                           switch_handle: switch::Handle)
+                           -> Option<Box<switch::Handler>>;
+
 wayland_listener_static! {
     static mut MANAGER;
     (Manager, Builder): [
@@ -83,7 +88,8 @@ wayland_listener_static! {
             pointer_added: PointerAdded,
             touch_added: TouchAdded,
             tablet_tool_added: TabletToolAdded,
-            tablet_pad_added: TabletPadAdded
+            tablet_pad_added: TabletPadAdded,
+            switch_added: SwitchAdded
         ]
         (InputAdded, add_listener, input_added) => (add_notify, input_added):
         |manager: &mut Manager, data: *mut libc::c_void,| unsafe {
@@ -227,6 +233,26 @@ wayland_listener_static! {
                             wl_signal_add(&mut (*dev.as_ptr()).events.destroy as *mut _ as _,
                                           tablet_pad.on_destroy_listener() as _);
                             (*data).data = Box::into_raw(tablet_pad) as _;
+                        }
+                    }
+                    WLR_INPUT_DEVICE_SWITCH => {
+                        let switch = match Switch::new_from_input_device(data) {
+                            Some(dev) => dev,
+                            None => {
+                                wlr_log!(WLR_ERROR, "Device {:#?} was not a switch", dev);
+                                abort();
+                            }
+                        };
+                        let switch_handle = switch.weak_reference();
+                        let res = manager.switch_added.and_then(|f| f(compositor.clone(), switch_handle));
+                        if let Some(switch_handler) = res {
+                            let mut switch = SwitchWrapper::new((switch, switch_handler));
+                            let switch_ptr = &mut (*dev.dev_union().lid_switch);
+                            wl_signal_add(&mut switch_ptr.events.toggle as *mut _ as _,
+                                          switch.on_toggle_listener() as *mut _ as _);
+                            wl_signal_add(&mut (*dev.as_ptr()).events.destroy as *mut _ as _,
+                                          switch.on_destroy_listener() as _);
+                            (*data).data = Box::into_raw(switch) as _;
                         }
                     }
                 }

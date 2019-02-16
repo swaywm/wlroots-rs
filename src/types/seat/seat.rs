@@ -100,15 +100,15 @@ pub trait Handler {
                   event: &seat::event::SetCursor) {}
 
     /// The seat was provided with a selection by the client.
-    fn received_selection(&mut self,
-                          compositor_handle: compositor::Handle,
-                          seat_handle: Handle) {}
+    fn set_selection(&mut self,
+                     compositor_handle: compositor::Handle,
+                     seat_handle: Handle) {}
 
     /// The seat was provided with a selection from the primary buffer
     /// by the client.
-    fn primary_selection(&mut self,
-                         compositor_handle: compositor::Handle,
-                         seat_handle: Handle) {}
+    fn set_primary_selection(&mut self,
+                             compositor_handle: compositor::Handle,
+                             seat_handle: Handle) {}
 
     /// The seat is being destroyed.
     fn destroy(&mut self,
@@ -246,7 +246,7 @@ wayland_listener!(pub Seat, (*mut wlr_seat, Box<Handler>), [
 
         Box::into_raw(seat);
     };
-    selection_listener => selection_notify: |this: &mut Seat, _event: *mut libc::c_void,|
+    set_selection_listener => selection_notify: |this: &mut Seat, _event: *mut libc::c_void,|
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
         let compositor = match compositor::handle() {
@@ -255,11 +255,11 @@ wayland_listener!(pub Seat, (*mut wlr_seat, Box<Handler>), [
         };
         let seat = Seat::from_ptr(seat_ptr);
 
-        handler.received_selection(compositor, seat.weak_reference());
+        handler.set_selection(compositor, seat.weak_reference());
 
         Box::into_raw(seat);
     };
-    primary_selection_listener => primary_selection_notify: |this: &mut Seat,
+    set_primary_selection_listener => primary_selection_notify: |this: &mut Seat,
     _event: *mut libc::c_void,|
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
@@ -269,7 +269,7 @@ wayland_listener!(pub Seat, (*mut wlr_seat, Box<Handler>), [
         };
         let seat = Seat::from_ptr(seat_ptr);
 
-        handler.primary_selection(compositor, seat.weak_reference());
+        handler.set_primary_selection(compositor, seat.weak_reference());
 
         Box::into_raw(seat);
     };
@@ -349,10 +349,10 @@ impl Seat {
                           res.touch_grab_end_listener() as *mut _ as _);
             wl_signal_add(&mut (*seat).events.request_set_cursor as *mut _ as _,
                           res.request_set_cursor_listener() as *mut _ as _);
-            wl_signal_add(&mut (*seat).events.selection as *mut _ as _,
-                          res.selection_listener() as *mut _ as _);
-            wl_signal_add(&mut (*seat).events.primary_selection as *mut _ as _,
-                          res.primary_selection_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.set_selection as *mut _ as _,
+                          res.set_selection_listener() as *mut _ as _);
+            wl_signal_add(&mut (*seat).events.set_primary_selection as *mut _ as _,
+                          res.set_primary_selection_listener() as *mut _ as _);
             wl_signal_add(&mut (*seat).events.new_drag_icon as *mut _ as _,
                           res.new_drag_icon_listener() as *mut _ as _);
             wl_signal_add(&mut (*seat).events.destroy as *mut _ as _,
@@ -840,10 +840,10 @@ impl Drop for Seat {
                           &mut (*manager.request_set_cursor_listener()).link as *mut _ as _);
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
-                          &mut (*manager.selection_listener()).link as *mut _ as _);
+                          &mut (*manager.set_selection_listener()).link as *mut _ as _);
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
-                          &mut (*manager.primary_selection_listener()).link as *mut _ as _);
+                          &mut (*manager.set_primary_selection_listener()).link as *mut _ as _);
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
                           &mut (*manager.new_drag_icon_listener()).link as *mut _ as _);
