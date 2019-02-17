@@ -160,10 +160,6 @@ impl Surface {
                                   subsurfaces.push(Subsurface::new(subsurface))
                               });
             let mut manager = SubsurfaceManager::new(subsurfaces);
-            for sub_surface in &mut manager.subsurfaces() {
-                wl_signal_add(&mut (*sub_surface.as_ptr()).events.destroy as *mut _ as _,
-                              manager.subsurface_destroyed_listener() as _);
-            }
             wl_signal_add(&mut (*surface).events.new_subsurface as *mut _ as _,
                           manager.subsurface_created_listener() as _);
             manager
