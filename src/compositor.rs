@@ -616,7 +616,7 @@ impl Compositor {
     /// Before starting the compositor the `WAYLAND_DISPLAY` environment
     /// variable should be set to this so clients can connect to the compositor:
     ///
-    /// ```rust
+    /// ```rust,no_run,ignore
     /// env::set_var("WAYLAND_DISPLAY", compositor.socket_name());
     /// ```
     pub fn socket_name(&self) -> &str {
