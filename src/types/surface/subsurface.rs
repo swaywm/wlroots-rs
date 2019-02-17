@@ -59,10 +59,6 @@ impl Subsurface {
                      liveliness }
     }
 
-    pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_subsurface {
-        self.subsurface
-    }
-
     /// Get a handle to the surface for this sub surface.
     pub fn surface(&self) -> surface::Handle {
         unsafe { surface::Handle::from_ptr((*self.subsurface).surface) }
