@@ -2,7 +2,7 @@ extern crate log;
 #[macro_use]
 extern crate wlroots;
 
-use std::{thread, process::Command};
+use std::{env, thread, process::Command};
 
 use log::LevelFilter;
 use wlroots::{area::{Area, Origin, Size},
@@ -271,6 +271,7 @@ fn main() {
         let state: &mut State = compositor.downcast();
         state.seat_handle = Some(seat_handle);
     }
+    env::set_var("WAYLAND_DISPLAY", compositor.socket_name());
     compositor.run();
 }
 

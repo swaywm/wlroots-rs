@@ -545,9 +545,6 @@ impl Builder {
             panic!("Unable to open wayland socket");
         }
         let socket_name = CStr::from_ptr(socket).to_string_lossy().into_owned();
-        wlr_log!(WLR_DEBUG,
-                 "Running compositor on wayland display {}",
-                 socket_name);
         env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
         let compositor = Compositor { data: Box::new(data),
                                       compositor_handler,
@@ -614,6 +611,18 @@ impl Compositor {
         Handle { handle }
     }
 
+    /// Get the name of the socket to Wayland.
+    ///
+    /// Before starting the compositor the `WAYLAND_DISPLAY` environment
+    /// variable should be set to this so clients can connect to the compositor:
+    ///
+    /// ```rust,no_run,ignore
+    /// env::set_var("WAYLAND_DISPLAY", compositor.socket_name());
+    /// ```
+    pub fn socket_name(&self) -> &str {
+        self.socket_name.as_str()
+    }
+
     /// Enters the wayland event loop. Won't return until the compositor is
     /// shut off.
     pub fn run(self) {
@@ -630,6 +639,9 @@ impl Compositor {
     pub fn run_with<F>(self, runner: F)
         where F: FnOnce(&Compositor)
     {
+        wlr_log!(WLR_DEBUG,
+                 "Running compositor on wayland display {}",
+                 self.socket_name);
         unsafe {
             self.set_lock(false);
             let compositor = UnsafeCell::new(self);
@@ -649,7 +661,6 @@ impl Compositor {
                 //   if you auto create it's assumed you can't recover.
                 panic!("Failed to start backend");
             }
-            env::set_var("WAYLAND_DISPLAY", (*COMPOSITOR_PTR).socket_name.clone());
             runner(&*COMPOSITOR_PTR);
             match (*compositor.get()).panic_error.take() {
                 None => {}
