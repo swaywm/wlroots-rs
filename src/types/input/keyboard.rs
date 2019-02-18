@@ -34,6 +34,17 @@ pub struct Modifiers {
     pub group: Modifier,
 }
 
+impl Default for Modifiers {
+    fn default() -> Self {
+        Modifiers {
+            depressed: Modifier::empty(),
+            latched: Modifier::empty(),
+            locked: Modifier::empty(),
+            group: Modifier::empty()
+        }
+    }
+}
+
 impl From<wlr_keyboard_modifiers> for Modifiers {
     fn from(mods: wlr_keyboard_modifiers) -> Self{
         Modifiers {
