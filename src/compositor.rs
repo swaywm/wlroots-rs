@@ -114,7 +114,7 @@ pub struct Compositor {
     /// Optional decoration manager extension.
     pub server_decoration_manager: Option<server_decoration::Manager>,
     /// Optional gamma manager extension.
-    pub gamma_control_manager: Option<gamma_control::Manager>,
+    pub gamma_control_manager: Option<gamma_control::ZManagerV1>,
     /// Optional idle manager extension.
     pub idle_manager: Option<idle::Manager>,
     /// Optional GTK primary selection manager
@@ -440,7 +440,7 @@ impl Builder {
             None
         };
         let gamma_control_manager = if self.gamma_control_manager {
-            gamma_control::Manager::new(display)
+            gamma_control::ZManagerV1::new(display)
         } else {
             None
         };
