@@ -101,7 +101,7 @@ pub struct Compositor {
     /// Pointer to the wlr_compositor.
     compositor: *mut wlr_compositor,
     /// Pointer to the wlroots backend in use.
-    backend: Backend,
+    pub backend: Backend,
     /// Pointer to the wayland display.
     pub display: *mut wl_display,
     /// Pointer to the event loop.
@@ -677,16 +677,6 @@ impl Compositor {
         unsafe {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_terminate, self.display);
         }
-    }
-
-    /// Get a reference to the currently running backend.
-    pub fn backend(&self) -> &Backend {
-        &self.backend
-    }
-
-    /// Get a mutable reference to the currently running backend.
-    pub fn backend_mut(&mut self) -> &mut Backend {
-        &mut self.backend
     }
 
     /// Saves the panic error information in the compositor, to be re-thrown
