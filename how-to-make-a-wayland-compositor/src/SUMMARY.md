@@ -15,6 +15,7 @@
   - [A better cursor](wlr_cursor.md)
   - [Exercises](getting_to_the_point_exercises.md)
 - [Breaking out of your shell](breaking_out_of_your_shell.md)
+  - [Spawning a client](spawning_a_client.md)
 
 -----------
 
