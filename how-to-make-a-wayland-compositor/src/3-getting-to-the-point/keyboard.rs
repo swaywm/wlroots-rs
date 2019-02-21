@@ -34,8 +34,7 @@ impl keyboard::Handler for KeyboardHandler {
                 },
                 keysyms::KEY_XF86Switch_VT_1 ..= keysyms::KEY_XF86Switch_VT_12 => {
                     #[dehandle] let compositor = compositor_handle;
-                    let backend = compositor.backend_mut();
-                    if let Some(mut session) = backend.get_session() {
+                    if let Some(mut session) = compositor.backend.get_session() {
                         session.change_vt(key - keysyms::KEY_XF86Switch_VT_1 + 1);
                     }
                 }
