@@ -113,6 +113,11 @@ impl Surface {
             if surface.is_null() {
                 panic!("xdg shell had a null surface!")
             }
+            if (*surface).data.is_null()  {
+                let mut handle =  surface::Handle::default();
+                handle.ptr = surface;
+                return handle
+            }
             surface::Handle::from_ptr(surface)
         }
     }

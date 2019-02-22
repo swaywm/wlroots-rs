@@ -292,6 +292,9 @@ impl Surface {
 impl Handleable<Weak<Box<SubsurfaceManager>>, wlr_surface> for Surface {
     #[doc(hidden)]
     unsafe fn from_ptr(surface: *mut wlr_surface) -> Self {
+        if (*surface).data.is_null() {
+            panic!("Internal was null")
+        }
         let data = (*surface).data as *mut InternalState;
         let liveliness = (*data).handle.upgrade().unwrap();
         let subsurfaces_manager = (*data).subsurfaces_manager.clone().upgrade().unwrap();
@@ -344,6 +347,7 @@ impl Drop for Surface {
         }
         unsafe {
             Box::from_raw((*self.surface).data as *mut InternalState);
+            (*self.surface).data = ptr::null_mut();
         }
     }
 }
