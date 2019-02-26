@@ -38,14 +38,9 @@ impl DragIcon {
         unsafe { (*self.drag_icon).mapped }
     }
 
-    /// Whether or not this drag icon comes from a pointer-drive dnd operation
-    pub fn is_pointer(&mut self) -> bool {
-        unsafe { (*self.drag_icon).is_pointer }
-    }
-
     /// If this is a touch-driven dnd operation, the id of the touch point that started it
     pub fn touch_id(&mut self) -> i32 {
-        unsafe { (*self.drag_icon).touch_id }
+        unsafe { (*(*self.drag_icon).drag).touch_id }
     }
 
     /// Creates a weak reference to a `DragIcon`.
