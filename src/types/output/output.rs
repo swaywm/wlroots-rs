@@ -26,7 +26,7 @@ pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;
 
 pub(crate) struct OutputState {
-    pub(crate) output: *mut UserOutput,
+    pub(crate) output: Option<NonNull<UserOutput>>,
     handle: Weak<Cell<bool>>,
     damage: NonNull<wlr_output_damage>,
     layout_handle: Option<layout::Handle>
@@ -80,7 +80,7 @@ impl Output {
         let handle = Rc::downgrade(&liveliness);
         let damage = ManuallyDrop::new(output::Damage::new(output.as_ptr()));
         let damage_ptr = NonNull::new(damage.as_ptr()).unwrap();
-        let state = Box::new(OutputState { output: ptr::null_mut(),
+        let state = Box::new(OutputState { output: None,
                                            handle,
                                            damage: damage_ptr,
                                            layout_handle: None });
