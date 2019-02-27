@@ -1,5 +1,5 @@
 //! TODO Documentation
-use std::{fmt, cell::Cell, rc::Rc};
+use std::{fmt, cell::Cell, ptr::NonNull, rc::Rc};
 
 use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_led, wlr_keyboard_led_update,
                   wlr_keyboard_get_modifiers, wlr_keyboard_modifier, wlr_keyboard_modifiers,
@@ -15,7 +15,7 @@ pub use manager::keyboard_handler::*;
 pub use events::key_events as event;
 
 pub type Key = xkb_keysym_t;
-pub type Handle = utils::Handle<*mut wlr_input_device, wlr_keyboard, Keyboard>;
+pub type Handle = utils::Handle<NonNull<wlr_input_device>, wlr_keyboard, Keyboard>;
 
 /// Information about repeated keypresses for a particular Keyboard.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -81,7 +81,7 @@ pub struct Keyboard {
     /// The device that refers to this keyboard.
     device: input::Device,
     /// The underlying keyboard data.
-    keyboard: *mut wlr_keyboard
+    keyboard: NonNull<wlr_keyboard>
 }
 
 impl Keyboard {
@@ -96,12 +96,13 @@ impl Keyboard {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_KEYBOARD => {
-                let keyboard = (*device).__bindgen_anon_1.keyboard;
+                let keyboard = NonNull::new((*device).__bindgen_anon_1.keyboard)
+                    .expect("Keyboard pointer was null");
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
                 let state = Box::new(InputState { handle,
                                                   device: input::Device::from_ptr(device) });
-                (*keyboard).data = Box::into_raw(state) as *mut _;
+                (*keyboard.as_ptr()).data = Box::into_raw(state) as *mut _;
                 Some(Keyboard { liveliness,
                                 device: input::Device::from_ptr(device),
                                 keyboard })
@@ -112,7 +113,7 @@ impl Keyboard {
 
     /// Gets the wlr_keyboard associated with this keyboard::Handle.
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
-        self.keyboard
+        self.keyboard.as_ptr()
     }
 
     /// Gets the wlr_input_device associated with this keyboard::Handle
@@ -126,14 +127,14 @@ impl Keyboard {
             // NOTE wlr_keyboard_set_keymap updates the reference count,
             // so we don't need to mem::forget the key map here
             // or take it by value.
-            wlr_keyboard_set_keymap(self.keyboard, keymap.get_raw_ptr() as _);
+            wlr_keyboard_set_keymap(self.keyboard.as_ptr(), keymap.get_raw_ptr() as _);
         }
     }
 
     /// Get the XKB keymap associated with this Keyboard.
     pub fn get_keymap(&mut self) -> Option<Keymap> {
         unsafe {
-            let keymap_ptr = (*self.keyboard).keymap as *mut xkb_keymap;
+            let keymap_ptr = (*self.keyboard.as_ptr()).keymap as *mut xkb_keymap;
             if keymap_ptr.is_null() {
                 None
             } else {
@@ -149,31 +150,31 @@ impl Keyboard {
     /// which at the time of writing is `32`.
     pub fn keycodes(&self) -> Vec<Keycode> {
         unsafe {
-            let mut result = (*self.keyboard).keycodes.to_vec();
-            result.truncate((*self.keyboard).num_keycodes);
+            let mut result = (*self.keyboard.as_ptr()).keycodes.to_vec();
+            result.truncate((*self.keyboard.as_ptr()).num_keycodes);
             result
         }
     }
 
     /// Get the list of LEDs for this keyboard as reported by XKB.
     pub fn led_list(&self) -> &[LedIndex] {
-        unsafe { &(*self.keyboard).led_indexes }
+        unsafe { &(*self.keyboard.as_ptr()).led_indexes }
     }
 
     /// Get the list of modifiers for this keyboard as reported by XKB.
     pub fn modifier_list(&self) -> &[ModIndex] {
-        unsafe { &(*self.keyboard).mod_indexes }
+        unsafe { &(*self.keyboard.as_ptr()).mod_indexes }
     }
 
     /// Get the size of the keymap.
     pub fn keymap_size(&self) -> usize {
-        unsafe { (*self.keyboard).keymap_size }
+        unsafe { (*self.keyboard.as_ptr()).keymap_size }
     }
 
     /// Get the XKB state associated with this `Keyboard`.
     pub fn get_xkb_state(&mut self) -> Option<xkb::State> {
         unsafe {
-            let xkb_state_ptr = (*self.keyboard).xkb_state as *mut xkb_state;
+            let xkb_state_ptr = (*self.keyboard.as_ptr()).xkb_state as *mut xkb_state;
             if xkb_state_ptr.is_null() {
                 None
             } else {
@@ -185,8 +186,8 @@ impl Keyboard {
     /// Get the repeat info for this keyboard.
     pub fn repeat_info(&self) -> RepeatInfo {
         unsafe {
-            RepeatInfo { rate: (*self.keyboard).repeat_info.rate,
-                         delay: (*self.keyboard).repeat_info.delay }
+            RepeatInfo { rate: (*self.keyboard.as_ptr()).repeat_info.rate,
+                         delay: (*self.keyboard.as_ptr()).repeat_info.delay }
         }
     }
 
@@ -195,49 +196,47 @@ impl Keyboard {
     /// 1 means one, 0 means off.
     pub fn update_led(&mut self, leds: Led) {
         unsafe {
-            wlr_keyboard_led_update(self.keyboard, leds.bits() as u32);
+            wlr_keyboard_led_update(self.keyboard.as_ptr(), leds.bits() as u32);
         }
     }
 
     /// Get the modifiers that are currently pressed on the keyboard.
     pub fn get_modifiers(&self) -> Modifier {
-        unsafe { Modifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard)) }
+        unsafe { Modifier::from_bits_truncate(wlr_keyboard_get_modifiers(self.keyboard.as_ptr())) }
     }
 
     /// Get the modifier masks for each group.
     pub fn get_modifier_masks(&self) -> Modifiers {
-        From::from(unsafe { (*self.keyboard).modifiers })
+        From::from(unsafe { (*self.keyboard.as_ptr()).modifiers })
     }
 }
 
 impl Drop for Keyboard {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) == 1 {
-            wlr_log!(WLR_DEBUG, "Dropped Keyboard {:p}", self.keyboard);
+            wlr_log!(WLR_DEBUG, "Dropped Keyboard {:p}", self.keyboard.as_ptr());
             unsafe {
-                let _ = Box::from_raw((*self.keyboard).data as *mut InputState);
+                let _ = Box::from_raw((*self.keyboard.as_ptr()).data as *mut InputState);
             }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
                 wlr_log!(WLR_DEBUG,
                          "Still {} weak pointers to Keyboard {:p}",
                          weak_count,
-                         self.keyboard);
+                         self.keyboard.as_ptr());
             }
         }
     }
 }
 
-impl Handleable<*mut wlr_input_device, wlr_keyboard> for Keyboard {
+impl Handleable<NonNull<wlr_input_device>, wlr_keyboard> for Keyboard {
     #[doc(hidden)]
     unsafe fn from_ptr(keyboard: *mut wlr_keyboard) -> Option<Self> {
-        if (*keyboard).data.is_null() {
-            return None
-        }
-        let data = Box::from_raw((*keyboard).data as *mut InputState);
+        let keyboard = NonNull::new(keyboard)?;
+        let data = Box::from_raw((*keyboard.as_ptr()).data as *mut InputState);
         let handle = data.handle.clone();
         let device = data.device.clone();
-        (*keyboard).data = Box::into_raw(data) as *mut _;
+        (*keyboard.as_ptr()).data = Box::into_raw(data) as *mut _;
         Some(Keyboard { liveliness: handle.upgrade().unwrap(),
                         device,
                         keyboard })
@@ -245,7 +244,7 @@ impl Handleable<*mut wlr_input_device, wlr_keyboard> for Keyboard {
 
     #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut wlr_keyboard {
-        self.keyboard
+        self.keyboard.as_ptr()
     }
 
     #[doc(hidden)]
@@ -258,7 +257,7 @@ impl Handleable<*mut wlr_input_device, wlr_keyboard> for Keyboard {
                       // NOTE Rationale for cloning:
                       // If we already dropped we don't reach this point.
                       device: input::Device { device },
-                      keyboard: handle.as_ptr()
+                      keyboard: handle.as_non_null()
         })
     }
 
@@ -268,7 +267,7 @@ impl Handleable<*mut wlr_input_device, wlr_keyboard> for Keyboard {
                  // NOTE Rationale for cloning:
                  // Since we have a strong reference already,
                  // the input must still be alive.
-                 data: unsafe { Some(self.device.as_ptr()) },
+                 data: unsafe { Some(self.device.as_non_null()) },
                  _marker: std::marker::PhantomData
         }
     }

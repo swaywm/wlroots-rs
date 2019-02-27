@@ -1,7 +1,7 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
-use std::{env, panic, ptr, any::Any, cell::{Cell, UnsafeCell},
+use std::{env, panic, ptr::{self, NonNull}, any::Any, cell::{Cell, UnsafeCell},
           ffi::CStr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
 
 use libc;
@@ -58,7 +58,7 @@ wayland_listener_static!{
             wl_signal_add(&mut (*surface_ptr).events.destroy as *mut _ as _,
                           internal_surface.on_destroy_listener() as _);
             let surface_data = (*surface_ptr).data as *mut surface::InternalState;
-            (*surface_data).surface = Box::into_raw(internal_surface);
+            (*surface_data).surface = NonNull::new(Box::into_raw(internal_surface));
         };
 
         (OnShutdown, shutdown_listener, on_shutdown) => (shutdown_notify, on_shutdown):

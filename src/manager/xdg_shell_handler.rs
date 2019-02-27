@@ -108,7 +108,9 @@ wayland_listener!(pub(crate) XdgShell, (xdg_shell::Surface, Option<Box<Handler>>
         }
         let surface_ptr = data as *mut wlr_xdg_surface;
         let shell_state_ptr = (*surface_ptr).data as *mut SurfaceState;
-        Box::from_raw((*shell_state_ptr).shell);
+        if let Some(shell_ptr) = (*shell_state_ptr).shell {
+            Box::from_raw(shell_ptr.as_ptr());
+        }
     };
     commit_listener => commit_notify: |this: &mut XdgShell, _data: *mut libc::c_void,| unsafe {
         let (ref mut shell_surface, ref mut manager) = match &mut this.data {

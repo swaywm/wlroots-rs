@@ -1,7 +1,7 @@
 //! TODO Documentation
 
 use libc::{self, c_double};
-use std::{panic, ptr, cell::Cell, rc::{Rc, Weak}, time::Duration};
+use std::{panic, ptr::NonNull, cell::Cell, rc::{Rc, Weak}, time::Duration};
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wayland_sys::server::signal::wl_signal_add;
@@ -82,7 +82,9 @@ wayland_listener!(pub(crate) InternalSurface, (Surface, Box<Handler>), [
         let surface_state_ptr = (*surface_ptr).data as *mut InternalState;
         // NOTE that wlroots cleans up the wlr_surface properly (so the Surface drop is called).
         // This just insures we clean up our listeners.
-        Box::<InternalSurface>::from_raw((*surface_state_ptr).surface);
+        if let Some(surface_ptr) = (*surface_state_ptr).surface {
+            Box::<InternalSurface>::from_raw(surface_ptr.as_ptr());
+        }
     };
 ]);
 
@@ -95,7 +97,7 @@ impl InternalSurface {
 /// The state stored in the wlr_surface user data.
 pub(crate) struct InternalState {
     /// Pointer to the backing storage of the surface.
-    pub(crate) surface: *mut InternalSurface,
+    pub(crate) surface: Option<NonNull<InternalSurface>>,
     /// Used to reconstruct a surface::Handle from just an *mut wlr_surface.
     handle: Weak<Cell<bool>>,
     /// Weak reference to the manager for the list of subsurfaces.
@@ -128,23 +130,25 @@ pub struct Surface {
     /// through the getter for this list.
     subsurfaces_manager: Rc<Box<SubsurfaceManager>>,
     /// The pointer to the wlroots object that wraps a wl_surface.
-    surface: *mut wlr_surface
+    surface: NonNull<wlr_surface>
 }
 
 impl Surface {
     pub(crate) unsafe fn new(surface: *mut wlr_surface) -> Self {
-        if !(*surface).data.is_null() {
+        let surface = NonNull::new(surface)
+            .expect("Surface pointer was null");
+        if !(*surface.as_ptr()).data.is_null() {
             panic!("Tried to construct a Surface from an already initialized wlr_surface");
         }
         let liveliness = Rc::new(Cell::new(false));
         let handle = Rc::downgrade(&liveliness);
-        let subsurfaces_manager = Rc::new(Surface::create_manager(surface));
+        let subsurfaces_manager = Rc::new(Surface::create_manager(surface.as_ptr()));
         let weak_manager = Rc::downgrade(&subsurfaces_manager);
-        (*surface).data = Box::into_raw(Box::new(InternalState { surface: ptr::null_mut(),
-                                                                        handle,
-                                                                        subsurfaces_manager:
-                                                                        weak_manager }))
-            as _;
+        let state = InternalState { surface: None,
+                                    handle,
+                                    subsurfaces_manager:
+                                    weak_manager };
+        (*surface.as_ptr()).data = Box::into_raw(Box::new(state)) as _;
         Surface { liveliness,
                   subsurfaces_manager,
                   surface }
@@ -167,13 +171,13 @@ impl Surface {
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_surface {
-        self.surface
+        self.surface.as_ptr()
     }
 
     /// Get the surface state.
     pub fn current_state<'surface>(&'surface mut self) -> surface::State<'surface> {
         unsafe {
-            let state = (*self.surface).current;
+            let state = (*self.surface.as_ptr()).current;
             surface::State::new(state)
         }
     }
@@ -181,7 +185,7 @@ impl Surface {
     /// Get the pending surface state.
     pub fn pending_state<'surface>(&'surface mut self) -> surface::State<'surface> {
         unsafe {
-            let state = (*self.surface).current;
+            let state = (*self.surface.as_ptr()).current;
             surface::State::new(state)
         }
     }
@@ -197,7 +201,7 @@ impl Surface {
     /// wrong with uploading the buffer.
     pub fn texture<'surface>(&'surface self) -> Option<Texture<'surface>> {
         unsafe {
-            let texture_ptr = wlr_surface_get_texture(self.surface);
+            let texture_ptr = wlr_surface_get_texture(self.surface.as_ptr());
             if texture_ptr.is_null() {
                 None
             } else {
@@ -208,7 +212,7 @@ impl Surface {
 
     /// Get the lifetime bound role (if one exists) for this surface.
     pub fn role(&self) -> Option<String> {
-        unsafe { c_to_rust_string((*(*self.surface).role).name) }
+        unsafe { c_to_rust_string((*(*self.surface.as_ptr()).role).name) }
     }
 
     /// Whether or not this surface currently has an attached buffer.
@@ -219,13 +223,13 @@ impl Surface {
     /// A surface will not have a buffer if it has never committed one, has
     /// committed a null buffer, or something went wrong with uploading the buffer.
     pub fn has_buffer(&self) -> bool {
-        unsafe { wlr_surface_has_buffer(self.surface) }
+        unsafe { wlr_surface_has_buffer(self.surface.as_ptr()) }
     }
 
     /// Determines if this surface accepts input or not at the provided surface
     /// local coordinates.
     pub fn accepts_input(&self, sx: c_double, sy: c_double) -> bool {
-        unsafe { wlr_surface_point_accepts_input(self.surface, sx, sy) }
+        unsafe { wlr_surface_point_accepts_input(self.surface.as_ptr(), sx, sy) }
     }
 
     /// Determines if this surface is an XDG surface.
@@ -233,7 +237,7 @@ impl Surface {
     /// This is really only useful for getting the parent of popups from stable XDG
     /// shell surfaces.
     pub fn is_xdg_surface(&self) -> bool {
-        unsafe { wlr_surface_is_xdg_surface(self.surface) }
+        unsafe { wlr_surface_is_xdg_surface(self.surface.as_ptr()) }
     }
 
     /// Find a subsurface within this surface at the surface-local coordinates.
@@ -247,7 +251,7 @@ impl Surface {
                          sub_y: &mut f64)
                          -> Option<Handle> {
         unsafe {
-            let surface = wlr_surface_surface_at(self.surface, sx, sy, sub_x, sub_y);
+            let surface = wlr_surface_surface_at(self.surface.as_ptr(), sx, sy, sub_x, sub_y);
             if surface.is_null() {
                 None
             } else {
@@ -259,7 +263,7 @@ impl Surface {
     /// Get the top of the subsurface tree for this surface.
     pub fn get_root_surface(&self) -> Option<Handle> {
         unsafe {
-            let surface = wlr_surface_get_root_surface(self.surface);
+            let surface = wlr_surface_get_root_surface(self.surface.as_ptr());
             if surface.is_null() {
                 None
             } else {
@@ -269,11 +273,11 @@ impl Surface {
     }
 
     pub fn send_enter(&mut self, output: &mut Output) {
-        unsafe { wlr_surface_send_enter(self.surface, output.as_ptr()) }
+        unsafe { wlr_surface_send_enter(self.surface.as_ptr(), output.as_ptr()) }
     }
 
     pub fn send_leave(&mut self, output: &mut Output) {
-        unsafe { wlr_surface_send_leave(self.surface, output.as_ptr()) }
+        unsafe { wlr_surface_send_leave(self.surface.as_ptr(), output.as_ptr()) }
     }
 
     /// Send the frame done event.
@@ -284,7 +288,7 @@ impl Surface {
             // Something bad could happen!
             let when = timespec { tv_sec: duration.as_secs() as libc::clock_t,
                                   tv_nsec: duration.subsec_nanos() as libc::clock_t };
-            wlr_surface_send_frame_done(self.surface, &when);
+            wlr_surface_send_frame_done(self.surface.as_ptr(), &when);
         }
     }
 }
@@ -292,7 +296,8 @@ impl Surface {
 impl Handleable<Weak<Box<SubsurfaceManager>>, wlr_surface> for Surface {
     #[doc(hidden)]
     unsafe fn from_ptr(surface: *mut wlr_surface) -> Option<Self> {
-        let data = (*surface).data as *mut InternalState;
+        let surface = NonNull::new(surface)?;
+        let data = (*surface.as_ptr()).data as *mut InternalState;
         let liveliness = (*data).handle.upgrade()?;
         let subsurfaces_manager = (*data).subsurfaces_manager.clone().upgrade().unwrap();
         Some(Surface { surface,
@@ -303,12 +308,12 @@ impl Handleable<Weak<Box<SubsurfaceManager>>, wlr_surface> for Surface {
 
     #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut wlr_surface {
-        self.surface
+        self.surface.as_ptr()
     }
 
     #[doc(hidden)]
     unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let data = (*handle.ptr).data as *mut InternalState;
+        let data = (*handle.ptr.as_ptr()).data as *mut InternalState;
         let subsurfaces_manager = (*data).subsurfaces_manager
             .clone()
             .upgrade()
@@ -334,16 +339,16 @@ impl Drop for Surface {
         if Rc::strong_count(&self.liveliness) != 1 {
             return
         }
-        wlr_log!(WLR_DEBUG, "Dropped surface {:p}", self.surface);
+        wlr_log!(WLR_DEBUG, "Dropped surface {:p}", self.surface.as_ptr());
         let weak_count = Rc::weak_count(&self.liveliness);
         if weak_count > 0 {
             wlr_log!(WLR_DEBUG,
                      "Still {} weak pointers to Surface {:p}",
                      weak_count,
-                     self.surface);
+                     self.surface.as_ptr());
         }
         unsafe {
-            Box::from_raw((*self.surface).data as *mut InternalState);
+            Box::from_raw((*self.surface.as_ptr()).data as *mut InternalState);
         }
     }
 }

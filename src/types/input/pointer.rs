@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
@@ -9,7 +9,7 @@ use {input::{self, InputState},
 pub use manager::pointer_handler::*;
 pub use events::pointer_events as event;
 
-pub type Handle = utils::Handle<*mut wlr_input_device, wlr_pointer, Pointer>;
+pub type Handle = utils::Handle<NonNull<wlr_input_device>, wlr_pointer, Pointer>;
 
 #[derive(Debug)]
 pub struct Pointer {
@@ -26,7 +26,7 @@ pub struct Pointer {
     /// The device that refers to this pointer.
     device: input::Device,
     /// The underlying pointer data.
-    pointer: *mut wlr_pointer
+    pointer: NonNull<wlr_pointer>
 }
 
 impl Pointer {
@@ -41,12 +41,13 @@ impl Pointer {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_POINTER => {
-                let pointer = (*device).__bindgen_anon_1.pointer;
+                let pointer = NonNull::new((*device).__bindgen_anon_1.pointer)
+                    .expect("Pointer pointer was null");
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
                 let state = Box::new(InputState { handle,
                                                   device: input::Device::from_ptr(device) });
-                (*pointer).data = Box::into_raw(state) as *mut _;
+                (*pointer.as_ptr()).data = Box::into_raw(state) as *mut _;
                 Some(Pointer { liveliness,
                                device: input::Device::from_ptr(device),
                                pointer })
@@ -63,7 +64,7 @@ impl Pointer {
     /// Gets the wlr_pointer associated with this Pointer.
     #[allow(dead_code)]
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_pointer {
-        self.pointer
+        self.pointer.as_ptr()
     }
 }
 
@@ -72,7 +73,7 @@ impl Drop for Pointer {
         if Rc::strong_count(&self.liveliness) == 1 {
             wlr_log!(WLR_DEBUG, "Dropped Pointer {:p}", self.pointer);
             unsafe {
-                let _ = Box::from_raw((*self.pointer).data as *mut InputState);
+                let _ = Box::from_raw((*self.pointer.as_ptr()).data as *mut InputState);
             }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
@@ -85,16 +86,14 @@ impl Drop for Pointer {
     }
 }
 
-impl Handleable<*mut wlr_input_device, wlr_pointer> for Pointer {
+impl Handleable<NonNull<wlr_input_device>, wlr_pointer> for Pointer {
     #[doc(hidden)]
     unsafe fn from_ptr(pointer: *mut wlr_pointer) -> Option<Self> {
-        if (*pointer).data.is_null() {
-            return None
-        }
-        let data = Box::from_raw((*pointer).data as *mut InputState);
+        let pointer = NonNull::new(pointer)?;
+        let data = Box::from_raw((*pointer.as_ptr()).data as *mut InputState);
         let handle = data.handle.clone();
         let device = data.device.clone();
-        (*pointer).data = Box::into_raw(data) as *mut _;
+        (*pointer.as_ptr()).data = Box::into_raw(data) as *mut _;
         Some(Pointer { liveliness: handle.upgrade().unwrap(),
                        device,
                        pointer })
@@ -102,7 +101,7 @@ impl Handleable<*mut wlr_input_device, wlr_pointer> for Pointer {
 
     #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut wlr_pointer {
-        self.pointer
+        self.pointer.as_ptr()
     }
 
     #[doc(hidden)]
@@ -115,7 +114,7 @@ impl Handleable<*mut wlr_input_device, wlr_pointer> for Pointer {
                      // NOTE Rationale for cloning:
                      // If we already dropped we don't reach this point.
                      device: input::Device { device },
-                     pointer: handle.as_ptr()
+                     pointer: handle.as_non_null()
         })
     }
 
@@ -125,7 +124,7 @@ impl Handleable<*mut wlr_input_device, wlr_pointer> for Pointer {
                  // NOTE Rationale for cloning:
                  // Since we have a strong reference already,
                  // the input must still be alive.
-                 data: unsafe { Some(self.device.as_ptr()) },
+                 data: unsafe { Some(self.device.as_non_null()) },
                  _marker: std::marker::PhantomData
         }
     }

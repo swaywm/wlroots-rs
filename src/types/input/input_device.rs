@@ -1,4 +1,4 @@
-use std::{cell::Cell, rc::Weak};
+use std::{cell::Cell, ptr::NonNull, rc::Weak};
 
 use libc::{c_double, c_uint};
 use wlroots_sys::{wlr_input_device, wlr_input_device_pointer, wlr_input_device_type,
@@ -26,7 +26,7 @@ pub(crate) struct InputState {
 /// Wrapper for wlr_input_device
 #[derive(Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct Device {
-    pub(crate) device: *mut wlr_input_device
+    pub(crate) device: NonNull<wlr_input_device>
 }
 
 impl Device {
@@ -44,31 +44,31 @@ impl Device {
     }
 
     pub fn vendor(&self) -> c_uint {
-        unsafe { (*self.device).vendor }
+        unsafe { self.device.as_ref().vendor }
     }
 
     pub fn product(&self) -> c_uint {
-        unsafe { (*self.device).product }
+        unsafe { self.device.as_ref().product }
     }
 
     pub fn name(&self) -> Option<String> {
-        unsafe { c_to_rust_string((*self.device).name) }
+        unsafe { c_to_rust_string(self.device.as_ref().name) }
     }
 
     pub fn output_name(&self) -> Option<String> {
-        unsafe { c_to_rust_string((*self.device).output_name) }
+        unsafe { c_to_rust_string(self.device.as_ref().output_name) }
     }
 
     /// Get the size in (width_mm, height_mm) format.
     ///
     /// These values will be 0 if it's not supported.
     pub fn size(&self) -> (c_double, c_double) {
-        unsafe { ((*self.device).width_mm, (*self.device).height_mm) }
+        unsafe { (self.device.as_ref().width_mm, self.device.as_ref().height_mm) }
     }
 
     /// Get the type of the device
     pub fn dev_type(&self) -> wlr_input_device_type {
-        unsafe { (*self.device).type_ }
+        unsafe { self.device.as_ref().type_ }
     }
 
     /// Get a handle to the backing input device.
@@ -76,27 +76,27 @@ impl Device {
         unsafe {
             match self.dev_type() {
                 WLR_INPUT_DEVICE_KEYBOARD => {
-                    let keyboard_ptr = (*self.device).__bindgen_anon_1.keyboard;
+                    let keyboard_ptr = self.device.as_ref().__bindgen_anon_1.keyboard;
                     Handle::Keyboard(keyboard::Handle::from_ptr(keyboard_ptr))
                 },
                 WLR_INPUT_DEVICE_POINTER => {
-                    let pointer_ptr = (*self.device).__bindgen_anon_1.pointer;
+                    let pointer_ptr = self.device.as_ref().__bindgen_anon_1.pointer;
                     Handle::Pointer(pointer::Handle::from_ptr(pointer_ptr))
                 },
                 WLR_INPUT_DEVICE_TOUCH => {
-                    let touch_ptr = (*self.device).__bindgen_anon_1.touch;
+                    let touch_ptr = self.device.as_ref().__bindgen_anon_1.touch;
                     Handle::Touch(touch::Handle::from_ptr(touch_ptr))
                 },
                 WLR_INPUT_DEVICE_TABLET_TOOL => {
-                    let tablet_tool_ptr = (*self.device).__bindgen_anon_1.tablet;
+                    let tablet_tool_ptr = self.device.as_ref().__bindgen_anon_1.tablet;
                     Handle::TabletTool(tablet_tool::Handle::from_ptr(tablet_tool_ptr))
                 },
                 WLR_INPUT_DEVICE_TABLET_PAD => {
-                    let tablet_pad_ptr = (*self.device).__bindgen_anon_1.tablet_pad;
+                    let tablet_pad_ptr = self.device.as_ref().__bindgen_anon_1.tablet_pad;
                     Handle::TabletPad(tablet_pad::Handle::from_ptr(tablet_pad_ptr))
                 },
                 WLR_INPUT_DEVICE_SWITCH => {
-                    let switch_ptr = (*self.device).__bindgen_anon_1.lid_switch;
+                    let switch_ptr = self.device.as_ref().__bindgen_anon_1.lid_switch;
                     Handle::Switch(switch::Handle::from_ptr(switch_ptr))
                 }
             }
@@ -104,14 +104,19 @@ impl Device {
     }
 
     pub(crate) unsafe fn dev_union(&self) -> wlr_input_device_pointer {
-        (*self.device).__bindgen_anon_1
+        self.device.as_ref().__bindgen_anon_1
     }
 
     pub(crate) unsafe fn from_ptr(device: *mut wlr_input_device) -> Self {
-        Device { device: device }
+        let device = NonNull::new(device).expect("Device was null");
+        Device { device }
+    }
+
+    pub(crate) unsafe fn as_non_null(&self) -> NonNull<wlr_input_device> {
+        self.device
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_input_device {
-        self.device
+        self.device.as_ptr()
     }
 }

@@ -1,4 +1,4 @@
-use std::{ptr, cell::Cell, rc::{Rc, Weak}};
+use std::{ptr::NonNull, cell::Cell, rc::{Rc, Weak}};
 
 use libc::{self, size_t, int16_t, uint16_t};
 
@@ -121,7 +121,9 @@ wayland_listener!(pub(crate) Shell, (Surface, Option<Box<Handler>>), [
         manager.destroyed(compositor, surface, shell_surface.weak_reference());
         let surface_ptr = data as *mut wlr_xwayland_surface;
         let shell_state_ptr = (*surface_ptr).data as *mut State;
-        Box::from_raw((*shell_state_ptr).shell);
+        if let Some(shell_ptr) = (*shell_state_ptr).shell {
+            Box::from_raw(shell_ptr.as_ptr());
+        }
     };
     request_configure_listener => request_configure_notify: |this: &mut Shell,
                                                              data: *mut libc::c_void,|
@@ -225,8 +227,8 @@ wayland_listener!(pub(crate) Shell, (Surface, Option<Box<Handler>>), [
                                              shell_surface.weak_reference());
 
         if let Some(surface_handler) = surface_handler {
-            let surface_state = (*(*shell_surface.shell_surface).surface).data as *mut InternalState;
-            (*(*surface_state).surface).data().1 = surface_handler;
+            let surface_state = (*(*shell_surface.shell_surface.as_ptr()).surface).data as *mut InternalState;
+            (*(*surface_state).surface.unwrap().as_ptr()).data().1 = surface_handler;
         }
 
     };
@@ -340,7 +342,7 @@ wayland_listener!(pub(crate) Shell, (Surface, Option<Box<Handler>>), [
 ]);
 
 pub(crate) struct State {
-    pub(crate) shell: *mut Shell,
+    pub(crate) shell: Option<NonNull<Shell>>,
     handle: Weak<Cell<bool>>
 }
 
@@ -355,39 +357,43 @@ pub(crate) struct State {
 #[derive(Debug)]
 pub struct Surface {
     liveliness: Rc<Cell<bool>>,
-    shell_surface: *mut wlr_xwayland_surface
+    shell_surface: NonNull<wlr_xwayland_surface>
 }
 
 impl Surface {
     pub(crate) unsafe fn new(shell_surface: *mut wlr_xwayland_surface) -> Self {
-        (*shell_surface).data = ptr::null_mut();
+        let shell_surface = NonNull::new(shell_surface)
+            .expect("Shell Surface pointer was null");
+        if !(*shell_surface.as_ptr()).data.is_null() {
+            panic!("Shell surface has already been created");
+        }
         let liveliness = Rc::new(Cell::new(false));
-        let state = Box::new(State { shell: ptr::null_mut(), handle: Rc::downgrade(&liveliness) });
-        (*shell_surface).data = Box::into_raw(state) as *mut _;
+        let state = Box::new(State { shell: None, handle: Rc::downgrade(&liveliness) });
+        (*shell_surface.as_ptr()).data = Box::into_raw(state) as *mut _;
         Surface { liveliness,
-                          shell_surface }
+                  shell_surface }
     }
 
     /// Get the window id for this surface.
     pub fn window_id(&self) -> xcb_window_t {
-        unsafe { (*self.shell_surface).window_id }
+        unsafe { (*self.shell_surface.as_ptr()).window_id }
     }
 
     /// Get the surface id for this surface.
     pub fn surface_id(&self) -> u32 {
-        unsafe { (*self.shell_surface).surface_id }
+        unsafe { (*self.shell_surface.as_ptr()).surface_id }
     }
 
     /// Get the Wayland surface associated with this Surface. If the shell surface is not
     /// mapped, then it has no surface, and this will return None.
     pub fn surface(&self) -> Option<surface::Handle> {
         unsafe {
-            let surface = (*self.shell_surface).surface;
+            let surface = (*self.shell_surface.as_ptr()).surface;
 
             if surface.is_null() {
                 None
             } else {
-                Some(surface::Handle::from_ptr((*self.shell_surface).surface))
+                Some(surface::Handle::from_ptr((*self.shell_surface.as_ptr()).surface))
             }
         }
     }
@@ -396,61 +402,61 @@ impl Surface {
     ///
     /// Return format is (x, y)
     pub fn coords(&self) -> (int16_t, int16_t) {
-        unsafe { ((*self.shell_surface).x, (*self.shell_surface).y) }
+        unsafe { ((*self.shell_surface.as_ptr()).x, (*self.shell_surface.as_ptr()).y) }
     }
 
     /// Get the dimensions the XWayland surface.
     ///
     /// Return format is (width, height).
     pub fn dimensions(&self) -> (uint16_t, uint16_t) {
-        unsafe { ((*self.shell_surface).width, (*self.shell_surface).height) }
+        unsafe { ((*self.shell_surface.as_ptr()).width, (*self.shell_surface.as_ptr()).height) }
     }
 
     /// TODO What does this represent?
     ///
     /// Return format is (width, height)
     pub fn saved_dimensions(&self) -> (uint16_t, uint16_t) {
-        unsafe { ((*self.shell_surface).saved_width, (*self.shell_surface).saved_height) }
+        unsafe { ((*self.shell_surface.as_ptr()).saved_width, (*self.shell_surface.as_ptr()).saved_height) }
     }
 
     /// TODO What does this represent?
     pub fn override_redirect(&self) -> bool {
-        unsafe { (*self.shell_surface).override_redirect }
+        unsafe { (*self.shell_surface.as_ptr()).override_redirect }
     }
 
     pub fn mapped(&self) -> bool {
-        unsafe { (*self.shell_surface).mapped }
+        unsafe { (*self.shell_surface.as_ptr()).mapped }
     }
 
     /// Get the title of the client, if there is one.
     pub fn title(&self) -> Option<String> {
-        unsafe { c_to_rust_string((*self.shell_surface).title) }
+        unsafe { c_to_rust_string((*self.shell_surface.as_ptr()).title) }
     }
 
     /// Get the class of the client, if there is one.
     pub fn class(&self) -> Option<String> {
-        unsafe { c_to_rust_string((*self.shell_surface).class) }
+        unsafe { c_to_rust_string((*self.shell_surface.as_ptr()).class) }
     }
 
     /// Get the instance of the client, if there is one.
     pub fn instance(&self) -> Option<String> {
-        unsafe { c_to_rust_string((*self.shell_surface).instance) }
+        unsafe { c_to_rust_string((*self.shell_surface.as_ptr()).instance) }
     }
 
     /// Get the PID associated with the client.
     pub fn pid(&self) -> pid_t {
-        unsafe { (*self.shell_surface).pid }
+        unsafe { (*self.shell_surface.as_ptr()).pid }
     }
 
     // TODO
     //pub fn has_utf8_title(&self) -> bool {
-    //    unsafe { (*self.shell_surface).has_utf8_title }
+    //    unsafe { (*self.shell_surface.as_ptr()).has_utf8_title }
     //}
 
     /// Get the parent surface if there is one.
     pub fn parent(&self) -> Option<Handle> {
         unsafe {
-            let parent_ptr = (*self.shell_surface).parent;
+            let parent_ptr = (*self.shell_surface.as_ptr()).parent;
             if parent_ptr.is_null() {
                 None
             } else {
@@ -463,7 +469,7 @@ impl Surface {
     pub fn children(&self) -> Vec<Handle> {
         unsafe {
             let mut result = Vec::new();
-            wl_list_for_each!((*self.shell_surface).children,
+            wl_list_for_each!((*self.shell_surface.as_ptr()).children,
                               parent_link,
                               (child: wlr_xwayland_surface) => {
                                   result.push(Handle::from_ptr(child))
@@ -474,80 +480,80 @@ impl Surface {
 
     /// Get the type of the window from xcb.
     pub unsafe fn window_type(&self) -> *mut xcb_atom_t {
-        (*self.shell_surface).window_type
+        (*self.shell_surface.as_ptr()).window_type
     }
 
     /// Get the length of the window_type ptr
     pub unsafe fn window_type_len(&self) -> size_t {
-        (*self.shell_surface).window_type_len
+        (*self.shell_surface.as_ptr()).window_type_len
     }
 
     /// Get the protocols of the client.
     pub unsafe fn protocols(&self) -> *mut xcb_atom_t {
-        (*self.shell_surface).protocols
+        (*self.shell_surface.as_ptr()).protocols
     }
 
     /// Get the length of the protocols ptr.
     pub unsafe fn protocols_len(&self) -> size_t {
-        (*self.shell_surface).protocols_len
+        (*self.shell_surface.as_ptr()).protocols_len
     }
 
     /// Get the decorations on this XWayland client.
     pub fn decorations(&self) -> u32 {
-        unsafe { (*self.shell_surface).decorations }
+        unsafe { (*self.shell_surface.as_ptr()).decorations }
     }
 
     /// Get any surface hints the client is providing.
     pub fn hints<'surface>(&'surface self) -> xwayland::surface::Hints<'surface> {
-        unsafe { xwayland::surface::Hints::from_ptr((*self.shell_surface).hints) }
+        unsafe { xwayland::surface::Hints::from_ptr((*self.shell_surface.as_ptr()).hints) }
     }
 
     /// Get any size hints the client is providing.
     pub fn size_hints<'surface>(&'surface self) -> xwayland::surface::SizeHints<'surface> {
-        unsafe { xwayland::surface::SizeHints::from_ptr((*self.shell_surface).size_hints) }
+        unsafe { xwayland::surface::SizeHints::from_ptr((*self.shell_surface.as_ptr()).size_hints) }
     }
 
     /// Get the urgency of the hints.
     pub fn hints_urgency(&self) -> u32 {
-        unsafe { (*self.shell_surface).hints_urgency }
+        unsafe { (*self.shell_surface.as_ptr()).hints_urgency }
     }
 
     pub fn pinging(&self) -> bool {
-        unsafe { (*self.shell_surface).pinging }
+        unsafe { (*self.shell_surface.as_ptr()).pinging }
     }
 
     pub unsafe fn ping_timer(&self) -> *mut wl_event_source {
-        (*self.shell_surface).ping_timer
+        (*self.shell_surface.as_ptr()).ping_timer
     }
 
     /// Determine if the client is fullscreen or not.
     pub fn fullscreen(&self) -> bool {
-        unsafe { (*self.shell_surface).fullscreen }
+        unsafe { (*self.shell_surface.as_ptr()).fullscreen }
     }
 
     /// Determine if the client is maximized vertically.
     pub fn maximized_vert(&self) -> bool {
-        unsafe { (*self.shell_surface).maximized_vert }
+        unsafe { (*self.shell_surface.as_ptr()).maximized_vert }
     }
 
     /// Determine if the client is maximized horizontally.
     pub fn maximized_horz(&self) -> bool {
-        unsafe { (*self.shell_surface).maximized_horz }
+        unsafe { (*self.shell_surface.as_ptr()).maximized_horz }
     }
 
     /// Determine if the client has an alpha channel.
     pub fn has_alpha(&self) -> bool {
-        unsafe { (*self.shell_surface).has_alpha }
+        unsafe { (*self.shell_surface.as_ptr()).has_alpha }
     }
 
     /// Geometry of the surface in layout-local coordinates
     pub fn geometry(&self) -> Area {
         let (x, y, width, height) = unsafe {
             (
-                (*self.shell_surface).x as i32,
-                (*self.shell_surface).y as i32,
-                (*self.shell_surface).width as i32,
-                (*self.shell_surface).height as i32
+                (*self.shell_surface.as_ptr()).x as i32,
+                (*self.shell_surface.as_ptr()).y as i32,
+                (*self.shell_surface.as_ptr()).width as i32,
+                (*self.shell_surface.as_ptr()).height as i32
             )
         };
         Area {
@@ -559,13 +565,13 @@ impl Surface {
     /// Send the surface a configure request, requesting the new position and dimensions
     pub fn configure(&self, x: i16, y: i16, width: u16, height: u16) {
         unsafe {
-            wlr_xwayland_surface_configure(self.shell_surface, x, y, width, height);
+            wlr_xwayland_surface_configure(self.shell_surface.as_ptr(), x, y, width, height);
         }
     }
 
     /// Tell the window whether it is the foucsed window
     pub fn set_activated(&self, active: bool) {
-        unsafe { wlr_xwayland_surface_activate(self.shell_surface, active); }
+        unsafe { wlr_xwayland_surface_activate(self.shell_surface.as_ptr(), active); }
     }
 }
 
@@ -575,7 +581,7 @@ impl Drop for Surface {
             return
         }
         unsafe {
-            Box::from_raw((*self.shell_surface).data as *mut State);
+            Box::from_raw((*self.shell_surface.as_ptr()).data as *mut State);
         }
     }
 }
@@ -583,17 +589,15 @@ impl Drop for Surface {
 impl Handleable<(), wlr_xwayland_surface> for Surface {
     #[doc(hidden)]
     unsafe fn from_ptr(shell_surface: *mut wlr_xwayland_surface) -> Option<Self> {
-        if (*shell_surface).data.is_null() {
-            return None
-        }
-        let data = (*shell_surface).data as *mut State;
+        let shell_surface = NonNull::new(shell_surface)?;
+        let data = (*shell_surface.as_ptr()).data as *mut State;
         let liveliness = (*data).handle.upgrade().unwrap();
         Some(Surface { liveliness, shell_surface })
     }
 
     #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut wlr_xwayland_surface {
-        self.shell_surface
+        self.shell_surface.as_ptr()
     }
 
     #[doc(hidden)]
@@ -602,7 +606,7 @@ impl Handleable<(), wlr_xwayland_surface> for Surface {
             .upgrade()
             .ok_or_else(|| HandleErr::AlreadyDropped)?;
         Ok(Surface { liveliness,
-                     shell_surface: handle.as_ptr() })
+                     shell_surface: handle.as_non_null() })
     }
 
     /// Creates a weak reference to an `Surface`.

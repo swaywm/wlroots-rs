@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
 use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -49,11 +49,13 @@ pub struct Subsurface {
     /// marked function `upgrade` on a `surface::Handle`.
     liveliness: Rc<Cell<bool>>,
     /// The pointer to the wlroots object that wraps a wl_surface.
-    subsurface: *mut wlr_subsurface
+    subsurface: NonNull<wlr_subsurface>
 }
 
 impl Subsurface {
     pub(crate) unsafe fn new(subsurface: *mut wlr_subsurface) -> Self {
+        let subsurface = NonNull::new(subsurface)
+            .expect("Subsurface pointer was null");
         let liveliness = Rc::new(Cell::new(false));
         Subsurface { subsurface,
                      liveliness }
@@ -61,46 +63,44 @@ impl Subsurface {
 
     /// Get a handle to the surface for this sub surface.
     pub fn surface(&self) -> surface::Handle {
-        unsafe { surface::Handle::from_ptr((*self.subsurface).surface) }
+        unsafe { surface::Handle::from_ptr((*self.subsurface.as_ptr()).surface) }
     }
 
     /// Get a handle to the parent surface for this sub surface.
     pub fn parent_surface(&self) -> surface::Handle {
-        unsafe { surface::Handle::from_ptr((*self.subsurface).parent) }
+        unsafe { surface::Handle::from_ptr((*self.subsurface.as_ptr()).parent) }
     }
 
     /// Get the cached state of the sub surface.
     pub fn cached_state<'surface>(&'surface self) -> Option<surface::State<'surface>> {
         unsafe {
-            if (*self.subsurface).has_cache {
+            if (*self.subsurface.as_ptr()).has_cache {
                 None
             } else {
-                Some(surface::State::new((*self.subsurface).cached))
+                Some(surface::State::new((*self.subsurface.as_ptr()).cached))
             }
         }
     }
 
     /// Determine if the sub surface has a cached state.
     pub fn has_cache(&self) -> bool {
-        unsafe { (*self.subsurface).has_cache }
+        unsafe { (*self.subsurface.as_ptr()).has_cache }
     }
 
     pub fn synchronized(&self) -> bool {
-        unsafe { (*self.subsurface).synchronized }
+        unsafe { (*self.subsurface.as_ptr()).synchronized }
     }
 
     pub fn reordered(&self) -> bool {
-        unsafe { (*self.subsurface).reordered }
+        unsafe { (*self.subsurface.as_ptr()).reordered }
     }
 }
 
 impl Handleable<(), wlr_subsurface> for Subsurface {
     #[doc(hidden)]
     unsafe fn from_ptr(subsurface: *mut wlr_subsurface) -> Option<Self> {
-        if (*subsurface).data.is_null() {
-            return None
-        }
-        let data = (*subsurface).data as *mut InternalSubsurface;
+        let subsurface = NonNull::new(subsurface)?;
+        let data = (*subsurface.as_ptr()).data as *mut InternalSubsurface;
         Some(Subsurface {liveliness: (*data).data.0.liveliness.clone(),
                          subsurface
         })
@@ -108,7 +108,7 @@ impl Handleable<(), wlr_subsurface> for Subsurface {
 
     #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut wlr_subsurface {
-        self.subsurface
+        self.subsurface.as_ptr()
     }
 
     #[doc(hidden)]
