@@ -96,12 +96,14 @@ impl Subsurface {
 
 impl Handleable<(), wlr_subsurface> for Subsurface {
     #[doc(hidden)]
-    unsafe fn from_ptr(subsurface: *mut wlr_subsurface) -> Self {
-        let data = (*subsurface).data as *mut InternalSubsurface;
-        Subsurface {
-            liveliness: (*data).data.0.liveliness.clone(),
-            subsurface
+    unsafe fn from_ptr(subsurface: *mut wlr_subsurface) -> Option<Self> {
+        if (*subsurface).data.is_null() {
+            return None
         }
+        let data = (*subsurface).data as *mut InternalSubsurface;
+        Some(Subsurface {liveliness: (*data).data.0.liveliness.clone(),
+                         subsurface
+        })
     }
 
     #[doc(hidden)]
@@ -121,7 +123,7 @@ impl Handleable<(), wlr_subsurface> for Subsurface {
     fn weak_reference(&self) -> Handle {
         Handle { ptr: self.subsurface,
                  handle: Rc::downgrade(&self.liveliness),
-                 data: (),
+                 data: Some(()),
                  _marker: std::marker::PhantomData
         }
     }

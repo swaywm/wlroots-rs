@@ -223,16 +223,19 @@ impl Drop for Surface {
 
 impl Handleable<OptionalShellState, wlr_xdg_surface> for Surface {
     #[doc(hidden)]
-    unsafe fn from_ptr(shell_surface: *mut wlr_xdg_surface) -> Self {
+    unsafe fn from_ptr(shell_surface: *mut wlr_xdg_surface) -> Option<Self> {
+        if (*shell_surface).data.is_null() {
+            return None
+        }
         let data = &mut *((*shell_surface).data as *mut SurfaceState);
         let state = match data.shell_state {
             None => None,
             Some(ref state) => Some(state.clone())
         };
         let liveliness = data.handle.upgrade().unwrap();
-        Surface { liveliness,
-                  state,
-                  shell_surface }
+        Some(Surface { liveliness,
+                       state,
+                       shell_surface })
     }
 
     #[doc(hidden)]
@@ -247,16 +250,16 @@ impl Handleable<OptionalShellState, wlr_xdg_surface> for Surface {
             .ok_or_else(|| HandleErr::AlreadyDropped)?;
         Ok(Surface { liveliness,
                      shell_surface: handle.ptr,
-                     state: handle.data.clone().0 })
+                     state: handle.data.clone().and_then(|d| d.0) })
     }
 
     fn weak_reference(&self) -> Handle {
         Handle { ptr: self.shell_surface,
                  handle: Rc::downgrade(&self.liveliness),
-                 data: OptionalShellState(match self.state {
+                 data: Some(OptionalShellState(match self.state {
                      None => None,
                      Some(ref state) => Some(unsafe { state.clone() })
-                 }),
+                 })),
                  _marker: std::marker::PhantomData }
     }
 }

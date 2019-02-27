@@ -37,7 +37,7 @@ pub struct Handle<D: Clone, T, W: Handleable<D, T> + Sized> {
     pub(crate) ptr: *mut T,
     pub(crate) handle: Weak<Cell<bool>>,
     pub(crate) _marker: PhantomData<W>,
-    pub(crate) data: D
+    pub(crate) data: Option<D>
 }
 
 pub trait Handleable<D: Clone, T> {
@@ -48,7 +48,7 @@ pub trait Handleable<D: Clone, T> {
     /// The pointer must be valid and must already have been set up by wlroots-rs
     /// internal mechanisms. If you have to ask, it probably isn't.
     #[doc(hidden)]
-    unsafe fn from_ptr(resource_ptr: *mut T) -> Self where Self: Sized;
+    unsafe fn from_ptr(resource_ptr: *mut T) -> Option<Self> where Self: Sized;
 
     /// Gets the pointer to the resource this object manages.
     #[doc(hidden)]
@@ -97,7 +97,7 @@ impl <D: Clone, T, W: Handleable<D, T>> PartialEq for Handle<D, T, W> {
 
 impl <D: Clone, T, W: Handleable<D, T>> Eq for Handle<D, T, W> {}
 
-impl <D: Default + Clone, T, W: Handleable<D, T>> Default for Handle<D, T, W> {
+impl <D: Clone, T, W: Handleable<D, T>> Default for Handle<D, T, W> {
     /// Constructs a new handle that is always invalid. Calling `run` on this
     /// will always fail.
     ///
@@ -107,7 +107,7 @@ impl <D: Default + Clone, T, W: Handleable<D, T>> Default for Handle<D, T, W> {
         Handle { ptr: ptr::null_mut(),
                  handle: Weak::new(),
                  _marker: PhantomData,
-                 data: D::default() }
+                 data: None }
     }
 }
 
@@ -119,8 +119,14 @@ impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
     /// This function is allowed to panic when attempting to upgrade the handle.
     #[allow(dead_code)]
     pub(crate) unsafe fn from_ptr(ptr: *mut T) -> Handle<D, T, W> {
-        let wrapped_resource = W::from_ptr(ptr);
-        wrapped_resource.weak_reference()
+        match W::from_ptr(ptr) {
+            Some(wrapped_resource) => wrapped_resource.weak_reference(),
+            None => {
+                let mut handle = Self::default();
+                handle.ptr = ptr;
+                handle
+            }
+        }
     }
 
     /// Get the pointer to the resource this manages.

@@ -81,14 +81,17 @@ impl Drop for Switch {
 
 impl Handleable<*mut wlr_input_device, wlr_switch> for Switch {
     #[doc(hidden)]
-    unsafe fn from_ptr(switch: *mut wlr_switch) -> Self {
+    unsafe fn from_ptr(switch: *mut wlr_switch) -> Option<Self> {
+        if (*switch).data.is_null() {
+            return None
+        }
         let data = Box::from_raw((*switch).data as *mut InputState);
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*switch).data = Box::into_raw(data) as *mut _;
-        Switch { liveliness: handle.upgrade().unwrap(),
-                 device,
-                 switch }
+        Some(Switch { liveliness: handle.upgrade().unwrap(),
+                      device,
+                      switch })
     }
 
     #[doc(hidden)]
@@ -101,10 +104,11 @@ impl Handleable<*mut wlr_input_device, wlr_switch> for Switch {
         let liveliness = handle.handle
             .upgrade()
             .ok_or(HandleErr::AlreadyDropped)?;
+        let device = handle.data.ok_or(HandleErr::AlreadyDropped)?;
         Ok(Switch { liveliness,
                     // NOTE Rationale for cloning:
                     // If we already dropped we don't reach this point.
-                    device: input::Device { device: handle.data },
+                    device: input::Device { device },
                     switch: handle.as_ptr()
         })
     }
@@ -115,7 +119,7 @@ impl Handleable<*mut wlr_input_device, wlr_switch> for Switch {
                  // NOTE Rationale for cloning:
                  // Since we have a strong reference already,
                  // the input must still be alive.
-                 data: unsafe { self.device.as_ptr() },
+                 data: unsafe { Some(self.device.as_ptr()) },
                  _marker: std::marker::PhantomData
         }
     }

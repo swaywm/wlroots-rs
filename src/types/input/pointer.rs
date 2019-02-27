@@ -87,14 +87,17 @@ impl Drop for Pointer {
 
 impl Handleable<*mut wlr_input_device, wlr_pointer> for Pointer {
     #[doc(hidden)]
-    unsafe fn from_ptr(pointer: *mut wlr_pointer) -> Self {
+    unsafe fn from_ptr(pointer: *mut wlr_pointer) -> Option<Self> {
+        if (*pointer).data.is_null() {
+            return None
+        }
         let data = Box::from_raw((*pointer).data as *mut InputState);
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*pointer).data = Box::into_raw(data) as *mut _;
-        Pointer { liveliness: handle.upgrade().unwrap(),
-                  device,
-                  pointer }
+        Some(Pointer { liveliness: handle.upgrade().unwrap(),
+                       device,
+                       pointer })
     }
 
     #[doc(hidden)]
@@ -107,10 +110,11 @@ impl Handleable<*mut wlr_input_device, wlr_pointer> for Pointer {
         let liveliness = handle.handle
             .upgrade()
             .ok_or(HandleErr::AlreadyDropped)?;
+        let device = handle.data.ok_or(HandleErr::AlreadyDropped)?;
         Ok(Pointer { liveliness,
                      // NOTE Rationale for cloning:
                      // If we already dropped we don't reach this point.
-                     device: input::Device { device: handle.data },
+                     device: input::Device { device },
                      pointer: handle.as_ptr()
         })
     }
@@ -121,7 +125,7 @@ impl Handleable<*mut wlr_input_device, wlr_pointer> for Pointer {
                  // NOTE Rationale for cloning:
                  // Since we have a strong reference already,
                  // the input must still be alive.
-                 data: unsafe { self.device.as_ptr() },
+                 data: unsafe { Some(self.device.as_ptr()) },
                  _marker: std::marker::PhantomData
         }
     }

@@ -98,14 +98,17 @@ impl Drop for TabletTool {
 
 impl Handleable<*mut wlr_input_device, wlr_tablet> for TabletTool {
     #[doc(hidden)]
-    unsafe fn from_ptr(tool: *mut wlr_tablet) -> Self {
+    unsafe fn from_ptr(tool: *mut wlr_tablet) -> Option<Self> {
+        if (*tool).data.is_null() {
+            return None
+        }
         let data = Box::from_raw((*tool).data as *mut InputState);
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*tool).data = Box::into_raw(data) as *mut _;
-        TabletTool { liveliness: handle.upgrade().unwrap(),
-                     device,
-                     tool }
+        Some(TabletTool { liveliness: handle.upgrade().unwrap(),
+                          device,
+                          tool })
     }
 
     #[doc(hidden)]
@@ -118,10 +121,11 @@ impl Handleable<*mut wlr_input_device, wlr_tablet> for TabletTool {
         let liveliness = handle.handle
             .upgrade()
             .ok_or(HandleErr::AlreadyDropped)?;
+        let device = handle.data.ok_or(HandleErr::AlreadyDropped)?;
         Ok(TabletTool { liveliness,
                         // NOTE Rationale for cloning:
                         // If we already dropped we don't reach this point.
-                        device: input::Device { device: handle.data },
+                        device: input::Device { device },
                         tool: handle.as_ptr()
         })
     }
@@ -132,7 +136,7 @@ impl Handleable<*mut wlr_input_device, wlr_tablet> for TabletTool {
                  // NOTE Rationale for cloning:
                  // Since we have a strong reference already,
                  // the input must still be alive.
-                 data: unsafe { self.device.as_ptr() },
+                 data: unsafe { Some(self.device.as_ptr()) },
                  _marker: std::marker::PhantomData
         }
     }

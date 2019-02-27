@@ -452,14 +452,17 @@ impl Drop for Output {
 
 impl Handleable<*mut wlr_output_damage, wlr_output> for Output {
     #[doc(hidden)]
-    unsafe fn from_ptr(ptr: *mut wlr_output) -> Self where Self: Sized {
+    unsafe fn from_ptr(ptr: *mut wlr_output) -> Option<Self> {
+        if (*ptr).data.is_null() {
+            return None
+        }
         let data = Box::from_raw((*ptr).data as *mut OutputState);
         let handle = data.handle.clone();
         let damage = data.damage;
         (*ptr).data = Box::into_raw(data) as *mut _;
-        Output { liveliness: handle.upgrade().unwrap(),
-                 damage: ManuallyDrop::new(output::Damage::from_ptr(damage)),
-                 output: ptr}
+        Some(Output { liveliness: handle.upgrade().unwrap(),
+                      damage: ManuallyDrop::new(output::Damage::from_ptr(damage)),
+                      output: ptr})
 
     }
 
@@ -473,15 +476,16 @@ impl Handleable<*mut wlr_output_damage, wlr_output> for Output {
         let liveliness = handle.handle
             .upgrade()
             .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        let damage_ptr = handle.data.ok_or(HandleErr::AlreadyDropped)?;
         Ok(Output { liveliness,
-                    damage: ManuallyDrop::new(output::Damage::from_ptr(handle.data)),
+                    damage: ManuallyDrop::new(output::Damage::from_ptr(damage_ptr)),
                     output: handle.as_ptr() })
     }
 
     fn weak_reference(&self) -> Handle {
         Handle { ptr: self.output,
                  handle: Rc::downgrade(&self.liveliness),
-                 data: unsafe { self.damage.as_ptr() },
+                 data: unsafe { Some(self.damage.as_ptr()) },
                  _marker: std::marker::PhantomData }
     }
 }

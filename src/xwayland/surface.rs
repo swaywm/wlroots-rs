@@ -582,10 +582,13 @@ impl Drop for Surface {
 
 impl Handleable<(), wlr_xwayland_surface> for Surface {
     #[doc(hidden)]
-    unsafe fn from_ptr(shell_surface: *mut wlr_xwayland_surface) -> Self {
+    unsafe fn from_ptr(shell_surface: *mut wlr_xwayland_surface) -> Option<Self> {
+        if (*shell_surface).data.is_null() {
+            return None
+        }
         let data = (*shell_surface).data as *mut State;
         let liveliness = (*data).handle.upgrade().unwrap();
-        Surface { liveliness, shell_surface }
+        Some(Surface { liveliness, shell_surface })
     }
 
     #[doc(hidden)]
@@ -607,7 +610,7 @@ impl Handleable<(), wlr_xwayland_surface> for Surface {
         Handle { ptr: self.shell_surface,
                  handle: Rc::downgrade(&self.liveliness),
                  _marker: std::marker::PhantomData,
-                 data: () }
+                 data: Some(()) }
     }
 }
 
