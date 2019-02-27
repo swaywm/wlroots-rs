@@ -99,7 +99,9 @@ wayland_listener!(pub(crate) UserOutput, (Output, Box<Handler>), [
                       wl_list_remove,
                       &mut (*this.need_swap_listener()).link as *mut _ as _);
         let output_data = (*output_ptr).data as *mut OutputState;
-        Box::from_raw((*output_data).output as *mut UserOutput);
+        if let Some(output_ptr) = (*output_data).output {
+            Box::from_raw(output_ptr.as_ptr());
+        }
     };
     frame_listener => frame_notify: |this: &mut UserOutput, _output: *mut libc::c_void,| unsafe {
         let (ref output, ref mut manager) = this.data;

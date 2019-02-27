@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
 use {
     input::{self, InputState},
@@ -9,7 +9,7 @@ use wlroots_sys::{wlr_input_device, wlr_switch};
 pub use manager::switch_handler::*;
 pub use events::switch_events as event;
 
-pub type Handle = utils::Handle<*mut wlr_input_device, wlr_switch, Switch>;
+pub type Handle = utils::Handle<NonNull<wlr_input_device>, wlr_switch, Switch>;
 
 #[derive(Debug)]
 pub struct Switch {
@@ -26,7 +26,7 @@ pub struct Switch {
     /// The device that refers to this pointer.
     device: input::Device,
     /// The underlying switch data.
-    switch: *mut wlr_switch
+    switch: NonNull<wlr_switch>
 }
 
 impl Switch {
@@ -41,12 +41,13 @@ impl Switch {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_SWITCH => {
-                let switch = (*device).__bindgen_anon_1.lid_switch;
+                let switch = NonNull::new((*device).__bindgen_anon_1.lid_switch)
+                    .expect("Switch pointer was null");
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
                 let state = Box::new(InputState { handle,
                                                   device: input::Device::from_ptr(device) });
-                (*switch).data = Box::into_raw(state) as *mut _;
+                (*switch.as_ptr()).data = Box::into_raw(state) as *mut _;
                 Some(Switch { liveliness,
                               device: input::Device::from_ptr(device),
                               switch })
@@ -64,36 +65,37 @@ impl Switch {
 impl Drop for Switch {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) == 1 {
-            wlr_log!(WLR_DEBUG, "Dropped Switch {:p}", self.switch);
+            wlr_log!(WLR_DEBUG, "Dropped Switch {:p}", self.switch.as_ptr());
             unsafe {
-                let _ = Box::from_raw((*self.switch).data as *mut InputState);
+                let _ = Box::from_raw((*self.switch.as_ptr()).data as *mut InputState);
             }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
                 wlr_log!(WLR_DEBUG,
                          "Still {} weak pointers to Switch {:p}",
                          weak_count,
-                         self.switch);
+                         self.switch.as_ptr());
             }
         }
     }
 }
 
-impl Handleable<*mut wlr_input_device, wlr_switch> for Switch {
+impl Handleable<NonNull<wlr_input_device>, wlr_switch> for Switch {
     #[doc(hidden)]
-    unsafe fn from_ptr(switch: *mut wlr_switch) -> Self {
-        let data = Box::from_raw((*switch).data as *mut InputState);
+    unsafe fn from_ptr(switch: *mut wlr_switch) -> Option<Self> {
+        let switch = NonNull::new(switch)?;
+        let data = Box::from_raw((*switch.as_ptr()).data as *mut InputState);
         let handle = data.handle.clone();
         let device = data.device.clone();
-        (*switch).data = Box::into_raw(data) as *mut _;
-        Switch { liveliness: handle.upgrade().unwrap(),
-                 device,
-                 switch }
+        (*switch.as_ptr()).data = Box::into_raw(data) as *mut _;
+        Some(Switch { liveliness: handle.upgrade().unwrap(),
+                      device,
+                      switch })
     }
 
     #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut wlr_switch {
-        self.switch
+        self.switch.as_ptr()
     }
 
     #[doc(hidden)]
@@ -101,11 +103,12 @@ impl Handleable<*mut wlr_input_device, wlr_switch> for Switch {
         let liveliness = handle.handle
             .upgrade()
             .ok_or(HandleErr::AlreadyDropped)?;
+        let device = handle.data.ok_or(HandleErr::AlreadyDropped)?;
         Ok(Switch { liveliness,
                     // NOTE Rationale for cloning:
                     // If we already dropped we don't reach this point.
-                    device: input::Device { device: handle.data },
-                    switch: handle.as_ptr()
+                    device: input::Device { device },
+                    switch: handle.as_non_null()
         })
     }
 
@@ -115,7 +118,7 @@ impl Handleable<*mut wlr_input_device, wlr_switch> for Switch {
                  // NOTE Rationale for cloning:
                  // Since we have a strong reference already,
                  // the input must still be alive.
-                 data: unsafe { self.device.as_ptr() },
+                 data: unsafe { Some(self.device.as_non_null()) },
                  _marker: std::marker::PhantomData
         }
     }

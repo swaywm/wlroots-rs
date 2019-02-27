@@ -290,7 +290,7 @@ wayland_listener!(pub Seat, (*mut wlr_seat, Box<Handler>), [
 
         if let Some(surface_handler) = surface_handler {
             let surface_state = (*(*data).surface).data as *mut surface::InternalState;
-            (*(*surface_state).surface).data().1 = surface_handler;
+            (*(*surface_state).surface.unwrap().as_ptr()).data().1 = surface_handler;
         }
 
         if let Some(drag_icon_handler) = drag_icon_handler {

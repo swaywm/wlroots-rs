@@ -1,3 +1,5 @@
+use std::ptr::NonNull;
+
 use libc;
 use wlroots_sys::{wlr_backend, wlr_headless_backend_create, wlr_headless_add_output,
                   wlr_headless_add_input_device, wlr_input_device_is_headless,
@@ -54,11 +56,8 @@ impl Headless {
     pub fn add_input_device(&self, input_type: wlr_input_device_type) -> Option<input::Handle> {
         unsafe {
             let device = wlr_headless_add_input_device(self.backend, input_type);
-            if device.is_null() {
-                None
-            } else {
-                Some(input::Device { device }.device())
-            }
+            let device = NonNull::new(device)?;
+            Some(input::Device { device }.device())
         }
     }
 

@@ -1,7 +1,7 @@
 //! The generic implementation of a "handle" proxy object used throughout wlroots-rs.
 
 use std::{clone::Clone, cell::Cell, error::Error, fmt, rc::Weak,
-          hash::{Hash, Hasher}, ptr, panic, marker::PhantomData};
+          hash::{Hash, Hasher}, ptr::NonNull, panic, marker::PhantomData};
 
 /// The result of trying to upgrade a handle, either using `run` or
 /// `with_handles!`.
@@ -34,10 +34,10 @@ pub enum HandleErr {
 /// Please refer to the specific resource documentation for a description of
 /// the lifetime particular to that resource.
 pub struct Handle<D: Clone, T, W: Handleable<D, T> + Sized> {
-    pub(crate) ptr: *mut T,
+    pub(crate) ptr: NonNull<T>,
     pub(crate) handle: Weak<Cell<bool>>,
     pub(crate) _marker: PhantomData<W>,
-    pub(crate) data: D
+    pub(crate) data: Option<D>
 }
 
 pub trait Handleable<D: Clone, T> {
@@ -48,7 +48,7 @@ pub trait Handleable<D: Clone, T> {
     /// The pointer must be valid and must already have been set up by wlroots-rs
     /// internal mechanisms. If you have to ask, it probably isn't.
     #[doc(hidden)]
-    unsafe fn from_ptr(resource_ptr: *mut T) -> Self where Self: Sized;
+    unsafe fn from_ptr(resource_ptr: *mut T) -> Option<Self> where Self: Sized;
 
     /// Gets the pointer to the resource this object manages.
     #[doc(hidden)]
@@ -79,13 +79,13 @@ impl <D: Clone, T, W: Handleable<D, T>> Clone for Handle<D, T, W> {
 
 impl <D: Clone, T, W: Handleable<D, T>> fmt::Debug for Handle<D, T, W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Handle with pointer: {:p}", self.ptr)
+        write!(f, "Handle with pointer: {:p}", self.ptr.as_ptr())
     }
 }
 
 impl <D: Clone, T, W: Handleable<D, T>> Hash for Handle<D, T, W> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.ptr.hash(state);
+        self.ptr.as_ptr().hash(state);
     }
 }
 
@@ -97,17 +97,17 @@ impl <D: Clone, T, W: Handleable<D, T>> PartialEq for Handle<D, T, W> {
 
 impl <D: Clone, T, W: Handleable<D, T>> Eq for Handle<D, T, W> {}
 
-impl <D: Default + Clone, T, W: Handleable<D, T>> Default for Handle<D, T, W> {
+impl <D: Clone, T, W: Handleable<D, T>> Default for Handle<D, T, W> {
     /// Constructs a new handle that is always invalid. Calling `run` on this
     /// will always fail.
     ///
     /// This is useful for pre-filling a value before it's provided by the server, or
     /// for mocking/testing.
     fn default() -> Self {
-        Handle { ptr: ptr::null_mut(),
+        Handle { ptr: NonNull::dangling(),
                  handle: Weak::new(),
                  _marker: PhantomData,
-                 data: D::default() }
+                 data: None }
     }
 }
 
@@ -118,9 +118,28 @@ impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
     /// # Panics
     /// This function is allowed to panic when attempting to upgrade the handle.
     #[allow(dead_code)]
-    pub(crate) unsafe fn from_ptr(ptr: *mut T) -> Handle<D, T, W> {
-        let wrapped_resource = W::from_ptr(ptr);
-        wrapped_resource.weak_reference()
+    pub(crate) unsafe fn from_ptr(raw_ptr: *mut T) -> Handle<D, T, W> {
+        let ptr = match NonNull::new(raw_ptr) {
+            Some(ptr) => ptr,
+            None => return Self::default()
+        };
+        match W::from_ptr(ptr.as_ptr()) {
+            Some(wrapped_resource) => wrapped_resource.weak_reference(),
+            None => {
+                let mut handle = Self::default();
+                handle.ptr = ptr;
+                handle
+            }
+        }
+    }
+
+    /// Get a non-null pointer to the resource this manages.
+    ///
+    /// # Safety
+    /// There's no guarantees that this pointer is not dangling.
+    #[doc(hidden)]
+    pub unsafe fn as_non_null(&self) -> NonNull<T> {
+        self.ptr
     }
 
     /// Get the pointer to the resource this manages.
@@ -129,7 +148,7 @@ impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
     /// There's no guarantees that this pointer is not dangling.
     #[doc(hidden)]
     pub unsafe fn as_ptr(&self) -> *mut T {
-        self.ptr
+        self.ptr.as_ptr()
     }
 
     /// Run a function with a reference to the resource if it's still alive.

@@ -1,6 +1,6 @@
 //! Manager that is called when an output is created or destroyed.
 
-use std::{marker::PhantomData, panic};
+use std::{marker::PhantomData, panic, ptr::NonNull};
 
 use libc;
 use wayland_sys::server::signal::wl_signal_add;
@@ -111,7 +111,7 @@ wayland_listener_static! {
                 wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
                               output.on_destroy_listener() as _);
                 let output_data = (*data).data as *mut OutputState;
-                (*output_data).output = Box::into_raw(output);
+                (*output_data).output = NonNull::new(Box::into_raw(output));
             }
         };
     ]

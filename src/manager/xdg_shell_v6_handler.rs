@@ -112,7 +112,9 @@ wayland_listener!(pub(crate) XdgShellV6, (xdg_shell_v6::Surface, Option<Box<Hand
         manager.destroyed(compositor, shell_surface.weak_reference());
         let surface_ptr = data as *mut wlr_xdg_surface_v6;
         let shell_state_ptr = (*surface_ptr).data as *mut SurfaceState;
-        Box::from_raw((*shell_state_ptr).shell);
+        if let Some(shell_ptr) = (*shell_state_ptr).shell {
+            Box::from_raw(shell_ptr.as_ptr());
+        }
     };
     commit_listener => commit_notify: |this: &mut XdgShellV6, _data: *mut libc::c_void,| unsafe {
         let (ref mut shell_surface, ref mut manager) = match &mut this.data {

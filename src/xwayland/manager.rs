@@ -7,6 +7,8 @@
 //! Pass that function to the [`xwayland::Builder`](./struct.Builder.html)
 //! which is then passed to the `compositor::Builder`.
 
+use std::ptr::NonNull;
+
 use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_xwayland_surface;
@@ -78,7 +80,7 @@ wayland_listener_static! {
             wl_signal_add(&mut (*surface_ptr).events.ping_timeout as *mut _ as _,
                           shell.ping_timeout_listener() as *mut _ as _);
             let shell_data = (*surface_ptr).data as *mut xwayland::surface::State;
-            (*shell_data).shell = Box::into_raw(shell);
+            (*shell_data).shell = NonNull::new(Box::into_raw(shell));
             // TODO Pass in the new surface from the data
         };
     ]

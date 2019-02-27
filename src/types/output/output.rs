@@ -1,7 +1,7 @@
 //! TODO Documentation
 
-use std::{cell::Cell, ffi::CStr, mem::ManuallyDrop, rc::{Rc, Weak},
-          time::Duration, panic, ptr};
+use std::{cell::Cell, ffi::CStr, mem::ManuallyDrop, ptr::NonNull,
+          rc::{Rc, Weak}, time::Duration, panic, ptr};
 
 use libc::{c_float, c_int, clock_t};
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
@@ -26,9 +26,9 @@ pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;
 
 pub(crate) struct OutputState {
-    pub(crate) output: *mut UserOutput,
+    pub(crate) output: Option<NonNull<UserOutput>>,
     handle: Weak<Cell<bool>>,
-    damage: *mut wlr_output_damage,
+    damage: NonNull<wlr_output_damage>,
     layout_handle: Option<layout::Handle>
 }
 
@@ -47,10 +47,10 @@ pub struct Output {
     /// The tracker for damage on the output.
     damage: ManuallyDrop<output::Damage>,
     /// The output ptr that refers to this `Output`
-    output: *mut wlr_output
+    output: NonNull<wlr_output>
 }
 
-pub type Handle = utils::Handle<*mut wlr_output_damage, wlr_output, Output>;
+pub type Handle = utils::Handle<NonNull<wlr_output_damage>, wlr_output, Output>;
 
 impl Output {
     /// Just like `std::clone::Clone`, but unsafe.
@@ -73,15 +73,18 @@ impl Output {
     /// This creates a totally new Output (e.g with its own reference count)
     /// so only do this once per `wlr_output`!
     pub(crate) unsafe fn new(output: *mut wlr_output) -> Self {
-        (*output).data = ptr::null_mut();
+        let output = NonNull::new(output)
+            .expect("Output pointer was null");
+        (*output.as_ptr()).data = ptr::null_mut();
         let liveliness = Rc::new(Cell::new(false));
         let handle = Rc::downgrade(&liveliness);
-        let damage = ManuallyDrop::new(output::Damage::new(output));
-        let state = Box::new(OutputState { output: ptr::null_mut(),
+        let damage = ManuallyDrop::new(output::Damage::new(output.as_ptr()));
+        let damage_ptr = NonNull::new(damage.as_ptr()).unwrap();
+        let state = Box::new(OutputState { output: None,
                                            handle,
-                                           damage: damage.as_ptr(),
+                                           damage: damage_ptr,
                                            layout_handle: None });
-        (*output).data = Box::into_raw(state) as *mut _;
+        (*output.as_ptr()).data = Box::into_raw(state) as *mut _;
         Output { liveliness,
                  damage,
                  output }
@@ -97,11 +100,11 @@ impl Output {
         }
         let mut data = Box::from_raw(user_data);
         data.layout_handle = layout_handle.into();
-        (*self.output).data = Box::into_raw(data) as *mut _;
+        (*self.output.as_ptr()).data = Box::into_raw(data) as *mut _;
     }
 
     unsafe fn user_data(&mut self) -> *mut OutputState {
-        (*self.output).data as *mut _
+        (*self.output.as_ptr()).data as *mut _
     }
 
     /// Used to clear the pointer to an OutputLayout when the OutputLayout
@@ -113,7 +116,7 @@ impl Output {
         }
         let mut data = Box::from_raw(user_data);
         data.layout_handle = None;
-        (*self.output).data = Box::into_raw(data) as *mut _;
+        (*self.output.as_ptr()).data = Box::into_raw(data) as *mut _;
     }
 
     /// Remove this Output from an OutputLayout, if it is part of an
@@ -158,7 +161,7 @@ impl Output {
     /// action in the output destruction callback.
     pub fn choose_best_mode(&mut self) {
         unsafe {
-            let modes = &mut (*self.output).modes as *mut wl_list;
+            let modes = &mut (*self.output.as_ptr()).modes as *mut wl_list;
             let length = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_list_length, modes as _);
             if length > 0 {
                 // TODO Better logging
@@ -176,18 +179,18 @@ impl Output {
 
     /// Set this to be the current mode for the Output.
     pub fn set_mode(&mut self, mode: output::Mode) -> bool {
-        unsafe { wlr_output_set_mode(self.output, mode.as_ptr()) }
+        unsafe { wlr_output_set_mode(self.output.as_ptr(), mode.as_ptr()) }
     }
 
     /// Set a custom mode for this output.
     pub fn set_custom_mode(&mut self, size: Size, refresh: i32) -> bool {
-        unsafe { wlr_output_set_custom_mode(self.output, size.width, size.height, refresh) }
+        unsafe { wlr_output_set_custom_mode(self.output.as_ptr(), size.width, size.height, refresh) }
     }
 
     /// Gets the name of the output in UTF-8.
     pub fn name(&self) -> String {
         unsafe {
-            CStr::from_ptr((*self.output).name.as_ptr()).to_string_lossy()
+            CStr::from_ptr((*self.output.as_ptr()).name.as_ptr()).to_string_lossy()
                                                         .into_owned()
         }
     }
@@ -195,68 +198,68 @@ impl Output {
     /// Gets the make of the output in UTF-8.
     pub fn make(&self) -> String {
         unsafe {
-            c_to_rust_string((*self.output).make.as_ptr()).expect("Could not parse make as UTF-8")
+            c_to_rust_string((*self.output.as_ptr()).make.as_ptr()).expect("Could not parse make as UTF-8")
         }
     }
 
     /// Gets the model of the output in UTF-8.
     pub fn model(&self) -> String {
         unsafe {
-            c_to_rust_string((*self.output).model.as_ptr()).expect("Could not parse model as UTF-8")
+            c_to_rust_string((*self.output.as_ptr()).model.as_ptr()).expect("Could not parse model as UTF-8")
         }
     }
 
     /// Gets the serial of the output in UTF-8.
     pub fn serial(&self) -> String {
         unsafe {
-            c_to_rust_string((*self.output).serial.as_ptr()).expect("Could not parse serial as \
+            c_to_rust_string((*self.output.as_ptr()).serial.as_ptr()).expect("Could not parse serial as \
                                                                      UTF-8")
         }
     }
 
     /// Determines if the output is enabled or not.
     pub fn enabled(&self) -> bool {
-        unsafe { (*self.output).enabled }
+        unsafe { (*self.output.as_ptr()).enabled }
     }
 
     /// Get the scale of the output
     pub fn scale(&self) -> c_float {
-        unsafe { (*self.output).scale }
+        unsafe { (*self.output.as_ptr()).scale }
     }
 
     /// Determines if the output should have its buffers swapped or not.
     pub fn needs_swap(&self) -> bool {
-        unsafe { (*self.output).needs_swap }
+        unsafe { (*self.output.as_ptr()).needs_swap }
     }
 
     /// Get the refresh rate of the output.
     pub fn refresh_rate(&self) -> i32 {
-        unsafe { (*self.output).refresh }
+        unsafe { (*self.output.as_ptr()).refresh }
     }
 
     pub fn current_mode<'output>(&'output self) -> Option<output::Mode<'output>> {
         unsafe {
-            if (*self.output).current_mode.is_null() {
+            if (*self.output.as_ptr()).current_mode.is_null() {
                 None
             } else {
-                Some(output::Mode::new((*self.output).current_mode))
+                Some(output::Mode::new((*self.output.as_ptr()).current_mode))
             }
         }
     }
 
     /// Gets the output position in layout space reported to clients.
     pub fn layout_space_pos(&self) -> (i32, i32) {
-        unsafe { ((*self.output).lx, (*self.output).ly) }
+        unsafe { ((*self.output.as_ptr()).lx, (*self.output.as_ptr()).ly) }
     }
 
     /// Get subpixel information about the output.
     pub fn subpixel(&self) -> Subpixel {
-        unsafe { (*self.output).subpixel }
+        unsafe { (*self.output.as_ptr()).subpixel }
     }
 
     /// Get the transform information about the output.
     pub fn get_transform(&self) -> Transform {
-        unsafe { (*self.output).transform }
+        unsafe { (*self.output.as_ptr()).transform }
     }
 
     /// Renders software cursors. This is a utility function that can be called when
@@ -272,7 +275,7 @@ impl Output {
                 Some(ref mut region) => &mut region.region as *mut _,
                 None => ptr::null_mut()
             };
-            wlr_output_render_software_cursors(self.output, damage)
+            wlr_output_render_software_cursors(self.output.as_ptr(), damage)
         }
     }
 
@@ -280,7 +283,7 @@ impl Output {
     ///
     /// If a `frame` event is already pending, it is a no-op.
     pub fn schedule_frame(&mut self) {
-        unsafe { wlr_output_schedule_frame(self.output) }
+        unsafe { wlr_output_schedule_frame(self.output.as_ptr()) }
     }
 
     /// Make this output the current output.
@@ -296,7 +299,7 @@ impl Output {
     /// or None if unknown. This is useful for damage tracking.
     pub unsafe fn make_current(&mut self) -> (bool, Option<c_int>) {
         let mut buffer_age = -1;
-        let res = wlr_output_make_current(self.output, &mut buffer_age);
+        let res = wlr_output_make_current(self.output.as_ptr(), &mut buffer_age);
         let buffer_age = if buffer_age == -1 {
             None
         } else {
@@ -332,29 +335,29 @@ impl Output {
             Some(region) => &mut region.region as *mut _,
             None => ptr::null_mut()
         };
-        wlr_output_swap_buffers(self.output, when_ptr, damage)
+        wlr_output_swap_buffers(self.output.as_ptr(), when_ptr, damage)
     }
 
     /// Determines if a frame is pending or not.
     pub fn frame_pending(&self) -> bool {
-        unsafe { (*self.output).frame_pending }
+        unsafe { (*self.output.as_ptr()).frame_pending }
     }
 
     /// Get the dimensions of the output as (width, height).
     pub fn size(&self) -> (i32, i32) {
-        unsafe { ((*self.output).width, (*self.output).height) }
+        unsafe { ((*self.output.as_ptr()).width, (*self.output.as_ptr()).height) }
     }
 
     /// Get the physical dimensions of the output as (width, height).
     pub fn physical_size(&self) -> (i32, i32) {
-        unsafe { ((*self.output).phys_width, (*self.output).phys_height) }
+        unsafe { ((*self.output.as_ptr()).phys_width, (*self.output.as_ptr()).phys_height) }
     }
 
     /// Computes the transformed output resolution
     pub fn transformed_resolution(&self) -> (c_int, c_int) {
         unsafe {
             let (mut x, mut y) = (0, 0);
-            wlr_output_transformed_resolution(self.output, &mut x, &mut y);
+            wlr_output_transformed_resolution(self.output.as_ptr(), &mut x, &mut y);
             (x, y)
         }
     }
@@ -363,18 +366,18 @@ impl Output {
     pub fn effective_resolution(&self) -> (c_int, c_int) {
         unsafe {
             let (mut x, mut y) = (0, 0);
-            wlr_output_effective_resolution(self.output, &mut x, &mut y);
+            wlr_output_effective_resolution(self.output.as_ptr(), &mut x, &mut y);
             (x, y)
         }
     }
 
     pub fn transform_matrix(&self) -> [c_float; 9] {
-        unsafe { (*self.output).transform_matrix }
+        unsafe { (*self.output.as_ptr()).transform_matrix }
     }
 
     pub fn transform(&mut self, transform: Transform) {
         unsafe {
-            wlr_output_set_transform(self.output, transform);
+            wlr_output_set_transform(self.output.as_ptr(), transform);
         }
     }
 
@@ -384,7 +387,7 @@ impl Output {
     pub fn modes<'output>(&'output self) -> Vec<output::Mode<'output>> {
         unsafe {
             let mut result = vec![];
-            wl_list_for_each!((*self.output).modes, link, (mode: wlr_output_mode) => {
+            wl_list_for_each!((*self.output.as_ptr()).modes, link, (mode: wlr_output_mode) => {
                 result.push(output::Mode::new(mode))
             });
             result
@@ -393,27 +396,27 @@ impl Output {
 
     /// Enables or disables an output.
     pub fn enable(&mut self, enable: bool) -> bool {
-        unsafe { wlr_output_enable(self.output, enable) }
+        unsafe { wlr_output_enable(self.output.as_ptr(), enable) }
     }
 
     /// Sets the gamma based on the size.
     pub fn set_gamma(&mut self, size: usize, mut r: u16, mut g: u16, mut b: u16) -> bool {
-        unsafe { wlr_output_set_gamma(self.output, size, &mut r, &mut g, &mut b) }
+        unsafe { wlr_output_set_gamma(self.output.as_ptr(), size, &mut r, &mut g, &mut b) }
     }
 
     /// Get the gamma size.
     pub fn get_gamma_size(&self) -> usize {
-        unsafe { wlr_output_get_gamma_size(self.output) }
+        unsafe { wlr_output_get_gamma_size(self.output.as_ptr()) }
     }
 
     /// Sets the position of this output.
     pub fn set_position(&mut self, origin: Origin) {
-        unsafe { wlr_output_set_position(self.output, origin.x, origin.y) }
+        unsafe { wlr_output_set_position(self.output.as_ptr(), origin.x, origin.y) }
     }
 
     /// Set the scale applied to this output.
     pub fn set_scale(&mut self, scale: c_float) {
-        unsafe { wlr_output_set_scale(self.output, scale) }
+        unsafe { wlr_output_set_scale(self.output.as_ptr(), scale) }
     }
 
     pub fn damage(&mut self) -> &mut output::Damage {
@@ -431,13 +434,13 @@ impl Drop for Output {
         // We do _not_ need to call wlr_output_damage_destroy for the output,
         // that is handled automatically by the listeners in wlroots.
         if Rc::strong_count(&self.liveliness) == 1 {
-            wlr_log!(WLR_DEBUG, "Dropped output {:p}", self.output);
+            wlr_log!(WLR_DEBUG, "Dropped output {:p}", self.output.as_ptr());
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
                 wlr_log!(WLR_DEBUG,
                          "Still {} weak pointers to Output {:p}",
                          weak_count,
-                         self.output);
+                         self.output.as_ptr());
             }
         } else {
             return
@@ -445,27 +448,29 @@ impl Drop for Output {
         // TODO Move back up in the some after NLL is a thing.
         unsafe {
             self.remove_from_output_layout();
-            let _ = Box::from_raw((*self.output).data as *mut OutputState);
+            let _ = Box::from_raw((*self.output.as_ptr()).data as *mut OutputState);
         }
     }
 }
 
-impl Handleable<*mut wlr_output_damage, wlr_output> for Output {
+impl Handleable<NonNull<wlr_output_damage>, wlr_output> for Output {
     #[doc(hidden)]
-    unsafe fn from_ptr(ptr: *mut wlr_output) -> Self where Self: Sized {
-        let data = Box::from_raw((*ptr).data as *mut OutputState);
+    unsafe fn from_ptr(output: *mut wlr_output) -> Option<Self> {
+        let output = NonNull::new(output)?;
+        let data = Box::from_raw((*output.as_ptr()).data as *mut OutputState);
         let handle = data.handle.clone();
         let damage = data.damage;
-        (*ptr).data = Box::into_raw(data) as *mut _;
-        Output { liveliness: handle.upgrade().unwrap(),
-                 damage: ManuallyDrop::new(output::Damage::from_ptr(damage)),
-                 output: ptr}
+        let damage = ManuallyDrop::new(output::Damage::from_ptr(damage.as_ptr()));
+        (*output.as_ptr()).data = Box::into_raw(data) as *mut _;
+        Some(Output { liveliness: handle.upgrade().unwrap(),
+                      damage,
+                      output })
 
     }
 
     #[doc(hidden)]
     unsafe fn as_ptr(&self) -> *mut wlr_output {
-        self.output
+        self.output.as_ptr()
     }
 
     #[doc(hidden)]
@@ -473,15 +478,17 @@ impl Handleable<*mut wlr_output_damage, wlr_output> for Output {
         let liveliness = handle.handle
             .upgrade()
             .ok_or_else(|| HandleErr::AlreadyDropped)?;
+        let damage_ptr = handle.data.ok_or(HandleErr::AlreadyDropped)?;
+        let damage = ManuallyDrop::new(output::Damage::from_ptr(damage_ptr.as_ptr()));
         Ok(Output { liveliness,
-                    damage: ManuallyDrop::new(output::Damage::from_ptr(handle.data)),
-                    output: handle.as_ptr() })
+                    damage,
+                    output: handle.as_non_null() })
     }
 
     fn weak_reference(&self) -> Handle {
         Handle { ptr: self.output,
                  handle: Rc::downgrade(&self.liveliness),
-                 data: unsafe { self.damage.as_ptr() },
+                 data: unsafe { Some(NonNull::new(self.damage.as_ptr()).unwrap()) },
                  _marker: std::marker::PhantomData }
     }
 }
