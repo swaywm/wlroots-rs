@@ -23,9 +23,12 @@ impl output::Handler for OutputHandler {
         let state: &mut CompositorState = compositor.data
             .downcast_mut().unwrap();
         let renderer = compositor.renderer.as_mut().unwrap();
-        let mut render_context = renderer.render(output, None);
-        render_context.clear([0.0, 0.0, 0.0, 1.0]);
-        render_shells(state, &mut render_context)
+        {
+            let mut render_context = renderer.render(output, None);
+            render_context.clear([0.0, 0.0, 0.0, 1.0]);
+            render_shells(state, &mut render_context);
+        }
+        output.render_software_cursors(None);
     }
 
     #[wlroots_dehandle]
