@@ -65,6 +65,22 @@ impl keyboard::Handler for KeyboardHandler {
     }
 
     #[wlroots_dehandle]
+    fn modifiers(&mut self,
+                 compositor_handle: compositor::Handle,
+                 keyboard_handle: keyboard::Handle) {
+        #[dehandle] let compositor = compositor_handle;
+        #[dehandle] let keyboard = keyboard_handle;
+        let CompositorState { inputs: Inputs { ref mut ctrl_pressed,
+                                               ref mut shift_pressed, .. },
+                              ref seat_handle, .. } =
+            compositor.data.downcast_mut().unwrap();
+        #[dehandle] let seat = seat_handle;
+        seat.set_keyboard(keyboard.input_device());
+        let mut modifiers = keyboard.get_modifier_masks();
+        seat.keyboard_notify_modifiers(&mut modifiers)
+    }
+
+    #[wlroots_dehandle]
     fn destroyed(&mut self,
                  compositor_handle: compositor::Handle,
                  keyboard_handle: keyboard::Handle) {
