@@ -48,9 +48,8 @@ impl output::Handler for OutputHandler {
 #[wlroots_dehandle]
 fn render_shells(state: &mut CompositorState, renderer: &mut Renderer) {
     let CompositorState { ref output_layout_handle,
-                          shells: Shells { ref xdg_shells }, .. } = state;
-    for shell in xdg_shells {
-        #[dehandle] let shell = &shell;
+                          shells: Shells { ref mapped_shells, .. }, .. } = state;
+    for shell in mapped_shells {
         #[dehandle] let surface = shell.surface();
         #[dehandle] let layout = output_layout_handle;
         let (width, height) = surface.current_state().size();

@@ -70,9 +70,7 @@ impl keyboard::Handler for KeyboardHandler {
                  keyboard_handle: keyboard::Handle) {
         #[dehandle] let compositor = compositor_handle;
         #[dehandle] let keyboard = keyboard_handle;
-        let CompositorState { inputs: Inputs { ref mut ctrl_pressed,
-                                               ref mut shift_pressed, .. },
-                              ref seat_handle, .. } =
+        let CompositorState {ref seat_handle, .. } =
             compositor.data.downcast_mut().unwrap();
         #[dehandle] let seat = seat_handle;
         seat.set_keyboard(keyboard.input_device());

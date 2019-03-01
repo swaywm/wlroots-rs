@@ -20,7 +20,7 @@ impl pointer::Handler for PointerHandler {
                  event: &pointer::event::Button) {
         use wlroots::WLR_BUTTON_RELEASED;
         #[dehandle] let compositor = compositor;
-        let CompositorState { shells: Shells { ref mut xdg_shells },
+        let CompositorState { shells: Shells { ref mut mapped_shells, .. },
                               ref mut inputs,
                               ref seat_handle,
                               .. } = compositor.downcast();
@@ -28,8 +28,7 @@ impl pointer::Handler for PointerHandler {
         if !inputs.clicked {
             return
         }
-        if let Some(shell_handle) = xdg_shells.back() {
-            #[dehandle] let shell = shell_handle;
+        if let Some(shell) = mapped_shells.back() {
             #[dehandle] let surface = shell.surface();
             #[dehandle] let seat = seat_handle;
             let (mut keycodes, mut modifier_masks) = inputs.get_keyboard_info();

@@ -4,9 +4,10 @@ mod keyboard;
 mod output;
 mod pointer;
 mod seat;
-mod xdg_shell;
+mod view;
+mod shell;
 
-use std::{collections::{HashSet, VecDeque},
+use std::{collections::{HashSet, HashMap, VecDeque},
           env,
           process::{Command, Stdio}};
 
@@ -17,11 +18,13 @@ use wlroots::{compositor,
 
 use crate::{pointer::pointer_added,
             keyboard::keyboard_added,
-            output::output_added};
+            output::output_added,
+            shell::Shell};
 
 #[derive(Default)]
 pub struct Shells {
-    xdg_shells: VecDeque<wlroots::shell::xdg_shell::Handle>
+    mapped_shells: VecDeque<Shell>,
+    views: HashMap<Shell, view::View>
 }
 
 #[derive(Default)]
@@ -65,7 +68,7 @@ fn main() {
         .pointer_added(pointer_added)
         .keyboard_added(keyboard_added);
     let xdg_shell_builder = wlroots::shell::xdg_shell::manager::Builder::default()
-        .surface_added(xdg_shell::new_surface);
+        .surface_added(shell::xdg_new_surface);
     let mut compositor = compositor::Builder::new()
         .gles2(true)
         .wl_shm(true)

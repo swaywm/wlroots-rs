@@ -1,9 +1,9 @@
-use crate::{CompositorState, Shells};
+use crate::{CompositorState, Shells, view::View};
 
 use wlroots::{wlroots_dehandle,
               compositor,
               surface,
-              shell::xdg_shell::{self}};
+              shell::xdg_shell};
 
 struct SurfaceHandler;
 
@@ -18,9 +18,9 @@ impl xdg_shell::Handler for XdgShellHandler {
                    _surface_handle: surface::Handle,
                    shell_handle: xdg_shell::Handle) {
         #[dehandle] let compositor = compositor_handle;
-        let CompositorState { shells: Shells { ref mut xdg_shells }, ..} =
+        let CompositorState { shells: Shells { ref mut mapped_shells, .. }, ..} =
             compositor.downcast();
-        xdg_shells.push_back(shell_handle.clone());
+        mapped_shells.push_back(shell_handle.clone().into());
     }
 
     #[wlroots_dehandle]
@@ -29,9 +29,10 @@ impl xdg_shell::Handler for XdgShellHandler {
                      _surface_handle: surface::Handle,
                      shell_handle: xdg_shell::Handle) {
         #[dehandle] let compositor = compositor_handle;
-        let CompositorState { shells: Shells { ref mut xdg_shells }, ..} =
+        let CompositorState { shells: Shells { ref mut mapped_shells, ..}, .. } =
             compositor.downcast();
-        xdg_shells.retain(|shell| *shell != shell_handle);
+        let shell_handle = shell_handle.into();
+        mapped_shells.retain(|shell| *shell != shell_handle);
     }
 
     #[wlroots_dehandle]
@@ -39,16 +40,22 @@ impl xdg_shell::Handler for XdgShellHandler {
                  compositor_handle: compositor::Handle,
                  shell_handle: xdg_shell::Handle) {
         #[dehandle] let compositor = compositor_handle;
-        let CompositorState { shells: Shells { ref mut xdg_shells }, ..} =
+        let CompositorState { shells: Shells { ref mut mapped_shells, ref mut views }, .. } =
             compositor.downcast();
-        xdg_shells.retain(|shell| *shell != shell_handle);
+        let shell_handle = shell_handle.into();
+        mapped_shells.retain(|shell| *shell != shell_handle);
+        views.remove(&shell_handle);
     }
 }
 
 
 #[wlroots_dehandle]
-pub fn new_surface(_compositor_handle: compositor::Handle,
-                   _shell_handle: xdg_shell::Handle)
-                   -> (Option<Box<xdg_shell::Handler>>, Option<Box<surface::Handler>>) {
+pub fn xdg_new_surface(compositor_handle: compositor::Handle,
+                       shell_handle: xdg_shell::Handle)
+                       -> (Option<Box<xdg_shell::Handler>>, Option<Box<surface::Handler>>) {
+    #[dehandle] let compositor = compositor_handle;
+    let CompositorState { shells: Shells { ref mut views, .. }, .. } =
+        compositor.downcast();
+    views.insert(shell_handle.clone().into(), View::new(shell_handle));
     (Some(Box::new(XdgShellHandler) as _), Some(Box::new(SurfaceHandler) as _))
 }
