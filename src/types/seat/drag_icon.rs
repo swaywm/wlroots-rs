@@ -12,6 +12,7 @@ pub struct DragIcon {
 }
 
 impl DragIcon {
+    #[allow(dead_code)]
     pub(crate) unsafe fn new(drag_icon: *mut wlr_drag_icon) -> Self {
         let liveliness = Rc::new(Cell::new(false));
         let state = Box::new(DragIconState { handle: Rc::downgrade(&liveliness) });
