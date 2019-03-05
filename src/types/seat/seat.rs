@@ -26,14 +26,14 @@ use wlroots_sys::{wlr_axis_orientation, wlr_seat, wlr_seat_create, wlr_seat_dest
                   wlr_seat_touch_num_points, wlr_seat_touch_point_clear_focus,
                   wlr_seat_touch_point_focus, wlr_seat_touch_send_down,
                   wlr_seat_touch_send_motion, wlr_seat_touch_send_up, wlr_seat_touch_start_grab,
-                  wlr_axis_source, wlr_drag_icon};
+                  wlr_axis_source};
 pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use xkbcommon::xkb::Keycode;
 
 use {compositor::{self, Compositor},
      input::{self, keyboard},
-     surface::{self, Surface},
-     seat::{self, grab, touch_point::{TouchId, TouchPoint}, drag_icon::{self, DragIcon}},
+     surface::{Surface},
+     seat::{self, grab, touch_point::{TouchId, TouchPoint}},
      utils::{ToMs, HandleErr, HandleResult, c_to_rust_string, safe_as_cstring}};
 pub use events::seat_events as event;
 
@@ -114,14 +114,6 @@ pub trait Handler {
     fn destroy(&mut self,
                compositor_handle: compositor::Handle,
                seat_handle: Handle) {}
-
-    /// A new drag icon has been created.
-    fn new_drag_icon(&mut self,
-                     compositor_handle: compositor::Handle,
-                     seat_handle: Handle, drag_icon::Handle)
-                     -> (Option<Box<drag_icon::Handler>>, Option<Box<surface::Handler>>) {
-        (None, None)
-    }
 }
 
 wayland_listener!(pub Seat, (*mut wlr_seat, Box<Handler>), [
@@ -273,38 +265,6 @@ wayland_listener!(pub Seat, (*mut wlr_seat, Box<Handler>), [
 
         Box::into_raw(seat);
     };
-    new_drag_icon_listener => new_drag_icon_notify: |this: &mut Seat, data: *mut libc::c_void,|
-    unsafe {
-        let (seat_ptr, ref mut handler) = this.data;
-        let data = data as *mut wlr_drag_icon;
-        let compositor = match compositor::handle() {
-            Some(handle) => handle,
-            None => return
-        };
-        let seat = Handle::from_ptr(seat_ptr);
-
-        let drag_icon = DragIcon::new(data);
-
-        let (drag_icon_handler, surface_handler) =
-            handler.new_drag_icon(compositor, seat, drag_icon.weak_reference());
-
-        if let Some(surface_handler) = surface_handler {
-            let surface_state = (*(*data).surface).data as *mut surface::InternalState;
-            (*(*surface_state).surface.unwrap().as_ptr()).data().1 = surface_handler;
-        }
-
-        if let Some(drag_icon_handler) = drag_icon_handler {
-            let mut listener = drag_icon::Listener::new((drag_icon, drag_icon_handler));
-            wl_signal_add(&mut (*data).events.destroy as *mut _ as _,
-                          listener.destroy_listener() as _);
-            wl_signal_add(&mut (*data).events.map as *mut _ as _,
-                          listener.map_listener() as _);
-            wl_signal_add(&mut (*data).events.unmap as *mut _ as _,
-                          listener.unmap_listener() as _);
-            Box::into_raw(listener);
-        }
-        wlr_log!(WLR_DEBUG, "New drag icon request {:p}", data);
-    };
     destroy_listener => destroy_notify: |this: &mut Seat, _event: *mut libc::c_void,|
     unsafe {
         let (seat_ptr, ref mut handler) = this.data;
@@ -353,8 +313,6 @@ impl Seat {
                           res.set_selection_listener() as *mut _ as _);
             wl_signal_add(&mut (*seat).events.set_primary_selection as *mut _ as _,
                           res.set_primary_selection_listener() as *mut _ as _);
-            wl_signal_add(&mut (*seat).events.new_drag_icon as *mut _ as _,
-                          res.new_drag_icon_listener() as *mut _ as _);
             wl_signal_add(&mut (*seat).events.destroy as *mut _ as _,
                           res.destroy_listener() as *mut _ as _);
             let counter = Rc::new(Cell::new(false));
@@ -844,9 +802,6 @@ impl Drop for Seat {
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
                           &mut (*manager.set_primary_selection_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*manager.new_drag_icon_listener()).link as *mut _ as _);
             wlr_seat_destroy(seat_ptr);
             ffi_dispatch!(WAYLAND_SERVER_HANDLE,
                           wl_list_remove,
