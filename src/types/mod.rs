@@ -14,3 +14,5 @@ pub mod surface;
 pub mod shell;
 #[cfg(feature = "unstable")]
 pub mod data_device;
+#[cfg(feature = "unstable")]
+pub mod dmabuf;
