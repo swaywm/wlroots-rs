@@ -28,6 +28,7 @@ tasks:
       cd wlroots-rs
       git submodule update --init --recursive
   - build: |
+      export RUSTFLAGS="-D warnings"
       cd wlroots-rs
       cd wlroots-sys
       cd wlroots
