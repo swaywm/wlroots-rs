@@ -16,7 +16,7 @@ use wlroots::{area::{Area, Origin, Size},
               surface,
               utils::{Handleable, log::Logger, current_time}};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
-use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1, KEY_XF86Switch_VT_1, KEY_XF86Switch_VT_12};
+use wlroots::xkbcommon::xkb::keysyms;
 use wlroots::wlroots_dehandle;
 
 struct State {
@@ -133,21 +133,21 @@ impl keyboard::Handler for ExKeyboardHandler {
         if key_event.key_state() == WLR_KEY_PRESSED {
             for key in key_event.pressed_keys() {
                 match key {
-                    KEY_Escape =>  {
+                    keysyms::KEY_Escape =>  {
                         compositor::terminate();
                         return;
                     },
-                    KEY_F1 => {
+                    keysyms::KEY_F1 => {
                         thread::spawn(move || {
                             Command::new("weston-terminal").output().unwrap();
                         });
                         return;
                     },
-                    KEY_XF86Switch_VT_1 ... KEY_XF86Switch_VT_12 => {
+                    keysyms::KEY_XF86Switch_VT_1 ... keysyms::KEY_XF86Switch_VT_12 => {
                         compositor_handle.run(|compositor| {
                             
                             if let Some(mut session) = compositor.backend.get_session() {
-                                session.change_vt(key - KEY_XF86Switch_VT_1 + 1);
+                                session.change_vt(key - keysyms::KEY_XF86Switch_VT_1 + 1);
                             }
                         }).unwrap();
                         return;
