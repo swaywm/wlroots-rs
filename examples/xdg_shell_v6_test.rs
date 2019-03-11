@@ -16,7 +16,7 @@ use wlroots::{area::{Area, Origin, Size},
               surface,
               utils::{Handleable, log::Logger, current_time}};
 use wlroots::wlroots_sys::wlr_key_state::WLR_KEY_PRESSED;
-use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1};
+use wlroots::xkbcommon::xkb::keysyms::{KEY_Escape, KEY_F1, KEY_XF86Switch_VT_1, KEY_XF86Switch_VT_12};
 use wlroots::wlroots_dehandle;
 
 struct State {
@@ -128,26 +128,57 @@ impl keyboard::Handler for ExKeyboardHandler {
     #[wlroots_dehandle]
     fn on_key(&mut self,
               compositor_handle: compositor::Handle,
-              _: keyboard::Handle,
+              keyboard_handle: keyboard::Handle,
               key_event: &keyboard::event::Key) {
         for key in key_event.pressed_keys() {
-            if key == KEY_Escape {
-                compositor::terminate();
-            } else if key_event.key_state() == WLR_KEY_PRESSED {
-                if key == KEY_F1 {
-                    thread::spawn(move || {
-                        Command::new("weston-terminal").output().unwrap();
-                    });
-                    return
+            match key {
+               KEY_Escape =>  {
+                  compositor::terminate();
+                  return;
+               },
+               KEY_F1 => {
+                   if key_event.key_state() == WLR_KEY_PRESSED {
+                        thread::spawn(move || {
+                            Command::new("weston-terminal").output().unwrap();
+                        });
+                        return;
+                   }
+                },
+                KEY_XF86Switch_VT_1 ... KEY_XF86Switch_VT_12 => {
+                    compositor_handle.run(|compositor| {
+                        
+                        if let Some(mut session) = compositor.backend.get_session() {
+                            session.change_vt(key - KEY_XF86Switch_VT_1 + 1);
+                        }
+                    }).unwrap();
+                    return;
                 }
+               _ => {/*do nothing*/}
             }
         };
+
         #[dehandle] let compositor = compositor_handle;
         let state: &mut State = compositor.downcast();
         #[dehandle] let seat = state.seat_handle.clone().unwrap();
+        #[dehandle] let keyboard = keyboard_handle;
+
+        seat.set_keyboard(keyboard.input_device());
         seat.keyboard_notify_key(key_event.time_msec(),
                                  key_event.keycode(),
                                  key_event.key_state() as u32);
+    }
+
+     #[wlroots_dehandle]
+    fn modifiers(&mut self,
+                 compositor_handle: compositor::Handle,
+                 keyboard_handle: keyboard::Handle) {
+        #[dehandle] let compositor = compositor_handle;
+        let state: &mut State = compositor.downcast();
+        #[dehandle] let seat = state.seat_handle.clone().unwrap();
+        #[dehandle] let keyboard = keyboard_handle;
+        
+        seat.set_keyboard(keyboard.input_device());
+        seat.keyboard_notify_modifiers(&mut keyboard.get_modifier_masks());
     }
 }
 
