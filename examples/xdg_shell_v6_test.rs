@@ -130,32 +130,32 @@ impl keyboard::Handler for ExKeyboardHandler {
               compositor_handle: compositor::Handle,
               keyboard_handle: keyboard::Handle,
               key_event: &keyboard::event::Key) {
-        for key in key_event.pressed_keys() {
-            match key {
-               KEY_Escape =>  {
-                  compositor::terminate();
-                  return;
-               },
-               KEY_F1 => {
-                   if key_event.key_state() == WLR_KEY_PRESSED {
+        if key_event.key_state() == WLR_KEY_PRESSED {
+            for key in key_event.pressed_keys() {
+                match key {
+                    KEY_Escape =>  {
+                        compositor::terminate();
+                        return;
+                    },
+                    KEY_F1 => {
                         thread::spawn(move || {
                             Command::new("weston-terminal").output().unwrap();
                         });
                         return;
-                   }
-                },
-                KEY_XF86Switch_VT_1 ... KEY_XF86Switch_VT_12 => {
-                    compositor_handle.run(|compositor| {
-                        
-                        if let Some(mut session) = compositor.backend.get_session() {
-                            session.change_vt(key - KEY_XF86Switch_VT_1 + 1);
-                        }
-                    }).unwrap();
-                    return;
+                    },
+                    KEY_XF86Switch_VT_1 ... KEY_XF86Switch_VT_12 => {
+                        compositor_handle.run(|compositor| {
+                            
+                            if let Some(mut session) = compositor.backend.get_session() {
+                                session.change_vt(key - KEY_XF86Switch_VT_1 + 1);
+                            }
+                        }).unwrap();
+                        return;
+                    }
+                _ => {/*do nothing*/}
                 }
-               _ => {/*do nothing*/}
             }
-        };
+        }
 
         #[dehandle] let compositor = compositor_handle;
         let state: &mut State = compositor.downcast();
