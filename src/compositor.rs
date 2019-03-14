@@ -14,7 +14,7 @@ use wlroots_sys::{wlr_backend_destroy, wlr_backend_start,
 
 use {backend::{self, UnsafeRenderSetupFunction, Backend, Session},
      data_device,
-     extensions::{server_decoration, gamma_control, screencopy, screenshooter, idle, gtk_primary_selection},
+     extensions::{server_decoration, gamma_control, screencopy, screenshooter, idle, idle_inhibit, gtk_primary_selection},
      surface::{self, Surface, InternalSurface},
      input,
      output,
@@ -117,6 +117,8 @@ pub struct Compositor {
     pub gamma_control_manager: Option<gamma_control::ZManagerV1>,
     /// Optional idle manager extension.
     pub idle_manager: Option<idle::Manager>,
+    /// Optional idle manager extension.
+    pub idle_inhibit_manager: Option<idle_inhibit::ZManagerV1>,
     /// Optional GTK primary selection manager
     pub gtk_primary_selection_manager: Option<gtk_primary_selection::Manager>,
     /// Optional screencopy manager extension
@@ -152,6 +154,7 @@ pub struct Builder {
     server_decoration_manager: bool,
     gamma_control_manager: bool,
     idle_manager: bool,
+    idle_inhibit_manager: bool,
     gtk_primary_selection_manager: bool,
     screencopy_manager: bool,
     screenshooter: bool,
@@ -259,6 +262,13 @@ impl Builder {
     /// extension.
     pub fn idle_manager(mut self, idle_manager: bool) -> Self {
         self.idle_manager = idle_manager;
+        self
+    }
+
+    /// Decide whether or not to enable the idle inhibit manager protocol
+    /// extension.
+    pub fn idle_inhibit_manager(mut self, idle_inhibit_manager: bool) -> Self {
+        self.idle_inhibit_manager = idle_inhibit_manager;
         self
     }
 
@@ -449,6 +459,11 @@ impl Builder {
         } else {
             None
         };
+        let idle_inhibit_manager = if self.idle_inhibit_manager {
+            idle_inhibit::ZManagerV1::new(display)
+        } else {
+            None
+        };
         let gtk_primary_selection_manager = if self.gtk_primary_selection_manager {
             gtk_primary_selection::Manager::new(display)
         } else {
@@ -564,6 +579,7 @@ impl Builder {
                                       server_decoration_manager,
                                       gamma_control_manager,
                                       idle_manager,
+                                      idle_inhibit_manager,
                                       gtk_primary_selection_manager,
                                       screencopy_manager,
                                       screenshooter,
