@@ -12,6 +12,7 @@ use wlroots_sys::{
 };
 
 /// A thin wrapper around a 32 bit Pixman region.
+#[derive(Default)]
 pub struct PixmanRegion32 {
     pub region: pixman_region32_t
 }
@@ -87,9 +88,10 @@ impl PixmanRegion32 {
         unsafe {
             let (mut x_out, mut y_out) = (0.0, 0.0);
             let res = wlr_region_confine(&mut self.region, x1, y1, x2, y2, &mut x_out, &mut y_out);
-            match res {
-                true => Ok((x_out, y_out)),
-                false => Err(())
+            if res {
+                Ok((x_out, y_out))
+            } else {
+                Err(())
             }
         }
     }

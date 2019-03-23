@@ -197,7 +197,7 @@ impl<D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
         // resource used flag will still be set to `true` when it should be set
         // to `false`.
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut wrapped_obj)));
-        self.handle.upgrade().map(|check| {
+        if let Some(check) = self.handle.upgrade() {
             // Sanity check that it hasn't been tampered with. If so, we should
             // just panic. If we are currently
             // panicking this will abort.
@@ -206,7 +206,7 @@ impl<D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
                 panic!("Lock in incorrect state!");
             }
             check.set(false);
-        });
+        }
         match res {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)

@@ -122,14 +122,14 @@ impl Theme {
             let xcursors_slice: &'theme [*mut wlr_xcursor] =
                 slice::from_raw_parts::<'theme, *mut wlr_xcursor>(cursor_ptr, length);
             xcursors_slice
-                .into_iter()
+                .iter()
                 .map(|&xcursor| XCursor::from_ptr(xcursor))
                 .collect()
         }
     }
 
     /// Get the cursor with the provided name (e.g. "left_ptr"), if it exists.
-    pub fn get_cursor<'theme>(&'theme self, name: String) -> Option<XCursor<'theme>> {
+    pub fn get_cursor(&self, name: String) -> Option<XCursor> {
         unsafe {
             let name_str = safe_as_cstring(name);
             let xcursor = wlr_xcursor_theme_get_cursor(self.theme, name_str.as_ptr());
@@ -175,7 +175,7 @@ impl<'theme> XCursor<'theme> {
     ///
     /// We suggest paring this with `XCursor::frame` to avoid going out of
     /// bounds.
-    pub fn image<'cursor>(&'cursor self, index: usize) -> Option<Image<'cursor>> {
+    pub fn image(&self, index: usize) -> Option<Image> {
         unsafe {
             let cursors_slice = self.cursor_slice();
             cursors_slice
