@@ -569,12 +569,12 @@ impl Surface {
     }
 
     /// Get any surface hints the client is providing.
-    pub fn hints<'surface>(&'surface self) -> xwayland::surface::Hints<'surface> {
+    pub fn hints(&self) -> xwayland::surface::Hints {
         unsafe { xwayland::surface::Hints::from_ptr((*self.shell_surface.as_ptr()).hints) }
     }
 
     /// Get any size hints the client is providing.
-    pub fn size_hints<'surface>(&'surface self) -> xwayland::surface::SizeHints<'surface> {
+    pub fn size_hints(&self) -> xwayland::surface::SizeHints {
         unsafe { xwayland::surface::SizeHints::from_ptr((*self.shell_surface.as_ptr()).size_hints) }
     }
 
@@ -615,10 +615,10 @@ impl Surface {
     pub fn geometry(&self) -> Area {
         let (x, y, width, height) = unsafe {
             (
-                (*self.shell_surface.as_ptr()).x as i32,
-                (*self.shell_surface.as_ptr()).y as i32,
-                (*self.shell_surface.as_ptr()).width as i32,
-                (*self.shell_surface.as_ptr()).height as i32
+                i32::from((*self.shell_surface.as_ptr()).x),
+                i32::from((*self.shell_surface.as_ptr()).y),
+                i32::from((*self.shell_surface.as_ptr()).width),
+                i32::from((*self.shell_surface.as_ptr()).height)
             )
         };
         Area {

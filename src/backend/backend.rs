@@ -44,7 +44,7 @@ impl Backend {
     /// Obtains the wlr_session reference from this backend if there is any.
     ///
     /// Might return None for backends that don't use a session.
-    pub fn get_session<'backend>(&'backend mut self) -> Option<backend::Session<'backend>> {
+    pub fn get_session(&self) -> Option<backend::Session> {
         unsafe {
             let session_ptr = wlr_backend_get_session(self.as_ptr());
             if session_ptr.is_null() {

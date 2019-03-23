@@ -44,17 +44,16 @@ impl cursor::Handler for ExCursor {}
 struct ExOutputLayout;
 impl output::layout::Handler for ExOutputLayout {}
 
-fn output_added<'output>(
+fn output_added(
     compositor_handle: compositor::Handle,
-    output_builder: output::Builder<'output>
-) -> Option<output::BuilderResult<'output>> {
+    output_builder: output::Builder
+) -> Option<output::BuilderResult> {
     let mut result = output_builder.build_best_mode(ExOutput);
     with_handles!([(compositor: {compositor_handle})] => {
         let compositor_state: &mut CompositorState = compositor.data.downcast_mut().unwrap();
         let layout_handle = &mut compositor_state.layout_handle;
         let cursor_handle = &mut compositor_state.cursor_handle;
         let xcursor_manager = &mut compositor_state.xcursor_manager;
-        // TODO use output config if present instead of auto
         with_handles!([(layout: {layout_handle}),
                         (cursor: {cursor_handle}),
                         (output: {&mut result.output})] => {
@@ -80,9 +79,8 @@ impl keyboard::Handler for ExKeyboardHandler {
         key_event: &keyboard::event::Key
     ) {
         for key in key_event.pressed_keys() {
-            match key {
-                keysyms::KEY_Escape => wlroots::compositor::terminate(),
-                _ => {}
+            if let keysyms::KEY_Escape = key {
+                wlroots::compositor::terminate()
             }
         }
     }
@@ -164,7 +162,7 @@ impl pointer::Handler for ExPointer {
                     *color_byte = 0.0;
                 }
             }
-            compositor_state.color = compositor_state.default_color.clone()
+            compositor_state.color = compositor_state.default_color
         })
         .unwrap();
     }

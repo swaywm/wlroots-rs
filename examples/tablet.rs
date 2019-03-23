@@ -74,10 +74,7 @@ fn tablet_pad_added(_: compositor::Handle, _: tablet_pad::Handle) -> Option<Box<
     Some(Box::new(TabletEx))
 }
 
-fn output_added<'output>(
-    _: compositor::Handle,
-    builder: output::Builder<'output>
-) -> Option<output::BuilderResult<'output>> {
+fn output_added(_: compositor::Handle, builder: output::Builder) -> Option<output::BuilderResult> {
     let result = builder.build_best_mode(OutputEx);
     Some(result)
 }
@@ -125,7 +122,7 @@ impl tablet_pad::Handler for TabletEx {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.downcast();
             let position = event.position();
-            if position != -1.0 {
+            if (position - -1.0).abs() < std::f64::EPSILON {
                 state.ring = -(position * PI / 180.0)
             }
         })
@@ -216,7 +213,7 @@ impl output::Handler for OutputEx {
             let mut renderer = renderer.render(output, None);
             renderer.clear([0.25, 0.25, 0.25, 1.0]);
             let tool_color: [f32; 4] = if state.button {
-                state.tool_color.clone()
+                state.tool_color
             } else {
                 let distance: f64 = 0.8 * (1.0 - state.distance);
                 [distance as f32, distance as f32, distance as f32, 1.0]
@@ -224,18 +221,18 @@ impl output::Handler for OutputEx {
             let scale = 4.0;
             let pad_width = (state.size_mm.0 * scale) as f32;
             let pad_height = (state.size_mm.1 * scale) as f32;
-            let left: f32 = (width as f64 / 2.0 - pad_width as f64 / 2.0) as f32;
-            let top: f32 = (height as f64 / 2.0 - pad_height as f64 / 2.0) as f32;
+            let left: f32 = (f64::from(width) / 2.0 - f64::from(pad_width) / 2.0) as f32;
+            let top: f32 = (f64::from(height) / 2.0 - f64::from(pad_height) / 2.0) as f32;
             let area = Area::new(Origin::new(left as i32, top as i32),
                                  Size::new(pad_width as i32, pad_height as i32));
             let transform_matrix = renderer.output.transform_matrix();
-            renderer.render_colored_rect(area, state.pad_color, transform_matrix.clone());
+            renderer.render_colored_rect(area, state.pad_color, transform_matrix);
             if state.proximity {
                 let origin =
-                    Origin { x: ((state.pos.0 * pad_width as f64) - 8.0 * (state.pressure + 1.0)
-                                 + left as f64) as i32,
-                             y: ((state.pos.1 * pad_height as f64) - 8.0 * (state.pressure + 1.0)
-                                 + top as f64) as i32 };
+                    Origin { x: ((state.pos.0 * f64::from(pad_width)) - 8.0 * (state.pressure + 1.0)
+                                 + f64::from(left)) as i32,
+                             y: ((state.pos.1 * f64::from(pad_height)) - 8.0 * (state.pressure + 1.0)
+                                 + f64::from(top)) as i32 };
                 let size = Size { width: (16.0 * (state.pressure + 1.0)) as i32,
 
                                   height: (16.0 * (state.pressure + 1.0)) as i32 };
@@ -243,7 +240,7 @@ impl output::Handler for OutputEx {
                 let matrix = matrix::project_box(area,
                                                  WL_OUTPUT_TRANSFORM_NORMAL,
                                                  state.ring as _,
-                                                 transform_matrix.clone());
+                                                 transform_matrix);
                 renderer.render_colored_quad(tool_color, matrix);
 
                 area.origin.x += state.tilt.0 as i32;

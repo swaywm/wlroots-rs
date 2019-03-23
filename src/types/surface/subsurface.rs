@@ -77,7 +77,7 @@ impl Subsurface {
     }
 
     /// Get the cached state of the sub surface.
-    pub fn cached_state<'surface>(&'surface self) -> Option<surface::State<'surface>> {
+    pub fn cached_state(&self) -> Option<surface::State> {
         unsafe {
             if (*self.subsurface.as_ptr()).has_cache {
                 None

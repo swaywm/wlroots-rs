@@ -465,7 +465,7 @@ impl Handle {
     {
         let mut output_layout = unsafe { self.upgrade()? };
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut output_layout)));
-        self.handle.upgrade().map(|check| {
+        if let Some(check) = self.handle.upgrade() {
             // Sanity check that it hasn't been tampered with.
             if !check.get() {
                 wlr_log!(
@@ -477,7 +477,7 @@ impl Handle {
                 panic!("Lock in incorrect state!");
             }
             check.set(false);
-        });
+        };
         Box::into_raw(output_layout);
         match res {
             Ok(res) => Ok(res),

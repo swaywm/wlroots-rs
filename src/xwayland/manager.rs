@@ -36,7 +36,9 @@ wayland_listener_static! {
                 None => return
             };
 
-            manager.xwayland_ready.map(|f| f(compositor));
+            if let Some(xwayland_ready) = manager.xwayland_ready {
+                xwayland_ready(compositor)
+            }
         };
 
         (NewSurface, new_surface_listener, surface_added) => (add_notify, surface_added):

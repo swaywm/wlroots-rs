@@ -6,7 +6,7 @@ use wlroots_sys::{
 };
 
 /// A pixman region, used for damage tracking.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PixmanRegion {
     pub region: pixman_region32_t
 }

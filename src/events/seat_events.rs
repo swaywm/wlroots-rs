@@ -13,7 +13,7 @@ impl SetCursor {
     }
     /// Get the seat client associated with the seat where this
     /// event is occurring.
-    pub fn seat_client<'seat>(&'seat self) -> seat::Client<'seat> {
+    pub fn seat_client(&self) -> seat::Client {
         unsafe { seat::Client::from_ptr((*self.event).seat_client) }
     }
 

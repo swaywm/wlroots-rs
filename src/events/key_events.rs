@@ -26,7 +26,7 @@ impl Key {
 
     /// Get how long the key has been pressed down, in milliseconds.
     pub fn time_msec(&self) -> Duration {
-        Duration::from_millis(unsafe { (*self.key).time_msec } as u64)
+        Duration::from_millis(u64::from(unsafe { (*self.key).time_msec }))
     }
 
     /// TODO What is this?

@@ -57,9 +57,11 @@ wayland_listener_static! {
         (NewSurface, new_surface_listener, surface_added) => (add_notify, surface_added):
         |handler: &mut InternalCompositor, data: *mut libc::c_void,| unsafe {
             let surface_ptr = data as _;
-            let compositor = (&mut *COMPOSITOR_PTR).weak_reference();
+            let compositor = (&*COMPOSITOR_PTR).weak_reference();
             let surface = Surface::new(surface_ptr);
-            handler.surface_added.map(|f| f(compositor.clone(), surface.weak_reference()));
+            if let Some(surface_added) = handler.surface_added {
+                surface_added(compositor.clone(), surface.weak_reference())
+            }
             let mut internal_surface = InternalSurface::new((surface, Box::new(())));
             wl_signal_add(&mut (*surface_ptr).events.commit as *mut _ as _,
                           internal_surface.on_commit_listener() as _);
@@ -82,7 +84,7 @@ wayland_listener_static! {
 // the generic `utils::Handle` implementation. This is due to how we need
 // to be able to return a "full" `Compositor` for `upgrade` but that's
 // impossible.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Handle {
     /// This ensures that this handle is still alive and not already borrowed.
     handle: Weak<Cell<bool>>
@@ -820,7 +822,7 @@ impl Handle {
     {
         let compositor = unsafe { self.upgrade()? };
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(compositor)));
-        self.handle.upgrade().map(|check| {
+        if let Some(check) = self.handle.upgrade() {
             // Sanity check that it hasn't been tampered with.
             if !check.get() {
                 wlr_log!(
@@ -831,7 +833,7 @@ impl Handle {
                 panic!("Compositor lock in incorrect state!");
             }
             check.set(false)
-        });
+        };
         match res {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)
@@ -845,7 +847,9 @@ pub fn terminate() {
         if COMPOSITOR_PTR != 0 as _ {
             let compositor = &mut *COMPOSITOR_PTR;
             compositor.terminate();
-            compositor.user_terminate.map(|f| f());
+            if let Some(user_terminate) = compositor.user_terminate {
+                user_terminate()
+            }
         }
     }
 }
@@ -859,7 +863,7 @@ pub fn handle() -> Option<Handle> {
         if COMPOSITOR_PTR.is_null() {
             None
         } else {
-            Some((&mut *COMPOSITOR_PTR).weak_reference())
+            Some((&*COMPOSITOR_PTR).weak_reference())
         }
     }
 }

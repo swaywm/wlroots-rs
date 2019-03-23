@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use crate::libc::{self, c_double};
+use crate::libc::{self, c_double, clock_t};
 use std::{
     cell::Cell,
     panic,
@@ -188,7 +188,7 @@ impl Surface {
     }
 
     /// Get the surface state.
-    pub fn current_state<'surface>(&'surface mut self) -> surface::State<'surface> {
+    pub fn current_state(&mut self) -> surface::State {
         unsafe {
             let state = (*self.surface.as_ptr()).current;
             surface::State::new(state)
@@ -196,7 +196,7 @@ impl Surface {
     }
 
     /// Get the pending surface state.
-    pub fn pending_state<'surface>(&'surface mut self) -> surface::State<'surface> {
+    pub fn pending_state(&mut self) -> surface::State {
         unsafe {
             let state = (*self.surface.as_ptr()).current;
             surface::State::new(state)
@@ -212,7 +212,7 @@ impl Surface {
     ///
     /// Returns None if no buffer is currently attached or if something went
     /// wrong with uploading the buffer.
-    pub fn texture<'surface>(&'surface self) -> Option<Texture<'surface>> {
+    pub fn texture(&self) -> Option<Texture> {
         unsafe {
             let texture_ptr = wlr_surface_get_texture(self.surface.as_ptr());
             if texture_ptr.is_null() {
@@ -290,14 +290,15 @@ impl Surface {
     }
 
     /// Send the frame done event.
+    #[allow(clippy::cast_lossless)]
     pub fn send_frame_done(&mut self, duration: Duration) {
         unsafe {
             // FIXME
             // This is converting from a u64 -> i64
             // Something bad could happen!
             let when = timespec {
-                tv_sec: duration.as_secs() as libc::clock_t,
-                tv_nsec: duration.subsec_nanos() as libc::clock_t
+                tv_sec: duration.as_secs() as clock_t,
+                tv_nsec: duration.subsec_nanos() as clock_t
             };
             wlr_surface_send_frame_done(self.surface.as_ptr(), &when);
         }

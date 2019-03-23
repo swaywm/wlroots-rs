@@ -110,7 +110,7 @@ impl Area {
     pub fn closest_point(self, x: c_double, y: c_double) -> (c_double, c_double) {
         unsafe {
             let (mut dest_x, mut dest_y) = (0.0, 0.0);
-            wlr_box_closest_point(&mut self.into(), x, y, &mut dest_x, &mut dest_y);
+            wlr_box_closest_point(&self.into(), x, y, &mut dest_x, &mut dest_y);
             (dest_x, dest_y)
         }
     }
@@ -130,12 +130,12 @@ impl Area {
 
     /// Determines if the box contains the given point.
     pub fn contains_point(self, x: c_double, y: c_double) -> bool {
-        unsafe { wlr_box_contains_point(&mut self.into(), x, y) }
+        unsafe { wlr_box_contains_point(&self.into(), x, y) }
     }
 
     /// Determines if the box is empty (e.g if the bounds give it an area of 0).
     pub fn is_empty(self) -> bool {
-        unsafe { wlr_box_empty(&mut self.into()) }
+        unsafe { wlr_box_empty(&self.into()) }
     }
 
     /// Transforms the box coordinates and bounds according to the
@@ -146,7 +146,7 @@ impl Area {
     pub fn transform(self, transform: wl_output_transform, width: c_int, height: c_int) -> Area {
         unsafe {
             let res = Area::default();
-            wlr_box_transform(&mut res.into(), &mut self.into(), transform, width, height);
+            wlr_box_transform(&mut res.into(), &self.into(), transform, width, height);
             res
         }
     }

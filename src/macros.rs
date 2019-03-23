@@ -190,6 +190,7 @@ macro_rules! wayland_listener {
                 $crate::utils::handle_unwind(
                     ::std::panic::catch_unwind(
                         ::std::panic::AssertUnwindSafe(|| {
+                            #[allow(clippy::redundant_closure_call)]
                             (|$($func_arg: $func_type,)*| { $body })(manager, data)
                         })));
             })*)*
@@ -310,6 +311,7 @@ macro_rules! wayland_listener_static {
                         $crate::utils::handle_unwind(
                             ::std::panic::catch_unwind(
                                 ::std::panic::AssertUnwindSafe(|| {
+                                    #[allow(clippy::redundant_closure_call)]
                                     (|$($func_arg: $func_type,)*| { $body })(manager, data)
                                 })))
                     }

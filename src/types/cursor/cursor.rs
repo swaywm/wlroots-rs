@@ -829,7 +829,7 @@ impl Handle {
         let cursor_ptr = cursor.data.0;
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut cursor)));
         Box::into_raw(cursor);
-        self.handle.upgrade().map(|check| {
+        if let Some(check) = self.handle.upgrade() {
             // Sanity check that it hasn't been tampered with.
             if !check.get() {
                 wlr_log!(
@@ -841,7 +841,7 @@ impl Handle {
                 panic!("Lock in incorrect state!");
             }
             check.set(false);
-        });
+        };
         match res {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)

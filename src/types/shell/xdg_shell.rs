@@ -19,6 +19,7 @@ use wlroots_sys::{
 pub use crate::events::xdg_shell_events as event;
 pub use crate::manager::xdg_shell_handler::*;
 pub(crate) use crate::manager::xdg_shell_manager::Manager;
+pub use crate::manager::xdg_shell_manager::NewSurfaceResult;
 use crate::{
     area::Area,
     seat, surface,

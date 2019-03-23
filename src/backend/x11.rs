@@ -28,7 +28,7 @@ impl X11 {
         x11_display: Option<String>,
         render_setup_func: Option<UnsafeRenderSetupFunction>
     ) -> Self {
-        let x11_display_cstr = x11_display.map(|remote| safe_as_cstring(remote));
+        let x11_display_cstr = x11_display.map(safe_as_cstring);
         let x11_display_ptr = x11_display_cstr
             .as_ref()
             .map(|s| s.as_ptr())

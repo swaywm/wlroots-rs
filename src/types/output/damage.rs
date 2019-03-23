@@ -90,11 +90,11 @@ impl Damage {
         unsafe {
             let when = when.into().map(|duration| timespec {
                 tv_sec: duration.as_secs() as clock_t,
-                tv_nsec: duration.subsec_nanos() as clock_t
+                tv_nsec: clock_t::from(duration.subsec_nanos())
             });
             let when_ptr = when
                 .map(|mut duration| &mut duration as *mut _)
-                .unwrap_or_else(|| ptr::null_mut());
+                .unwrap_or_else(ptr::null_mut);
             let damage = match damage.into() {
                 Some(region) => &mut region.region as *mut _,
                 None => ptr::null_mut()

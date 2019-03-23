@@ -360,7 +360,7 @@ impl Seat {
                 seat: Box::into_raw(res)
             });
             (*seat).data = Box::into_raw(state) as *mut libc::c_void;
-            Handle { seat: seat, handle }
+            Handle { seat, handle }
         }
     }
 
@@ -705,7 +705,7 @@ impl Seat {
         unsafe {
             let touch_point = wlr_seat_touch_get_point(self.data.0, touch_id.into());
             if touch_point.is_null() {
-                return None;
+                None
             } else {
                 Some(TouchPoint::from_ptr(touch_point))
             }
@@ -991,7 +991,7 @@ impl Handle {
         let seat_ptr = seat.data.0;
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut seat)));
         Box::into_raw(seat);
-        self.handle.upgrade().map(|check| {
+        if let Some(check) = self.handle.upgrade() {
             // Sanity check that it hasn't been tampered with.
             if !check.get() {
                 wlr_log!(
@@ -1003,7 +1003,7 @@ impl Handle {
                 panic!("Lock in incorrect state!");
             }
             check.set(false);
-        });
+        };
         match res {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)

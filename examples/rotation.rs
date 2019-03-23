@@ -18,7 +18,7 @@ use wlroots::{
 
 const CAT_TEXTURE_WIDTH: u32 = 128;
 const CAT_TEXTURE_HEIGHT: u32 = 128;
-const CAT_TEXTURE_DATA: &'static [u8] = include_bytes!("cat.data");
+const CAT_TEXTURE_DATA: &[u8] = include_bytes!("cat.data");
 const VELOCITY_STEP_DIFF: f32 = 16.0;
 
 struct Vector2 {
@@ -57,16 +57,16 @@ impl CompositorState {
         let delta = now.duration_since(self.last_frame);
         self.last_frame = now;
         let seconds_delta = delta.as_secs() as f32;
-        let nano_delta = delta.subsec_nanos() as u64;
-        let ms = (seconds_delta * 1000.0) + nano_delta as f32 / 1000000.0;
+        let nano_delta = u64::from(delta.subsec_nanos());
+        let ms = (seconds_delta * 1000.0) + nano_delta as f32 / 1_000_000.0;
         ms / 1000.0
     }
 }
 
-fn output_added<'output>(
+fn output_added(
     compositor_handle: compositor::Handle,
-    output_builder: output::Builder<'output>
-) -> Option<output::BuilderResult<'output>> {
+    output_builder: output::Builder
+) -> Option<output::BuilderResult> {
     let ex_output = ExOutput;
     let mut result = output_builder.build_best_mode(ex_output);
     with_handles!([(compositor: {compositor_handle}), (output: {&mut result.output})] => {

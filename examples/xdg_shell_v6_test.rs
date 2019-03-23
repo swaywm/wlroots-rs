@@ -85,7 +85,7 @@ impl surface::Handler for SurfaceEx {
 fn new_surface(
     compositor: compositor::Handle,
     shell: xdg_shell_v6::Handle
-) -> (Option<Box<xdg_shell_v6::Handler>>, Option<Box<surface::Handler>>) {
+) -> xdg_shell_v6::NewSurfaceResult {
     {
         #[dehandle]
         let compositor = compositor;
@@ -248,12 +248,9 @@ impl pointer::Handler for ExPointer {
         let state: &mut State = compositor.downcast();
         #[dehandle]
         let shell = &state.shells[0];
-        match shell.state() {
-            Some(&mut xdg_shell_v6::ShellState::TopLevel(ref mut toplevel)) => {
-                toplevel.set_activated(true);
-            },
-            _ => {}
-        };
+        if let Some(&mut xdg_shell_v6::ShellState::TopLevel(ref mut toplevel)) = shell.state() {
+            toplevel.set_activated(true);
+        }
         #[dehandle]
         let seat = state.seat_handle.clone().unwrap();
         #[dehandle]

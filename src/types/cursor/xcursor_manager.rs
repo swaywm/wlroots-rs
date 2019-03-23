@@ -33,7 +33,7 @@ pub struct Manager {
 impl<'manager> ManagerTheme<'manager> {
     fn new(theme: *mut wlr_xcursor_manager_theme) -> Self {
         ManagerTheme {
-            theme: theme,
+            theme,
             phantom: PhantomData
         }
     }
@@ -59,7 +59,7 @@ impl Manager {
             if manager.is_null() {
                 None
             } else {
-                Some(Manager { manager: manager })
+                Some(Manager { manager })
             }
         }
     }
@@ -77,11 +77,7 @@ impl Manager {
     /// Retrieves a `XCursor` for the given cursor name at the given scale
     /// factor, or None if this `Manager` has not loaded a cursor theme at
     /// the requested scale.
-    pub fn get_xcursor<'manager, T: Into<Option<String>>>(
-        &'manager self,
-        name: T,
-        scale: f32
-    ) -> Option<XCursor<'manager>> {
+    pub fn get_xcursor<T: Into<Option<String>>>(&self, name: T, scale: f32) -> Option<XCursor> {
         let name_str = name.into().map(safe_as_cstring);
         let name_ptr = name_str.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null_mut());
         unsafe {

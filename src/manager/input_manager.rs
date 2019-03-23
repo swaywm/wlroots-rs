@@ -283,11 +283,11 @@ wayland_listener_static! {
 
 pub(crate) unsafe fn add_keyboard(dev: &mut input::Device) {
     // Set the XKB settings
-    let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES").unwrap_or("".into()));
-    let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL").unwrap_or("".into()));
-    let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT").unwrap_or("".into()));
-    let variant = safe_as_cstring(env::var("XKB_DEFAULT_VARIANT").unwrap_or("".into()));
-    let options = safe_as_cstring(env::var("XKB_DEFAULT_OPTIONS").unwrap_or("".into()));
+    let rules = safe_as_cstring(env::var("XKB_DEFAULT_RULES").unwrap_or_else(|_| "".into()));
+    let model = safe_as_cstring(env::var("XKB_DEFAULT_MODEL").unwrap_or_else(|_| "".into()));
+    let layout = safe_as_cstring(env::var("XKB_DEFAULT_LAYOUT").unwrap_or_else(|_| "".into()));
+    let variant = safe_as_cstring(env::var("XKB_DEFAULT_VARIANT").unwrap_or_else(|_| "".into()));
+    let options = safe_as_cstring(env::var("XKB_DEFAULT_OPTIONS").unwrap_or_else(|_| "".into()));
     wlr_log!(WLR_DEBUG, "Using xkb rules: {:?}", rules);
     wlr_log!(WLR_DEBUG, "Using xkb model: {:?}", model);
     wlr_log!(WLR_DEBUG, "Using xkb layout: {:?}", layout);

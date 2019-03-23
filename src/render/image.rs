@@ -14,6 +14,7 @@ pub struct Image<'buffer> {
 }
 
 impl<'buffer> Image<'buffer> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         pixels: &'buffer [u8],
         stride: i32,

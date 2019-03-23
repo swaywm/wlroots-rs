@@ -81,16 +81,12 @@ impl Cursor {
             let surface_ptr = surface
                 .into()
                 .map(|surface| surface.as_ptr())
-                .unwrap_or_else(|| ptr::null_mut());
+                .unwrap_or_else(ptr::null_mut);
             if !self.output_handle.is_alive() {
                 return Err(HandleErr::AlreadyDropped);
             }
-            Ok(wlr_output_cursor_set_surface(
-                self.cursor,
-                surface_ptr,
-                hotspot_x,
-                hotspot_y
-            ))
+            wlr_output_cursor_set_surface(self.cursor, surface_ptr, hotspot_x, hotspot_y);
+            Ok(())
         }
     }
 
@@ -137,7 +133,7 @@ impl Cursor {
 
     /// Gets the texture for the cursor, if a software cursor is used without a
     /// surface.
-    pub fn texture<'surface>(&'surface self) -> Option<render::Texture<'surface>> {
+    pub fn texture(&self) -> Option<render::Texture> {
         unsafe {
             let texture = (*self.cursor).texture;
             if texture.is_null() {

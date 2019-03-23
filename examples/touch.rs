@@ -14,7 +14,7 @@ use wlroots::{
 
 const CAT_WIDTH: u32 = 128;
 const CAT_HEIGHT: u32 = 128;
-const CAT_DATA: &'static [u8] = include_bytes!("cat.data");
+const CAT_DATA: &[u8] = include_bytes!("cat.data");
 
 #[derive(Debug, Clone)]
 struct TouchPoint {
@@ -43,10 +43,7 @@ struct ExOutput;
 
 struct ExKeyboardHandler;
 
-fn output_added<'output>(
-    _: compositor::Handle,
-    builder: output::Builder<'output>
-) -> Option<output::BuilderResult<'output>> {
+fn output_added(_: compositor::Handle, builder: output::Builder) -> Option<output::BuilderResult> {
     Some(builder.build_best_mode(ExOutput))
 }
 
@@ -73,8 +70,8 @@ impl output::Handler for ExOutput {
             let cat_texture = state.cat_texture.as_mut().unwrap();
             let (cat_width, cat_height) = cat_texture.size();
             for touch_point in &mut state.touch_points {
-                let x = (touch_point.x * width as f64) as i32 - (cat_width / 2);
-                let y = (touch_point.y * height as f64) as i32 - (cat_height / 2);
+                let x = (touch_point.x * f64::from(width)) as i32 - (cat_width / 2);
+                let y = (touch_point.y * f64::from(height)) as i32 - (cat_height / 2);
                 renderer.render_texture(cat_texture, transform_matrix, x, y, 1.0);
             }
         })

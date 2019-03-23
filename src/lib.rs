@@ -1,6 +1,7 @@
 //! This crate provides safe bindings to
 //! [wlroots](https://github.com/swaywm/wlroots).
 #![cfg_attr(not(feature = "unstable"), allow(unused_imports, unused_macros))]
+#![allow(clippy::zero_ptr, clippy::cast_ptr_alignment)]
 #![allow(unused_unsafe)]
 #[macro_use]
 extern crate bitflags;

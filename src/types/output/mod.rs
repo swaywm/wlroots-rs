@@ -2,6 +2,7 @@ mod cursor;
 mod damage;
 pub mod layout;
 mod mode;
+#[allow(clippy::module_inception)]
 mod output;
 
 pub use self::cursor::*;

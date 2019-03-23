@@ -259,7 +259,7 @@ impl Output {
         unsafe { (*self.output.as_ptr()).refresh }
     }
 
-    pub fn current_mode<'output>(&'output self) -> Option<output::Mode<'output>> {
+    pub fn current_mode(&self) -> Option<output::Mode> {
         unsafe {
             if (*self.output.as_ptr()).current_mode.is_null() {
                 None
@@ -344,18 +344,19 @@ impl Output {
     /// You should try to use a `GenericRenderer`, but sometimes it's necessary
     /// to do your own manual rendering in a compositor. In that case, call
     /// `make_current`, do your rendering, and then call this function.
+    #[allow(clippy::cast_lossless)]
     pub unsafe fn swap_buffers<'a, T, U>(&mut self, when: T, damage: U) -> bool
     where
         T: Into<Option<Duration>>,
         U: Into<Option<&'a mut PixmanRegion>>
     {
         let when = when.into().map(|duration| timespec {
-            tv_sec: duration.as_secs() as clock_t,
+            tv_sec: duration.as_secs() as i64,
             tv_nsec: duration.subsec_nanos() as clock_t
         });
         let when_ptr = when
             .map(|mut duration| &mut duration as *mut _)
-            .unwrap_or_else(|| ptr::null_mut());
+            .unwrap_or_else(ptr::null_mut);
         let damage = match damage.into() {
             Some(region) => &mut region.region as *mut _,
             None => ptr::null_mut()
@@ -430,8 +431,8 @@ impl Output {
     }
 
     /// Sets the gamma based on the size.
-    pub fn set_gamma(&mut self, size: usize, mut r: u16, mut g: u16, mut b: u16) -> bool {
-        unsafe { wlr_output_set_gamma(self.output.as_ptr(), size, &mut r, &mut g, &mut b) }
+    pub fn set_gamma(&mut self, size: usize, r: u16, g: u16, b: u16) -> bool {
+        unsafe { wlr_output_set_gamma(self.output.as_ptr(), size, &r, &g, &b) }
     }
 
     /// Get the gamma size.

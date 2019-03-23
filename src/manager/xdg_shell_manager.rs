@@ -14,11 +14,11 @@ use crate::{
     utils::Handleable
 };
 
+pub type NewSurfaceResult = (Option<Box<xdg_shell::Handler>>, Option<Box<surface::Handler>>);
+
 /// Callback that is triggered when a new stable XDG shell surface appears.
-pub type NewSurface = fn(
-    compositor_handle: compositor::Handle,
-    xdg_shell_handle: xdg_shell::Handle
-) -> (Option<Box<xdg_shell::Handler>>, Option<Box<surface::Handler>>);
+pub type NewSurface =
+    fn(compositor_handle: compositor::Handle, xdg_shell_handle: xdg_shell::Handle) -> NewSurfaceResult;
 
 wayland_listener_static! {
     static mut MANAGER;

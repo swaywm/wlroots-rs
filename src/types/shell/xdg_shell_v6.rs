@@ -19,6 +19,7 @@ use wlroots_sys::{
 pub use crate::events::xdg_shell_v6_events as event;
 pub use crate::manager::xdg_shell_v6_handler::*;
 pub(crate) use crate::manager::xdg_shell_v6_manager::Manager;
+pub use crate::manager::xdg_shell_v6_manager::NewSurfaceResult;
 use crate::{
     area::Area,
     seat, surface,
@@ -112,7 +113,7 @@ impl Surface {
         (*shell_surface.as_ptr()).data = Box::into_raw(shell_state) as *mut _;
         Surface {
             liveliness,
-            state: state,
+            state,
             shell_surface
         }
     }

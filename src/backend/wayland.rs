@@ -34,7 +34,7 @@ impl Wayland {
         remote: Option<String>,
         render_setup_func: Option<UnsafeRenderSetupFunction>
     ) -> Self {
-        let remote_cstr = remote.map(|remote| safe_as_cstring(remote));
+        let remote_cstr = remote.map(safe_as_cstring);
         let remote_ptr = remote_cstr
             .as_ref()
             .map(|s| s.as_ptr())
