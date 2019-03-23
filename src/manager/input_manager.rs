@@ -2,18 +2,18 @@
 //! Pass a struct that implements this trait to the `Compositor` during
 //! initialization.
 
-use libc;
+use crate::libc;
 
 use std::{env, panic, process::abort};
 
-use wayland_sys::server::signal::wl_signal_add;
+use crate::wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{
     wlr_input_device, wlr_input_device_type, wlr_keyboard_set_keymap, wlr_keyboard_set_repeat_info,
     xkb_context_flags::*, xkb_context_new, xkb_context_unref, xkb_keymap_compile_flags::*,
     xkb_keymap_new_from_names, xkb_keymap_unref, xkb_rule_names
 };
 
-use {
+use crate::{
     compositor,
     input::{
         self,
@@ -111,7 +111,7 @@ wayland_listener_static! {
                     WLR_INPUT_DEVICE_KEYBOARD => {
                         // Boring setup that we won't make the user do
                         add_keyboard(&mut dev);
-                        let mut keyboard = match Keyboard::new_from_input_device(data) {
+                        let keyboard = match Keyboard::new_from_input_device(data) {
                             Some(dev) => dev,
                             None => {
                                 wlr_log!(WLR_ERROR, "Device {:#?} was not a keyboard!", dev);

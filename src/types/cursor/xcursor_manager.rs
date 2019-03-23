@@ -6,7 +6,7 @@ use wlroots_sys::{
     wlr_xcursor_manager_theme
 };
 
-use {
+use crate::{
     cursor::{
         xcursor::{self, XCursor},
         Cursor

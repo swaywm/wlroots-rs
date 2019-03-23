@@ -2,10 +2,10 @@
 
 use std::marker::PhantomData;
 
-use libc::c_int;
+use crate::libc::c_int;
 use wlroots_sys::{wl_output_transform, wl_resource, wlr_surface_state};
 
-use {render::PixmanRegion, surface::Surface};
+use crate::{render::PixmanRegion, surface::Surface};
 
 #[derive(Debug)]
 #[repr(u32)]

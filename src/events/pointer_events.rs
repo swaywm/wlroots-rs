@@ -1,12 +1,12 @@
 //! Pointers and their events
 
-use libc::c_double;
+use crate::libc::c_double;
 use wlroots_sys::{
     wlr_axis_orientation, wlr_axis_source, wlr_button_state, wlr_event_pointer_axis,
     wlr_event_pointer_button, wlr_event_pointer_motion, wlr_event_pointer_motion_absolute
 };
 
-use input;
+use crate::input;
 
 // NOTE Taken from linux/input-event-codes.h
 // TODO Find a way to automatically parse and fetch from there.

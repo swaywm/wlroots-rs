@@ -1,6 +1,6 @@
 //! Handler for drag icons
 
-use {compositor, seat::drag_icon};
+use crate::{compositor, seat::drag_icon};
 
 /// Handles events from the wlr drag icon
 #[allow(unused_variables)]

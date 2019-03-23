@@ -1,6 +1,6 @@
 //! Support for the KDE Server Decoration Protocol
 
-use wayland_sys::server::wl_display as wl_server_display;
+use crate::wayland_sys::server::wl_display as wl_server_display;
 pub use wlroots_sys::protocols::server_decoration::server::org_kde_kwin_server_decoration_manager::Mode;
 use wlroots_sys::{
     wl_display, wlr_server_decoration_manager, wlr_server_decoration_manager_create,

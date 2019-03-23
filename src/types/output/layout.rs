@@ -8,8 +8,8 @@ use std::{
     rc::{Rc, Weak}
 };
 
-use libc::{self, c_double, c_int};
-use wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
+use crate::libc::{self, c_double, c_int};
+use crate::wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{
     wlr_output_effective_resolution, wlr_output_layout, wlr_output_layout_add, wlr_output_layout_add_auto,
     wlr_output_layout_closest_point, wlr_output_layout_contains_point, wlr_output_layout_create,
@@ -19,7 +19,7 @@ use wlroots_sys::{
     wlr_output_layout_remove
 };
 
-use {
+use crate::{
     area::{Area, Origin},
     compositor, output,
     utils::{HandleErr, HandleResult, Handleable}

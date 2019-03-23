@@ -3,9 +3,9 @@ use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
 use wlroots_sys::{wlr_input_device, wlr_tablet_pad};
 
-pub use events::tablet_pad_events as event;
-pub use manager::tablet_pad_handler::*;
-use {
+pub use crate::events::tablet_pad_events as event;
+pub use crate::manager::tablet_pad_handler::*;
+use crate::{
     input::{self, InputState},
     utils::{self, HandleErr, HandleResult, Handleable}
 };

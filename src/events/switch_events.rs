@@ -1,6 +1,6 @@
 use wlroots_sys::{wlr_event_switch_toggle, wlr_switch_state, wlr_switch_type};
 
-use input;
+use crate::input;
 
 pub struct Toggle {
     event: *mut wlr_event_switch_toggle,

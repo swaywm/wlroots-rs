@@ -1,10 +1,10 @@
 //! Handler for lid switches
 
-use libc;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::libc;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{wlr_event_switch_toggle, wlr_input_device};
 
-use {
+use crate::{
     compositor,
     input::switch::{self, Switch},
     utils::Handleable

@@ -2,10 +2,10 @@
 
 use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
-pub use events::switch_events as event;
-pub use manager::switch_handler::*;
+pub use crate::events::switch_events as event;
+pub use crate::manager::switch_handler::*;
 use wlroots_sys::{wlr_input_device, wlr_switch};
-use {
+use crate::{
     input::{self, InputState},
     utils::{self, HandleErr, HandleResult, Handleable}
 };

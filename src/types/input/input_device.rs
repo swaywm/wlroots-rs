@@ -1,12 +1,12 @@
 use std::{cell::Cell, ptr::NonNull, rc::Weak};
 
-use libc::{c_double, c_uint};
+use crate::libc::{c_double, c_uint};
 use wlroots_sys::{
     wlr_input_device, wlr_input_device_pointer, wlr_input_device_type, wlr_input_device_type::*
 };
 
-pub(crate) use manager::input_manager::Manager;
-use {
+pub(crate) use crate::manager::input_manager::Manager;
+use crate::{
     input::{keyboard, pointer, switch, tablet_pad, tablet_tool, touch},
     utils::c_to_rust_string
 };

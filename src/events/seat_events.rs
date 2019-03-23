@@ -1,6 +1,6 @@
 use wlroots_sys::wlr_seat_pointer_request_set_cursor_event;
 
-use {seat, surface};
+use crate::{seat, surface};
 
 #[derive(Debug)]
 pub struct SetCursor {

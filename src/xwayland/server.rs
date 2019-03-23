@@ -1,11 +1,11 @@
-use libc::c_int;
-use wayland_sys::server::signal::wl_signal_add;
+use crate::libc::c_int;
+use crate::wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{
     pid_t, wl_client, wl_display, wlr_compositor, wlr_xwayland, wlr_xwayland_create, wlr_xwayland_destroy,
     wlr_xwayland_set_cursor
 };
 
-use xwayland;
+use crate::xwayland;
 
 #[allow(dead_code)]
 pub struct Server {

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use wlroots_sys::{wlr_event_keyboard_key, wlr_key_state, xkb_keysym_t, xkb_state, xkb_state_key_get_syms};
 
-use input::keyboard;
+use crate::input::keyboard;
 
 #[derive(Debug)]
 pub struct Key {

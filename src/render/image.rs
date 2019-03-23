@@ -1,4 +1,4 @@
-use cursor::xcursor;
+use crate::cursor::xcursor;
 
 /// An image that can be attached to a `Cursor` or `OutputCursor`.
 #[derive(Debug, Default, PartialEq)]

@@ -1,10 +1,10 @@
 //! Handler for stable XDG shell clients.
 
-use libc;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::libc;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_xdg_surface;
 
-use {
+use crate::{
     compositor,
     shell::xdg_shell::{self, SurfaceState},
     surface,
@@ -24,7 +24,7 @@ pub trait Handler {
     }
 
     /// Called when the wayland shell is destroyed (e.g by the user)
-    fn destroyed(&mut self, compositor::Handle, xdg_shell::Handle) {}
+    fn destroyed(&mut self, _: compositor::Handle, _: xdg_shell::Handle) {}
 
     /// Called when the ping request timed out.
     ///

@@ -11,7 +11,7 @@ use wlroots_sys::{
     wlr_matrix_rotate, wlr_matrix_scale, wlr_matrix_transform, wlr_matrix_translate, wlr_matrix_transpose
 };
 
-use area::Area;
+use crate::area::Area;
 
 pub const IDENTITY: [f32; 9] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
 

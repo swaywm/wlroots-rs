@@ -7,7 +7,7 @@ use wlroots_sys::{
     wlr_output_cursor_set_image, wlr_output_cursor_set_surface
 };
 
-use {
+use crate::{
     output::{self, Output},
     render,
     surface::{self, Surface},

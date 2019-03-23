@@ -6,9 +6,9 @@ use std::{
     rc::{Rc, Weak}
 };
 
-use libc;
-use wayland_sys::server::signal::wl_signal_add;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::libc;
+use crate::wayland_sys::server::signal::wl_signal_add;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{
     wlr_cursor, wlr_cursor_absolute_to_layout_coords, wlr_cursor_attach_input_device,
     wlr_cursor_attach_output_layout, wlr_cursor_create, wlr_cursor_destroy, wlr_cursor_detach_input_device,
@@ -17,7 +17,7 @@ use wlroots_sys::{
     wlr_cursor_warp_absolute
 };
 
-use {
+use crate::{
     area::Area,
     compositor,
     cursor::xcursor,

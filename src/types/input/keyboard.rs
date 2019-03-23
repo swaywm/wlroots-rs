@@ -9,9 +9,9 @@ use wlroots_sys::{
 use xkbcommon::xkb::ffi::{xkb_keymap, xkb_state};
 use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex};
 
-pub use events::key_events as event;
-pub use manager::keyboard_handler::*;
-use {
+pub use crate::events::key_events as event;
+pub use crate::manager::keyboard_handler::*;
+use crate::{
     input::{self, InputState},
     utils::{self, HandleErr, HandleResult, Handleable}
 };

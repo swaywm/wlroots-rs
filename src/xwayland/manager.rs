@@ -9,11 +9,11 @@
 
 use std::ptr::NonNull;
 
-use libc;
-use wayland_sys::server::signal::wl_signal_add;
+use crate::libc;
+use crate::wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_xwayland_surface;
 
-use {compositor, utils::Handleable, xwayland};
+use crate::{compositor, utils::Handleable, xwayland};
 
 /// Callback that's triggered when the XWayland library is ready.
 pub type OnReady = fn(compositor::Handle);

@@ -5,7 +5,7 @@ use wlroots_sys::{
     wlr_xdg_toplevel_v6_set_fullscreen_event, wlr_xdg_toplevel_v6_show_window_menu_event
 };
 
-use {output, shell::xdg_shell_v6, utils::edges::Edges};
+use crate::{output, shell::xdg_shell_v6, utils::edges::Edges};
 
 /// Event that triggers when the surface has been moved in coordinate space.
 #[derive(Debug, PartialEq, Eq)]

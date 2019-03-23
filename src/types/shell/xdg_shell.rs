@@ -7,7 +7,7 @@ use std::{
     rc::{Rc, Weak}
 };
 
-use libc::c_void;
+use crate::libc::c_void;
 use wlroots_sys::{
     wlr_surface, wlr_xdg_popup, wlr_xdg_popup_destroy, wlr_xdg_surface, wlr_xdg_surface_for_each_surface,
     wlr_xdg_surface_ping, wlr_xdg_surface_role, wlr_xdg_surface_surface_at, wlr_xdg_toplevel,
@@ -16,10 +16,10 @@ use wlroots_sys::{
     wlr_xdg_toplevel_state
 };
 
-pub use events::xdg_shell_events as event;
-pub use manager::xdg_shell_handler::*;
-pub(crate) use manager::xdg_shell_manager::Manager;
-use {
+pub use crate::events::xdg_shell_events as event;
+pub use crate::manager::xdg_shell_handler::*;
+pub(crate) use crate::manager::xdg_shell_manager::Manager;
+use crate::{
     area::Area,
     seat, surface,
     utils::{self, c_to_rust_string, HandleErr, HandleResult, Handleable}
@@ -33,7 +33,7 @@ pub mod manager {
     //!
     //! Pass that function to the [`xdg_shell::Builder`](./struct.Builder.html)
     //! which is then passed to the `compositor::Builder`.
-    pub use manager::xdg_shell_manager::*;
+    pub use crate::manager::xdg_shell_manager::*;
 }
 
 pub type Handle = utils::Handle<OptionalShellState, wlr_xdg_surface, Surface>;

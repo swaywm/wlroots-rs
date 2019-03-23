@@ -10,8 +10,8 @@ use std::{
     time::Duration
 };
 
-use libc;
-use wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
+use crate::libc;
+use crate::wayland_sys::server::{signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
 pub use wlroots_sys::wayland_server::protocol::wl_seat::Capability;
 use wlroots_sys::{
     wlr_axis_orientation, wlr_axis_source, wlr_seat, wlr_seat_create, wlr_seat_destroy,
@@ -31,8 +31,8 @@ use wlroots_sys::{
 };
 use xkbcommon::xkb::Keycode;
 
-pub use events::seat_events as event;
-use {
+pub use crate::events::seat_events as event;
+use crate::{
     compositor::{self, Compositor},
     input::{self, keyboard},
     seat::{

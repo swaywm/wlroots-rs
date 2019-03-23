@@ -74,7 +74,7 @@ pub trait Handleable<D: Clone, T> {
     ///
     /// If you _need_ to use this, use `Handle::upgrade` instead.
     #[doc(hidden)]
-    unsafe fn from_handle(&Handle<D, T, Self>) -> HandleResult<Self>
+    unsafe fn from_handle(_: &Handle<D, T, Self>) -> HandleResult<Self>
     where
         Self: Sized;
 

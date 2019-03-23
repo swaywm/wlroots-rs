@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use libc::c_int;
+use crate::libc::c_int;
 use wlroots_sys::{wl_shm_format, wlr_texture, wlr_texture_get_size};
 
 /// Wrapper around wl_shm_format, to make it easier and nicer to type.

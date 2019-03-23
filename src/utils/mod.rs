@@ -24,11 +24,11 @@ pub(crate) unsafe fn handle_unwind<T>(res: ::std::thread::Result<T>) {
     match res {
         Ok(_) => {},
         Err(err) => {
-            if ::compositor::COMPOSITOR_PTR == 0 as *mut _ {
+            if crate::compositor::COMPOSITOR_PTR == 0 as *mut _ {
                 ::std::process::abort();
             }
-            (&mut *::compositor::COMPOSITOR_PTR).save_panic_error(err);
-            ::compositor::terminate()
+            (&mut *crate::compositor::COMPOSITOR_PTR).save_panic_error(err);
+            crate::compositor::terminate()
         }
     }
 }

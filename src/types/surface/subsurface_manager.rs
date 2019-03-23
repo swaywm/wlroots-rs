@@ -8,10 +8,10 @@
 
 use std::fmt;
 
-use libc;
+use crate::libc;
 use wlroots_sys::wlr_subsurface;
 
-use {
+use crate::{
     surface::subsurface::{self, Subsurface},
     utils::Handleable
 };

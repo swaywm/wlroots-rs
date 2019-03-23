@@ -2,11 +2,11 @@
 
 use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
-use libc;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::libc;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_subsurface;
 
-use {
+use crate::{
     compositor, surface,
     utils::{self, HandleErr, HandleResult, Handleable}
 };

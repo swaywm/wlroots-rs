@@ -1,14 +1,14 @@
 use std::marker::PhantomData;
 use std::path::Path;
 
-use libc::{c_char, c_int, c_uint};
+use crate::libc::{c_char, c_int, c_uint};
 use wlroots_sys::{
     dev_t, udev, udev_monitor, wl_display, wl_listener, wl_signal, wlr_device, wlr_session,
     wlr_session_change_vt, wlr_session_close_file, wlr_session_create, wlr_session_destroy,
     wlr_session_open_file, wlr_session_signal_add
 };
 
-use utils::safe_as_cstring;
+use crate::utils::safe_as_cstring;
 
 pub struct Device<'session> {
     device: *mut wlr_device,

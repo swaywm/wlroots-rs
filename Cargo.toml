@@ -13,6 +13,7 @@ categories = ["external-ffi-bindings", "gui"]
 license = "MIT"
 exclude = [".travis.yml"]
 autoexamples = true
+edition = "2018"
 
 [dependencies]
 wlroots-sys = { path = "wlroots-sys", default-features = false, version = "0.4.0"  }

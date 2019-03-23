@@ -2,11 +2,11 @@
 
 use std::{marker::PhantomData, panic, ptr::NonNull};
 
-use libc;
-use wayland_sys::server::signal::wl_signal_add;
+use crate::libc;
+use crate::wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_output;
 
-use {
+use crate::{
     compositor,
     output::{self, Output, OutputState, UserOutput},
     utils::Handleable

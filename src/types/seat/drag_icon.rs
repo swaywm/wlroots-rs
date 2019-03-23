@@ -7,8 +7,8 @@ use std::{
 
 use wlroots_sys::wlr_drag_icon;
 
-pub use manager::drag_icon_handler::*;
-use {
+pub use crate::manager::drag_icon_handler::*;
+use crate::{
     surface,
     utils::{HandleErr, HandleResult}
 };

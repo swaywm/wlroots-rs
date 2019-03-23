@@ -10,8 +10,8 @@ use std::{
     time::Duration
 };
 
-use libc::{c_float, c_int, clock_t};
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::libc::{c_float, c_int, clock_t};
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{
     timespec, wl_list, wl_output_subpixel, wl_output_transform, wlr_output, wlr_output_damage,
     wlr_output_effective_resolution, wlr_output_enable, wlr_output_get_gamma_size, wlr_output_make_current,
@@ -21,10 +21,10 @@ use wlroots_sys::{
     wlr_output_transformed_resolution
 };
 
-pub use manager::output_handler::*;
-pub(crate) use manager::output_manager::Manager;
-pub use manager::output_manager::{BuilderResult, OutputBuilder as Builder};
-use {
+pub use crate::manager::output_handler::*;
+pub(crate) use crate::manager::output_manager::Manager;
+pub use crate::manager::output_manager::{BuilderResult, OutputBuilder as Builder};
+use crate::{
     area::{Origin, Size},
     output::{self, layout},
     render::PixmanRegion,

@@ -5,7 +5,7 @@ use wlroots_sys::{
     wlr_wl_output_create
 };
 
-use {
+use crate::{
     backend::UnsafeRenderSetupFunction,
     input,
     output::{self, Output},

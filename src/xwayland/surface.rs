@@ -4,16 +4,16 @@ use std::{
     rc::{Rc, Weak}
 };
 
-use libc::{self, int16_t, size_t, uint16_t};
+use crate::libc::{self, int16_t, size_t, uint16_t};
 
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{
     pid_t, wl_event_source, wlr_xwayland_surface, wlr_xwayland_surface_activate,
     wlr_xwayland_surface_configure, xcb_atom_t, xcb_window_t
 };
 
-pub use xwayland::hints::{Hints, SizeHints};
-use {
+pub use crate::xwayland::hints::{Hints, SizeHints};
+use crate::{
     area::{Area, Origin, Size},
     compositor,
     surface::{self, InternalState},

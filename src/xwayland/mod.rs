@@ -4,4 +4,4 @@ mod server;
 pub mod surface;
 
 pub use self::server::*;
-pub use events::xwayland_events as event;
+pub use crate::events::xwayland_events as event;

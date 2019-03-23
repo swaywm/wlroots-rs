@@ -145,7 +145,7 @@ impl keyboard::Handler for KeyboardManager {
 }
 
 fn rotation_transform_from_str(rotation_str: &str) -> wl_output_transform {
-    use wl_output_transform::*;
+    use crate::wl_output_transform::*;
     match rotation_str {
         "90" => WL_OUTPUT_TRANSFORM_90,
         "180" => WL_OUTPUT_TRANSFORM_180,

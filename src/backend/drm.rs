@@ -1,9 +1,9 @@
 use std::ptr;
 
-use libc::c_int;
+use crate::libc::c_int;
 use wlroots_sys::{wl_display, wlr_backend, wlr_drm_backend_create, wlr_output_is_drm};
 
-use {
+use crate::{
     backend::{Session, UnsafeRenderSetupFunction},
     output::Output,
     utils::Handleable

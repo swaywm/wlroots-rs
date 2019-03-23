@@ -17,5 +17,5 @@ pub mod manager {
     //! function conforming to the [`OutputAdded`](./type.OutputAdded.html)
     //! type signature. That function is passed to the [`output::Builder`](.
     //! /struct.Builder.html) which is then given to the `compositor::Builder`.
-    pub use manager::output_manager::*;
+    pub use crate::manager::output_manager::*;
 }

@@ -3,7 +3,7 @@
 //! Warning: This protocol is unstable and can change in the future
 //! Current Protocol: https://github.com/swaywm/wlroots/blob/master/protocol/wlr-gamma-control-unstable-v1.xml
 
-use wayland_sys::server::wl_display as wl_server_display;
+use crate::wayland_sys::server::wl_display as wl_server_display;
 use wlroots_sys::{
     wl_display, wlr_gamma_control_manager_v1, wlr_gamma_control_manager_v1_create,
     wlr_gamma_control_manager_v1_destroy

@@ -3,7 +3,7 @@ use wlroots_sys::{
     wlr_libinput_get_device_handle
 };
 
-use {backend::Session, input};
+use crate::{backend::Session, input};
 
 #[derive(Debug, Hash, Eq, PartialEq)]
 pub struct Libinput {

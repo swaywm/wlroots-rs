@@ -354,7 +354,7 @@ fn main() {
 #[wlroots_dehandle]
 fn render_shells(state: &mut State, renderer: &mut Renderer) {
     let shells = state.shells.clone();
-    for mut shell in shells {
+    for shell in shells {
         #[dehandle]
         let shell = shell;
         #[dehandle]

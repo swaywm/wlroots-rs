@@ -13,13 +13,13 @@
 //!
 //! On the multi backend multiple backends could be running at the same time.
 
-use libc;
+use crate::libc;
 use wlroots_sys::{
     self, wlr_backend, wlr_backend_get_session, wlr_backend_is_drm, wlr_backend_is_headless,
     wlr_backend_is_libinput, wlr_backend_is_multi, wlr_backend_is_wl, wlr_backend_is_x11
 };
 
-use backend;
+use crate::backend;
 
 /// A custom function to set up the renderer.
 pub type UnsafeRenderSetupFunction = unsafe extern "C" fn(

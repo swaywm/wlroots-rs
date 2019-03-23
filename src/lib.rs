@@ -36,7 +36,7 @@ pub mod utils;
 #[cfg(feature = "unstable")]
 pub mod xwayland;
 
-pub use types::*;
+pub use crate::types::*;
 
 #[cfg(feature = "unstable")]
 pub use wlroots_sys::{

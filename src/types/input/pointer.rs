@@ -4,9 +4,9 @@ use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
-pub use events::pointer_events as event;
-pub use manager::pointer_handler::*;
-use {
+pub use crate::events::pointer_events as event;
+pub use crate::manager::pointer_handler::*;
+use crate::{
     input::{self, InputState},
     utils::{self, HandleErr, HandleResult, Handleable}
 };

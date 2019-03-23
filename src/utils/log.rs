@@ -6,11 +6,11 @@
 //! To log using this system please utilize the
 //! [`wlr_log!`](../../macro.wlr_log.html) macro.
 
-use libc::c_char;
+use crate::libc::c_char;
 use vsprintf::vsprintf;
 use wlroots_sys::{__va_list_tag, _wlr_log, wlr_log_importance, wlr_log_init};
 
-use utils::c_to_rust_string;
+use crate::utils::c_to_rust_string;
 
 use std::ffi::CString;
 

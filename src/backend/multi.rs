@@ -3,7 +3,7 @@ use wlroots_sys::{
     wlr_multi_is_empty
 };
 
-use backend::UnsafeRenderSetupFunction;
+use crate::backend::UnsafeRenderSetupFunction;
 
 /// When multiple backends are running or when the compositor writer doesn't
 /// care and just used the auto create option in the `CompositorBuilder`.

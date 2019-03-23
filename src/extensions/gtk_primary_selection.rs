@@ -1,6 +1,6 @@
 //! Support for the GTK Primary Selection Protocol
 
-use wayland_sys::server::wl_display as wl_server_display;
+use crate::wayland_sys::server::wl_display as wl_server_display;
 use wlroots_sys::{
     wl_display, wlr_gtk_primary_selection_device_manager, wlr_gtk_primary_selection_device_manager_create,
     wlr_gtk_primary_selection_device_manager_destroy

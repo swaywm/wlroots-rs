@@ -1,12 +1,12 @@
 use std::ptr::NonNull;
 
-use libc;
+use crate::libc;
 use wlroots_sys::{
     wl_display, wlr_backend, wlr_headless_add_input_device, wlr_headless_add_output,
     wlr_headless_backend_create, wlr_input_device_is_headless, wlr_input_device_type, wlr_output_is_headless
 };
 
-use {
+use crate::{
     backend::UnsafeRenderSetupFunction,
     input,
     output::{self, Output},

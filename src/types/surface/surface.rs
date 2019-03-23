@@ -1,6 +1,6 @@
 //! TODO Documentation
 
-use libc::{self, c_double};
+use crate::libc::{self, c_double};
 use std::{
     cell::Cell,
     panic,
@@ -9,15 +9,15 @@ use std::{
     time::Duration
 };
 
-use wayland_sys::server::signal::wl_signal_add;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::wayland_sys::server::signal::wl_signal_add;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{
     timespec, wlr_subsurface, wlr_surface, wlr_surface_get_root_surface, wlr_surface_get_texture,
     wlr_surface_has_buffer, wlr_surface_is_xdg_surface, wlr_surface_point_accepts_input,
     wlr_surface_send_enter, wlr_surface_send_frame_done, wlr_surface_send_leave, wlr_surface_surface_at
 };
 
-use {
+use crate::{
     compositor,
     output::Output,
     render::Texture,
@@ -44,7 +44,7 @@ pub trait Handler {
         None
     }
 
-    fn on_destroy(&mut self, compositor::Handle, Handle) {}
+    fn on_destroy(&mut self, _: compositor::Handle, _: Handle) {}
 }
 
 impl Handler for () {}

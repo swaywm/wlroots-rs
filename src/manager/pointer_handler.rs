@@ -1,12 +1,12 @@
 //! Handler for pointers
 
-use libc;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::libc;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::{
     wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion, wlr_input_device
 };
 
-use {
+use crate::{
     compositor,
     input::pointer::{self, Pointer},
     utils::Handleable

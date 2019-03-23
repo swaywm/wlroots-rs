@@ -1,13 +1,13 @@
 use std::{ptr, time::Duration};
 
-use libc::clock_t;
+use crate::libc::clock_t;
 use wlroots_sys::{
     timespec, wlr_output, wlr_output_damage, wlr_output_damage_add, wlr_output_damage_add_box,
     wlr_output_damage_add_whole, wlr_output_damage_create, wlr_output_damage_destroy,
     wlr_output_damage_make_current, wlr_output_damage_swap_buffers
 };
 
-use {area::Area, render::PixmanRegion};
+use crate::{area::Area, render::PixmanRegion};
 
 #[derive(Debug)]
 /// Tracks damage for an output.

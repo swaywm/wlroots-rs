@@ -12,14 +12,14 @@ use std::{
     sync::atomic::{AtomicBool, Ordering}
 };
 
-use libc;
-use wayland_sys::server::{signal::wl_signal_add, wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
+use crate::libc;
+use crate::wayland_sys::server::{signal::wl_signal_add, wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
 use wlroots_sys::{
     wlr_backend_destroy, wlr_backend_start, wlr_compositor, wlr_compositor_create, wlr_compositor_destroy,
     wlr_xdg_shell, wlr_xdg_shell_create, wlr_xdg_shell_v6, wlr_xdg_shell_v6_create
 };
 
-use {
+use crate::{
     backend::{self, Backend, Session, UnsafeRenderSetupFunction},
     data_device,
     extensions::{

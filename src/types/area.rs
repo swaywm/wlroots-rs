@@ -1,7 +1,7 @@
 //! Wrapper for the `wlr_box` type.
 //! Note that we renamed it to `Area` to avoid conflicts with Rust's Box.
 
-use libc::{c_double, c_float, c_int};
+use crate::libc::{c_double, c_float, c_int};
 
 use wlroots_sys::{
     wl_output_transform, wlr_box, wlr_box_closest_point, wlr_box_contains_point, wlr_box_empty,

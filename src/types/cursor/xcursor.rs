@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use std::time::Duration;
 use std::{mem, ptr, slice};
 
-use libc::c_int;
+use crate::libc::c_int;
 use wlroots_sys::{
     wlr_xcursor, wlr_xcursor_frame, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_destroy,
     wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load
@@ -18,7 +18,7 @@ use wlroots_sys::{
 
 #[cfg(feature = "unstable")]
 pub use super::xcursor_manager::*;
-use utils::{c_to_rust_string, safe_as_cstring};
+use crate::utils::{c_to_rust_string, safe_as_cstring};
 
 /// Wrapper for an xcursor theme from the X11 xcursor library.
 ///

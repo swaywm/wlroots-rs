@@ -2,12 +2,12 @@
 
 use std::ptr::NonNull;
 
-use libc;
-use wayland_sys::server::signal::wl_signal_add;
+use crate::libc;
+use crate::wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface, wlr_xdg_surface_role::*};
 
 use super::xdg_shell_handler::XdgShell;
-use {
+use crate::{
     compositor,
     shell::xdg_shell::{self, ShellState},
     surface,

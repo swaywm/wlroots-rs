@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use libc::{clock_gettime, timespec, CLOCK_MONOTONIC};
+use crate::libc::{clock_gettime, timespec, CLOCK_MONOTONIC};
 
 /// Trait to convert something to milliseconds.
 ///

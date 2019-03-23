@@ -1,11 +1,11 @@
 //! Handler for XDG shell v6 clients.
 
-use libc;
+use crate::libc;
 
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_xdg_surface_v6;
 
-use {
+use crate::{
     compositor,
     shell::xdg_shell_v6::{self, SurfaceState},
     surface,
@@ -76,7 +76,7 @@ pub trait Handler {
         compositor_handle: compositor::Handle,
         surface_handle: surface::Handle,
         xdg_shell_v6_handle: xdg_shell_v6::Handle,
-        &xdg_shell_v6::event::Move
+        _: &xdg_shell_v6::event::Move
     ) {
     }
 
@@ -86,7 +86,7 @@ pub trait Handler {
         compositor_handle: compositor::Handle,
         surface_handle: surface::Handle,
         xdg_shell_v6_handle: xdg_shell_v6::Handle,
-        &xdg_shell_v6::event::Resize
+        _: &xdg_shell_v6::event::Resize
     ) {
     }
 
@@ -96,7 +96,7 @@ pub trait Handler {
         compositor_handle: compositor::Handle,
         surface_handle: surface::Handle,
         xdg_shell_v6_handle: xdg_shell_v6::Handle,
-        &xdg_shell_v6::event::SetFullscreen
+        _: &xdg_shell_v6::event::SetFullscreen
     ) {
     }
 
@@ -106,7 +106,7 @@ pub trait Handler {
         compositor_handle: compositor::Handle,
         surface_handle: surface::Handle,
         xdg_shell_v6_handle: xdg_shell_v6::Handle,
-        &xdg_shell_v6::event::ShowWindowMenu
+        _: &xdg_shell_v6::event::ShowWindowMenu
     ) {
     }
 

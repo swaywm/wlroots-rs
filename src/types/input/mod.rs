@@ -17,5 +17,5 @@ pub mod manager {
     //!
     //! Pass those functions to an [`input::Builder`](./struct.Builder.html)
     //! which is then given to a `compositor::Builder`.
-    pub use manager::input_manager::*;
+    pub use crate::manager::input_manager::*;
 }

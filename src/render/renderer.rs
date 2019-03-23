@@ -2,7 +2,7 @@
 
 use std::{ptr, time::Duration};
 
-use libc::{c_float, c_int, c_void};
+use crate::libc::{c_float, c_int, c_void};
 use wlroots_sys::{
     wl_shm_format, wlr_backend, wlr_backend_get_renderer, wlr_render_ellipse_with_matrix,
     wlr_render_quad_with_matrix, wlr_render_rect, wlr_render_texture, wlr_render_texture_with_matrix,
@@ -10,7 +10,7 @@ use wlroots_sys::{
     wlr_renderer_scissor, wlr_texture_destroy, wlr_texture_from_pixels
 };
 
-use {
+use crate::{
     area::Area,
     output::Output,
     render::{texture::Texture, PixmanRegion}

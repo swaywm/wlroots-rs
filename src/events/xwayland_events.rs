@@ -1,7 +1,7 @@
-use libc::{int16_t, uint16_t};
+use crate::libc::{int16_t, uint16_t};
 use wlroots_sys::{wlr_xwayland_move_event, wlr_xwayland_resize_event, wlr_xwayland_surface_configure_event};
 
-use {utils::edges::Edges, xwayland};
+use crate::{utils::edges::Edges, xwayland};
 
 /// Event for when XWayland surface needs to be configured.
 pub struct Configure {

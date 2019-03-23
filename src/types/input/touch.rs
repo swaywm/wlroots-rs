@@ -4,9 +4,9 @@ use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
 use wlroots_sys::{wlr_input_device, wlr_touch};
 
-pub use events::touch_events as event;
-pub use manager::touch_handler::*;
-use {
+pub use crate::events::touch_events as event;
+pub use crate::manager::touch_handler::*;
+use crate::{
     input::{self, InputState},
     utils::{self, HandleErr, HandleResult, Handleable}
 };

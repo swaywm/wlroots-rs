@@ -5,7 +5,7 @@
 
 use std::mem;
 
-use libc::{c_double, c_float, c_int};
+use crate::libc::{c_double, c_float, c_int};
 use wlroots_sys::{
     pixman_region32_init, pixman_region32_t, wl_output_transform, wlr_region_confine, wlr_region_expand,
     wlr_region_rotated_bounds, wlr_region_scale, wlr_region_transform

@@ -1,10 +1,10 @@
 //! Handler for outputs
 
-use libc;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::libc;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_output;
 
-use {
+use crate::{
     compositor,
     output::{self, Output, OutputState},
     utils::{HandleErr, Handleable}

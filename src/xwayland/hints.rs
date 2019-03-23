@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
-use libc::{int32_t, uint32_t};
+use crate::libc::{int32_t, uint32_t};
 use wlroots_sys::{wlr_xwayland_surface_hints, wlr_xwayland_surface_size_hints};
 
-use xwayland;
+use crate::xwayland;
 
 /// Hints provided by the XWayland client to aid in compositing.
 pub struct Hints<'surface> {
