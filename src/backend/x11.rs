@@ -1,16 +1,20 @@
 use std::ptr;
 
-use wlroots_sys::{wlr_backend, wlr_x11_backend_create, wlr_x11_output_create,
-                  wlr_input_device_is_x11, wlr_output_is_x11, wl_display};
+use wlroots_sys::{
+    wl_display, wlr_backend, wlr_input_device_is_x11, wlr_output_is_x11, wlr_x11_backend_create,
+    wlr_x11_output_create
+};
 
-use {backend::UnsafeRenderSetupFunction,
-     output::{self, Output},
-     input,
-     utils::{Handleable, safe_as_cstring}};
-
+use {
+    backend::UnsafeRenderSetupFunction,
+    input,
+    output::{self, Output},
+    utils::{safe_as_cstring, Handleable}
+};
 
 /// When the compositor is running in a nested X11 environment.
-/// e.g. your compositor is executed while the user is running an X11 window manager.
+/// e.g. your compositor is executed while the user is running an X11 window
+/// manager.
 ///
 /// This is useful for testing and iteration on the design of the compositor.
 #[derive(Debug, Hash, Eq, PartialEq)]
@@ -19,12 +23,14 @@ pub struct X11 {
 }
 
 impl X11 {
-    pub unsafe fn new(display: *mut wl_display,
-                      x11_display: Option<String>,
-                      render_setup_func: Option<UnsafeRenderSetupFunction>)
-                      -> Self {
+    pub unsafe fn new(
+        display: *mut wl_display,
+        x11_display: Option<String>,
+        render_setup_func: Option<UnsafeRenderSetupFunction>
+    ) -> Self {
         let x11_display_cstr = x11_display.map(|remote| safe_as_cstring(remote));
-        let x11_display_ptr = x11_display_cstr.as_ref()
+        let x11_display_ptr = x11_display_cstr
+            .as_ref()
             .map(|s| s.as_ptr())
             .unwrap_or_else(|| ptr::null_mut());
         let backend = wlr_x11_backend_create(display, x11_display_ptr, render_setup_func);
@@ -42,19 +48,14 @@ impl X11 {
             } else {
                 Some(output::Handle::from_ptr(output_ptr))
             }
-
         }
     }
 
     pub fn is_x11_input_device(&self, input_device: &input::Device) -> bool {
-        unsafe {
-            wlr_input_device_is_x11(input_device.as_ptr())
-        }
+        unsafe { wlr_input_device_is_x11(input_device.as_ptr()) }
     }
 
     pub fn is_x11_output_device(&self, output: &Output) -> bool {
-        unsafe {
-            wlr_output_is_x11(output.as_ptr())
-        }
+        unsafe { wlr_output_is_x11(output.as_ptr()) }
     }
 }

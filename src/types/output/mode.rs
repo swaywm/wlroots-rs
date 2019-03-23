@@ -13,11 +13,13 @@ pub struct Mode<'output> {
 }
 
 impl<'output> Mode<'output> {
-    /// NOTE This is a lifetime defined by the user of this function, but it must not outlive
-    /// the `Output` that hosts this output mode.
+    /// NOTE This is a lifetime defined by the user of this function, but it
+    /// must not outlive the `Output` that hosts this output mode.
     pub(crate) unsafe fn new<'unbound>(output_mode: *mut wlr_output_mode) -> Mode<'unbound> {
-        Mode { output_mode,
-                     phantom: PhantomData }
+        Mode {
+            output_mode,
+            phantom: PhantomData
+        }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_output_mode {

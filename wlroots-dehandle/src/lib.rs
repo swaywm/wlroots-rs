@@ -6,17 +6,15 @@ extern crate syn;
 extern crate quote;
 
 use proc_macro::TokenStream;
-use syn::{ItemFn, Stmt, Item, Block, Expr,
-          spanned::Spanned,
-          fold::Fold};
+use syn::{fold::Fold, spanned::Spanned, Block, Expr, Item, ItemFn, Stmt};
 
 /// Parses a list of variable names separated by commas
 ///
 /// This is how the compiler passes in arguments to our attribute -- it is
 /// everything inside the delimiters after the attribute name.
-///```rust,ignore
+/// ```rust,ignore
 ///     #[wlroots_dehandle(a, b, c)]
-///```
+/// ```
 struct Args;
 
 impl Fold for Args {
@@ -80,7 +78,7 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
     let mut inner = None;
     let mut is_try = false;
     while let Some(stmt) = input.next().cloned() {
-        use syn::{Pat, punctuated::Pair};
+        use syn::{punctuated::Pair, Pat};
         match stmt.clone() {
             // Recurse into function body
             Stmt::Item(Item::Fn(mut function)) => {
@@ -102,13 +100,11 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
                         },
                         _ => {}
                     }
-                };
+                }
                 let left_side = local.pats.first().map(Pair::into_value).cloned();
                 let right_side = local.init.clone();
                 match (dehandle, left_side, right_side) {
-                    (true,
-                     Some(Pat::Ident(dehandle_name)),
-                     Some((_, body))) => {
+                    (true, Some(Pat::Ident(dehandle_name)), Some((_, body))) => {
                         let mut body = *body;
                         is_try = match body.clone() {
                             syn::Expr::Try(syn::ExprTry { expr, .. }) => {
@@ -133,12 +129,16 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
             },
             Stmt::Expr(expr) => {
                 let body = build_block_expr(expr, args);
-                output.push(syn::parse_quote::parse(quote_spanned!(stmt.span()=> {#body}).into()))
-            }
+                output.push(syn::parse_quote::parse(
+                    quote_spanned!(stmt.span()=> {#body}).into()
+                ))
+            },
             Stmt::Semi(expr, _) => {
                 let body = build_block_expr(expr, args);
-                output.push(syn::parse_quote::parse(quote_spanned!(stmt.span()=> {#body;}).into()))
-            }
+                output.push(syn::parse_quote::parse(
+                    quote_spanned!(stmt.span()=> {#body;}).into()
+                ))
+            },
             _ => output.push(stmt)
         }
     }
@@ -151,13 +151,17 @@ fn build_block(mut input: std::slice::Iter<Stmt>, args: &mut Args) -> Block {
                                    #inner_block
                                }).expect(concat!("Could not upgrade handle ",
                                                  stringify!(#handle), " to ",
-                                                 stringify!(#dehandle)))}).into())
+                                                 stringify!(#dehandle)))})
+                .into()
+            )
         } else {
             syn::parse_quote::parse(
                 quote_spanned!(handle.span()=>
                                {(#handle).run(|#dehandle|{
                                    #inner_block
-                               })?}).into())
+                               })?})
+                .into()
+            )
         };
         output.push(handle_call);
     }
@@ -170,30 +174,25 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
         Expr::Block(block) => {
             let block = build_block(block.block.stmts.iter(), args);
             syn::parse_quote::parse(quote_spanned!(block.span()=> #block))
-        }
+        },
         Expr::Let(mut let_expr) => {
             *let_expr.expr = build_block_expr(*let_expr.expr.clone(), args);
             Expr::Let(let_expr)
         },
         Expr::If(mut if_expr) => {
             let then_branch = if_expr.then_branch.clone();
-            let then_parsed = syn::parse_quote::parse(
-                quote_spanned!(then_branch.span()=> #then_branch));
+            let then_parsed = syn::parse_quote::parse(quote_spanned!(then_branch.span()=> #then_branch));
             let then_branch = build_block_expr(then_parsed, args);
-            if_expr.then_branch = syn::parse_quote::parse(
-                quote_spanned!(then_branch.span()=> #then_branch));
+            if_expr.then_branch = syn::parse_quote::parse(quote_spanned!(then_branch.span()=> #then_branch));
             if_expr.else_branch = match if_expr.else_branch.clone() {
                 None => if_expr.else_branch,
-                Some((token, else_branch)) => {
-                    Some((token, Box::new( build_block_expr(*else_branch, args))))
-                }
+                Some((token, else_branch)) => Some((token, Box::new(build_block_expr(*else_branch, args))))
             };
             Expr::If(if_expr)
         },
         Expr::While(mut while_expr) => {
             let body = while_expr.body.clone();
-            let body = build_block_expr(syn::parse_quote::parse(
-                quote_spanned!(body.span()=> #body)), args);
+            let body = build_block_expr(syn::parse_quote::parse(quote_spanned!(body.span()=> #body)), args);
             while_expr.body = parse_quote!(#body);
             Expr::While(while_expr)
         },
@@ -234,23 +233,19 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
             Expr::MethodCall(call_expr)
         },
         Expr::Closure(mut closure_expr) => {
-            *closure_expr.body = build_block_expr(*closure_expr.body.clone(),
-                                                  args);
+            *closure_expr.body = build_block_expr(*closure_expr.body.clone(), args);
             Expr::Closure(closure_expr)
         },
         Expr::Unsafe(mut unsafe_expr) => {
-            unsafe_expr.block = build_block(unsafe_expr.block.stmts.iter(),
-                                            args);
+            unsafe_expr.block = build_block(unsafe_expr.block.stmts.iter(), args);
             Expr::Unsafe(unsafe_expr)
         },
         Expr::Assign(mut assign_expr) => {
-            *assign_expr.right = build_block_expr(*assign_expr.right.clone(),
-                                                  args);
+            *assign_expr.right = build_block_expr(*assign_expr.right.clone(), args);
             Expr::Assign(assign_expr)
         },
         Expr::AssignOp(mut assign_expr) => {
-            *assign_expr.right = build_block_expr(*assign_expr.right.clone(),
-                                                  args);
+            *assign_expr.right = build_block_expr(*assign_expr.right.clone(), args);
             Expr::AssignOp(assign_expr)
         },
         Expr::Break(mut break_expr) => {
@@ -272,8 +267,7 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
             Expr::Return(return_expr)
         },
         Expr::Reference(mut reference_expr) => {
-            *reference_expr.expr = build_block_expr(*reference_expr.expr.clone(),
-                                                    args);
+            *reference_expr.expr = build_block_expr(*reference_expr.expr.clone(), args);
             Expr::Reference(reference_expr)
         },
         Expr::Paren(mut paren_expr) => {
@@ -289,8 +283,6 @@ fn build_block_expr(expr: Expr, args: &mut Args) -> Expr {
             *binary_expr.right = build_block_expr(*binary_expr.right.clone(), args);
             Expr::Binary(binary_expr)
         },
-        v => {
-            v
-        }
+        v => v
     }
 }

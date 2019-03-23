@@ -1,8 +1,9 @@
 //! Events for stable XDG shell
 
-use wlroots_sys::{wlr_xdg_toplevel_move_event, wlr_xdg_toplevel_resize_event,
-                  wlr_xdg_toplevel_set_fullscreen_event,
-                  wlr_xdg_toplevel_show_window_menu_event};
+use wlroots_sys::{
+    wlr_xdg_toplevel_move_event, wlr_xdg_toplevel_resize_event, wlr_xdg_toplevel_set_fullscreen_event,
+    wlr_xdg_toplevel_show_window_menu_event
+};
 
 use {output, shell::xdg_shell, utils::edges::Edges};
 

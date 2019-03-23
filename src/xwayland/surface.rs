@@ -1,109 +1,159 @@
-use std::{ptr::NonNull, cell::Cell, rc::{Rc, Weak}};
+use std::{
+    cell::Cell,
+    ptr::NonNull,
+    rc::{Rc, Weak}
+};
 
-use libc::{self, size_t, int16_t, uint16_t};
+use libc::{self, int16_t, size_t, uint16_t};
 
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{pid_t, wl_event_source, wlr_xwayland_surface, xcb_atom_t, xcb_window_t,
-                  wlr_xwayland_surface_configure, wlr_xwayland_surface_activate};
+use wlroots_sys::{
+    pid_t, wl_event_source, wlr_xwayland_surface, wlr_xwayland_surface_activate,
+    wlr_xwayland_surface_configure, xcb_atom_t, xcb_window_t
+};
 
-use {area::{Area, Size, Origin},
-     compositor,
-     surface::{self, InternalState},
-     xwayland,
-     utils::{self, HandleErr, HandleResult, Handleable, c_to_rust_string}};
 pub use xwayland::hints::{Hints, SizeHints};
+use {
+    area::{Area, Origin, Size},
+    compositor,
+    surface::{self, InternalState},
+    utils::{self, c_to_rust_string, HandleErr, HandleResult, Handleable},
+    xwayland
+};
 
 pub type Handle = utils::Handle<(), wlr_xwayland_surface, Surface>;
 
 #[allow(unused_variables)]
 pub trait Handler {
     /// Called when the XWayland surface is destroyed (e.g by the user).
-    fn destroyed(&mut self,
-                 compositor_handle: compositor::Handle,
-                 surface_handle: Option<surface::Handle>,
-                 xwayland_surface_handle: Handle) {}
+    fn destroyed(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) {
+    }
 
     /// Called when the XWayland surface wants to be configured.
-    fn on_configure(&mut self,
-                    compositor_handle: compositor::Handle,
-                    surface_handle: Option<surface::Handle>,
-                    xwayland_surface_handle: Handle,
-                    configure: &xwayland::event::Configure) {
+    fn on_configure(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle,
+        configure: &xwayland::event::Configure
+    ) {
     }
 
     /// Called when the XWayland surface wants to move.
-    fn on_move(&mut self,
-               compositor_handle: compositor::Handle,
-               surface_handle: Option<surface::Handle>,
-               xwayland_surface_handle: Handle,
-               event: &xwayland::event::Move) {}
+    fn on_move(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle,
+        event: &xwayland::event::Move
+    ) {
+    }
 
     /// Called when the XWayland surface wants to be resized.
-    fn on_resize(&mut self,
-                 compositor_handle: compositor::Handle,
-                 surface_handle: Option<surface::Handle>,
-                 xwayland_surface_handle: Handle,
-                 event: &xwayland::event::Resize) {}
+    fn on_resize(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle,
+        event: &xwayland::event::Resize
+    ) {
+    }
 
     /// Called when the XWayland surface wants to be maximized.
-    fn on_maximize(&mut self, compositor_handle: compositor::Handle,
-                   surface_handle: Option<surface::Handle>,
-                   xwayland_surface_handle: Handle) {}
+    fn on_maximize(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) {
+    }
 
     /// Called when the XWayland surface wants to be fullscreen.
-    fn on_fullscreen(&mut self,
-                     compositor_handle: compositor::Handle,
-                     surface_handle: Option<surface::Handle>,
-                     xwayland_surface_handle: Handle) {}
+    fn on_fullscreen(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) {
+    }
 
-    fn on_map(&mut self,
-              compositor_handle: compositor::Handle,
-              surface_handle: Option<surface::Handle>,
-              xwayland_surface_handle: Handle)
-              -> Option<Box<surface::Handler>> { None }
+    fn on_map(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) -> Option<Box<surface::Handler>> {
+        None
+    }
 
-    fn on_unmap(&mut self,
-                compositor_handle: compositor::Handle,
-                surface_handle: Option<surface::Handle>,
-                xwayland_surface_handle: Handle) {}
+    fn on_unmap(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) {
+    }
 
     /// Called when the title has been set on the XWayland surface.
-    fn title_set(&mut self,
-                 compositor_handle: compositor::Handle,
-                 surface_handle: Option<surface::Handle>,
-                 xwayland_surface_handle: Handle) {}
+    fn title_set(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) {
+    }
 
     /// Called when the class has been set on the XWayland surface.
-    fn class_set(&mut self,
-                 compositor_handle: compositor::Handle,
-                 surface_handle: Option<surface::Handle>,
-                 xwayland_surface_handle: Handle) {}
+    fn class_set(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) {
+    }
 
     /// Called when the parent has been set on the XWayland surface.
-    fn parent_set(&mut self,
-                  compositor_handle: compositor::Handle,
-                  surface_handle: Option<surface::Handle>,
-                  xwayland_surface_handle: Handle) {}
+    fn parent_set(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) {
+    }
 
     /// Called when the PID has been set on the XWayland surface.
-    fn pid_set(&mut self,
-               compositor_handle: compositor::Handle,
-               surface_handle: Option<surface::Handle>,
-               xwayland_surface_handle: Handle) {}
+    fn pid_set(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) {
+    }
 
     /// Called when the window type has been set on the XWayland surface.
-    fn window_type_set(&mut self,
-                       compositor_handle: compositor::Handle,
-                       surface_handle: Option<surface::Handle>,
-                       xwayland_surface_handle: Handle) {}
+    fn window_type_set(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) {
+    }
 
     /// Called when the ping request timed out.
     ///
     /// This usually indicates something is wrong with the client.
-    fn ping_timeout(&mut self,
-                    compositor_handle: compositor::Handle,
-                    surface_handle: Option<surface::Handle>,
-                    xwayland_surface_handle: Handle) {}
+    fn ping_timeout(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: Option<surface::Handle>,
+        xwayland_surface_handle: Handle
+    ) {
+    }
 }
 
 wayland_listener!(pub(crate) Shell, (Surface, Option<Box<Handler>>), [
@@ -352,8 +402,8 @@ pub(crate) struct State {
 /// When a surface is ready to be displayed, the `map` event is emitted. When a
 /// surface should no longer be displayed, the `unmap` event is emitted.
 ///
-/// The `unmap` event is guaranteed to be emitted before the `destroy` event if the
-/// view is destroyed when mapped.
+/// The `unmap` event is guaranteed to be emitted before the `destroy` event if
+/// the view is destroyed when mapped.
 #[derive(Debug)]
 pub struct Surface {
     liveliness: Rc<Cell<bool>>,
@@ -362,16 +412,20 @@ pub struct Surface {
 
 impl Surface {
     pub(crate) unsafe fn new(shell_surface: *mut wlr_xwayland_surface) -> Self {
-        let shell_surface = NonNull::new(shell_surface)
-            .expect("Shell Surface pointer was null");
+        let shell_surface = NonNull::new(shell_surface).expect("Shell Surface pointer was null");
         if !(*shell_surface.as_ptr()).data.is_null() {
             panic!("Shell surface has already been created");
         }
         let liveliness = Rc::new(Cell::new(false));
-        let state = Box::new(State { shell: None, handle: Rc::downgrade(&liveliness) });
+        let state = Box::new(State {
+            shell: None,
+            handle: Rc::downgrade(&liveliness)
+        });
         (*shell_surface.as_ptr()).data = Box::into_raw(state) as *mut _;
-        Surface { liveliness,
-                  shell_surface }
+        Surface {
+            liveliness,
+            shell_surface
+        }
     }
 
     /// Get the window id for this surface.
@@ -384,8 +438,9 @@ impl Surface {
         unsafe { (*self.shell_surface.as_ptr()).surface_id }
     }
 
-    /// Get the Wayland surface associated with this Surface. If the shell surface is not
-    /// mapped, then it has no surface, and this will return None.
+    /// Get the Wayland surface associated with this Surface. If the shell
+    /// surface is not mapped, then it has no surface, and this will return
+    /// None.
     pub fn surface(&self) -> Option<surface::Handle> {
         unsafe {
             let surface = (*self.shell_surface.as_ptr()).surface;
@@ -409,14 +464,24 @@ impl Surface {
     ///
     /// Return format is (width, height).
     pub fn dimensions(&self) -> (uint16_t, uint16_t) {
-        unsafe { ((*self.shell_surface.as_ptr()).width, (*self.shell_surface.as_ptr()).height) }
+        unsafe {
+            (
+                (*self.shell_surface.as_ptr()).width,
+                (*self.shell_surface.as_ptr()).height
+            )
+        }
     }
 
     /// TODO What does this represent?
     ///
     /// Return format is (width, height)
     pub fn saved_dimensions(&self) -> (uint16_t, uint16_t) {
-        unsafe { ((*self.shell_surface.as_ptr()).saved_width, (*self.shell_surface.as_ptr()).saved_height) }
+        unsafe {
+            (
+                (*self.shell_surface.as_ptr()).saved_width,
+                (*self.shell_surface.as_ptr()).saved_height
+            )
+        }
     }
 
     /// TODO What does this represent?
@@ -449,7 +514,7 @@ impl Surface {
     }
 
     // TODO
-    //pub fn has_utf8_title(&self) -> bool {
+    // pub fn has_utf8_title(&self) -> bool {
     //    unsafe { (*self.shell_surface.as_ptr()).has_utf8_title }
     //}
 
@@ -470,10 +535,10 @@ impl Surface {
         unsafe {
             let mut result = Vec::new();
             wl_list_for_each!((*self.shell_surface.as_ptr()).children,
-                              parent_link,
-                              (child: wlr_xwayland_surface) => {
-                                  result.push(Handle::from_ptr(child))
-                              });
+            parent_link,
+            (child: wlr_xwayland_surface) => {
+                result.push(Handle::from_ptr(child))
+            });
             result
         }
     }
@@ -562,7 +627,8 @@ impl Surface {
         }
     }
 
-    /// Send the surface a configure request, requesting the new position and dimensions
+    /// Send the surface a configure request, requesting the new position and
+    /// dimensions
     pub fn configure(&self, x: i16, y: i16, width: u16, height: u16) {
         unsafe {
             wlr_xwayland_surface_configure(self.shell_surface.as_ptr(), x, y, width, height);
@@ -571,14 +637,16 @@ impl Surface {
 
     /// Tell the window whether it is the foucsed window
     pub fn set_activated(&self, active: bool) {
-        unsafe { wlr_xwayland_surface_activate(self.shell_surface.as_ptr(), active); }
+        unsafe {
+            wlr_xwayland_surface_activate(self.shell_surface.as_ptr(), active);
+        }
     }
 }
 
 impl Drop for Surface {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) > 1 {
-            return
+            return;
         }
         unsafe {
             Box::from_raw((*self.shell_surface.as_ptr()).data as *mut State);
@@ -592,7 +660,10 @@ impl Handleable<(), wlr_xwayland_surface> for Surface {
         let shell_surface = NonNull::new(shell_surface)?;
         let data = (*shell_surface.as_ptr()).data as *mut State;
         let liveliness = (*data).handle.upgrade().unwrap();
-        Some(Surface { liveliness, shell_surface })
+        Some(Surface {
+            liveliness,
+            shell_surface
+        })
     }
 
     #[doc(hidden)]
@@ -602,67 +673,97 @@ impl Handleable<(), wlr_xwayland_surface> for Surface {
 
     #[doc(hidden)]
     unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-            .upgrade()
-            .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(Surface { liveliness,
-                     shell_surface: handle.as_non_null() })
+        let liveliness = handle.handle.upgrade().ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Surface {
+            liveliness,
+            shell_surface: handle.as_non_null()
+        })
     }
 
     /// Creates a weak reference to an `Surface`.
     fn weak_reference(&self) -> Handle {
-        Handle { ptr: self.shell_surface,
-                 handle: Rc::downgrade(&self.liveliness),
-                 _marker: std::marker::PhantomData,
-                 data: Some(()) }
+        Handle {
+            ptr: self.shell_surface,
+            handle: Rc::downgrade(&self.liveliness),
+            _marker: std::marker::PhantomData,
+            data: Some(())
+        }
     }
 }
 
 impl Drop for Shell {
     fn drop(&mut self) {
         unsafe {
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.destroy_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.request_configure_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.request_move_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.request_resize_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.request_maximize_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.request_fullscreen_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.map_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.unmap_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.set_title_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.set_class_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.set_parent_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.set_pid_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.set_window_type_listener() as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          self.ping_timeout_listener() as *mut _ as _);
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.destroy_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.request_configure_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.request_move_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.request_resize_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.request_maximize_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.request_fullscreen_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.map_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.unmap_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.set_title_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.set_class_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.set_parent_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.set_pid_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.set_window_type_listener() as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                self.ping_timeout_listener() as *mut _ as _
+            );
         }
     }
 }

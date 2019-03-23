@@ -1,5 +1,5 @@
-//! Timing is important for compositors and clients to know when to render frames.
-//! Most of these functions will be used for that purpose.
+//! Timing is important for compositors and clients to know when to render
+//! frames. Most of these functions will be used for that purpose.
 
 use std::time::Duration;
 
@@ -28,7 +28,10 @@ impl ToMs for Duration {
 /// `surface.send_frame_done()`.
 pub fn current_time() -> Duration {
     unsafe {
-        let mut ts = timespec{tv_sec: 0, tv_nsec: 0};
+        let mut ts = timespec {
+            tv_sec: 0,
+            tv_nsec: 0
+        };
         clock_gettime(CLOCK_MONOTONIC, &mut ts);
         Duration::new(ts.tv_sec as u64, ts.tv_nsec as u32)
     }

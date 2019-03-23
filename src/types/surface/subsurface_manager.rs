@@ -11,7 +11,10 @@ use std::fmt;
 use libc;
 use wlroots_sys::wlr_subsurface;
 
-use {surface::subsurface::{self, Subsurface}, utils::Handleable};
+use {
+    surface::subsurface::{self, Subsurface},
+    utils::Handleable
+};
 
 wayland_listener!(pub SubsurfaceManager, Vec<Subsurface>, [
     subsurface_created_listener => subsurface_created_notify:
@@ -25,9 +28,7 @@ wayland_listener!(pub SubsurfaceManager, Vec<Subsurface>, [
 
 impl SubsurfaceManager {
     pub(crate) fn subsurfaces(&self) -> Vec<subsurface::Handle> {
-        self.data.iter()
-            .map(|surface| surface.weak_reference())
-            .collect()
+        self.data.iter().map(|surface| surface.weak_reference()).collect()
     }
 }
 

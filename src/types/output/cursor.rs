@@ -2,14 +2,17 @@
 
 use std::ptr;
 
-use wlroots_sys::{wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor_destroy,
-                  wlr_output_cursor_move, wlr_output_cursor_set_image,
-                  wlr_output_cursor_set_surface};
+use wlroots_sys::{
+    wlr_output_cursor, wlr_output_cursor_create, wlr_output_cursor_destroy, wlr_output_cursor_move,
+    wlr_output_cursor_set_image, wlr_output_cursor_set_surface
+};
 
-use {render,
-     output::{self, Output},
-     surface::{self, Surface},
-     utils::{Handleable, HandleResult, HandleErr}};
+use {
+    output::{self, Output},
+    render,
+    surface::{self, Surface},
+    utils::{HandleErr, HandleResult, Handleable}
+};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Cursor {
@@ -24,9 +27,10 @@ impl Cursor {
     ///
     /// # Ergonomics
     ///
-    /// To make this easier for you, I would suggest putting the `output::Cursor` in your
-    /// `OutputHandler` implementor's state so that when the `Output` is removed you
-    /// just don't have to think about it and it will clean itself up by itself.
+    /// To make this easier for you, I would suggest putting the
+    /// `output::Cursor` in your `OutputHandler` implementor's state so that
+    /// when the `Output` is removed you just don't have to think about it
+    /// and it will clean itself up by itself.
     pub fn new(output: &mut Output) -> Option<Cursor> {
         unsafe {
             let output_handle = output.weak_reference();
@@ -34,8 +38,10 @@ impl Cursor {
             if cursor.is_null() {
                 None
             } else {
-                Some(Cursor { cursor,
-                              output_handle })
+                Some(Cursor {
+                    cursor,
+                    output_handle
+                })
             }
         }
     }
@@ -52,34 +58,39 @@ impl Cursor {
         unsafe {
             let cursor = self.cursor;
             if !self.output_handle.is_alive() {
-                return Err(HandleErr::AlreadyDropped)
+                return Err(HandleErr::AlreadyDropped);
             }
-            Ok(wlr_output_cursor_set_image(cursor,
-                                           image.pixels.as_ptr(),
-                                           image.stride,
-                                           image.width,
-                                           image.height,
-                                           image.hotspot_x,
-                                           image.hotspot_y))
+            Ok(wlr_output_cursor_set_image(
+                cursor,
+                image.pixels.as_ptr(),
+                image.stride,
+                image.width,
+                image.height,
+                image.hotspot_x,
+                image.hotspot_y
+            ))
         }
     }
 
     /// Sets the hardware cursor's surface.
-    pub fn set_surface<'a, T>(&mut self, surface: T, hotspot_x: i32, hotspot_y: i32)
-                              -> HandleResult<()>
-    where T: Into<Option<&'a Surface>>
+    pub fn set_surface<'a, T>(&mut self, surface: T, hotspot_x: i32, hotspot_y: i32) -> HandleResult<()>
+    where
+        T: Into<Option<&'a Surface>>
     {
         unsafe {
-            let surface_ptr = surface.into()
+            let surface_ptr = surface
+                .into()
                 .map(|surface| surface.as_ptr())
                 .unwrap_or_else(|| ptr::null_mut());
             if !self.output_handle.is_alive() {
-                return Err(HandleErr::AlreadyDropped)
+                return Err(HandleErr::AlreadyDropped);
             }
-            Ok(wlr_output_cursor_set_surface(self.cursor,
-                                             surface_ptr,
-                                             hotspot_x,
-                                             hotspot_y))
+            Ok(wlr_output_cursor_set_surface(
+                self.cursor,
+                surface_ptr,
+                hotspot_x,
+                hotspot_y
+            ))
         }
     }
 
@@ -87,7 +98,7 @@ impl Cursor {
     pub fn move_relative(&mut self, x: f64, y: f64) -> HandleResult<bool> {
         unsafe {
             if !self.output_handle.is_alive() {
-                return Err(HandleErr::AlreadyDropped)
+                return Err(HandleErr::AlreadyDropped);
             }
             Ok(wlr_output_cursor_move(self.cursor, x, y))
         }

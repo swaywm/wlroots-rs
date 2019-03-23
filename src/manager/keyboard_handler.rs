@@ -2,39 +2,36 @@
 
 use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wlr_input_device, wlr_event_keyboard_key};
+use wlroots_sys::{wlr_event_keyboard_key, wlr_input_device};
 
-use {compositor,
-     input::keyboard::{self, Keyboard},
-     utils::Handleable};
+use {
+    compositor,
+    input::keyboard::{self, Keyboard},
+    utils::Handleable
+};
 
 #[allow(unused_variables)]
 pub trait Handler {
     /// Callback that is triggered when a key is pressed.
-    fn on_key(&mut self,
-              compositor_handle: compositor::Handle,
-              keyboard_handle: keyboard::Handle,
-              event: &keyboard::event::Key) {}
+    fn on_key(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        keyboard_handle: keyboard::Handle,
+        event: &keyboard::event::Key
+    ) {
+    }
 
     /// Callback that is triggered when modifiers are pressed.
-    fn modifiers(&mut self,
-                 compositor_handle: compositor::Handle,
-                 keyboard_handle: keyboard::Handle) {}
+    fn modifiers(&mut self, compositor_handle: compositor::Handle, keyboard_handle: keyboard::Handle) {}
 
     /// Callback that is triggered when the keymap is updated.
-    fn keymap(&mut self,
-              compositor_handle: compositor::Handle,
-              keyboard_handle: keyboard::Handle) {}
+    fn keymap(&mut self, compositor_handle: compositor::Handle, keyboard_handle: keyboard::Handle) {}
 
     /// Callback that is triggered when repeat info is updated.
-    fn repeat_info(&mut self,
-                   compositor_handle: compositor::Handle,
-                   keyboard_handle: keyboard::Handle) {}
+    fn repeat_info(&mut self, compositor_handle: compositor::Handle, keyboard_handle: keyboard::Handle) {}
 
     /// Callback that is triggered when the keyboard is destroyed.
-    fn destroyed(&mut self,
-                 compositor_handle: compositor::Handle,
-                 keyboard_handle: keyboard::Handle) {}
+    fn destroyed(&mut self, compositor_handle: compositor::Handle, keyboard_handle: keyboard::Handle) {}
 }
 
 wayland_listener!(pub(crate) KeyboardWrapper, (Keyboard, Box<Handler>), [

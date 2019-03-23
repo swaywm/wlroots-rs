@@ -1,18 +1,20 @@
 //! TODO Documentation
-use std::{fmt, cell::Cell, ptr::NonNull, rc::Rc};
+use std::{cell::Cell, fmt, ptr::NonNull, rc::Rc};
 
-use wlroots_sys::{wlr_input_device, wlr_keyboard, wlr_keyboard_led, wlr_keyboard_led_update,
-                  wlr_keyboard_get_modifiers, wlr_keyboard_modifier, wlr_keyboard_modifiers,
-                  wlr_keyboard_set_keymap,
-                  xkb_keysym_t};
 pub use wlroots_sys::wlr_key_state;
-use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex};
+use wlroots_sys::{
+    wlr_input_device, wlr_keyboard, wlr_keyboard_get_modifiers, wlr_keyboard_led, wlr_keyboard_led_update,
+    wlr_keyboard_modifier, wlr_keyboard_modifiers, wlr_keyboard_set_keymap, xkb_keysym_t
+};
 use xkbcommon::xkb::ffi::{xkb_keymap, xkb_state};
+use xkbcommon::xkb::{self, Keycode, Keymap, LedIndex, ModIndex};
 
-use {input::{self, InputState},
-     utils::{self, Handleable, HandleErr, HandleResult}};
-pub use manager::keyboard_handler::*;
 pub use events::key_events as event;
+pub use manager::keyboard_handler::*;
+use {
+    input::{self, InputState},
+    utils::{self, HandleErr, HandleResult, Handleable}
+};
 
 pub type Key = xkb_keysym_t;
 pub type Handle = utils::Handle<NonNull<wlr_input_device>, wlr_keyboard, Keyboard>;
@@ -31,7 +33,7 @@ pub struct Modifiers {
     pub depressed: Modifier,
     pub latched: Modifier,
     pub locked: Modifier,
-    pub group: Modifier,
+    pub group: Modifier
 }
 
 impl Default for Modifiers {
@@ -46,12 +48,12 @@ impl Default for Modifiers {
 }
 
 impl From<wlr_keyboard_modifiers> for Modifiers {
-    fn from(mods: wlr_keyboard_modifiers) -> Self{
+    fn from(mods: wlr_keyboard_modifiers) -> Self {
         Modifiers {
             depressed: Modifier::from_bits_truncate(mods.depressed),
             latched: Modifier::from_bits_truncate(mods.latched),
             locked: Modifier::from_bits_truncate(mods.locked),
-            group: Modifier::from_bits_truncate(mods.group),
+            group: Modifier::from_bits_truncate(mods.group)
         }
     }
 }
@@ -61,14 +63,15 @@ impl Into<wlr_keyboard_modifiers> for Modifiers {
             depressed: self.depressed.bits(),
             latched: self.latched.bits(),
             locked: self.locked.bits(),
-            group: self.group.bits(),
+            group: self.group.bits()
         }
     }
 }
 
 #[derive(Debug)]
 pub struct Keyboard {
-    /// The structure that ensures weak handles to this structure are still alive.
+    /// The structure that ensures weak handles to this structure are still
+    /// alive.
     ///
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
@@ -96,17 +99,23 @@ impl Keyboard {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_KEYBOARD => {
-                let keyboard = NonNull::new((*device).__bindgen_anon_1.keyboard)
-                    .expect("Keyboard pointer was null");
+                let keyboard = NonNull::new((*device).__bindgen_anon_1.keyboard).expect(
+                    "Keyboard pointer \
+                     was null"
+                );
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
-                let state = Box::new(InputState { handle,
-                                                  device: input::Device::from_ptr(device) });
+                let state = Box::new(InputState {
+                    handle,
+                    device: input::Device::from_ptr(device)
+                });
                 (*keyboard.as_ptr()).data = Box::into_raw(state) as *mut _;
-                Some(Keyboard { liveliness,
-                                device: input::Device::from_ptr(device),
-                                keyboard })
-            }
+                Some(Keyboard {
+                    liveliness,
+                    device: input::Device::from_ptr(device),
+                    keyboard
+                })
+            },
             _ => None
         }
     }
@@ -186,8 +195,10 @@ impl Keyboard {
     /// Get the repeat info for this keyboard.
     pub fn repeat_info(&self) -> RepeatInfo {
         unsafe {
-            RepeatInfo { rate: (*self.keyboard.as_ptr()).repeat_info.rate,
-                         delay: (*self.keyboard.as_ptr()).repeat_info.delay }
+            RepeatInfo {
+                rate: (*self.keyboard.as_ptr()).repeat_info.rate,
+                delay: (*self.keyboard.as_ptr()).repeat_info.delay
+            }
         }
     }
 
@@ -220,10 +231,12 @@ impl Drop for Keyboard {
             }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
-                wlr_log!(WLR_DEBUG,
-                         "Still {} weak pointers to Keyboard {:p}",
-                         weak_count,
-                         self.keyboard.as_ptr());
+                wlr_log!(
+                    WLR_DEBUG,
+                    "Still {} weak pointers to Keyboard {:p}",
+                    weak_count,
+                    self.keyboard.as_ptr()
+                );
             }
         }
     }
@@ -237,9 +250,11 @@ impl Handleable<NonNull<wlr_input_device>, wlr_keyboard> for Keyboard {
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*keyboard.as_ptr()).data = Box::into_raw(data) as *mut _;
-        Some(Keyboard { liveliness: handle.upgrade().unwrap(),
-                        device,
-                        keyboard })
+        Some(Keyboard {
+            liveliness: handle.upgrade().unwrap(),
+            device,
+            keyboard
+        })
     }
 
     #[doc(hidden)]
@@ -249,26 +264,26 @@ impl Handleable<NonNull<wlr_input_device>, wlr_keyboard> for Keyboard {
 
     #[doc(hidden)]
     unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-            .upgrade()
-            .ok_or(HandleErr::AlreadyDropped)?;
+        let liveliness = handle.handle.upgrade().ok_or(HandleErr::AlreadyDropped)?;
         let device = handle.data.ok_or(HandleErr::AlreadyDropped)?;
-        Ok(Keyboard { liveliness,
-                      // NOTE Rationale for cloning:
-                      // If we already dropped we don't reach this point.
-                      device: input::Device { device },
-                      keyboard: handle.as_non_null()
+        Ok(Keyboard {
+            liveliness,
+            // NOTE Rationale for cloning:
+            // If we already dropped we don't reach this point.
+            device: input::Device { device },
+            keyboard: handle.as_non_null()
         })
     }
 
     fn weak_reference(&self) -> Handle {
-        Handle { ptr: self.keyboard,
-                 handle: Rc::downgrade(&self.liveliness),
-                 // NOTE Rationale for cloning:
-                 // Since we have a strong reference already,
-                 // the input must still be alive.
-                 data: unsafe { Some(self.device.as_non_null()) },
-                 _marker: std::marker::PhantomData
+        Handle {
+            ptr: self.keyboard,
+            handle: Rc::downgrade(&self.liveliness),
+            // NOTE Rationale for cloning:
+            // Since we have a strong reference already,
+            // the input must still be alive.
+            data: unsafe { Some(self.device.as_non_null()) },
+            _marker: std::marker::PhantomData
         }
     }
 }
@@ -296,19 +311,22 @@ bitflags! {
 
 impl fmt::Display for Modifier {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let mod_vec = vec![("Shift", Modifier::WLR_MODIFIER_SHIFT),
-                           ("Caps lock", Modifier::WLR_MODIFIER_CAPS),
-                           ("Ctrl", Modifier::WLR_MODIFIER_CTRL),
-                           ("Alt", Modifier::WLR_MODIFIER_ALT),
-                           ("Mod2", Modifier::WLR_MODIFIER_MOD2),
-                           ("Mod3", Modifier::WLR_MODIFIER_MOD3),
-                           ("Logo", Modifier::WLR_MODIFIER_LOGO),
-                           ("Mod5", Modifier::WLR_MODIFIER_MOD5)];
+        let mod_vec = vec![
+            ("Shift", Modifier::WLR_MODIFIER_SHIFT),
+            ("Caps lock", Modifier::WLR_MODIFIER_CAPS),
+            ("Ctrl", Modifier::WLR_MODIFIER_CTRL),
+            ("Alt", Modifier::WLR_MODIFIER_ALT),
+            ("Mod2", Modifier::WLR_MODIFIER_MOD2),
+            ("Mod3", Modifier::WLR_MODIFIER_MOD3),
+            ("Logo", Modifier::WLR_MODIFIER_LOGO),
+            ("Mod5", Modifier::WLR_MODIFIER_MOD5),
+        ];
 
-        let mods: Vec<&str> = mod_vec.into_iter()
-                                     .filter(|&(_, flag)| self.contains(flag))
-                                     .map(|(st, _)| st)
-                                     .collect();
+        let mods: Vec<&str> = mod_vec
+            .into_iter()
+            .filter(|&(_, flag)| self.contains(flag))
+            .map(|(st, _)| st)
+            .collect();
 
         write!(formatter, "{:?}", mods)
     }

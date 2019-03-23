@@ -1,7 +1,8 @@
 //! TODO Documentation
 
-use wlroots_sys::{wl_display, wlr_data_device_manager, wlr_data_device_manager_create,
-                  wlr_data_device_manager_destroy};
+use wlroots_sys::{
+    wl_display, wlr_data_device_manager, wlr_data_device_manager_create, wlr_data_device_manager_destroy
+};
 
 /// Global for the data device manager global for a certain display.
 #[derive(Debug)]

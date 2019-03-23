@@ -6,16 +6,19 @@ use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface, wlr_xdg_surface_role::*};
 
-use {compositor,
-     shell::xdg_shell::{self, ShellState},
-     surface,
-     utils::Handleable};
 use super::xdg_shell_handler::XdgShell;
+use {
+    compositor,
+    shell::xdg_shell::{self, ShellState},
+    surface,
+    utils::Handleable
+};
 
 /// Callback that is triggered when a new stable XDG shell surface appears.
-pub type NewSurface = fn(compositor_handle: compositor::Handle,
-                         xdg_shell_handle: xdg_shell::Handle)
-                         -> (Option<Box<xdg_shell::Handler>>, Option<Box<surface::Handler>>);
+pub type NewSurface = fn(
+    compositor_handle: compositor::Handle,
+    xdg_shell_handle: xdg_shell::Handle
+) -> (Option<Box<xdg_shell::Handler>>, Option<Box<surface::Handler>>);
 
 wayland_listener_static! {
     static mut MANAGER;

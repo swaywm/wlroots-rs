@@ -3,8 +3,10 @@
 
 use libc::{c_double, c_float, c_int};
 
-use wlroots_sys::{wl_output_transform, wlr_box, wlr_box_closest_point, wlr_box_contains_point,
-                  wlr_box_empty, wlr_box_intersection, wlr_box_rotated_bounds, wlr_box_transform};
+use wlroots_sys::{
+    wl_output_transform, wlr_box, wlr_box_closest_point, wlr_box_contains_point, wlr_box_empty,
+    wlr_box_intersection, wlr_box_rotated_bounds, wlr_box_transform
+};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 /// Result of applying an intersection of two `Area`s.
@@ -61,10 +63,12 @@ pub struct Area {
 
 impl Into<wlr_box> for Area {
     fn into(self) -> wlr_box {
-        wlr_box { x: self.origin.x,
-                  y: self.origin.y,
-                  width: self.size.width,
-                  height: self.size.height }
+        wlr_box {
+            x: self.origin.x,
+            y: self.origin.y,
+            width: self.size.width,
+            height: self.size.height
+        }
     }
 }
 
@@ -75,10 +79,16 @@ impl Area {
 
     /// Construct an Area from a `wlr_box`.
     pub fn from_box(wlr_box: wlr_box) -> Self {
-        Area { origin: Origin { x: wlr_box.x,
-                                y: wlr_box.y },
-               size: Size { width: wlr_box.width,
-                            height: wlr_box.height } }
+        Area {
+            origin: Origin {
+                x: wlr_box.x,
+                y: wlr_box.y
+            },
+            size: Size {
+                width: wlr_box.width,
+                height: wlr_box.height
+            }
+        }
     }
 
     /// Makes a new `Area` with width and height set to the values in the given
@@ -131,7 +141,8 @@ impl Area {
     /// Transforms the box coordinates and bounds according to the
     /// output transformation.
     ///
-    /// e.g: If it's `WL_OUTPUT_TRANSFORM_90` then it will flip the Area 90° clockwise.
+    /// e.g: If it's `WL_OUTPUT_TRANSFORM_90` then it will flip the Area 90°
+    /// clockwise.
     pub fn transform(self, transform: wl_output_transform, width: c_int, height: c_int) -> Area {
         unsafe {
             let res = Area::default();

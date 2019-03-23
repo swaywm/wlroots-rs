@@ -1,10 +1,12 @@
-use wlroots_sys::{wlr_backend, wlr_backend_autocreate, wl_display, wlr_multi_backend_add,
-                  wlr_multi_backend_remove, wlr_multi_is_empty};
+use wlroots_sys::{
+    wl_display, wlr_backend, wlr_backend_autocreate, wlr_multi_backend_add, wlr_multi_backend_remove,
+    wlr_multi_is_empty
+};
 
 use backend::UnsafeRenderSetupFunction;
 
-/// When multiple backends are running or when the compositor writer doesn't care and
-/// just used the auto create option in the `CompositorBuilder`.
+/// When multiple backends are running or when the compositor writer doesn't
+/// care and just used the auto create option in the `CompositorBuilder`.
 #[derive(Debug, Hash, Eq, PartialEq)]
 pub struct Multi {
     pub(crate) backend: *mut wlr_backend
@@ -12,9 +14,10 @@ pub struct Multi {
 
 impl Multi {
     /// Auto create a backend based on the environment.
-    pub unsafe fn auto_create(display: *mut wl_display,
-                              render_setup_func: Option<UnsafeRenderSetupFunction>)
-                              -> Self {
+    pub unsafe fn auto_create(
+        display: *mut wl_display,
+        render_setup_func: Option<UnsafeRenderSetupFunction>
+    ) -> Self {
         let backend = wlr_backend_autocreate(display, render_setup_func);
         if backend.is_null() {
             panic!("Could not auto construct backend");
@@ -41,8 +44,6 @@ impl Multi {
     }
 
     pub fn is_empty(&self) -> bool {
-        unsafe {
-            wlr_multi_is_empty(self.backend)
-        }
+        unsafe { wlr_multi_is_empty(self.backend) }
     }
 }

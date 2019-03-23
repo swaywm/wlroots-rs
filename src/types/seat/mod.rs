@@ -1,7 +1,7 @@
 pub mod drag_icon;
-mod seat_client;
-mod seat;
 pub mod grab;
+mod seat;
+mod seat_client;
 mod touch_point;
 
 pub use self::seat::*;

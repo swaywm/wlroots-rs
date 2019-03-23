@@ -1,18 +1,18 @@
-//! Utilities for use within wlroots-rs that are not directly related to Wayland or compositors.
+//! Utilities for use within wlroots-rs that are not directly related to Wayland
+//! or compositors.
 
 pub mod edges;
 pub mod log;
 pub mod region;
 
 // Rust specific utilities that don't wrap a wlroots utility.
-mod time;
-mod string;
 mod handle;
+mod string;
+mod time;
 
-pub use self::time::{current_time, ToMs};
 pub use self::handle::*;
 pub(crate) use self::string::{c_to_rust_string, safe_as_cstring};
-
+pub use self::time::{current_time, ToMs};
 
 /// Handle unwinding from a panic, used in conjunction with
 /// `::std::panic::catch_unwind`.
@@ -22,7 +22,7 @@ pub(crate) use self::string::{c_to_rust_string, safe_as_cstring};
 #[cfg(feature = "unstable")]
 pub(crate) unsafe fn handle_unwind<T>(res: ::std::thread::Result<T>) {
     match res {
-        Ok(_) => {}
+        Ok(_) => {},
         Err(err) => {
             if ::compositor::COMPOSITOR_PTR == 0 as *mut _ {
                 ::std::process::abort();

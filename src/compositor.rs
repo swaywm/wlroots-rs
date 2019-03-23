@@ -1,34 +1,44 @@
 //! Main entry point to the library.
 //! See examples for documentation on how to use this struct.
 
-use std::{env, panic, ptr::{self, NonNull}, any::Any, cell::{Cell, UnsafeCell},
-          ffi::CStr, rc::{Rc, Weak}, sync::atomic::{AtomicBool, Ordering}};
+use std::{
+    any::Any,
+    cell::{Cell, UnsafeCell},
+    env,
+    ffi::CStr,
+    panic,
+    ptr::{self, NonNull},
+    rc::{Rc, Weak},
+    sync::atomic::{AtomicBool, Ordering}
+};
 
 use libc;
-use wayland_sys::server::{wl_display, wl_event_loop, signal::wl_signal_add, WAYLAND_SERVER_HANDLE};
-use wlroots_sys::{wlr_backend_destroy, wlr_backend_start,
-                  wlr_compositor, wlr_compositor_create, wlr_compositor_destroy,
-                  wlr_xdg_shell_v6, wlr_xdg_shell_v6_create,
-                  wlr_xdg_shell, wlr_xdg_shell_create};
+use wayland_sys::server::{signal::wl_signal_add, wl_display, wl_event_loop, WAYLAND_SERVER_HANDLE};
+use wlroots_sys::{
+    wlr_backend_destroy, wlr_backend_start, wlr_compositor, wlr_compositor_create, wlr_compositor_destroy,
+    wlr_xdg_shell, wlr_xdg_shell_create, wlr_xdg_shell_v6, wlr_xdg_shell_v6_create
+};
 
-
-use {backend::{self, UnsafeRenderSetupFunction, Backend, Session},
-     data_device,
-     extensions::{server_decoration, gamma_control, screencopy, screenshooter, idle, idle_inhibit, gtk_primary_selection},
-     surface::{self, Surface, InternalSurface},
-     input,
-     output,
-     render::GenericRenderer,
-     shell::{xdg_shell, xdg_shell_v6},
-     xwayland,
-     utils::{HandleErr, HandleResult, Handleable}};
+use {
+    backend::{self, Backend, Session, UnsafeRenderSetupFunction},
+    data_device,
+    extensions::{
+        gamma_control, gtk_primary_selection, idle, idle_inhibit, screencopy, screenshooter,
+        server_decoration
+    },
+    input, output,
+    render::GenericRenderer,
+    shell::{xdg_shell, xdg_shell_v6},
+    surface::{self, InternalSurface, Surface},
+    utils::{HandleErr, HandleResult, Handleable},
+    xwayland
+};
 
 /// Global compositor pointer, used to refer to the compositor state unsafely.
 pub(crate) static mut COMPOSITOR_PTR: *mut Compositor = 0 as *mut _;
 
 /// Callback that's triggered when a surface is provided to the compositor.
-pub type NewSurface = fn(compositor_handle: Handle,
-                            surface_handle: surface::Handle);
+pub type NewSurface = fn(compositor_handle: Handle, surface_handle: surface::Handle);
 
 /// Callback that's triggered during shutdown.
 pub type OnShutdown = fn();
@@ -41,7 +51,7 @@ pub type OnShutdown = fn();
 /// only be set to false once the `Compositor` is dropped.
 static mut BUILDER_ACTIVE: AtomicBool = AtomicBool::new(false);
 
-wayland_listener_static!{
+wayland_listener_static! {
     static mut INTERNAL_COMPOSITOR;
     (InternalCompositor, EventBuilder): [
         (NewSurface, new_surface_listener, surface_added) => (add_notify, surface_added):
@@ -171,18 +181,20 @@ impl Builder {
     /// Unless otherwise noted, each option is `false`/`None`.
     ///
     /// # Panicking
-    /// There can only be one `compositor::Builder` per process. If you construct
-    /// a `compositor::Builder` with any of the `build` operations then another
-    /// `compositor::Builder` cannot be constructed until the built `Compositor`
-    /// is dropped.
+    /// There can only be one `compositor::Builder` per process. If you
+    /// construct a `compositor::Builder` with any of the `build` operations
+    /// then another `compositor::Builder` cannot be constructed until the
+    /// built `Compositor` is dropped.
     ///
     /// This requirement is enforced by a check that will panic if this
     /// constraint is broken. This applies across threads.
     pub fn new() -> Self {
         unsafe {
-            assert_eq!(BUILDER_ACTIVE.compare_and_swap(false, true, Ordering::AcqRel),
-                       false,
-                       "A compositor builder already exists or has already been built");
+            assert_eq!(
+                BUILDER_ACTIVE.compare_and_swap(false, true, Ordering::AcqRel),
+                false,
+                "A compositor builder already exists or has already been built"
+            );
         }
         Builder::default()
     }
@@ -206,17 +218,16 @@ impl Builder {
     }
 
     /// Set callbacks for managing XDG shell resources.
-    pub fn xdg_shell_manager(mut self,
-                             xdg_shell_manager_builder: xdg_shell::manager::Builder)
-                             -> Self {
+    pub fn xdg_shell_manager(mut self, xdg_shell_manager_builder: xdg_shell::manager::Builder) -> Self {
         self.xdg_shell_manager_builder = Some(xdg_shell_manager_builder);
         self
     }
 
     /// Set callbacks for managing XDG shell v6 resources.
-    pub fn xdg_shell_v6_manager(mut self,
-                                xdg_v6_shell_manager_builder: xdg_shell_v6::manager::Builder)
-                                -> Self {
+    pub fn xdg_shell_v6_manager(
+        mut self,
+        xdg_v6_shell_manager_builder: xdg_shell_v6::manager::Builder
+    ) -> Self {
         self.xdg_v6_shell_manager_builder = Some(xdg_v6_shell_manager_builder);
         self
     }
@@ -272,8 +283,8 @@ impl Builder {
         self
     }
 
-    /// Decide whether or not to enable the GTK primary selection manager protocol
-    /// extension.
+    /// Decide whether or not to enable the GTK primary selection manager
+    /// protocol extension.
     pub fn gtk_primary_selection_manager(mut self, gtk_primary_selection_manager: bool) -> Self {
         self.gtk_primary_selection_manager = gtk_primary_selection_manager;
         self
@@ -285,7 +296,6 @@ impl Builder {
         self.screencopy_manager = screencopy_manager;
         self
     }
-
 
     /// Decide whether or not to enable the screenshooter protocol
     /// extension.
@@ -309,7 +319,8 @@ impl Builder {
         self
     }
 
-    /// Give an unsafe function to setup the renderer instead of the default renderer.
+    /// Give an unsafe function to setup the renderer instead of the default
+    /// renderer.
     pub unsafe fn render_setup_function(mut self, func: UnsafeRenderSetupFunction) -> Self {
         self.render_setup_function = Some(func);
         self
@@ -321,20 +332,22 @@ impl Builder {
     /// Also automatically opens the socket for clients to communicate to the
     /// compositor with.
     pub fn build_auto<D>(self, data: D) -> Compositor
-        where D: Any + 'static
+    where
+        D: Any + 'static
     {
         unsafe {
-            let display =
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
-            let event_loop =
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = Backend::Multi(backend::Multi::auto_create(display as *mut _,
-                                                                     self.render_setup_function));
+            let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
+            let event_loop = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
+            let backend = Backend::Multi(backend::Multi::auto_create(
+                display as *mut _,
+                self.render_setup_function
+            ));
             self.finish_build(data, display, event_loop, backend)
         }
     }
 
-    /// Set the name of the Wayland remote socket to connect to when using the Wayland backend.
+    /// Set the name of the Wayland remote socket to connect to when using the
+    /// Wayland backend.
     ///
     /// (e.g. `wayland-0`, which is usually the default).
     pub fn wayland_remote(mut self, remote: String) -> Self {
@@ -342,103 +355,117 @@ impl Builder {
         self
     }
 
-    /// Set the name of the X11 display socket to be used to connect to a running X11 instance for
-    /// the backend.
+    /// Set the name of the X11 display socket to be used to connect to a
+    /// running X11 instance for the backend.
     pub fn x11_display(mut self, remote: String) -> Self {
         self.x11_display = Some(remote);
         self
     }
 
     pub fn build_x11<D>(mut self, data: D) -> Compositor
-        where D: Any + 'static
+    where
+        D: Any + 'static
     {
         unsafe {
-            let display =
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
-            let event_loop =
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = Backend::X11(backend::X11::new(display as *mut _,
-                                                       self.x11_display.take(),
-                                                       self.render_setup_function));
+            let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
+            let event_loop = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
+            let backend = Backend::X11(backend::X11::new(
+                display as *mut _,
+                self.x11_display.take(),
+                self.render_setup_function
+            ));
             self.finish_build(data, display, event_loop, backend)
         }
     }
 
-    /// Creates the compositor using an already running Wayland instance as a backend.
+    /// Creates the compositor using an already running Wayland instance as a
+    /// backend.
     ///
     /// The instance starts with no outputs.
     pub fn build_wayland<D>(mut self, data: D) -> Compositor
-        where D: Any + 'static
+    where
+        D: Any + 'static
     {
         unsafe {
-            let display =
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
-            let event_loop =
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = Backend::Wayland(backend::Wayland::new(display as *mut _,
-                                                               self.wayland_remote.take(),
-                                                               self.render_setup_function));
+            let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
+            let event_loop = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
+            let backend = Backend::Wayland(backend::Wayland::new(
+                display as *mut _,
+                self.wayland_remote.take(),
+                self.render_setup_function
+            ));
             self.finish_build(data, display, event_loop, backend)
         }
     }
 
-    pub unsafe fn build_drm<D>(self,
-                               data: D,
-                               session: Session,
-                               gpu_fd: libc::c_int,
-                               parent: Option<backend::Drm>)
-                               -> Compositor
-        where D: Any + 'static
+    pub unsafe fn build_drm<D>(
+        self,
+        data: D,
+        session: Session,
+        gpu_fd: libc::c_int,
+        parent: Option<backend::Drm>
+    ) -> Compositor
+    where
+        D: Any + 'static
     {
         unsafe {
-            let display =
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
-            let event_loop =
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = Backend::DRM(backend::Drm::new(display as *mut _,
-                                                       session,
-                                                       gpu_fd,
-                                                       parent,
-                                                       self.render_setup_function));
+            let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
+            let event_loop = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
+            let backend = Backend::DRM(backend::Drm::new(
+                display as *mut _,
+                session,
+                gpu_fd,
+                parent,
+                self.render_setup_function
+            ));
             self.finish_build(data, display, event_loop, backend)
         }
     }
 
     pub fn build_headless<D>(self, data: D) -> Compositor
-        where D: Any + 'static
+    where
+        D: Any + 'static
     {
         unsafe {
-            let display =
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
-            let event_loop =
-                ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
-            let backend = Backend::Headless(backend::Headless::new(display as *mut _,
-                                                                 self.render_setup_function));
+            let display = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_create,) as *mut wl_display;
+            let event_loop = ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_get_event_loop, display);
+            let backend = Backend::Headless(backend::Headless::new(
+                display as *mut _,
+                self.render_setup_function
+            ));
             self.finish_build(data, display, event_loop, backend)
         }
     }
 
-    unsafe fn finish_build<D>(mut self,
-                              data: D,
-                              display: *mut wl_display,
-                              event_loop: *mut wl_event_loop,
-                              backend: Backend)
-                              -> Compositor
-    where D: Any + 'static {
+    unsafe fn finish_build<D>(
+        mut self,
+        data: D,
+        display: *mut wl_display,
+        event_loop: *mut wl_event_loop,
+        backend: Backend
+    ) -> Compositor
+    where
+        D: Any + 'static
+    {
         // Set up the wl_compositor and wl_subcompositor globals,
         // along with gles2 if that was enabled.
         let (compositor, renderer) = if self.gles2 {
             let gles2 = GenericRenderer::gles2_renderer(backend.as_ptr());
-            (wlr_compositor_create(display as *mut _, gles2.as_ptr()), Some(gles2))
+            (
+                wlr_compositor_create(display as *mut _, gles2.as_ptr()),
+                Some(gles2)
+            )
         } else {
             (wlr_compositor_create(display as *mut _, ptr::null_mut()), None)
         };
 
         // Set up shared memory buffer for Wayland clients.
         let wl_shm_fd = if self.wl_shm {
-            Some(ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                               wl_display_init_shm,
-                               display as *mut _))
+            Some(ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_display_init_shm,
+                display as *mut _
+            ))
         } else {
             None
         };
@@ -505,16 +532,20 @@ impl Builder {
         // Set up input manager, if the user provided it.
         let input_manager = self.input_manager_builder.take().map(|builder| {
             let input_manager = input::Manager::build(builder);
-            wl_signal_add(&mut (*backend.as_ptr()).events.new_input as *mut _ as _,
-                          (&mut input_manager.add_listener) as *mut _ as _);
+            wl_signal_add(
+                &mut (*backend.as_ptr()).events.new_input as *mut _ as _,
+                (&mut input_manager.add_listener) as *mut _ as _
+            );
             input_manager
         });
 
         // Set up output manager, if the user provided it.
         let output_manager = self.output_manager_builder.take().map(|builder| {
             let output_manager = output::Manager::build(builder);
-            wl_signal_add(&mut (*backend.as_ptr()).events.new_output as *mut _ as _,
-                          (&mut output_manager.add_listener) as *mut _ as _);
+            wl_signal_add(
+                &mut (*backend.as_ptr()).events.new_output as *mut _ as _,
+                (&mut output_manager.add_listener) as *mut _ as _
+            );
             output_manager
         });
 
@@ -524,8 +555,10 @@ impl Builder {
         let xdg_shell_manager = self.xdg_shell_manager_builder.take().map(|builder| {
             xdg_shell_global = wlr_xdg_shell_create(display as *mut _);
             let xdg_shell_manager = xdg_shell::Manager::build(builder);
-            wl_signal_add(&mut (*xdg_shell_global).events.new_surface as *mut _ as _,
-                          (&mut xdg_shell_manager.add_listener) as *mut _ as _);
+            wl_signal_add(
+                &mut (*xdg_shell_global).events.new_surface as *mut _ as _,
+                (&mut xdg_shell_manager.add_listener) as *mut _ as _
+            );
             xdg_shell_manager
         });
 
@@ -535,18 +568,18 @@ impl Builder {
         let xdg_v6_shell_manager = self.xdg_v6_shell_manager_builder.take().map(|builder| {
             xdg_v6_shell_global = wlr_xdg_shell_v6_create(display as *mut _);
             let xdg_v6_shell_manager = xdg_shell_v6::Manager::build(builder);
-            wl_signal_add(&mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
-                          (&mut xdg_v6_shell_manager.add_listener) as *mut _ as _);
+            wl_signal_add(
+                &mut (*xdg_v6_shell_global).events.new_surface as *mut _ as _,
+                (&mut xdg_v6_shell_manager.add_listener) as *mut _ as _
+            );
             xdg_v6_shell_manager
         });
 
         // Set up the XWayland server, if the user wants it.
-        let xwayland = self.xwayland.take().and_then(|builder| {
-            Some(xwayland::Server::new(display as _,
-                                       compositor,
-                                       builder,
-                                       false))
-        });
+        let xwayland = self
+            .xwayland
+            .take()
+            .and_then(|builder| Some(xwayland::Server::new(display as _, compositor, builder, false)));
 
         let user_terminate = self.user_terminate;
 
@@ -555,39 +588,41 @@ impl Builder {
         if socket.is_null() {
             // NOTE Rationale for panicking:
             // * Won't be in C land just yet, so it's safe to panic
-            // * Can always be returned in a Result instead, but for now
-            //   if you auto create it's assumed you can't recover.
+            // * Can always be returned in a Result instead, but for now if you auto create
+            //   it's assumed you can't recover.
             panic!("Unable to open wayland socket");
         }
         let socket_name = CStr::from_ptr(socket).to_string_lossy().into_owned();
         env::set_var("_WAYLAND_DISPLAY", socket_name.clone());
-        let compositor = Compositor { data: Box::new(data),
-                                      compositor_handler,
-                                      socket_name,
-                                      input_manager,
-                                      output_manager,
-                                      xdg_shell_manager,
-                                      xdg_shell_global,
-                                      xdg_v6_shell_manager,
-                                      xdg_v6_shell_global,
-                                      data_device_manager,
-                                      compositor,
-                                      backend,
-                                      display,
-                                      event_loop,
-                                      wl_shm_fd,
-                                      server_decoration_manager,
-                                      gamma_control_manager,
-                                      idle_manager,
-                                      idle_inhibit_manager,
-                                      gtk_primary_selection_manager,
-                                      screencopy_manager,
-                                      screenshooter,
-                                      renderer,
-                                      xwayland,
-                                      user_terminate,
-                                      panic_error: None,
-                                      lock: Rc::new(Cell::new(false)) };
+        let compositor = Compositor {
+            data: Box::new(data),
+            compositor_handler,
+            socket_name,
+            input_manager,
+            output_manager,
+            xdg_shell_manager,
+            xdg_shell_global,
+            xdg_v6_shell_manager,
+            xdg_v6_shell_global,
+            data_device_manager,
+            compositor,
+            backend,
+            display,
+            event_loop,
+            wl_shm_fd,
+            server_decoration_manager,
+            gamma_control_manager,
+            idle_manager,
+            idle_inhibit_manager,
+            gtk_primary_selection_manager,
+            screencopy_manager,
+            screenshooter,
+            renderer,
+            xwayland,
+            user_terminate,
+            panic_error: None,
+            lock: Rc::new(Cell::new(false))
+        };
         // Forget so we can't construct another builder.
         std::mem::forget(self);
         compositor.set_lock(true);
@@ -601,9 +636,11 @@ impl Drop for Builder {
             // NOTE This will only happen if dropped outside of `finish_build`,
             // which mem::forgets(self) in order to not be able to use a builder
             // while the compositor is running.
-            assert_eq!(BUILDER_ACTIVE.compare_and_swap(true, false, Ordering::AcqRel),
-                       true,
-                       "Builder was in improper state");
+            assert_eq!(
+                BUILDER_ACTIVE.compare_and_swap(true, false, Ordering::AcqRel),
+                true,
+                "Builder was in improper state"
+            );
         }
     }
 }
@@ -615,11 +652,10 @@ impl Compositor {
     /// If the data was not of the type specified in the type arguments this
     /// function will panic.
     pub fn downcast<D: 'static>(&mut self) -> &mut D {
-        self.data.downcast_mut::<D>()
-            .unwrap_or_else(|| {
-                wlr_log!(WLR_ERROR, "Incorrect type given for compositor state");
-                panic!("Could not cast compositor state to provided type")
-            })
+        self.data.downcast_mut::<D>().unwrap_or_else(|| {
+            wlr_log!(WLR_ERROR, "Incorrect type given for compositor state");
+            panic!("Could not cast compositor state to provided type")
+        })
     }
     /// Creates a weak reference to the `Compositor`.
     pub fn weak_reference(&self) -> Handle {
@@ -643,21 +679,22 @@ impl Compositor {
     /// shut off.
     pub fn run(self) {
         self.run_with(|_| unsafe {
-                          ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                                        wl_display_run,
-                                        (*COMPOSITOR_PTR).display);
-                      })
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_run, (*COMPOSITOR_PTR).display);
+        })
     }
 
     /// Prepare to enter the wayland event loop. Instead of calling
     /// `wl_display_run`, the provided callback function is invoked. Allows
     /// integration with a different event loop.
     pub fn run_with<F>(self, runner: F)
-        where F: FnOnce(&Compositor)
+    where
+        F: FnOnce(&Compositor)
     {
-        wlr_log!(WLR_DEBUG,
-                 "Running compositor on wayland display {}",
-                 self.socket_name);
+        wlr_log!(
+            WLR_DEBUG,
+            "Running compositor on wayland display {}",
+            self.socket_name
+        );
         unsafe {
             self.set_lock(false);
             let compositor = UnsafeCell::new(self);
@@ -673,13 +710,13 @@ impl Compositor {
                 wlr_backend_destroy((*compositor.get()).backend.as_ptr());
                 // NOTE Rationale for panicking:
                 // * Won't be in C land just yet, so it's safe to panic
-                // * Can always be returned in a Result instead, but for now
-                //   if you auto create it's assumed you can't recover.
+                // * Can always be returned in a Result instead, but for now if you auto create
+                //   it's assumed you can't recover.
                 panic!("Failed to start backend");
             }
             runner(&*COMPOSITOR_PTR);
             match (*compositor.get()).panic_error.take() {
-                None => {}
+                None => {},
                 Some(err) => {
                     // A panic occured, now we can re-throw it safely.
                     ::std::panic::resume_unwind(err)
@@ -701,7 +738,8 @@ impl Compositor {
         self.panic_error = Some(error);
     }
 
-    /// Manually set hte lock used to determine if a double-borrow is occuring on this structure.
+    /// Manually set hte lock used to determine if a double-borrow is occuring
+    /// on this structure.
     ///
     /// # Panics
     /// Panics when trying to set the lock on an upgraded handle.
@@ -713,34 +751,35 @@ impl Compositor {
 impl Drop for Compositor {
     fn drop(&mut self) {
         unsafe {
-            assert_eq!(BUILDER_ACTIVE.compare_and_swap(true, false, Ordering::AcqRel),
-                       true,
-                       "Builder was in improper state");
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_display_destroy_clients,
-                          self.display);
+            assert_eq!(
+                BUILDER_ACTIVE.compare_and_swap(true, false, Ordering::AcqRel),
+                true,
+                "Builder was in improper state"
+            );
+            ffi_dispatch!(WAYLAND_SERVER_HANDLE, wl_display_destroy_clients, self.display);
             wlr_compositor_destroy(self.compositor)
         }
     }
 }
 
 impl Handle {
-    /// Constructs a new `compositor::Handle` that is always invalid. Calling `run` on this
-    /// will always fail.
+    /// Constructs a new `compositor::Handle` that is always invalid. Calling
+    /// `run` on this will always fail.
     ///
-    /// This is useful for pre-filling a value before it's provided by the server, or
-    /// for mocking/testing.
+    /// This is useful for pre-filling a value before it's provided by the
+    /// server, or for mocking/testing.
     pub fn new() -> Self {
         Handle { handle: Weak::new() }
     }
 
-    /// Upgrades the compositor handle to a reference to the backing `Compositor`.
+    /// Upgrades the compositor handle to a reference to the backing
+    /// `Compositor`.
     ///
     /// # Unsafety
     /// To be honest this function is probably safe.
     ///
-    /// However, the `compositor::Handle` will behave like the other handles in order
-    /// to reduce confusion.
+    /// However, the `compositor::Handle` will behave like the other handles in
+    /// order to reduce confusion.
     unsafe fn upgrade(&self) -> HandleResult<&mut Compositor> {
         self.handle.upgrade()
             .ok_or(HandleErr::AlreadyDropped)
@@ -776,20 +815,23 @@ impl Handle {
     ///
     /// So don't nest `run` calls and everything will be ok :).
     pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut Compositor) -> R
+    where
+        F: FnOnce(&mut Compositor) -> R
     {
         let compositor = unsafe { self.upgrade()? };
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(compositor)));
         self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running compositor callback, mutable \
-                                                    lock was false");
-                                          panic!("Compositor lock in incorrect state!");
-                                      }
-                                      check.set(false)
-                                  });
+            // Sanity check that it hasn't been tampered with.
+            if !check.get() {
+                wlr_log!(
+                    WLR_ERROR,
+                    "After running compositor callback, mutable lock \
+                     was false"
+                );
+                panic!("Compositor lock in incorrect state!");
+            }
+            check.set(false)
+        });
         match res {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)

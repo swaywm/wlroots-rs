@@ -1,7 +1,9 @@
 use libc::c_int;
 use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::{pid_t, wl_client, wl_display, wlr_compositor, wlr_xwayland, wlr_xwayland_create,
-                  wlr_xwayland_destroy, wlr_xwayland_set_cursor};
+use wlroots_sys::{
+    pid_t, wl_client, wl_display, wlr_compositor, wlr_xwayland, wlr_xwayland_create, wlr_xwayland_destroy,
+    wlr_xwayland_set_cursor
+};
 
 use xwayland;
 
@@ -12,20 +14,25 @@ pub struct Server {
 }
 
 impl Server {
-    pub(crate) unsafe fn new(display: *mut wl_display,
-                             compositor: *mut wlr_compositor,
-                             builder: xwayland::manager::Builder,
-                             lazy: bool)
-                             -> Self {
+    pub(crate) unsafe fn new(
+        display: *mut wl_display,
+        compositor: *mut wlr_compositor,
+        builder: xwayland::manager::Builder,
+        lazy: bool
+    ) -> Self {
         let xwayland = wlr_xwayland_create(display, compositor, lazy);
         if xwayland.is_null() {
             panic!("Could not start XWayland server")
         }
         let manager = xwayland::manager::Manager::build(builder);
-        wl_signal_add(&mut (*xwayland).events.ready as *mut _ as _,
-                      (&mut manager.on_ready_listener) as *mut _ as _);
-        wl_signal_add(&mut (*xwayland).events.new_surface as *mut _ as _,
-                      (&mut manager.new_surface_listener) as *mut _ as _);
+        wl_signal_add(
+            &mut (*xwayland).events.ready as *mut _ as _,
+            (&mut manager.on_ready_listener) as *mut _ as _
+        );
+        wl_signal_add(
+            &mut (*xwayland).events.new_surface as *mut _ as _,
+            (&mut manager.new_surface_listener) as *mut _ as _
+        );
         Server { xwayland, manager }
     }
 
@@ -54,21 +61,25 @@ impl Server {
         unsafe { (*self.xwayland).client }
     }
 
-    pub fn set_cursor(&mut self,
-                      bytes: &mut [u8],
-                      stride: u32,
-                      width: u32,
-                      height: u32,
-                      hotspot_x: i32,
-                      hotspot_y: i32) {
+    pub fn set_cursor(
+        &mut self,
+        bytes: &mut [u8],
+        stride: u32,
+        width: u32,
+        height: u32,
+        hotspot_x: i32,
+        hotspot_y: i32
+    ) {
         unsafe {
-            wlr_xwayland_set_cursor(self.xwayland,
-                                    bytes.as_mut_ptr(),
-                                    stride,
-                                    width,
-                                    height,
-                                    hotspot_x,
-                                    hotspot_y)
+            wlr_xwayland_set_cursor(
+                self.xwayland,
+                bytes.as_mut_ptr(),
+                stride,
+                width,
+                height,
+                hotspot_x,
+                hotspot_y
+            )
         }
     }
 }

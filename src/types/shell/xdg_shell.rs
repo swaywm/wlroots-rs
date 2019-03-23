@@ -1,24 +1,29 @@
 //! TODO Documentation
 
-use std::{cell::Cell, rc::{Rc, Weak}, panic, ptr::NonNull};
+use std::{
+    cell::Cell,
+    panic,
+    ptr::NonNull,
+    rc::{Rc, Weak}
+};
 
 use libc::c_void;
-use wlroots_sys::{wlr_xdg_popup, wlr_xdg_surface, wlr_xdg_surface_ping,
-                  wlr_xdg_surface_role, wlr_xdg_toplevel_send_close,
-                  wlr_xdg_popup_destroy, wlr_xdg_surface_surface_at,
-                  wlr_xdg_toplevel, wlr_xdg_toplevel_set_activated,
-                  wlr_xdg_toplevel_set_fullscreen, wlr_xdg_toplevel_set_maximized,
-                  wlr_xdg_toplevel_set_resizing, wlr_xdg_toplevel_set_size,
-                  wlr_xdg_toplevel_state, wlr_xdg_surface_for_each_surface, wlr_surface};
+use wlroots_sys::{
+    wlr_surface, wlr_xdg_popup, wlr_xdg_popup_destroy, wlr_xdg_surface, wlr_xdg_surface_for_each_surface,
+    wlr_xdg_surface_ping, wlr_xdg_surface_role, wlr_xdg_surface_surface_at, wlr_xdg_toplevel,
+    wlr_xdg_toplevel_send_close, wlr_xdg_toplevel_set_activated, wlr_xdg_toplevel_set_fullscreen,
+    wlr_xdg_toplevel_set_maximized, wlr_xdg_toplevel_set_resizing, wlr_xdg_toplevel_set_size,
+    wlr_xdg_toplevel_state
+};
 
-
-use {area::Area,
-     seat,
-     surface,
-     utils::{self, HandleErr, HandleResult, Handleable, c_to_rust_string}};
+pub use events::xdg_shell_events as event;
 pub use manager::xdg_shell_handler::*;
 pub(crate) use manager::xdg_shell_manager::Manager;
-pub use events::xdg_shell_events as event;
+use {
+    area::Area,
+    seat, surface,
+    utils::{self, c_to_rust_string, HandleErr, HandleResult, Handleable}
+};
 
 pub mod manager {
     //! XDG shell resources are managed by the XDG shell resource manager.
@@ -48,7 +53,7 @@ pub(crate) struct SurfaceState {
 
 impl Clone for OptionalShellState {
     fn clone(&self) -> Self {
-        OptionalShellState ( match self.0 {
+        OptionalShellState(match self.0 {
             None => None,
             // NOTE Rationale for safety:
             // This is only stored in the handle, and it's fine to clone
@@ -88,24 +93,28 @@ pub struct Surface {
 
 impl Surface {
     pub(crate) unsafe fn new<T>(shell_surface: NonNull<wlr_xdg_surface>, state: T) -> Self
-        where T: Into<Option<ShellState>>
+    where
+        T: Into<Option<ShellState>>
     {
         if !(*shell_surface.as_ptr()).data.is_null() {
             panic!("XDG shell has already been initialized");
         }
         let state = state.into();
         let liveliness = Rc::new(Cell::new(false));
-        let shell_state =
-            Box::new(SurfaceState { shell: None,
-                                    handle: Rc::downgrade(&liveliness),
-                                    shell_state: match state {
-                                        None => None,
-                                        Some(ref state) => Some(state.clone())
-                                    } });
+        let shell_state = Box::new(SurfaceState {
+            shell: None,
+            handle: Rc::downgrade(&liveliness),
+            shell_state: match state {
+                None => None,
+                Some(ref state) => Some(state.clone())
+            }
+        });
         (*shell_surface.as_ptr()).data = Box::into_raw(shell_state) as *mut _;
-        Surface { liveliness,
-                  state,
-                  shell_surface }
+        Surface {
+            liveliness,
+            state,
+            shell_surface
+        }
     }
 
     /// Gets the surface used by this XDG shell.
@@ -159,8 +168,8 @@ impl Surface {
 
     /// Send a ping to the surface.
     ///
-    /// If the surface does not respond with a pong within a reasonable amount of time,
-    /// the ping timeout event will be emitted.
+    /// If the surface does not respond with a pong within a reasonable amount
+    /// of time, the ping timeout event will be emitted.
     pub fn ping(&mut self) {
         unsafe {
             wlr_xdg_surface_ping(self.shell_surface.as_ptr());
@@ -169,17 +178,17 @@ impl Surface {
 
     /// Find a surface within this surface at the surface-local coordinates.
     ///
-    /// Returns the popup and coordinates in the topmost surface coordinate system
-    /// or None if no popup is found at that location.
-    pub fn surface_at(&mut self,
-                      sx: f64,
-                      sy: f64,
-                      sub_sx: &mut f64,
-                      sub_sy: &mut f64)
-                      -> Option<surface::Handle> {
+    /// Returns the popup and coordinates in the topmost surface coordinate
+    /// system or None if no popup is found at that location.
+    pub fn surface_at(
+        &mut self,
+        sx: f64,
+        sy: f64,
+        sub_sx: &mut f64,
+        sub_sy: &mut f64
+    ) -> Option<surface::Handle> {
         unsafe {
-            let sub_surface =
-                wlr_xdg_surface_surface_at(self.shell_surface.as_ptr(), sx, sy, sub_sx, sub_sy);
+            let sub_surface = wlr_xdg_surface_surface_at(self.shell_surface.as_ptr(), sx, sy, sub_sx, sub_sy);
             if sub_surface.is_null() {
                 None
             } else {
@@ -189,10 +198,17 @@ impl Surface {
     }
 
     pub fn for_each_surface<F>(&self, mut iterator: F)
-            where F: FnMut(surface::Handle, i32, i32) {
+    where
+        F: FnMut(surface::Handle, i32, i32)
+    {
         let mut iterator_ref: &mut FnMut(surface::Handle, i32, i32) = &mut iterator;
         unsafe {
-            unsafe extern "C" fn c_iterator(wlr_surface: *mut wlr_surface, sx: i32, sy: i32, data: *mut c_void) {
+            unsafe extern "C" fn c_iterator(
+                wlr_surface: *mut wlr_surface,
+                sx: i32,
+                sy: i32,
+                data: *mut c_void
+            ) {
                 let iterator_fn = &mut *(data as *mut &mut FnMut(surface::Handle, i32, i32));
                 let surface = surface::Handle::from_ptr(wlr_surface);
                 iterator_fn(surface, sx, sy);
@@ -209,13 +225,15 @@ impl Drop for Surface {
             wlr_log!(WLR_DEBUG, "Dropped xdg shell {:p}", self.shell_surface.as_ptr());
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
-                wlr_log!(WLR_DEBUG,
-                         "Still {} weak pointers to xdg shell {:p}",
-                         weak_count,
-                         self.shell_surface.as_ptr());
+                wlr_log!(
+                    WLR_DEBUG,
+                    "Still {} weak pointers to xdg shell {:p}",
+                    weak_count,
+                    self.shell_surface.as_ptr()
+                );
             }
         } else {
-            return
+            return;
         }
         unsafe {
             let _ = Box::from_raw((*self.shell_surface.as_ptr()).data as *mut SurfaceState);
@@ -233,9 +251,11 @@ impl Handleable<OptionalShellState, wlr_xdg_surface> for Surface {
             Some(ref state) => Some(state.clone())
         };
         let liveliness = data.handle.upgrade().unwrap();
-        Some(Surface { liveliness,
-                       state,
-                       shell_surface })
+        Some(Surface {
+            liveliness,
+            state,
+            shell_surface
+        })
     }
 
     #[doc(hidden)]
@@ -245,42 +265,55 @@ impl Handleable<OptionalShellState, wlr_xdg_surface> for Surface {
 
     #[doc(hidden)]
     unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-            .upgrade()
-            .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(Surface { liveliness,
-                     shell_surface: handle.ptr,
-                     state: handle.data.clone().and_then(|d| d.0) })
+        let liveliness = handle.handle.upgrade().ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Surface {
+            liveliness,
+            shell_surface: handle.ptr,
+            state: handle.data.clone().and_then(|d| d.0)
+        })
     }
 
     fn weak_reference(&self) -> Handle {
-        Handle { ptr: self.shell_surface,
-                 handle: Rc::downgrade(&self.liveliness),
-                 data: Some(OptionalShellState(match self.state {
-                     None => None,
-                     Some(ref state) => Some(unsafe { state.clone() })
-                 })),
-                 _marker: std::marker::PhantomData }
+        Handle {
+            ptr: self.shell_surface,
+            handle: Rc::downgrade(&self.liveliness),
+            data: Some(OptionalShellState(match self.state {
+                None => None,
+                Some(ref state) => Some(unsafe { state.clone() })
+            })),
+            _marker: std::marker::PhantomData
+        }
     }
 }
 
 impl TopLevel {
-    pub(crate) unsafe fn from_shell(shell_surface: NonNull<wlr_xdg_surface>,
-                                    toplevel: NonNull<wlr_xdg_toplevel>)
-                                    -> TopLevel {
-        TopLevel { shell_surface,
-                   toplevel }
+    pub(crate) unsafe fn from_shell(
+        shell_surface: NonNull<wlr_xdg_surface>,
+        toplevel: NonNull<wlr_xdg_toplevel>
+    ) -> TopLevel {
+        TopLevel {
+            shell_surface,
+            toplevel
+        }
     }
 
     /// Get the title associated with this XDG shell toplevel.
     pub fn title(&self) -> String {
-        unsafe { c_to_rust_string((*self.toplevel.as_ptr()).title).expect("Could not parse class as UTF-8") }
+        unsafe {
+            c_to_rust_string((*self.toplevel.as_ptr()).title).expect(
+                "Could not parse class as \
+                 UTF-8"
+            )
+        }
     }
 
     /// Get the app id associated with this XDG shell toplevel.
     pub fn app_id(&self) -> String {
         unsafe {
-            c_to_rust_string((*self.toplevel.as_ptr()).app_id).expect("Could not parse class as UTF-8")
+            c_to_rust_string((*self.toplevel.as_ptr()).app_id).expect(
+                "Could not parse class as \
+                 UTF-8"
+            )
         }
     }
 
@@ -320,8 +353,8 @@ impl TopLevel {
         unsafe { wlr_xdg_toplevel_set_size(self.shell_surface.as_ptr(), width, height) }
     }
 
-    /// Request that this toplevel surface show itself in an activated or deactivated
-    /// state.
+    /// Request that this toplevel surface show itself in an activated or
+    /// deactivated state.
     ///
     /// Returns the associated configure serial.
     pub fn set_activated(&mut self, activated: bool) -> u32 {
@@ -363,11 +396,11 @@ impl TopLevel {
 }
 
 impl Popup {
-    pub(crate) unsafe fn from_shell(shell_surface: NonNull<wlr_xdg_surface>,
-                                    popup: NonNull<wlr_xdg_popup>)
-                                    -> Popup {
-        Popup { shell_surface,
-                popup }
+    pub(crate) unsafe fn from_shell(
+        shell_surface: NonNull<wlr_xdg_surface>,
+        popup: NonNull<wlr_xdg_popup>
+    ) -> Popup {
+        Popup { shell_surface, popup }
     }
 
     /// Request that this popup closes.
@@ -410,16 +443,16 @@ impl ShellState {
     /// Unsafe copy of the pointer
     unsafe fn clone(&self) -> Self {
         match *self {
-            ShellState::TopLevel(TopLevel { shell_surface,
-                                     toplevel }) => {
-                ShellState::TopLevel(TopLevel { shell_surface,
-                                         toplevel })
-            }
-            ShellState::Popup(Popup { shell_surface,
-                               popup }) => {
-                ShellState::Popup(Popup { shell_surface,
-                                   popup })
-            }
+            ShellState::TopLevel(TopLevel {
+                shell_surface,
+                toplevel
+            }) => ShellState::TopLevel(TopLevel {
+                shell_surface,
+                toplevel
+            }),
+            ShellState::Popup(Popup { shell_surface, popup }) => {
+                ShellState::Popup(Popup { shell_surface, popup })
+            },
         }
     }
 }

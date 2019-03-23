@@ -2,15 +2,19 @@
 
 use std::{ptr, time::Duration};
 
-
 use libc::{c_float, c_int, c_void};
-use wlroots_sys::{wl_shm_format, wlr_backend, wlr_backend_get_renderer,
-                  wlr_render_ellipse_with_matrix, wlr_render_quad_with_matrix, wlr_render_rect,
-                  wlr_render_texture, wlr_render_texture_with_matrix, wlr_renderer,
-                  wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
-                  wlr_texture_from_pixels, wlr_texture_destroy, wlr_renderer_scissor};
+use wlroots_sys::{
+    wl_shm_format, wlr_backend, wlr_backend_get_renderer, wlr_render_ellipse_with_matrix,
+    wlr_render_quad_with_matrix, wlr_render_rect, wlr_render_texture, wlr_render_texture_with_matrix,
+    wlr_renderer, wlr_renderer_begin, wlr_renderer_clear, wlr_renderer_destroy, wlr_renderer_end,
+    wlr_renderer_scissor, wlr_texture_destroy, wlr_texture_from_pixels
+};
 
-use {area::Area, output::Output, render::{PixmanRegion, texture::Texture}};
+use {
+    area::Area,
+    output::Output,
+    render::{texture::Texture, PixmanRegion}
+};
 
 /// A generic interface for rendering to the screen.
 ///
@@ -55,37 +59,33 @@ impl GenericRenderer {
     /// Make the `Renderer` state machine type.
     ///
     /// This automatically makes the given output the current output.
-    pub fn render<'output, T>(&mut self,
-                              output: &'output mut Output,
-                              damage: T)
-                              -> Renderer<'output>
-        where T: Into<Option<(PixmanRegion, Duration)>>
+    pub fn render<'output, T>(&mut self, output: &'output mut Output, damage: T) -> Renderer<'output>
+    where
+        T: Into<Option<(PixmanRegion, Duration)>>
     {
         unsafe {
             output.make_current();
             let (width, height) = output.size();
             wlr_renderer_begin(self.renderer, width, height);
-            Renderer { renderer: self.renderer,
-                       damage: damage.into(),
-                       output }
+            Renderer {
+                renderer: self.renderer,
+                damage: damage.into(),
+                output
+            }
         }
     }
 
     /// Create a texture using this renderer.
-    pub fn create_texture_from_pixels(&mut self,
-                                      format: wl_shm_format,
-                                      stride: u32,
-                                      width: u32,
-                                      height: u32,
-                                      data: &[u8])
-                                      -> Option<Texture<'static>> {
+    pub fn create_texture_from_pixels(
+        &mut self,
+        format: wl_shm_format,
+        stride: u32,
+        width: u32,
+        height: u32,
+        data: &[u8]
+    ) -> Option<Texture<'static>> {
         unsafe {
-            create_texture_from_pixels(self.renderer,
-                                       format,
-                                       stride,
-                                       width,
-                                       height,
-                                       data.as_ptr() as _)
+            create_texture_from_pixels(self.renderer, format, stride, width, height, data.as_ptr() as _)
         }
     }
 
@@ -102,20 +102,16 @@ impl Drop for GenericRenderer {
 
 impl<'output> Renderer<'output> {
     /// Create a texture using this renderer.
-    pub fn create_texture_from_pixels(&mut self,
-                                      format: wl_shm_format,
-                                      stride: u32,
-                                      width: u32,
-                                      height: u32,
-                                      data: &[u8])
-                                      -> Option<Texture<'static>> {
+    pub fn create_texture_from_pixels(
+        &mut self,
+        format: wl_shm_format,
+        stride: u32,
+        width: u32,
+        height: u32,
+        data: &[u8]
+    ) -> Option<Texture<'static>> {
         unsafe {
-            create_texture_from_pixels(self.renderer,
-                                       format,
-                                       stride,
-                                       width,
-                                       height,
-                                       data.as_ptr() as _)
+            create_texture_from_pixels(self.renderer, format, stride, width, height, data.as_ptr() as _)
         }
     }
 
@@ -124,25 +120,19 @@ impl<'output> Renderer<'output> {
     }
 
     /// Renders the requseted texture.
-    pub fn render_texture(&mut self,
-                          texture: &Texture,
-                          projection: [f32; 9],
-                          x: c_int,
-                          y: c_int,
-                          alpha: c_float)
-                          -> bool {
-        unsafe {
-            wlr_render_texture(self.renderer,
-                               texture.as_ptr(),
-                               projection.as_ptr(),
-                               x,
-                               y,
-                               alpha)
-        }
+    pub fn render_texture(
+        &mut self,
+        texture: &Texture,
+        projection: [f32; 9],
+        x: c_int,
+        y: c_int,
+        alpha: c_float
+    ) -> bool {
+        unsafe { wlr_render_texture(self.renderer, texture.as_ptr(), projection.as_ptr(), x, y, alpha) }
     }
 
-    /// Renders the requested texture using the provided matrix. A typical texture
-    /// rendering goes like so:
+    /// Renders the requested texture using the provided matrix. A typical
+    /// texture rendering goes like so:
     ///
     /// TODO FIXME Show how the typical rendering goes in Rust.
     ///
@@ -158,20 +148,19 @@ impl<'output> Renderer<'output> {
     /// This will render the texture at <123, 321>.
     pub fn render_texture_with_matrix(&mut self, texture: &Texture, matrix: [f32; 9]) -> bool {
         // TODO FIXME Add alpha as param
-        unsafe {
-            wlr_render_texture_with_matrix(self.renderer, texture.as_ptr(), matrix.as_ptr(), 1.0)
-        }
+        unsafe { wlr_render_texture_with_matrix(self.renderer, texture.as_ptr(), matrix.as_ptr(), 1.0) }
     }
 
-    /// Defines a scissor box. Only pixels that lie within the scissor box can be
-    /// modified by drawing functions.
+    /// Defines a scissor box. Only pixels that lie within the scissor box can
+    /// be modified by drawing functions.
     ///
     /// Providing a `None` for `area` disables the scissor box.
-    pub fn render_scissor<T>(&mut self, area: T) where T: Into<Option<Area>> {
+    pub fn render_scissor<T>(&mut self, area: T)
+    where
+        T: Into<Option<Area>>
+    {
         let mut area = area.into().map(|area| area.into());;
-        let area_ptr = area.as_mut()
-            .map(|area| area as _)
-            .unwrap_or(ptr::null_mut());
+        let area_ptr = area.as_mut().map(|area| area as _).unwrap_or(ptr::null_mut());
         unsafe { wlr_renderer_scissor(self.renderer, area_ptr) }
     }
 
@@ -204,14 +193,15 @@ impl<'output> Drop for Renderer<'output> {
     }
 }
 
-unsafe fn create_texture_from_pixels(renderer: *mut wlr_renderer,
-                                     format: wl_shm_format,
-                                     stride: u32,
-                                     width: u32,
-                                     height: u32,
-                                     // TODO Slice of u8? It's a void*, hmm
-                                     data: *const c_void)
-                                     -> Option<Texture<'static>> {
+unsafe fn create_texture_from_pixels(
+    renderer: *mut wlr_renderer,
+    format: wl_shm_format,
+    stride: u32,
+    width: u32,
+    height: u32,
+    // TODO Slice of u8? It's a void*, hmm
+    data: *const c_void
+) -> Option<Texture<'static>> {
     let texture = wlr_texture_from_pixels(renderer, format, stride, width, height, data);
     if texture.is_null() {
         None

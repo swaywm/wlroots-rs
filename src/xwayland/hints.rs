@@ -20,8 +20,10 @@ pub struct SizeHints<'surface> {
 
 impl<'surface> Hints<'surface> {
     pub(crate) unsafe fn from_ptr(hints: *mut wlr_xwayland_surface_hints) -> Self {
-        Hints { hints,
-                               phantom: PhantomData }
+        Hints {
+            hints,
+            phantom: PhantomData
+        }
     }
 
     pub fn flags(&self) -> uint32_t {
@@ -62,8 +64,10 @@ impl<'surface> Hints<'surface> {
 
 impl<'surface> SizeHints<'surface> {
     pub(crate) unsafe fn from_ptr(hints: *mut wlr_xwayland_surface_size_hints) -> Self {
-        SizeHints { hints,
-                                   phantom: PhantomData }
+        SizeHints {
+            hints,
+            phantom: PhantomData
+        }
     }
 
     /// Get the flags associated with the surface size.

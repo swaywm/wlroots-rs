@@ -6,10 +6,11 @@ use libc;
 use wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_output;
 
-use {compositor,
-     output::{self, Output, OutputState, UserOutput},
-     utils::Handleable};
-
+use {
+    compositor,
+    output::{self, Output, OutputState, UserOutput},
+    utils::Handleable
+};
 
 /// Used to ensure the output sets the mode before doing any other
 /// operation on the Output.
@@ -35,15 +36,16 @@ impl<'output> OutputBuilder<'output> {
     ///
     /// To complete construction, return this in your implementation of
     /// `output::ManagerHandler::output_added`.
-    pub fn build_best_mode<T: output::Handler + 'static>(mut self,
-                                                       data: T)
-                                                       -> BuilderResult<'output> {
+    pub fn build_best_mode<T: output::Handler + 'static>(mut self, data: T) -> BuilderResult<'output> {
         with_handles!([(output: {&mut self.output})] => {
             output.choose_best_mode();
-        }).expect("Output was borrowed");
-        BuilderResult { output: self.output,
-                        result: Box::new(data),
-                        phantom: PhantomData }
+        })
+        .expect("Output was borrowed");
+        BuilderResult {
+            output: self.output,
+            result: Box::new(data),
+            phantom: PhantomData
+        }
     }
 }
 
@@ -51,9 +53,8 @@ impl Destroyed {
     // TODO Functions which are safe to use
 }
 
-pub type OutputAdded = fn(compositor_handle: compositor::Handle,
-                          output_builder: OutputBuilder)
-                          -> Option<BuilderResult>;
+pub type OutputAdded =
+    fn(compositor_handle: compositor::Handle, output_builder: OutputBuilder) -> Option<BuilderResult>;
 
 wayland_listener_static! {
     static mut MANAGER;

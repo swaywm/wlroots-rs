@@ -1,45 +1,57 @@
 //! Handler for tablet tools
 
 use libc;
-use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wlroots_sys::wlr_input_device;
 
-use {compositor,
-     input::tablet_tool::{self, TabletTool},
-     utils::Handleable};
+use {
+    compositor,
+    input::tablet_tool::{self, TabletTool},
+    utils::Handleable
+};
 
 #[allow(unused_variables)]
 pub trait Handler {
     /// Callback that is triggered when an axis event fires
-    fn on_axis(&mut self,
-               compositor_handle: compositor::Handle,
-               tablet_tool_handle: tablet_tool::Handle,
-               event: &tablet_tool::event::Axis) {}
+    fn on_axis(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        tablet_tool_handle: tablet_tool::Handle,
+        event: &tablet_tool::event::Axis
+    ) {
+    }
 
     /// Callback that is triggered when a table tool is brought close to the
     /// input source.
-    fn on_proximity(&mut self,
-                    compositor_handle: compositor::Handle,
-                    tablet_tool_handle: tablet_tool::Handle,
-                    event: &tablet_tool::event::Proximity) {}
+    fn on_proximity(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        tablet_tool_handle: tablet_tool::Handle,
+        event: &tablet_tool::event::Proximity
+    ) {
+    }
 
     /// Callback that is triggered when a table tool's tip touches the input
     /// source.
-    fn on_tip(&mut self,
-              compositor_handle: compositor::Handle,
-              tablet_tool_handle: tablet_tool::Handle,
-              event: &tablet_tool::event::Tip) {}
+    fn on_tip(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        tablet_tool_handle: tablet_tool::Handle,
+        event: &tablet_tool::event::Tip
+    ) {
+    }
 
     /// Callback that is triggered when a button is pressed on the tablet tool.
-    fn on_button(&mut self,
-                 compositor_handle: compositor::Handle,
-                 tablet_tool_handle: tablet_tool::Handle,
-                 event: &tablet_tool::event::Button) {}
+    fn on_button(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        tablet_tool_handle: tablet_tool::Handle,
+        event: &tablet_tool::event::Button
+    ) {
+    }
 
     /// Callback that is triggered when a tablet tool is destroyed.
-    fn destroyed(&mut self,
-                 compositor_handle: compositor::Handle,
-                 tablet_tool_handle: tablet_tool::Handle) {}
+    fn destroyed(&mut self, compositor_handle: compositor::Handle, tablet_tool_handle: tablet_tool::Handle) {}
 }
 
 wayland_listener!(pub(crate) TabletToolWrapper, (TabletTool, Box<Handler>), [

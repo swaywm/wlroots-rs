@@ -7,73 +7,79 @@ use libc;
 use std::{env, panic, process::abort};
 
 use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::{wlr_input_device, wlr_input_device_type, wlr_keyboard_set_keymap,
-                  wlr_keyboard_set_repeat_info, xkb_context_new, xkb_context_unref,
-                  xkb_keymap_new_from_names, xkb_keymap_unref, xkb_rule_names,
-                  xkb_context_flags::*, xkb_keymap_compile_flags::*};
+use wlroots_sys::{
+    wlr_input_device, wlr_input_device_type, wlr_keyboard_set_keymap, wlr_keyboard_set_repeat_info,
+    xkb_context_flags::*, xkb_context_new, xkb_context_unref, xkb_keymap_compile_flags::*,
+    xkb_keymap_new_from_names, xkb_keymap_unref, xkb_rule_names
+};
 
-use {compositor,
-     input::{self,
-             keyboard::{self, Keyboard, KeyboardWrapper},
-             pointer::{self, Pointer, PointerWrapper},
-             switch::{self, Switch, SwitchWrapper},
-             tablet_pad::{self, TabletPad, TabletPadWrapper},
-             tablet_tool::{self, TabletTool, TabletToolWrapper},
-             touch::{self, Touch, TouchWrapper}},
-     utils::{Handleable, safe_as_cstring}};
+use {
+    compositor,
+    input::{
+        self,
+        keyboard::{self, Keyboard, KeyboardWrapper},
+        pointer::{self, Pointer, PointerWrapper},
+        switch::{self, Switch, SwitchWrapper},
+        tablet_pad::{self, TabletPad, TabletPadWrapper},
+        tablet_tool::{self, TabletTool, TabletToolWrapper},
+        touch::{self, Touch, TouchWrapper}
+    },
+    utils::{safe_as_cstring, Handleable}
+};
 
 /// Callback triggered when an input device is added.
 ///
 /// # Panics
 /// Any panic in this function will cause the process to abort.
-pub type InputAdded = fn(compositor_handle: compositor::Handle,
-                         device: &mut input::Device);
+pub type InputAdded = fn(compositor_handle: compositor::Handle, device: &mut input::Device);
 
 /// Callback triggered when a keyboard device is added.
 ///
 /// # Panics
 /// Any panic in this function will cause the process to abort.
-pub type KeyboardAdded = fn (compositor_handle: compositor::Handle,
-                             keyboard_handle: keyboard::Handle)
-                             -> Option<Box<keyboard::Handler>>;
+pub type KeyboardAdded = fn(
+    compositor_handle: compositor::Handle,
+    keyboard_handle: keyboard::Handle
+) -> Option<Box<keyboard::Handler>>;
 
 /// Callback triggered when a pointer device is added.
 ///
 /// # Panics
 /// Any panic in this function will cause the process to abort.
-pub type PointerAdded = fn (compositor_handle: compositor::Handle,
-                            pointer_handle: pointer::Handle)
-                            -> Option<Box<pointer::Handler>>;
+pub type PointerAdded = fn(
+    compositor_handle: compositor::Handle,
+    pointer_handle: pointer::Handle
+) -> Option<Box<pointer::Handler>>;
 
 /// Callback triggered when a touch device is added.
 ///
 /// # Panics
 /// Any panic in this function will cause the process to abort.
-pub type TouchAdded = fn(compositor_handle: compositor::Handle,
-                         touch_handle: touch::Handle)
-                         -> Option<Box<touch::Handler>>;
+pub type TouchAdded =
+    fn(compositor_handle: compositor::Handle, touch_handle: touch::Handle) -> Option<Box<touch::Handler>>;
 
 /// Callback triggered when a tablet tool is added.
 ///
 ///
 /// # Panics
 /// Any panic in this function will cause the process to abort.
-pub type TabletToolAdded = fn(compositor_handle: compositor::Handle,
-                              tablet_tool_handle: tablet_tool::Handle)
-                              -> Option<Box<tablet_tool::Handler>>;
+pub type TabletToolAdded = fn(
+    compositor_handle: compositor::Handle,
+    tablet_tool_handle: tablet_tool::Handle
+) -> Option<Box<tablet_tool::Handler>>;
 
 /// Callback triggered when a tablet pad is added.
 ///
 ///
 /// # Panics
 /// Any panic in this function will cause the process to abort.
-pub type TabletPadAdded = fn (compositor_handle: compositor::Handle,
-                              tablet_pad_handle: tablet_pad::Handle)
-                              -> Option<Box<tablet_pad::Handler>>;
+pub type TabletPadAdded = fn(
+    compositor_handle: compositor::Handle,
+    tablet_pad_handle: tablet_pad::Handle
+) -> Option<Box<tablet_pad::Handler>>;
 
-pub type SwitchAdded = fn (compositor_handle: compositor::Handle,
-                           switch_handle: switch::Handle)
-                           -> Option<Box<switch::Handler>>;
+pub type SwitchAdded =
+    fn(compositor_handle: compositor::Handle, switch_handle: switch::Handle) -> Option<Box<switch::Handler>>;
 
 wayland_listener_static! {
     static mut MANAGER;
@@ -192,7 +198,8 @@ wayland_listener_static! {
                             }
                         };
                         let tablet_tool_handle = tablet_tool.weak_reference();
-                        let res = manager.tablet_tool_added.and_then(|f| f(compositor.clone(), tablet_tool_handle));
+                        let res = manager.tablet_tool_added.and_then(|f| f(compositor.clone(),
+                                                                           tablet_tool_handle));
                         if let Some(tablet_tool_handler) = res {
                             let mut tablet_tool = TabletToolWrapper::new((tablet_tool,
                                                                           tablet_tool_handler));
@@ -219,7 +226,8 @@ wayland_listener_static! {
                             }
                         };
                         let tablet_pad_handle = tablet_pad.weak_reference();
-                        let res = manager.tablet_pad_added.and_then(|f| f(compositor.clone(), tablet_pad_handle));
+                        let res = manager.tablet_pad_added.and_then(|f| f(compositor.clone(),
+                                                                          tablet_pad_handle));
                         if let Some(tablet_pad_handler) = res {
                             let mut tablet_pad = TabletPadWrapper::new((tablet_pad,
                                                                         tablet_pad_handler));
@@ -285,11 +293,13 @@ pub(crate) unsafe fn add_keyboard(dev: &mut input::Device) {
     wlr_log!(WLR_DEBUG, "Using xkb layout: {:?}", layout);
     wlr_log!(WLR_DEBUG, "Using xkb variant: {:?}", variant);
     wlr_log!(WLR_DEBUG, "Using xkb options: {:?}", options);
-    let rules = xkb_rule_names { rules: rules.into_raw(),
-                                 model: model.into_raw(),
-                                 layout: layout.into_raw(),
-                                 variant: variant.into_raw(),
-                                 options: options.into_raw() };
+    let rules = xkb_rule_names {
+        rules: rules.into_raw(),
+        model: model.into_raw(),
+        layout: layout.into_raw(),
+        variant: variant.into_raw(),
+        options: options.into_raw()
+    };
     let context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     if context.is_null() {
         panic!("Failed to create XKB context");

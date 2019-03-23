@@ -6,14 +6,18 @@ use std::f64::consts::PI;
 
 use log::LevelFilter;
 
-use wlroots::{area::{Area, Size, Origin}, compositor,
-              input::{self, keyboard, tablet_tool, tablet_pad},
-              output, render::matrix,
-              wlroots_sys::wl_output_transform::WL_OUTPUT_TRANSFORM_NORMAL,
-              wlr_tablet_tool_proximity_state::*,
-              wlr_button_state::*,
-              utils::log::Logger,
-              xkbcommon::xkb::KEY_Escape};
+use wlroots::{
+    area::{Area, Origin, Size},
+    compositor,
+    input::{self, keyboard, tablet_pad, tablet_tool},
+    output,
+    render::matrix,
+    utils::log::Logger,
+    wlr_button_state::*,
+    wlr_tablet_tool_proximity_state::*,
+    wlroots_sys::wl_output_transform::WL_OUTPUT_TRANSFORM_NORMAL,
+    xkbcommon::xkb::KEY_Escape
+};
 
 #[derive(Debug, Default)]
 struct State {
@@ -32,9 +36,11 @@ struct State {
 
 impl State {
     fn new() -> Self {
-        State { tool_color: [1.0, 1.0, 1.0, 1.0],
-                pad_color: [0.5, 0.5, 0.5, 1.0],
-                ..State::default() }
+        State {
+            tool_color: [1.0, 1.0, 1.0, 1.0],
+            pad_color: [0.5, 0.5, 0.5, 1.0],
+            ..State::default()
+        }
     }
 }
 
@@ -42,15 +48,14 @@ struct OutputEx;
 struct KeyboardEx;
 struct TabletEx;
 
-fn keyboard_added(_: compositor::Handle,
-                  _: keyboard::Handle)
-                  -> Option<Box<keyboard::Handler>> {
+fn keyboard_added(_: compositor::Handle, _: keyboard::Handle) -> Option<Box<keyboard::Handler>> {
     Some(Box::new(KeyboardEx))
 }
 
-fn tablet_tool_added(compositor: compositor::Handle,
-                     tool: tablet_tool::Handle)
-                     -> Option<Box<tablet_tool::Handler>> {
+fn tablet_tool_added(
+    compositor: compositor::Handle,
+    tool: tablet_tool::Handle
+) -> Option<Box<tablet_tool::Handler>> {
     with_handles!([(compositor: {compositor}), (tool: {tool})] => {
         let state: &mut State = compositor.downcast();
         state.size_mm = tool.input_device().size();
@@ -60,28 +65,25 @@ fn tablet_tool_added(compositor: compositor::Handle,
         if state.size_mm.1 == 0.0 {
             state.size_mm.1 = 10.0;
         }
-    }).unwrap();
+    })
+    .unwrap();
     Some(Box::new(TabletEx))
 }
 
-fn tablet_pad_added(_: compositor::Handle,
-                    _: tablet_pad::Handle)
-                    -> Option<Box<tablet_pad::Handler>> {
+fn tablet_pad_added(_: compositor::Handle, _: tablet_pad::Handle) -> Option<Box<tablet_pad::Handler>> {
     Some(Box::new(TabletEx))
 }
 
-fn output_added<'output>(_: compositor::Handle,
-                         builder: output::Builder<'output>)
-                         -> Option<output::BuilderResult<'output>> {
+fn output_added<'output>(
+    _: compositor::Handle,
+    builder: output::Builder<'output>
+) -> Option<output::BuilderResult<'output>> {
     let result = builder.build_best_mode(OutputEx);
     Some(result)
 }
 
 impl keyboard::Handler for KeyboardEx {
-    fn on_key(&mut self,
-              _: compositor::Handle,
-              _: keyboard::Handle,
-              key_event: &keyboard::event::Key) {
+    fn on_key(&mut self, _: compositor::Handle, _: keyboard::Handle, key_event: &keyboard::event::Key) {
         for key in key_event.pressed_keys() {
             if key == KEY_Escape {
                 compositor::terminate()
@@ -91,10 +93,12 @@ impl keyboard::Handler for KeyboardEx {
 }
 
 impl tablet_pad::Handler for TabletEx {
-    fn on_button(&mut self,
-                 compositor: compositor::Handle,
-                 _: tablet_pad::Handle,
-                 event: &tablet_pad::event::Button) {
+    fn on_button(
+        &mut self,
+        compositor: compositor::Handle,
+        _: tablet_pad::Handle,
+        event: &tablet_pad::event::Button
+    ) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.downcast();
             if event.state() == WLR_BUTTON_RELEASED {
@@ -108,28 +112,34 @@ impl tablet_pad::Handler for TabletEx {
                     }
                 }
             }
-        }).unwrap();
+        })
+        .unwrap();
     }
 
-    fn on_ring(&mut self,
-               compositor: compositor::Handle,
-               _: tablet_pad::Handle,
-               event: &tablet_pad::event::Ring) {
+    fn on_ring(
+        &mut self,
+        compositor: compositor::Handle,
+        _: tablet_pad::Handle,
+        event: &tablet_pad::event::Ring
+    ) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.downcast();
             let position = event.position();
             if position != -1.0 {
                 state.ring = -(position * PI / 180.0)
             }
-        }).unwrap();
+        })
+        .unwrap();
     }
 }
 
 impl tablet_tool::Handler for TabletEx {
-    fn on_axis(&mut self,
-               compositor: compositor::Handle,
-               _: tablet_tool::Handle,
-               event: &tablet_tool::event::Axis) {
+    fn on_axis(
+        &mut self,
+        compositor: compositor::Handle,
+        _: tablet_tool::Handle,
+        event: &tablet_tool::event::Axis
+    ) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.downcast();
             let axis = event.updated_axes();
@@ -153,23 +163,29 @@ impl tablet_tool::Handler for TabletEx {
             if axis.contains(tablet_tool::Axis::WLR_TABLET_TOOL_AXIS_TILT_Y) {
                 state.tilt.1 = tilt_y
             }
-        }).unwrap();
+        })
+        .unwrap();
     }
 
-    fn on_proximity(&mut self,
-                    compositor: compositor::Handle,
-                    _: tablet_tool::Handle,
-                    event: &tablet_tool::event::Proximity) {
+    fn on_proximity(
+        &mut self,
+        compositor: compositor::Handle,
+        _: tablet_tool::Handle,
+        event: &tablet_tool::event::Proximity
+    ) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.downcast();
             state.proximity = event.state() == WLR_TABLET_TOOL_PROXIMITY_IN
-        }).unwrap();
+        })
+        .unwrap();
     }
 
-    fn on_button(&mut self,
-                 compositor: compositor::Handle,
-                 _: tablet_tool::Handle,
-                 event: &tablet_tool::event::Button) {
+    fn on_button(
+        &mut self,
+        compositor: compositor::Handle,
+        _: tablet_tool::Handle,
+        event: &tablet_tool::event::Button
+    ) {
         with_handles!([(compositor: {compositor})] => {
             let state: &mut State = compositor.downcast();
             if event.state() == WLR_BUTTON_RELEASED {
@@ -184,7 +200,8 @@ impl tablet_tool::Handler for TabletEx {
                     };
                 }
             }
-        }).unwrap();
+        })
+        .unwrap();
     }
 }
 
@@ -235,7 +252,8 @@ impl output::Handler for OutputEx {
                 area.size.width /= 2;
                 renderer.render_colored_rect(area, tool_color, transform_matrix);
             }
-        }).unwrap();
+        })
+        .unwrap();
     }
 }
 
@@ -246,9 +264,10 @@ fn main() {
         .keyboard_added(keyboard_added)
         .tablet_tool_added(tablet_tool_added)
         .tablet_pad_added(tablet_pad_added);
-    compositor::Builder::new().gles2(true)
-                            .input_manager(input_builder)
-                            .output_manager(output_builder)
-                            .build_auto(State::new())
-                            .run()
+    compositor::Builder::new()
+        .gles2(true)
+        .input_manager(input_builder)
+        .output_manager(output_builder)
+        .build_auto(State::new())
+        .run()
 }

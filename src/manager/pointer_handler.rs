@@ -2,42 +2,55 @@
 
 use libc;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wlr_input_device, wlr_event_pointer_axis, wlr_event_pointer_button,
-                  wlr_event_pointer_motion};
+use wlroots_sys::{
+    wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion, wlr_input_device
+};
 
-use {compositor,
-     input::pointer::{self, Pointer},
-     utils::Handleable};
+use {
+    compositor,
+    input::pointer::{self, Pointer},
+    utils::Handleable
+};
 
 #[allow(unused_variables)]
 pub trait Handler {
     /// Callback that is triggered when the pointer moves.
-    fn on_motion(&mut self,
-                 compositor_handle: compositor::Handle,
-                 pointer_handle: pointer::Handle,
-                 event: &pointer::event::Motion) {}
+    fn on_motion(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        pointer_handle: pointer::Handle,
+        event: &pointer::event::Motion
+    ) {
+    }
 
-    fn on_motion_absolute(&mut self,
-                          compositor_handle: compositor::Handle,
-                          pointer_handle: pointer::Handle,
-                          event: &pointer::event::AbsoluteMotion) {}
+    fn on_motion_absolute(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        pointer_handle: pointer::Handle,
+        event: &pointer::event::AbsoluteMotion
+    ) {
+    }
 
     /// Callback that is triggered when the buttons on the pointer are pressed.
-    fn on_button(&mut self,
-                 compositor_handle: compositor::Handle,
-                 pointer_handle: pointer::Handle,
-                 event: &pointer::event::Button) {}
+    fn on_button(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        pointer_handle: pointer::Handle,
+        event: &pointer::event::Button
+    ) {
+    }
 
     /// Callback that is triggered when an axis event fires.
-    fn on_axis(&mut self,
-               compositor_handle: compositor::Handle,
-               pointer_handle: pointer::Handle,
-               event: &pointer::event::Axis) {}
+    fn on_axis(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        pointer_handle: pointer::Handle,
+        event: &pointer::event::Axis
+    ) {
+    }
 
     /// Callback that is triggered when the pointer is destroyed.
-    fn destroyed(&mut self,
-                 compositor_handle: compositor::Handle,
-                 pointer_handle: pointer::Handle) {}
+    fn destroyed(&mut self, compositor_handle: compositor::Handle, pointer_handle: pointer::Handle) {}
 }
 
 wayland_listener!(pub(crate) PointerWrapper, (Pointer, Box<Handler>), [

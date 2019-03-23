@@ -1,4 +1,4 @@
-use wlroots_sys::{wlr_event_switch_toggle, wlr_switch_type, wlr_switch_state};
+use wlroots_sys::{wlr_event_switch_toggle, wlr_switch_state, wlr_switch_type};
 
 use input;
 
@@ -9,8 +9,10 @@ pub struct Toggle {
 
 impl Toggle {
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_switch_toggle) -> Self {
-        Toggle { event,
-                 device: input::Device::from_ptr((*event).device) }
+        Toggle {
+            event,
+            device: input::Device::from_ptr((*event).device)
+        }
     }
 
     pub fn device(&self) -> &input::Device {

@@ -1,15 +1,20 @@
 use std::ptr;
 
-use wlroots_sys::{wlr_backend, wl_display, wlr_wl_backend_create,
-                  wlr_wl_output_create, wlr_input_device_is_wl, wlr_output_is_wl};
+use wlroots_sys::{
+    wl_display, wlr_backend, wlr_input_device_is_wl, wlr_output_is_wl, wlr_wl_backend_create,
+    wlr_wl_output_create
+};
 
-use {backend::UnsafeRenderSetupFunction,
-     output::{self, Output},
-     input,
-     utils::{Handleable, safe_as_cstring}};
+use {
+    backend::UnsafeRenderSetupFunction,
+    input,
+    output::{self, Output},
+    utils::{safe_as_cstring, Handleable}
+};
 
 /// When the compositor is running in a nested Wayland environment.
-/// e.g. your compositor is executed while the user is running Gnome+Mutter or Weston.
+/// e.g. your compositor is executed while the user is running Gnome+Mutter or
+/// Weston.
 ///
 /// This is useful for testing and iterating on the design of the compositor.
 #[derive(Debug, Hash, Eq, PartialEq)]
@@ -18,18 +23,20 @@ pub struct Wayland {
 }
 
 impl Wayland {
-    /// Creates a new wlr_wl_backend. This backend will be created with no outputs;
-    /// you must use wlr_wl_output_create to add them.
+    /// Creates a new wlr_wl_backend. This backend will be created with no
+    /// outputs; you must use wlr_wl_output_create to add them.
     ///
-    /// The `remote` argument is the name of the host compositor wayland socket. Set
-    /// to `None` for the default behaviour (WAYLAND_DISPLAY env variable or wayland-0
-    /// default)
-    pub unsafe fn new(display: *mut wl_display,
-                      remote: Option<String>,
-                      render_setup_func: Option<UnsafeRenderSetupFunction>)
-                      -> Self {
+    /// The `remote` argument is the name of the host compositor wayland socket.
+    /// Set to `None` for the default behaviour (WAYLAND_DISPLAY env
+    /// variable or wayland-0 default)
+    pub unsafe fn new(
+        display: *mut wl_display,
+        remote: Option<String>,
+        render_setup_func: Option<UnsafeRenderSetupFunction>
+    ) -> Self {
         let remote_cstr = remote.map(|remote| safe_as_cstring(remote));
-        let remote_ptr = remote_cstr.as_ref()
+        let remote_ptr = remote_cstr
+            .as_ref()
             .map(|s| s.as_ptr())
             .unwrap_or_else(|| ptr::null_mut());
         let backend = wlr_wl_backend_create(display, remote_ptr, render_setup_func);
@@ -39,14 +46,13 @@ impl Wayland {
         Wayland { backend }
     }
 
-
     /// Adds a new output to this backend.
     ///
     /// You may remove outputs by destroying them.
     ///
-    /// Note that if called before initializing the backend, this will return None
-    /// and your outputs will be created during initialization (and given to you via
-    /// the output_add signal).
+    /// Note that if called before initializing the backend, this will return
+    /// None and your outputs will be created during initialization (and
+    /// given to you via the output_add signal).
     pub fn create_output(&self) -> Option<output::Handle> {
         unsafe {
             let output_ptr = wlr_wl_output_create(self.backend);
@@ -55,21 +61,16 @@ impl Wayland {
             } else {
                 Some(output::Handle::from_ptr(output_ptr))
             }
-
         }
     }
 
     /// True if the given input device is a wlr_wl_input_device.
     pub fn is_wl_input_device(&self, input_device: &input::Device) -> bool {
-        unsafe {
-            wlr_input_device_is_wl(input_device.as_ptr())
-        }
+        unsafe { wlr_input_device_is_wl(input_device.as_ptr()) }
     }
 
     /// True if the given output is a wlr_wl_output.
     pub fn is_wl_output_device(&self, output: &Output) -> bool {
-        unsafe {
-            wlr_output_is_wl(output.as_ptr())
-        }
+        unsafe { wlr_output_is_wl(output.as_ptr()) }
     }
 }

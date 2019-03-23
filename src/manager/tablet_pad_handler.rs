@@ -1,37 +1,46 @@
 //! Handler for tablet pads
 
 use libc;
-use wlroots_sys::wlr_input_device;
 use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wlroots_sys::wlr_input_device;
 
-use {compositor,
-     input::tablet_pad::{self, TabletPad},
-     utils::Handleable};
+use {
+    compositor,
+    input::tablet_pad::{self, TabletPad},
+    utils::Handleable
+};
 
 #[allow(unused_variables)]
 pub trait Handler {
     /// Callback that is triggered when a button is pressed on the tablet pad.
-    fn on_button(&mut self,
-                 compositor_handle: compositor::Handle,
-                 tablet_pad_handle: tablet_pad::Handle,
-                 event: &tablet_pad::event::Button) {}
+    fn on_button(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        tablet_pad_handle: tablet_pad::Handle,
+        event: &tablet_pad::event::Button
+    ) {
+    }
 
     /// Callback that is triggered when the touch strip is used.
-    fn on_strip(&mut self,
-                compositor_handle: compositor::Handle,
-                tablet_pad_handle: tablet_pad::Handle,
-                event: &tablet_pad::event::Strip) {}
+    fn on_strip(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        tablet_pad_handle: tablet_pad::Handle,
+        event: &tablet_pad::event::Strip
+    ) {
+    }
 
     /// Callback that is triggered when the ring is touched.
-    fn on_ring(&mut self,
-               compositor_handle: compositor::Handle,
-               tablet_pad_handle: tablet_pad::Handle,
-               event: &tablet_pad::event::Ring) {}
+    fn on_ring(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        tablet_pad_handle: tablet_pad::Handle,
+        event: &tablet_pad::event::Ring
+    ) {
+    }
 
     /// Callback that is triggered when the pad device is destroyed.
-    fn destroyed(&mut self,
-                 compositor_handle: compositor::Handle,
-                 tablet_pad_handle: tablet_pad::Handle) {}
+    fn destroyed(&mut self, compositor_handle: compositor::Handle, tablet_pad_handle: tablet_pad::Handle) {}
 }
 
 wayland_listener!(pub(crate) TabletPadWrapper, (TabletPad, Box<Handler>), [

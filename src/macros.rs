@@ -25,12 +25,14 @@ macro_rules! wl_list_for_each {
         $pos = container_of!($ptr.next, $container, $field);
         loop {
             if &(*$pos).$field as *const _ == &$ptr as *const _ {
-                break
+                break;
             }
-            { $body }
+            {
+                $body
+            }
             $pos = container_of!((*$pos).$field.next, $container, $field);
         }
-    }
+    };
 }
 
 /// Logs a message using wlroots' logging capability.
@@ -231,7 +233,8 @@ macro_rules! wayland_listener_static {
                     $($(
                         /// Uses the provided callback as the receiver for the
                         /// event the type signature describes.
-                        pub fn $extra_callback_name(mut self, $extra_callback_name: $extra_callback_type) -> Self {
+                        pub fn $extra_callback_name(mut self, $extra_callback_name: $extra_callback_type)
+                                                    -> Self {
                             self.$extra_callback_name = ::std::option::Option::Some($extra_callback_name);
                             self
                         }
@@ -321,11 +324,11 @@ macro_rules! wayland_listener_static {
 /// This allows you to avoid the rightward drift of death that is often found
 /// with heavily nested callback systems.
 ///
-/// Any `HandleResult`s are flattened and the first one encountered is immediately
-/// returned before any of the `$body` code is executed.
+/// Any `HandleResult`s are flattened and the first one encountered is
+/// immediately returned before any of the `$body` code is executed.
 ///
-/// Order of evaluation is from left to right. It is possible to refer to the previous
-/// result, as commonly found in Lisp's `let*` macro.
+/// Order of evaluation is from left to right. It is possible to refer to the
+/// previous result, as commonly found in Lisp's `let*` macro.
 ///
 /// An example of simple use:
 ///
@@ -345,7 +348,6 @@ macro_rules! wayland_listener_static {
 ///    ...
 /// })
 /// ```
-///
 #[cfg(feature = "unstable")]
 #[macro_export]
 macro_rules! with_handles {

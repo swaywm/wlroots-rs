@@ -1,8 +1,9 @@
 use std::mem;
 
 use libc::{c_int, c_uint};
-use wlroots_sys::{pixman_region32_fini, pixman_region32_init,
-                  pixman_region32_t, pixman_region32_union_rect};
+use wlroots_sys::{
+    pixman_region32_fini, pixman_region32_init, pixman_region32_t, pixman_region32_union_rect
+};
 
 /// A pixman region, used for damage tracking.
 #[derive(Debug)]

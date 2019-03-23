@@ -78,16 +78,19 @@ impl Into<wl_shm_format> for TextureFormat {
 #[derive(Debug, Eq, PartialEq, Hash)]
 /// A wrapper for a wlr_texture.
 ///
-/// For textures created from `GenericRenderer::create_texture_from_pixels`, the lifetime
-/// will be `'static` because the memory will be owned by the user.
+/// For textures created from `GenericRenderer::create_texture_from_pixels`, the
+/// lifetime will be `'static` because the memory will be owned by the user.
 pub struct Texture<'surface> {
     texture: *mut wlr_texture,
     phantom: PhantomData<&'surface ()>
 }
 
-impl <'surface> Texture<'surface> {
+impl<'surface> Texture<'surface> {
     pub(crate) unsafe fn from_ptr<'unbound>(texture: *mut wlr_texture) -> Texture<'unbound> {
-        Texture { texture, phantom: PhantomData }
+        Texture {
+            texture,
+            phantom: PhantomData
+        }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_texture {

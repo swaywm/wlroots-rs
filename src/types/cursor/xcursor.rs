@@ -6,17 +6,19 @@
 //! > exists which map to the standard X cursor names. Cursors can exist in
 //! > several sizes and the library automatically picks the best size.
 
-use std::{mem, ptr, slice};
 use std::marker::PhantomData;
 use std::time::Duration;
+use std::{mem, ptr, slice};
 
 use libc::c_int;
-use wlroots_sys::{wlr_xcursor, wlr_xcursor_frame, wlr_xcursor_image, wlr_xcursor_theme,
-                  wlr_xcursor_theme_destroy, wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load};
+use wlroots_sys::{
+    wlr_xcursor, wlr_xcursor_frame, wlr_xcursor_image, wlr_xcursor_theme, wlr_xcursor_theme_destroy,
+    wlr_xcursor_theme_get_cursor, wlr_xcursor_theme_load
+};
 
-use utils::{c_to_rust_string, safe_as_cstring};
 #[cfg(feature = "unstable")]
 pub use super::xcursor_manager::*;
+use utils::{c_to_rust_string, safe_as_cstring};
 
 /// Wrapper for an xcursor theme from the X11 xcursor library.
 ///
@@ -64,27 +66,27 @@ pub struct Image<'cursor> {
 impl Theme {
     /// Loads the named xcursor theme at the given cursor size (in pixels).
     ///
-    /// This is useful if you need cursor images for your compositor to use when a
-    /// client-side cursors is not available or you wish to override client-side
-    /// cursors for a particular UI interaction (such as using a grab cursor when
-    /// moving a window around)
+    /// This is useful if you need cursor images for your compositor to use when
+    /// a client-side cursors is not available or you wish to override
+    /// client-side cursors for a particular UI interaction (such as using a
+    /// grab cursor when moving a window around)
     ///
-    /// The default search path it uses is ~/.icons, /usr/share/icons, /usr/share/pixmaps.
-    /// Within each of these directories, it searches for a directory using the theme name.
-    /// Within the theme directory, it looks for cursor files in the 'cursors' subdirectory.
-    /// It uses the first cursor file found along the path.
+    /// The default search path it uses is ~/.icons, /usr/share/icons,
+    /// /usr/share/pixmaps. Within each of these directories, it searches
+    /// for a directory using the theme name. Within the theme directory, it
+    /// looks for cursor files in the 'cursors' subdirectory. It uses the
+    /// first cursor file found along the path.
     ///
-    /// If necessary, Xcursor also looks for a "index.theme" file in each theme directory
-    /// to find inherited themes and searches along the path for those themes as well.
+    /// If necessary, Xcursor also looks for a "index.theme" file in each theme
+    /// directory to find inherited themes and searches along the path for
+    /// those themes as well.
     ///
     /// If no name is given, defaults to "default".
     /// If no theme can be found `None` is returned.
     pub fn load_theme<T: Into<Option<String>>>(name: T, size: c_int) -> Option<Self> {
         unsafe {
             let name_str = name.into().map(safe_as_cstring);
-            let name_ptr = name_str.as_ref()
-                .map(|s| s.as_ptr())
-                .unwrap_or(ptr::null_mut());
+            let name_ptr = name_str.as_ref().map(|s| s.as_ptr()).unwrap_or(ptr::null_mut());
             let theme = wlr_xcursor_theme_load(name_ptr, size);
             if theme.is_null() {
                 None
@@ -119,9 +121,10 @@ impl Theme {
             let length = self.cursor_count();
             let xcursors_slice: &'theme [*mut wlr_xcursor] =
                 slice::from_raw_parts::<'theme, *mut wlr_xcursor>(cursor_ptr, length);
-            xcursors_slice.into_iter()
-                          .map(|&xcursor| XCursor::from_ptr(xcursor))
-                          .collect()
+            xcursors_slice
+                .into_iter()
+                .map(|&xcursor| XCursor::from_ptr(xcursor))
+                .collect()
         }
     }
 
@@ -170,11 +173,14 @@ impl<'theme> XCursor<'theme> {
     /// Get a specific frame of the image from the animation. Returns `None` if
     /// the index is out of bounds.
     ///
-    /// We suggest paring this with `XCursor::frame` to avoid going out of bounds.
+    /// We suggest paring this with `XCursor::frame` to avoid going out of
+    /// bounds.
     pub fn image<'cursor>(&'cursor self, index: usize) -> Option<Image<'cursor>> {
         unsafe {
             let cursors_slice = self.cursor_slice();
-            cursors_slice.get(index).map(|&cursor| Image::from_xcursor_image(cursor))
+            cursors_slice
+                .get(index)
+                .map(|&cursor| Image::from_xcursor_image(cursor))
         }
     }
 
@@ -189,9 +195,7 @@ impl<'theme> XCursor<'theme> {
     /// e.g. if it's been animating for 500 milliseconds `duration`
     /// should be constructed from `Duration::from_millis(500)`.
     pub fn frame(&mut self, duration: Duration) -> usize {
-        unsafe {
-            wlr_xcursor_frame(self.xcursor, duration.subsec_millis()) as usize
-        }
+        unsafe { wlr_xcursor_frame(self.xcursor, duration.subsec_millis()) as usize }
     }
 
     /// Get the number of animation frames for the cursor.
@@ -210,12 +214,14 @@ impl<'theme> XCursor<'theme> {
     /// This lifetime is unbounded, but it must not outlive the
     /// xcursor manager that the pointer came from.
     pub unsafe fn from_ptr<'unbound>(xcursor: *mut wlr_xcursor) -> XCursor<'unbound> {
-        XCursor { xcursor,
-                  phantom: PhantomData }
+        XCursor {
+            xcursor,
+            phantom: PhantomData
+        }
     }
 }
 
-impl <'unbound> Image<'unbound> {
+impl<'unbound> Image<'unbound> {
     unsafe fn from_xcursor_image(image: *mut wlr_xcursor_image) -> Self {
         Image {
             width: (*image).width,
@@ -225,8 +231,7 @@ impl <'unbound> Image<'unbound> {
             delay: (*image).delay,
             buffer: slice::from_raw_parts::<'_, u8>(
                 (*image).buffer as *const u8,
-                (*image).width as usize * (*image).height as usize
-                    * mem::size_of::<u32>()
+                (*image).width as usize * (*image).height as usize * mem::size_of::<u32>()
             ),
             _no_send: PhantomData
         }

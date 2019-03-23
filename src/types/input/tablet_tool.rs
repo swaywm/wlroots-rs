@@ -3,22 +3,25 @@ use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
 use wlroots_sys::{wlr_input_device, wlr_tablet, wlr_tablet_tool_axes};
 
-use {input::{self, InputState},
-     utils::{self, Handleable, HandleErr, HandleResult}};
-pub use manager::tablet_tool_handler::*;
 pub use events::tablet_tool_events as event;
+pub use manager::tablet_tool_handler::*;
+use {
+    input::{self, InputState},
+    utils::{self, HandleErr, HandleResult, Handleable}
+};
 
 pub type Handle = utils::Handle<NonNull<wlr_input_device>, wlr_tablet, TabletTool>;
 
 #[derive(Debug)]
 pub struct TabletTool {
-    /// The structure that ensures weak handles to this structure are still alive.
+    /// The structure that ensures weak handles to this structure are still
+    /// alive.
     ///
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
     ///
-    /// If this is `None`, then this is from an upgraded `tablet_tool::Handle`, and
-    /// the operations are **unchecked**.
+    /// If this is `None`, then this is from an upgraded `tablet_tool::Handle`,
+    /// and the operations are **unchecked**.
     /// This is means safe operations might fail, but only if you use the unsafe
     /// marked function `upgrade` on a `tablet_tool::Handle`.
     liveliness: Rc<Cell<bool>>,
@@ -57,17 +60,24 @@ impl TabletTool {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_TABLET_TOOL => {
-                let tool = NonNull::new((*device).__bindgen_anon_1.tablet)
-                    .expect("Tablet Tool pointer was null");
+                let tool = NonNull::new((*device).__bindgen_anon_1.tablet).expect(
+                    "Tablet Tool \
+                     pointer was \
+                     null"
+                );
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
-                let state = Box::new(InputState { handle,
-                                                  device: input::Device::from_ptr(device) });
+                let state = Box::new(InputState {
+                    handle,
+                    device: input::Device::from_ptr(device)
+                });
                 (*tool.as_ptr()).data = Box::into_raw(state) as *mut _;
-                Some(TabletTool { liveliness,
-                                  device: input::Device::from_ptr(device),
-                                  tool })
-            }
+                Some(TabletTool {
+                    liveliness,
+                    device: input::Device::from_ptr(device),
+                    tool
+                })
+            },
             _ => None
         }
     }
@@ -81,7 +91,7 @@ impl TabletTool {
 impl Drop for TabletTool {
     fn drop(&mut self) {
         if Rc::strong_count(&self.liveliness) != 1 {
-            return
+            return;
         }
         wlr_log!(WLR_DEBUG, "Dropped TabletTool {:p}", self.tool.as_ptr());
         unsafe {
@@ -89,10 +99,12 @@ impl Drop for TabletTool {
         }
         let weak_count = Rc::weak_count(&self.liveliness);
         if weak_count > 0 {
-            wlr_log!(WLR_DEBUG,
-                     "Still {} weak pointers to TabletTool {:p}",
-                     weak_count,
-                     self.tool.as_ptr());
+            wlr_log!(
+                WLR_DEBUG,
+                "Still {} weak pointers to TabletTool {:p}",
+                weak_count,
+                self.tool.as_ptr()
+            );
         }
     }
 }
@@ -105,9 +117,11 @@ impl Handleable<NonNull<wlr_input_device>, wlr_tablet> for TabletTool {
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*tool.as_ptr()).data = Box::into_raw(data) as *mut _;
-        Some(TabletTool { liveliness: handle.upgrade().unwrap(),
-                          device,
-                          tool })
+        Some(TabletTool {
+            liveliness: handle.upgrade().unwrap(),
+            device,
+            tool
+        })
     }
 
     #[doc(hidden)]
@@ -117,26 +131,26 @@ impl Handleable<NonNull<wlr_input_device>, wlr_tablet> for TabletTool {
 
     #[doc(hidden)]
     unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-            .upgrade()
-            .ok_or(HandleErr::AlreadyDropped)?;
+        let liveliness = handle.handle.upgrade().ok_or(HandleErr::AlreadyDropped)?;
         let device = handle.data.ok_or(HandleErr::AlreadyDropped)?;
-        Ok(TabletTool { liveliness,
-                        // NOTE Rationale for cloning:
-                        // If we already dropped we don't reach this point.
-                        device: input::Device { device },
-                        tool: handle.as_non_null()
+        Ok(TabletTool {
+            liveliness,
+            // NOTE Rationale for cloning:
+            // If we already dropped we don't reach this point.
+            device: input::Device { device },
+            tool: handle.as_non_null()
         })
     }
 
     fn weak_reference(&self) -> Handle {
-        Handle { ptr: self.tool,
-                 handle: Rc::downgrade(&self.liveliness),
-                 // NOTE Rationale for cloning:
-                 // Since we have a strong reference already,
-                 // the input must still be alive.
-                 data: unsafe { Some(self.device.as_non_null()) },
-                 _marker: std::marker::PhantomData
+        Handle {
+            ptr: self.tool,
+            handle: Rc::downgrade(&self.liveliness),
+            // NOTE Rationale for cloning:
+            // Since we have a strong reference already,
+            // the input must still be alive.
+            data: unsafe { Some(self.device.as_non_null()) },
+            _marker: std::marker::PhantomData
         }
     }
 }

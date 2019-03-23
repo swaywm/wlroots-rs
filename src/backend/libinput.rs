@@ -1,5 +1,7 @@
-use wlroots_sys::{wlr_backend, wl_display, wlr_libinput_backend_create, libinput_device,
-                  wlr_libinput_get_device_handle, wlr_input_device_is_libinput};
+use wlroots_sys::{
+    libinput_device, wl_display, wlr_backend, wlr_input_device_is_libinput, wlr_libinput_backend_create,
+    wlr_libinput_get_device_handle
+};
 
 use {backend::Session, input};
 

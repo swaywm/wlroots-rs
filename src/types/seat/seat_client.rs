@@ -26,19 +26,22 @@ impl<'wlr_seat> Client<'wlr_seat> {
     /// if there is one bound for that client.
     ///
     /// # Unsafety
-    /// Since this just is a wrapper for checking if the wlr_seat pointer matches
-    /// the provided wl_client pointer, this function is unsafe.
+    /// Since this just is a wrapper for checking if the wlr_seat pointer
+    /// matches the provided wl_client pointer, this function is unsafe.
     ///
     /// Please only pass a valid pointer to a wl_client to this function.
-    pub unsafe fn client_for_wl_client(seat: &'wlr_seat mut Seat,
-                                       client: *mut wl_client)
-                                       -> Option<Client<'wlr_seat>> {
+    pub unsafe fn client_for_wl_client(
+        seat: &'wlr_seat mut Seat,
+        client: *mut wl_client
+    ) -> Option<Client<'wlr_seat>> {
         let client = wlr_seat_client_for_wl_client(seat.as_ptr(), client);
         if client.is_null() {
             None
         } else {
-            Some(Client { client,
-                              _phantom: PhantomData })
+            Some(Client {
+                client,
+                _phantom: PhantomData
+            })
         }
     }
 
@@ -49,10 +52,11 @@ impl<'wlr_seat> Client<'wlr_seat> {
     ///
     /// Note also that the struct has an *boundless lifetime*. You _must_ ensure
     /// this struct does not live longer than the `Seat` that manages it.
-    pub(crate) unsafe fn from_ptr<'unbound_seat>(client: *mut wlr_seat_client)
-                                                 -> Client<'unbound_seat> {
-        Client { client,
-                     _phantom: PhantomData }
+    pub(crate) unsafe fn from_ptr<'unbound_seat>(client: *mut wlr_seat_client) -> Client<'unbound_seat> {
+        Client {
+            client,
+            _phantom: PhantomData
+        }
     }
 
     pub(crate) unsafe fn as_ptr(&self) -> *mut wlr_seat_client {
