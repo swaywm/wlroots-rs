@@ -1,27 +1,28 @@
 //! Handler for lid switches
 
+use crate::libc;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wlroots_sys::{wlr_event_switch_toggle, wlr_input_device};
 
-use libc;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{wlr_input_device, wlr_event_switch_toggle};
-
-use {compositor,
-     input::switch::{self, Switch},
-     utils::Handleable};
-
+use crate::{
+    compositor,
+    input::switch::{self, Switch},
+    utils::Handleable
+};
 
 #[allow(unused_variables)]
 pub trait Handler {
     /// Callback that is triggered when the switch moves.
-    fn on_toggle(&mut self,
-                 compositor_handle: compositor::Handle,
-                 switch_handle: switch::Handle,
-                 event: &switch::event::Toggle) {}
+    fn on_toggle(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        switch_handle: switch::Handle,
+        event: &switch::event::Toggle
+    ) {
+    }
 
     /// Callback that is triggered when the switch is destroyed.
-    fn destroyed(&mut self,
-                 compositor_handle: compositor::Handle,
-                 switch_handle: switch::Handle) {}
+    fn destroyed(&mut self, compositor_handle: compositor::Handle, switch_handle: switch::Handle) {}
 }
 
 wayland_listener!(pub(crate) SwitchWrapper, (Switch, Box<Handler>), [
@@ -55,4 +56,3 @@ wayland_listener!(pub(crate) SwitchWrapper, (Switch, Box<Handler>), [
         switch_handler.on_toggle(compositor, switch.weak_reference(), &event);
     };
 ]);
-

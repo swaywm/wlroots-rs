@@ -1,4 +1,5 @@
 #![allow(non_camel_case_types, non_upper_case_globals)]
+#![allow(clippy::all)]
 
 pub extern crate libc;
 pub extern crate wayland_commons;
@@ -6,7 +7,11 @@ pub extern crate wayland_server;
 #[macro_use]
 pub extern crate wayland_sys;
 
-pub use wayland_sys::{*, pid_t, gid_t, uid_t, server::{self, WAYLAND_SERVER_HANDLE}};
+pub use wayland_sys::{
+    gid_t, pid_t,
+    server::{self, WAYLAND_SERVER_HANDLE},
+    uid_t, *
+};
 
 #[allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 mod generated {
@@ -25,13 +30,15 @@ mod generated {
             }
 
             pub mod server {
+                pub(crate) use wayland_commons::{
+                    map::{Object, ObjectMetadata},
+                    wire::{Argument, ArgumentType, Message, MessageDesc},
+                    AnonymousObject, Interface, MessageGroup
+                };
+                use wayland_server::{protocol::wl_surface, *};
                 pub(crate) use wayland_server::{NewResource, Resource};
-                pub(crate) use wayland_commons::{AnonymousObject, Interface, MessageGroup,
-                                                 wire::{Argument, ArgumentType, Message, MessageDesc},
-                                                 map::{Object, ObjectMetadata}};
                 pub(crate) use wayland_sys as sys;
-                use wayland_server::{*, protocol::wl_surface};
-                use wayland_sys::common::{wl_interface, wl_argument};
+                use wayland_sys::common::{wl_argument, wl_interface};
                 include!(concat!(env!("OUT_DIR"), "/server_decoration_server_api.rs"));
             }
         }
@@ -44,13 +51,15 @@ mod generated {
             }
 
             pub mod server {
+                pub(crate) use wayland_commons::{
+                    map::{Object, ObjectMetadata},
+                    wire::{Argument, ArgumentType, Message, MessageDesc},
+                    AnonymousObject, Interface, MessageGroup
+                };
+                use wayland_server::{protocol::wl_seat, *};
                 pub(crate) use wayland_server::{NewResource, Resource};
-                pub(crate) use wayland_commons::{AnonymousObject, Interface, MessageGroup,
-                                                 wire::{Argument, ArgumentType, Message, MessageDesc},
-                                                 map::{Object, ObjectMetadata}};
                 pub(crate) use wayland_sys as sys;
-                use wayland_server::{*, protocol::wl_seat};
-                use wayland_sys::common::{wl_interface, wl_argument};
+                use wayland_sys::common::{wl_argument, wl_interface};
                 include!(concat!(env!("OUT_DIR"), "/idle_server_api.rs"));
             }
         }

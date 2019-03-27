@@ -2,20 +2,23 @@
 
 use std::ptr::NonNull;
 
-use libc;
-use wayland_sys::server::signal::wl_signal_add;
+use crate::libc;
+use crate::wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::{wlr_xdg_surface_v6, wlr_xdg_surface_v6_role::*};
 
-use {compositor,
-     shell::xdg_shell_v6::{self, ShellState},
-     surface,
-     utils::Handleable};
 use super::xdg_shell_v6_handler::XdgShellV6;
+use crate::{
+    compositor,
+    shell::xdg_shell_v6::{self, ShellState},
+    surface,
+    utils::Handleable
+};
+
+pub type NewSurfaceResult = (Option<Box<xdg_shell_v6::Handler>>, Option<Box<surface::Handler>>);
 
 /// Callback that is triggered when a new XDG shell v6 surface appears.
-pub type NewSurface = fn(compositor_handle: compositor::Handle,
-                         xdg_shell_v6_handle: xdg_shell_v6::Handle)
-                         -> (Option<Box<xdg_shell_v6::Handler>>, Option<Box<surface::Handler>>);
+pub type NewSurface =
+    fn(compositor_handle: compositor::Handle, xdg_shell_v6_handle: xdg_shell_v6::Handle) -> NewSurfaceResult;
 
 wayland_listener_static! {
     static mut MANAGER;
@@ -36,7 +39,8 @@ wayland_listener_static! {
                     WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL => {
                         let toplevel = NonNull::new((*xdg_v6_surface_ptr).__bindgen_anon_1.toplevel)
                             .expect("XDGv6 Toplevel was null");
-                        Some(ShellState::TopLevel(xdg_shell_v6::TopLevel::from_shell(xdg_v6_surface, toplevel)))
+                        Some(ShellState::TopLevel(xdg_shell_v6::TopLevel::from_shell(xdg_v6_surface,
+                                                                                     toplevel)))
                     }
                     WLR_XDG_SURFACE_V6_ROLE_POPUP => {
                         let popup = NonNull::new((*xdg_v6_surface_ptr).__bindgen_anon_1.popup)

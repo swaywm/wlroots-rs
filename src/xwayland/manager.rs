@@ -9,20 +9,21 @@
 
 use std::ptr::NonNull;
 
-use libc;
-use wayland_sys::server::signal::wl_signal_add;
+use crate::libc;
+use crate::wayland_sys::server::signal::wl_signal_add;
 use wlroots_sys::wlr_xwayland_surface;
 
-use {compositor, xwayland, utils::Handleable};
+use crate::{compositor, utils::Handleable, xwayland};
 
 /// Callback that's triggered when the XWayland library is ready.
 pub type OnReady = fn(compositor::Handle);
 
 /// Callback that's triggered when a new surface is presented to the X
 /// server.
-pub type NewSurface = fn(compositor_handle: compositor::Handle,
-                            xwayland_surface: xwayland::surface::Handle)
-                            -> Option<Box<xwayland::surface::Handler>>;
+pub type NewSurface = fn(
+    compositor_handle: compositor::Handle,
+    xwayland_surface: xwayland::surface::Handle
+) -> Option<Box<xwayland::surface::Handler>>;
 
 wayland_listener_static! {
     static mut MANAGER;
@@ -35,7 +36,9 @@ wayland_listener_static! {
                 None => return
             };
 
-            manager.xwayland_ready.map(|f| f(compositor));
+            if let Some(xwayland_ready) = manager.xwayland_ready {
+                xwayland_ready(compositor)
+            }
         };
 
         (NewSurface, new_surface_listener, surface_added) => (add_notify, surface_added):

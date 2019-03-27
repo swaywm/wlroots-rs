@@ -2,8 +2,10 @@
 //!
 //! Warning: This protocol is unstable and can change in the future
 
-use wayland_sys::server::wl_display as wl_server_display;
-use wlroots_sys::{wl_display, wlr_idle_inhibit_manager_v1, wlr_idle_inhibit_v1_create, wlr_idle_inhibit_v1_destroy};
+use crate::wayland_sys::server::wl_display as wl_server_display;
+use wlroots_sys::{
+    wl_display, wlr_idle_inhibit_manager_v1, wlr_idle_inhibit_v1_create, wlr_idle_inhibit_v1_destroy
+};
 
 #[derive(Debug)]
 pub struct ZManagerV1 {
@@ -20,7 +22,6 @@ impl ZManagerV1 {
             None
         }
     }
-
 }
 
 impl Drop for ZManagerV1 {

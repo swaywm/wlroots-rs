@@ -1,6 +1,6 @@
 //! Some events refer to actions that occurred on certain "edges" of windows.
-//! This is represented as a bit flag since multiple edges (including none) could
-//! be affected.
+//! This is represented as a bit flag since multiple edges (including none)
+//! could be affected.
 
 use wlroots_sys::wlr_edges;
 

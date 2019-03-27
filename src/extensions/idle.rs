@@ -1,12 +1,11 @@
 //! Support for the KDE Idle Protocol
 
+use crate::seat::Seat;
 
-use seat::Seat;
-
-use wayland_sys::server::wl_display as wl_server_display;
-use wlroots_sys::{wl_display, wlr_idle, wlr_idle_create,
-                  wlr_idle_destroy, wlr_idle_notify_activity,
-                  wlr_idle_set_enabled};
+use crate::wayland_sys::server::wl_display as wl_server_display;
+use wlroots_sys::{
+    wl_display, wlr_idle, wlr_idle_create, wlr_idle_destroy, wlr_idle_notify_activity, wlr_idle_set_enabled
+};
 
 #[derive(Debug)]
 pub struct Manager {

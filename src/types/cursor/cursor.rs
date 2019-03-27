@@ -1,33 +1,39 @@
 //! Wrapper for wlr_cursor
 
-use std::{fmt, panic, ptr, cell::Cell, rc::{Rc, Weak}};
+use std::{
+    cell::Cell,
+    fmt, panic, ptr,
+    rc::{Rc, Weak}
+};
 
-use libc;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wayland_sys::server::signal::wl_signal_add;
-use wlroots_sys::{wlr_cursor, wlr_cursor_absolute_to_layout_coords,
-                  wlr_cursor_attach_input_device, wlr_cursor_attach_output_layout,
-                  wlr_cursor_create, wlr_cursor_destroy, wlr_cursor_detach_input_device,
-                  wlr_cursor_map_input_to_output, wlr_cursor_map_input_to_region,
-                  wlr_cursor_map_to_output, wlr_cursor_map_to_region, wlr_cursor_move,
-                  wlr_cursor_set_image, wlr_cursor_set_surface, wlr_cursor_warp,
-                  wlr_cursor_warp_absolute};
+use crate::libc;
+use crate::wayland_sys::server::signal::wl_signal_add;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wlroots_sys::{
+    wlr_cursor, wlr_cursor_absolute_to_layout_coords, wlr_cursor_attach_input_device,
+    wlr_cursor_attach_output_layout, wlr_cursor_create, wlr_cursor_destroy, wlr_cursor_detach_input_device,
+    wlr_cursor_map_input_to_output, wlr_cursor_map_input_to_region, wlr_cursor_map_to_output,
+    wlr_cursor_map_to_region, wlr_cursor_move, wlr_cursor_set_image, wlr_cursor_set_surface, wlr_cursor_warp,
+    wlr_cursor_warp_absolute
+};
 
-use {area::Area,
-     compositor,
-     input::{self, pointer, tablet_tool, touch},
-     output::{self, Output, layout::Layout},
-     surface::Surface,
-     cursor::xcursor,
-     utils::{HandleErr, HandleResult, Handleable}};
+use crate::{
+    area::Area,
+    compositor,
+    cursor::xcursor,
+    input::{self, pointer, tablet_tool, touch},
+    output::{self, layout::Layout, Output},
+    surface::Surface,
+    utils::{HandleErr, HandleResult, Handleable}
+};
 
 #[derive(Debug)]
 pub(crate) struct CursorState {
     output_layout: Option<output::layout::Handle>,
     /// A counter that will always have a strong count of 1.
     ///
-    /// Once the cursor is destroyed, this will signal to the `cursor::Handle`s that
-    /// they cannot be upgraded.
+    /// Once the cursor is destroyed, this will signal to the `cursor::Handle`s
+    /// that they cannot be upgraded.
     counter: Rc<Cell<bool>>,
     /// A raw pointer to the Cursor on the heap
     cursor: *mut Cursor
@@ -44,70 +50,101 @@ pub struct Handle {
 #[allow(unused_variables)]
 pub trait Handler {
     /// Callback that is triggered when the cursor moves.
-    fn on_pointer_motion(&mut self,
-                         compositor_handle: compositor::Handle,
-                         cursor_handle: Handle,
-                         event: &pointer::event::Motion) {}
+    fn on_pointer_motion(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &pointer::event::Motion
+    ) {
+    }
 
-    fn on_pointer_motion_absolute(&mut self,
-                                  compositor_handle: compositor::Handle,
-                                  cursor_handle: Handle,
-                                  event: &pointer::event::AbsoluteMotion) {
+    fn on_pointer_motion_absolute(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &pointer::event::AbsoluteMotion
+    ) {
     }
 
     /// Callback that is triggered when the buttons on the pointer are pressed.
-    fn on_pointer_button(&mut self,
-                         compositor_handle: compositor::Handle,
-                         cursor_handle: Handle,
-                         event: &pointer::event::Button) {}
-
-    fn on_pointer_axis(&mut self,
-                       compositor_handle: compositor::Handle,
-                       cursor_handle: Handle,
-                       event: &pointer::event::Axis) {}
-
-    fn on_touch_up(&mut self,
-                   compositor_handle: compositor::Handle,
-                   cursor_handle: Handle,
-                   event: &touch::event::Up) {}
-
-    fn on_touch_down(&mut self,
-                     compositor_handle: compositor::Handle,
-                     cursor_handle: Handle,
-                     event: &touch::event::Down) {}
-
-    fn on_touch_motion(&mut self,
-                       compositor_handle: compositor::Handle,
-                       cursor_handle: Handle,
-                       event: &touch::event::Motion) {}
-
-    fn on_touch_cancel(&mut self,
-                       compositor_handle: compositor::Handle,
-                       cursor_handle: Handle,
-                       event: &touch::event::Cancel) {}
-
-    fn on_tablet_tool_axis(&mut self,
-                           compositor_handle: compositor::Handle,
-                           cursor_handle: Handle,
-                           event: &tablet_tool::event::Axis) {
+    fn on_pointer_button(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &pointer::event::Button
+    ) {
     }
 
-    fn on_tablet_tool_proximity(&mut self,
-                                compositor_handle: compositor::Handle,
-                                cursor_handle: Handle,
-                                event: &tablet_tool::event::Proximity) {
+    fn on_pointer_axis(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &pointer::event::Axis
+    ) {
     }
 
-    fn on_tablet_tool_tip(&mut self,
-                          compositor_handle: compositor::Handle,
-                          cursor_handle: Handle,
-                          event: &tablet_tool::event::Tip) {
+    fn on_touch_up(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &touch::event::Up
+    ) {
     }
 
-    fn on_tablet_tool_button(&mut self,
-                             compositor_handle: compositor::Handle,
-                             cursor_handle: Handle,
-                             event: &tablet_tool::event::Button) {
+    fn on_touch_down(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &touch::event::Down
+    ) {
+    }
+
+    fn on_touch_motion(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &touch::event::Motion
+    ) {
+    }
+
+    fn on_touch_cancel(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &touch::event::Cancel
+    ) {
+    }
+
+    fn on_tablet_tool_axis(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &tablet_tool::event::Axis
+    ) {
+    }
+
+    fn on_tablet_tool_proximity(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &tablet_tool::event::Proximity
+    ) {
+    }
+
+    fn on_tablet_tool_tip(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &tablet_tool::event::Tip
+    ) {
+    }
+
+    fn on_tablet_tool_button(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        cursor_handle: Handle,
+        event: &tablet_tool::event::Button
+    ) {
     }
 }
 
@@ -325,38 +362,66 @@ impl Cursor {
                 panic!("Could not create wlr_cursor")
             }
             let mut cursor = Cursor::new((cursor_ptr, cursor_handler, None));
-            wl_signal_add(&mut (*cursor_ptr).events.motion as *mut _ as _,
-                          cursor.pointer_motion_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.motion_absolute as *mut _ as _,
-                          cursor.pointer_motion_absolute_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.button as *mut _ as _,
-                          cursor.pointer_button_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.axis as *mut _ as _,
-                          cursor.pointer_axis_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.touch_up as *mut _ as _,
-                          cursor.touch_up_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.touch_down as *mut _ as _,
-                          cursor.touch_down_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.touch_motion as *mut _ as _,
-                          cursor.touch_motion_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.touch_cancel as *mut _ as _,
-                          cursor.touch_cancel_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.tablet_tool_axis as *mut _ as _,
-                          cursor.tablet_tool_axis_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.tablet_tool_proximity as *mut _ as _,
-                          cursor.tablet_tool_proximity_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.tablet_tool_tip as *mut _ as _,
-                          cursor.tablet_tool_tip_listener() as *mut _ as _);
-            wl_signal_add(&mut (*cursor_ptr).events.tablet_tool_button as *mut _ as _,
-                          cursor.tablet_tool_button_listener() as *mut _ as _);
+            wl_signal_add(
+                &mut (*cursor_ptr).events.motion as *mut _ as _,
+                cursor.pointer_motion_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.motion_absolute as *mut _ as _,
+                cursor.pointer_motion_absolute_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.button as *mut _ as _,
+                cursor.pointer_button_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.axis as *mut _ as _,
+                cursor.pointer_axis_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.touch_up as *mut _ as _,
+                cursor.touch_up_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.touch_down as *mut _ as _,
+                cursor.touch_down_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.touch_motion as *mut _ as _,
+                cursor.touch_motion_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.touch_cancel as *mut _ as _,
+                cursor.touch_cancel_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.tablet_tool_axis as *mut _ as _,
+                cursor.tablet_tool_axis_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.tablet_tool_proximity as *mut _ as _,
+                cursor.tablet_tool_proximity_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.tablet_tool_tip as *mut _ as _,
+                cursor.tablet_tool_tip_listener() as *mut _ as _
+            );
+            wl_signal_add(
+                &mut (*cursor_ptr).events.tablet_tool_button as *mut _ as _,
+                cursor.tablet_tool_button_listener() as *mut _ as _
+            );
             let counter = Rc::new(Cell::new(false));
             let handle = Rc::downgrade(&counter);
-            let state = Box::new(CursorState { counter,
-                                               cursor: Box::into_raw(cursor),
-                                               output_layout: None });
+            let state = Box::new(CursorState {
+                counter,
+                cursor: Box::into_raw(cursor),
+                output_layout: None
+            });
             (*cursor_ptr).data = Box::into_raw(state) as *mut libc::c_void;
-            Handle { cursor: cursor_ptr,
-                           handle }
+            Handle {
+                cursor: cursor_ptr,
+                handle
+            }
         }
     }
 
@@ -376,8 +441,10 @@ impl Cursor {
     pub fn weak_reference(&self) -> Handle {
         unsafe {
             let handle = Rc::downgrade(&(*((*self.data.0).data as *mut CursorState)).counter);
-            Handle { cursor: self.data.0,
-                           handle }
+            Handle {
+                cursor: self.data.0,
+                handle
+            }
         }
     }
 
@@ -409,54 +476,58 @@ impl Cursor {
         unsafe { ((*self.data.0).x, (*self.data.0).y) }
     }
 
-    /// Warp the cursor to the given x and y in layout coordinates. If x and y are
-    /// out of the layout boundaries or constraints, no warp will happen.
+    /// Warp the cursor to the given x and y in layout coordinates. If x and y
+    /// are out of the layout boundaries or constraints, no warp will
+    /// happen.
     ///
-    /// `dev` may be passed to respect device mapping constraints. If `dev` is None,
-    /// device mapping constraints will be ignored.
+    /// `dev` may be passed to respect device mapping constraints. If `dev` is
+    /// None, device mapping constraints will be ignored.
     ///
     /// Returns true when the mouse warp was successful.
     pub fn warp<'this, O>(&'this mut self, dev: O, x: f64, y: f64) -> bool
-        where O: Into<Option<&'this input::Device>>
+    where
+        O: Into<Option<&'this input::Device>>
     {
         self.assert_layout();
         unsafe {
-            let dev_ptr = dev.into().map(|input_device| input_device.as_ptr())
-                             .unwrap_or(ptr::null_mut());
+            let dev_ptr = dev
+                .into()
+                .map(|input_device| input_device.as_ptr())
+                .unwrap_or(ptr::null_mut());
             wlr_cursor_warp(self.data.0, dev_ptr, x, y)
         }
     }
 
     pub fn warp_absolute<'this, O>(&'this mut self, dev: O, x_mm: f64, y_mm: f64)
-        where O: Into<Option<&'this input::Device>>
+    where
+        O: Into<Option<&'this input::Device>>
     {
         self.assert_layout();
         unsafe {
-            let dev_ptr = dev.into().map(|input_device| input_device.as_ptr())
-                             .unwrap_or(ptr::null_mut());
+            let dev_ptr = dev
+                .into()
+                .map(|input_device| input_device.as_ptr())
+                .unwrap_or(ptr::null_mut());
             wlr_cursor_warp_absolute(self.data.0, dev_ptr, x_mm, y_mm)
         }
     }
 
     /// Move the cursor in the direction of the given x and y coordinates.
     ///
-    /// `dev` may be passed to respect device mapping constraints. If `dev` is None,
-    /// device mapping constraints will be ignored.
-    pub fn move_relative<'this, O>(&'this mut self,
-                                   dev: O,
-                                   delta_x: f64,
-                                   delta_y: f64)
-    where O: Into<Option<&'this input::Device>>
+    /// `dev` may be passed to respect device mapping constraints. If `dev` is
+    /// None, device mapping constraints will be ignored.
+    pub fn move_relative<'this, O>(&'this mut self, dev: O, delta_x: f64, delta_y: f64)
+    where
+        O: Into<Option<&'this input::Device>>
     {
         self.assert_layout();
         unsafe {
-            let dev_ptr = dev.into().map(|dev| dev.as_ptr())
-                             .unwrap_or(ptr::null_mut());
+            let dev_ptr = dev.into().map(|dev| dev.as_ptr()).unwrap_or(ptr::null_mut());
             wlr_cursor_move(self.data.0, dev_ptr, delta_x, delta_y)
         }
     }
 
-    //TODO USE IMAGE
+    // TODO USE IMAGE
     /// Sets the image of the cursor to the image.
     pub fn set_cursor_image(&mut self, image: &xcursor::Image) {
         unsafe {
@@ -465,33 +536,38 @@ impl Cursor {
             // wlr_cursor_set_image uses gl calls internally, which copies
             // the buffer and so it doesn't matter what happens to the
             // xcursor image after this call.
-            wlr_cursor_set_image(self.data.0,
-                                 image.buffer.as_ptr(),
-                                 (image.width * 4) as i32,
-                                 image.width,
-                                 image.height,
-                                 image.hotspot_x as _,
-                                 image.hotspot_y as _,
-                                 1.0)
+            wlr_cursor_set_image(
+                self.data.0,
+                image.buffer.as_ptr(),
+                (image.width * 4) as i32,
+                image.width,
+                image.height,
+                image.hotspot_x as _,
+                image.hotspot_y as _,
+                1.0
+            )
         }
     }
 
-    /// Set the cursor surface. The surface can be committed to update the cursor
-    /// image. The surface position is substracted from the hotspot.
+    /// Set the cursor surface. The surface can be committed to update the
+    /// cursor image. The surface position is substracted from the hotspot.
     ///
     /// A `None` surface commit hides the cursor.
     pub fn set_surface<'this, O>(&'this mut self, surface: O, hotspot_x: i32, hotspot_y: i32)
-        where O: Into<Option<&'this Surface>>
+    where
+        O: Into<Option<&'this Surface>>
     {
         unsafe {
-            let surface_ptr = surface.into()
-                                     .map(|surface| surface.as_ptr())
-                                     .unwrap_or(ptr::null_mut());
+            let surface_ptr = surface
+                .into()
+                .map(|surface| surface.as_ptr())
+                .unwrap_or(ptr::null_mut());
             wlr_cursor_set_surface(self.data.0, surface_ptr, hotspot_x, hotspot_y)
         }
     }
 
-    /// Attaches this input device to this cursor. The input device must be one of:
+    /// Attaches this input device to this cursor. The input device must be one
+    /// of:
     ///
     /// - WLR_INPUT_DEVICE_POINTER
     /// - WLR_INPUT_DEVICE_TOUCH
@@ -513,8 +589,8 @@ impl Cursor {
         unsafe { wlr_cursor_detach_input_device(self.data.0, dev.as_ptr()) }
     }
 
-    /// Attaches this cursor to the given output, which must be among the outputs in
-    /// the current output_layout for this cursor.
+    /// Attaches this cursor to the given output, which must be among the
+    /// outputs in the current output_layout for this cursor.
     pub fn map_to_output<'a, T: Into<Option<&'a mut Output>>>(&mut self, output: T) {
         self.assert_layout();
         match output.into() {
@@ -522,7 +598,7 @@ impl Cursor {
             Some(output) => {
                 if !self.output_in_output_layout(output.weak_reference()) {
                     wlr_log!(WLR_ERROR, "Tried to map output not in the Layout");
-                    return
+                    return;
                 }
                 unsafe { wlr_cursor_map_to_output(self.data.0, output.as_ptr()) }
             }
@@ -534,7 +610,8 @@ impl Cursor {
     /// The input device must be attached to this cursor
     /// and the output must be among the outputs in the attached output layout.
     pub fn map_input_to_output<'output, O>(&mut self, dev: &input::Device, output: O)
-        where O: Into<Option<&'output Output>>
+    where
+        O: Into<Option<&'output Output>>
     {
         self.assert_layout();
         // NOTE Rationale for why we don't check input:
@@ -543,18 +620,13 @@ impl Cursor {
         // returns early (and thus does nothing unsafe).
 
         match output.into() {
-            None => unsafe {
-                wlr_cursor_map_input_to_output(self.data.0, dev.as_ptr(), ptr::null_mut())
-            },
+            None => unsafe { wlr_cursor_map_input_to_output(self.data.0, dev.as_ptr(), ptr::null_mut()) },
             Some(output) => {
                 if !self.output_in_output_layout(output.weak_reference()) {
-                    wlr_log!(WLR_ERROR,
-                             "Tried to map input to an output not in the Layout");
-                    return
+                    wlr_log!(WLR_ERROR, "Tried to map input to an output not in the Layout");
+                    return;
                 }
-                unsafe {
-                    wlr_cursor_map_input_to_output(self.data.0, dev.as_ptr(), output.as_ptr())
-                }
+                unsafe { wlr_cursor_map_input_to_output(self.data.0, dev.as_ptr(), output.as_ptr()) }
             }
         }
     }
@@ -566,8 +638,8 @@ impl Cursor {
         unsafe { wlr_cursor_map_to_region(self.data.0, &mut area.into()) }
     }
 
-    /// Maps inputs from this input device to an arbitrary region on the associated
-    /// wlr_output_layout.
+    /// Maps inputs from this input device to an arbitrary region on the
+    /// associated wlr_output_layout.
     ///
     /// The input device must be attached to this cursor.
     pub fn map_input_to_region(&mut self, dev: &input::Device, area: Area) {
@@ -582,20 +654,11 @@ impl Cursor {
     /// Convert absolute coordinates to layout coordinates for the device.
     ///
     /// Coordinates are in (x, y).
-    pub fn absolute_to_layout_coords(&mut self,
-                                     dev: &input::Device,
-                                     x_mm: f64,
-                                     y_mm: f64)
-                                     -> (f64, f64) {
+    pub fn absolute_to_layout_coords(&mut self, dev: &input::Device, x_mm: f64, y_mm: f64) -> (f64, f64) {
         self.assert_layout();
         unsafe {
             let (mut lx, mut ly) = (0.0, 0.0);
-            wlr_cursor_absolute_to_layout_coords(self.data.0,
-                                                 dev.as_ptr(),
-                                                 x_mm,
-                                                 y_mm,
-                                                 &mut lx,
-                                                 &mut ly);
+            wlr_cursor_absolute_to_layout_coords(self.data.0, dev.as_ptr(), x_mm, y_mm, &mut lx, &mut ly);
             (lx, ly)
         }
     }
@@ -603,7 +666,7 @@ impl Cursor {
     /// Determines if we are within a valid layout.
     fn assert_layout(&self) {
         match self.data.2.clone().map(|layout| layout.run(|_| ())) {
-            Some(Ok(())) | Some(Err(HandleErr::AlreadyBorrowed)) => {}
+            Some(Ok(())) | Some(Err(HandleErr::AlreadyBorrowed)) => {},
             None | Some(Err(_)) => panic!("Cursor was not attached to an output layout!")
         }
     }
@@ -616,13 +679,13 @@ impl Cursor {
     fn output_in_output_layout(&mut self, output: output::Handle) -> bool {
         self.assert_layout();
         match self.data.2.clone().unwrap().run(|output_layout| {
-                                                   for (cur_output, _) in output_layout.outputs() {
-                                                       if cur_output == output {
-                                                           return true
-                                                       }
-                                                   }
-                                                   false
-                                               }) {
+            for (cur_output, _) in output_layout.outputs() {
+                if cur_output == output {
+                    return true;
+                }
+            }
+            false
+        }) {
             Ok(res) => res,
             Err(HandleErr::AlreadyDropped) => false,
             Err(err) => panic!(err)
@@ -635,47 +698,73 @@ impl Drop for Cursor {
         wlr_log!(WLR_DEBUG, "Dropped {:?}", self);
         let cursor_ptr = self.data.0;
         unsafe {
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.pointer_motion_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.pointer_motion_absolute_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.pointer_button_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.pointer_axis_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.touch_up_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.touch_down_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.touch_motion_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.touch_cancel_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.tablet_tool_axis_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.tablet_tool_proximity_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.tablet_tool_tip_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.tablet_tool_button_listener()).link as *mut _ as _);
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.pointer_motion_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.pointer_motion_absolute_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.pointer_button_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.pointer_axis_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.touch_up_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.touch_down_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.touch_motion_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.touch_cancel_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.tablet_tool_axis_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.tablet_tool_proximity_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.tablet_tool_tip_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.tablet_tool_button_listener()).link as *mut _ as _
+            );
             let data = Box::from_raw((*cursor_ptr).data as *mut CursorState);
             let _ = Box::from_raw(data.cursor);
-            assert_eq!(Rc::strong_count(&data.counter),
-                       1,
-                       "Cursor had more than 1 reference count");
+            assert_eq!(
+                Rc::strong_count(&data.counter),
+                1,
+                "Cursor had more than 1 reference count"
+            );
             (*cursor_ptr).data = ptr::null_mut();
             wlr_cursor_destroy(self.data.0)
         }
@@ -683,14 +772,16 @@ impl Drop for Cursor {
 }
 
 impl Handle {
-    /// Constructs a `cursor::Handle` that is always invalid. Calling `run` on this
-    /// will always fail.
+    /// Constructs a `cursor::Handle` that is always invalid. Calling `run` on
+    /// this will always fail.
     ///
-    /// This is useful for pre-filling a value before it's provided by the server,
-    /// or for mocking/testing.
+    /// This is useful for pre-filling a value before it's provided by the
+    /// server, or for mocking/testing.
     pub fn new() -> Self {
-        Handle { handle: Weak::new(),
-                       cursor: ptr::null_mut() }
+        Handle {
+            handle: Weak::new(),
+            cursor: ptr::null_mut()
+        }
     }
     /// Upgrades the cursor handle to a reference to the backing `Cursor`.
     ///
@@ -731,23 +822,26 @@ impl Handle {
     /// So don't nest `run` calls or call this in a Cursor callback
     /// and everything will be ok :).
     pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut Cursor) -> R
+    where
+        F: FnOnce(&mut Cursor) -> R
     {
         let mut cursor = unsafe { self.upgrade()? };
         let cursor_ptr = cursor.data.0;
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut cursor)));
         Box::into_raw(cursor);
-        self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running cursor callback, mutable lock \
-                                                    was false for {:p}",
-                                                   cursor_ptr);
-                                          panic!("Lock in incorrect state!");
-                                      }
-                                      check.set(false);
-                                  });
+        if let Some(check) = self.handle.upgrade() {
+            // Sanity check that it hasn't been tampered with.
+            if !check.get() {
+                wlr_log!(
+                    WLR_ERROR,
+                    "After running cursor callback, mutable lock was \
+                     false for {:p}",
+                    cursor_ptr
+                );
+                panic!("Lock in incorrect state!");
+            }
+            check.set(false);
+        };
         match res {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)

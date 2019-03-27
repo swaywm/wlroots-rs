@@ -1,7 +1,17 @@
-//! The generic implementation of a "handle" proxy object used throughout wlroots-rs.
+//! The generic implementation of a "handle" proxy object used throughout
+//! wlroots-rs.
 
-use std::{clone::Clone, cell::Cell, error::Error, fmt, rc::Weak,
-          hash::{Hash, Hasher}, ptr::NonNull, panic, marker::PhantomData};
+use std::{
+    cell::Cell,
+    clone::Clone,
+    error::Error,
+    fmt,
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+    panic,
+    ptr::NonNull,
+    rc::Weak
+};
 
 /// The result of trying to upgrade a handle, either using `run` or
 /// `with_handles!`.
@@ -21,9 +31,9 @@ pub enum HandleErr {
 ///
 /// The resource could be destroyed at any time, it depends on the resource.
 ///
-/// For example an output is destroyed when it's physical output is "disconnected"
-/// on DRM. "disconnected" depends on the output (e.g. sometimes turning it off counts
-/// as "disconnected").
+/// For example an output is destroyed when it's physical output is
+/// "disconnected" on DRM. "disconnected" depends on the output (e.g. sometimes
+/// turning it off counts as "disconnected").
 /// However, when the backend is instead headless an output lives until it is
 /// destroyed explicitly by the library user.
 ///
@@ -45,10 +55,13 @@ pub trait Handleable<D: Clone, T> {
     /// this handleable manages. **This should increment the reference count**.
     ///
     /// # Safety
-    /// The pointer must be valid and must already have been set up by wlroots-rs
-    /// internal mechanisms. If you have to ask, it probably isn't.
+    /// The pointer must be valid and must already have been set up by
+    /// wlroots-rs internal mechanisms. If you have to ask, it probably
+    /// isn't.
     #[doc(hidden)]
-    unsafe fn from_ptr(resource_ptr: *mut T) -> Option<Self> where Self: Sized;
+    unsafe fn from_ptr(resource_ptr: *mut T) -> Option<Self>
+    where
+        Self: Sized;
 
     /// Gets the pointer to the resource this object manages.
     #[doc(hidden)]
@@ -61,57 +74,64 @@ pub trait Handleable<D: Clone, T> {
     ///
     /// If you _need_ to use this, use `Handle::upgrade` instead.
     #[doc(hidden)]
-    unsafe fn from_handle(&Handle<D, T, Self>) -> HandleResult<Self> where Self: Sized;
+    unsafe fn from_handle(_: &Handle<D, T, Self>) -> HandleResult<Self>
+    where
+        Self: Sized;
 
     /// Creates a weak reference to the resource.
-    fn weak_reference(&self) -> Handle<D, T, Self> where Self: Sized;
+    fn weak_reference(&self) -> Handle<D, T, Self>
+    where
+        Self: Sized;
 }
 
-impl <D: Clone, T, W: Handleable<D, T>> Clone for Handle<D, T, W> {
+impl<D: Clone, T, W: Handleable<D, T>> Clone for Handle<D, T, W> {
     fn clone(&self) -> Self {
-        Handle { ptr: self.ptr,
-                 handle: self.handle.clone(),
-                 _marker: PhantomData,
-                 data: self.data.clone()
+        Handle {
+            ptr: self.ptr,
+            handle: self.handle.clone(),
+            _marker: PhantomData,
+            data: self.data.clone()
         }
     }
 }
 
-impl <D: Clone, T, W: Handleable<D, T>> fmt::Debug for Handle<D, T, W> {
+impl<D: Clone, T, W: Handleable<D, T>> fmt::Debug for Handle<D, T, W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Handle with pointer: {:p}", self.ptr.as_ptr())
     }
 }
 
-impl <D: Clone, T, W: Handleable<D, T>> Hash for Handle<D, T, W> {
+impl<D: Clone, T, W: Handleable<D, T>> Hash for Handle<D, T, W> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.ptr.as_ptr().hash(state);
     }
 }
 
-impl <D: Clone, T, W: Handleable<D, T>> PartialEq for Handle<D, T, W> {
+impl<D: Clone, T, W: Handleable<D, T>> PartialEq for Handle<D, T, W> {
     fn eq(&self, other: &Handle<D, T, W>) -> bool {
         self.ptr == other.ptr
     }
 }
 
-impl <D: Clone, T, W: Handleable<D, T>> Eq for Handle<D, T, W> {}
+impl<D: Clone, T, W: Handleable<D, T>> Eq for Handle<D, T, W> {}
 
-impl <D: Clone, T, W: Handleable<D, T>> Default for Handle<D, T, W> {
+impl<D: Clone, T, W: Handleable<D, T>> Default for Handle<D, T, W> {
     /// Constructs a new handle that is always invalid. Calling `run` on this
     /// will always fail.
     ///
-    /// This is useful for pre-filling a value before it's provided by the server, or
-    /// for mocking/testing.
+    /// This is useful for pre-filling a value before it's provided by the
+    /// server, or for mocking/testing.
     fn default() -> Self {
-        Handle { ptr: NonNull::dangling(),
-                 handle: Weak::new(),
-                 _marker: PhantomData,
-                 data: None }
+        Handle {
+            ptr: NonNull::dangling(),
+            handle: Weak::new(),
+            _marker: PhantomData,
+            data: None
+        }
     }
 }
 
-impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
+impl<D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
     /// Creates an output::Handle from the raw pointer, using the saved
     /// user data to recreate the memory model.
     ///
@@ -164,9 +184,11 @@ impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
     /// # Panics
     /// This function will panic if multiple mutable borrows are detected.
     /// This will happen if you call `upgrade` directly within this callback,
-    /// or if a handle to the same resource was upgraded some where else up the stack.
+    /// or if a handle to the same resource was upgraded some where else up the
+    /// stack.
     pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut W) -> R
+    where
+        F: FnOnce(&mut W) -> R
     {
         let mut wrapped_obj = unsafe { self.upgrade()? };
         // We catch panics here to deal with an extreme edge case.
@@ -175,15 +197,16 @@ impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
         // resource used flag will still be set to `true` when it should be set
         // to `false`.
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut wrapped_obj)));
-        self.handle.upgrade().map(|check| {
-            // Sanity check that it hasn't been tampered with. If so, we should just panic.
-            // If we are currently panicking this will abort.
+        if let Some(check) = self.handle.upgrade() {
+            // Sanity check that it hasn't been tampered with. If so, we should
+            // just panic. If we are currently
+            // panicking this will abort.
             if !check.get() {
                 wlr_log!(WLR_ERROR, "After running callback, mutable lock was false");
                 panic!("Lock in incorrect state!");
             }
             check.set(false);
-        });
+        }
         match res {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)
@@ -228,7 +251,6 @@ impl <D: Clone, T, W: Handleable<D, T>> Handle<D, T, W> {
                 check.set(true);
                 Ok(wrapper_obj)
             })
-
     }
 }
 

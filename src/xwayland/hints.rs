@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
-use libc::{int32_t, uint32_t};
+use crate::libc::{int32_t, uint32_t};
 use wlroots_sys::{wlr_xwayland_surface_hints, wlr_xwayland_surface_size_hints};
 
-use xwayland;
+use crate::xwayland;
 
 /// Hints provided by the XWayland client to aid in compositing.
 pub struct Hints<'surface> {
@@ -20,8 +20,10 @@ pub struct SizeHints<'surface> {
 
 impl<'surface> Hints<'surface> {
     pub(crate) unsafe fn from_ptr(hints: *mut wlr_xwayland_surface_hints) -> Self {
-        Hints { hints,
-                               phantom: PhantomData }
+        Hints {
+            hints,
+            phantom: PhantomData
+        }
     }
 
     pub fn flags(&self) -> uint32_t {
@@ -62,8 +64,10 @@ impl<'surface> Hints<'surface> {
 
 impl<'surface> SizeHints<'surface> {
     pub(crate) unsafe fn from_ptr(hints: *mut wlr_xwayland_surface_size_hints) -> Self {
-        SizeHints { hints,
-                                   phantom: PhantomData }
+        SizeHints {
+            hints,
+            phantom: PhantomData
+        }
     }
 
     /// Get the flags associated with the surface size.

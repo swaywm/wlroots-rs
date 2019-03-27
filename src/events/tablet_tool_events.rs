@@ -1,9 +1,11 @@
 //! TODO Documentation
 
-use wlroots_sys::{wlr_button_state, wlr_event_tablet_tool_axis, wlr_event_tablet_tool_button,
-                  wlr_event_tablet_tool_proximity, wlr_event_tablet_tool_tip,
-                  wlr_tablet_tool_proximity_state, wlr_tablet_tool_tip_state};
-use input::tablet_tool;
+use crate::input::tablet_tool;
+use wlroots_sys::{
+    wlr_button_state, wlr_event_tablet_tool_axis, wlr_event_tablet_tool_button,
+    wlr_event_tablet_tool_proximity, wlr_event_tablet_tool_tip, wlr_tablet_tool_proximity_state,
+    wlr_tablet_tool_tip_state
+};
 
 #[derive(Debug)]
 /// Event that is triggered when a tablet tool axis event occurs.

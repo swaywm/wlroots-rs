@@ -1,11 +1,12 @@
 //! Pointers and their events
 
-use libc::c_double;
-use wlroots_sys::{wlr_event_pointer_axis, wlr_event_pointer_button, wlr_event_pointer_motion,
-                  wlr_event_pointer_motion_absolute, wlr_axis_orientation,
-                  wlr_axis_source, wlr_button_state};
+use crate::libc::c_double;
+use wlroots_sys::{
+    wlr_axis_orientation, wlr_axis_source, wlr_button_state, wlr_event_pointer_axis,
+    wlr_event_pointer_button, wlr_event_pointer_motion, wlr_event_pointer_motion_absolute
+};
 
-use input;
+use crate::input;
 
 // NOTE Taken from linux/input-event-codes.h
 // TODO Find a way to automatically parse and fetch from there.
@@ -55,8 +56,10 @@ pub struct AbsoluteMotion {
 impl Button {
     /// Constructs a `Button` from the raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_button) -> Self {
-        Button { device: input::Device::from_ptr((*event).device),
-                      event }
+        Button {
+            device: input::Device::from_ptr((*event).device),
+            event
+        }
     }
 
     /// Get the device this event refers to.
@@ -74,11 +77,12 @@ impl Button {
         unsafe { (*self.event).time_msec }
     }
 
-    /// Get the value of the button pressed. This will generally be an atomically
-    /// increasing value, with e.g left click being 1 and right click being 2...
+    /// Get the value of the button pressed. This will generally be an
+    /// atomically increasing value, with e.g left click being 1 and right
+    /// click being 2...
     ///
-    /// We make no guarantees that 1 always maps to left click, as this is device
-    /// driver specific.
+    /// We make no guarantees that 1 always maps to left click, as this is
+    /// device driver specific.
     pub fn button(&self) -> u32 {
         unsafe { (*self.event).button }
     }
@@ -87,8 +91,10 @@ impl Button {
 impl Axis {
     /// Constructs a `Axis` from a raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_axis) -> Self {
-        Axis { device: input::Device::from_ptr((*event).device),
-                    event }
+        Axis {
+            device: input::Device::from_ptr((*event).device),
+            event
+        }
     }
 
     /// Get the device this event refers to.
@@ -120,8 +126,10 @@ impl Axis {
 impl Motion {
     /// Constructs a `Motion` from a raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_motion) -> Self {
-        Motion { device: input::Device::from_ptr((*event).device),
-                      event }
+        Motion {
+            device: input::Device::from_ptr((*event).device),
+            event
+        }
     }
 
     /// Get the device this event refers to.
@@ -149,8 +157,10 @@ impl Motion {
 impl AbsoluteMotion {
     /// Construct an `AbsoluteMotion` from a raw event pointer.
     pub(crate) unsafe fn from_ptr(event: *mut wlr_event_pointer_motion_absolute) -> Self {
-        AbsoluteMotion { device: input::Device::from_ptr((*event).device),
-                              event }
+        AbsoluteMotion {
+            device: input::Device::from_ptr((*event).device),
+            event
+        }
     }
 
     /// Get the timestamp of this event.

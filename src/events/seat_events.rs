@@ -1,6 +1,6 @@
 use wlroots_sys::wlr_seat_pointer_request_set_cursor_event;
 
-use {seat, surface};
+use crate::{seat, surface};
 
 #[derive(Debug)]
 pub struct SetCursor {
@@ -13,7 +13,7 @@ impl SetCursor {
     }
     /// Get the seat client associated with the seat where this
     /// event is occurring.
-    pub fn seat_client<'seat>(&'seat self) -> seat::Client<'seat> {
+    pub fn seat_client(&self) -> seat::Client {
         unsafe { seat::Client::from_ptr((*self.event).seat_client) }
     }
 

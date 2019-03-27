@@ -2,10 +2,10 @@
 
 use std::marker::PhantomData;
 
-use libc::c_int;
+use crate::libc::c_int;
 use wlroots_sys::{wl_output_transform, wl_resource, wlr_surface_state};
 
-use {render::PixmanRegion, surface::Surface};
+use crate::{render::PixmanRegion, surface::Surface};
 
 #[derive(Debug)]
 #[repr(u32)]
@@ -15,8 +15,8 @@ use {render::PixmanRegion, surface::Surface};
 /// will be updated for the current state on the next commit.
 ///
 /// # Pending vs Current state
-/// When this is set on the pending state, it means this field will be updated on
-/// the next commit.
+/// When this is set on the pending state, it means this field will be updated
+/// on the next commit.
 ///
 /// When it is set on the current state, it indicates what fields have changed
 /// since the last commit.
@@ -46,7 +46,10 @@ impl<'surface> State<'surface> {
     /// Since we rely on the surface providing a valid surface state,
     /// this function is marked unsafe.
     pub(crate) unsafe fn new(state: wlr_surface_state) -> State<'surface> {
-        State { state, phantom: PhantomData }
+        State {
+            state,
+            phantom: PhantomData
+        }
     }
 
     /// Gets the state of the sub surface.
@@ -111,18 +114,26 @@ impl<'surface> State<'surface> {
     }
 
     pub unsafe fn surface_damage(&self) -> PixmanRegion {
-        PixmanRegion { region: self.state.surface_damage }
+        PixmanRegion {
+            region: self.state.surface_damage
+        }
     }
 
     pub unsafe fn buffer_damage(&self) -> PixmanRegion {
-        PixmanRegion { region: self.state.buffer_damage }
+        PixmanRegion {
+            region: self.state.buffer_damage
+        }
     }
 
     pub unsafe fn opaque(&self) -> PixmanRegion {
-        PixmanRegion { region: self.state.opaque }
+        PixmanRegion {
+            region: self.state.opaque
+        }
     }
 
     pub unsafe fn input(&self) -> PixmanRegion {
-        PixmanRegion { region: self.state.input }
+        PixmanRegion {
+            region: self.state.input
+        }
     }
 }

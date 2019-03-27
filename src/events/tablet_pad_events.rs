@@ -1,9 +1,8 @@
 //! TODO Documentation
 
-use libc::{c_double, c_uint};
+use crate::libc::{c_double, c_uint};
 
-use wlroots_sys::{wlr_event_tablet_pad_button, wlr_event_tablet_pad_ring,
-                  wlr_event_tablet_pad_strip};
+use wlroots_sys::{wlr_event_tablet_pad_button, wlr_event_tablet_pad_ring, wlr_event_tablet_pad_strip};
 
 pub use wlroots_sys::{wlr_button_state, wlr_tablet_pad_ring_source, wlr_tablet_pad_strip_source};
 
