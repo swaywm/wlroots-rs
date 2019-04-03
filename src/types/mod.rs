@@ -3,6 +3,8 @@ pub mod cursor;
 #[cfg(feature = "unstable")]
 pub mod area;
 #[cfg(feature = "unstable")]
+pub mod dmabuf;
+#[cfg(feature = "unstable")]
 pub mod data_device;
 #[cfg(feature = "unstable")]
 pub mod input;
