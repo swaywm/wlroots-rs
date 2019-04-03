@@ -4,9 +4,9 @@ extern crate meson;
 extern crate pkg_config;
 extern crate wayland_scanner;
 
-use std::{env, io, fs};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fs, io};
 
 fn main() {
     meson();
@@ -52,15 +52,18 @@ fn main() {
             .expect("Could not create dummy config.h file");
         // meson automatically sets up variables, but if we are linking
         // dynamically bindgen will no longer have them.
-        builder = builder.clang_args([
-            format!("-DWLR_HAS_LIBCAP={}", cfg!(feature = "libcap") as u8),
-            format!("-DWLR_HAS_SYSTEMD={}", cfg!(feature = "systemd") as u8),
-            format!("-DWLR_HAS_ELOGIND={}", cfg!(feature = "elogind") as u8),
-            format!("-DWLR_HAS_X11_BACKEND={}", cfg!(feature = "x11_backend") as u8),
-            format!("-DWLR_HAS_XWAYLAND={}", cfg!(feature = "xwayland") as u8),
-            format!("-DWLR_HAS_XCB_ERRORS={}", cfg!(feature = "xcb_errors") as u8),
-            format!("-DWLR_HAS_XCB_ICCCM={}", cfg!(feature = "xcb_icccm") as u8)
-        ].iter())
+        builder = builder.clang_args(
+            [
+                format!("-DWLR_HAS_LIBCAP={}", cfg!(feature = "libcap") as u8),
+                format!("-DWLR_HAS_SYSTEMD={}", cfg!(feature = "systemd") as u8),
+                format!("-DWLR_HAS_ELOGIND={}", cfg!(feature = "elogind") as u8),
+                format!("-DWLR_HAS_X11_BACKEND={}", cfg!(feature = "x11_backend") as u8),
+                format!("-DWLR_HAS_XWAYLAND={}", cfg!(feature = "xwayland") as u8),
+                format!("-DWLR_HAS_XCB_ERRORS={}", cfg!(feature = "xcb_errors") as u8),
+                format!("-DWLR_HAS_XCB_ICCCM={}", cfg!(feature = "xcb_icccm") as u8)
+            ]
+            .iter()
+        )
     }
     let generated = builder.generate().unwrap();
 
@@ -96,6 +99,7 @@ fn main() {
     }
 
     // generate the bindings
+    println!("cargo:rerun-if-changed={}", "src/gen.rs");
     generated.write_to_file("src/gen.rs").unwrap();
 
     generate_protocols();
@@ -106,11 +110,11 @@ fn meson() {}
 
 #[cfg(feature = "static")]
 fn meson() {
-    let build_path =
-        PathBuf::from(env::var("OUT_DIR").expect("Could not get OUT_DIR env variable"));
+    let build_path = PathBuf::from(env::var("OUT_DIR").expect("Could not get OUT_DIR env variable"));
     build_path.join("build");
-    let build_path_str = build_path.to_str()
-                                   .expect("Could not turn build path into a string");
+    let build_path_str = build_path
+        .to_str()
+        .expect("Could not turn build path into a string");
     println!("cargo:rustc-link-search=native=wlroots");
     println!("cargo:rustc-link-search=native={}/lib", build_path_str);
     println!("cargo:rustc-link-search=native={}/lib64", build_path_str);
@@ -118,11 +122,9 @@ fn meson() {
     if cfg!(feature = "static") {
         println!("cargo:rustc-link-search=native={}/util/", build_path_str);
         println!("cargo:rustc-link-search=native={}/types/", build_path_str);
-        println!("cargo:rustc-link-search=native={}/protocol/",
-                 build_path_str);
+        println!("cargo:rustc-link-search=native={}/protocol/", build_path_str);
         println!("cargo:rustc-link-search=native={}/xcursor/", build_path_str);
-        println!("cargo:rustc-link-search=native={}/xwayland/",
-                 build_path_str);
+        println!("cargo:rustc-link-search=native={}/xwayland/", build_path_str);
         println!("cargo:rustc-link-search=native={}/backend/", build_path_str);
         println!("cargo:rustc-link-search=native={}/backend/x11", build_path_str);
         println!("cargo:rustc-link-search=native={}/render/", build_path_str);
@@ -154,8 +156,9 @@ fn generate_protocol_headers() -> io::Result<PathBuf> {
     let out_path: PathBuf = format!("{}/wayland-protocols", output_dir_str).into();
     fs::create_dir(&out_path).ok();
     let protocols_prefix = pkg_config::get_variable("wayland-protocols", "prefix").unwrap();
-    let protocols = fs::read_dir(format!("{}/share/wayland-protocols/stable", protocols_prefix))?
-        .chain(fs::read_dir(format!("{}/share/wayland-protocols/unstable", protocols_prefix))?);
+    let protocols = fs::read_dir(format!("{}/share/wayland-protocols/stable", protocols_prefix))?.chain(
+        fs::read_dir(format!("{}/share/wayland-protocols/unstable", protocols_prefix))?
+    );
     for entry in protocols {
         let entry = entry?;
         for entry in fs::read_dir(entry.path())? {
@@ -167,13 +170,12 @@ fn generate_protocol_headers() -> io::Result<PathBuf> {
                 filename.truncate(new_length);
             }
             filename.push_str("-protocol");
-            Command::new("wayland-scanner").arg("server-header")
-                                           .arg(path.clone())
-                                           .arg(format!("{}/{}.h",
-                                                        out_path.to_str().unwrap(),
-                                                        filename))
-                                           .status()
-                                           .unwrap();
+            Command::new("wayland-scanner")
+                .arg("server-header")
+                .arg(path.clone())
+                .arg(format!("{}/{}.h", out_path.to_str().unwrap(), filename))
+                .status()
+                .unwrap();
         }
     }
     Ok(out_path)
@@ -184,23 +186,32 @@ fn generate_protocols() {
 
     let output_dir = Path::new(&output_dir_str);
 
-    let protocols = &[("./wlroots/protocol/server-decoration.xml", "server_decoration"),
-                      ("./wlroots/protocol/wlr-gamma-control-unstable-v1.xml", "gamma_control"),
-                      ("./wlroots/protocol/wlr-screencopy-unstable-v1.xml", "screencopy"),
-                      ("./wlroots/protocol/screenshooter.xml", "screenshooter"),
-                      ("./wlroots/protocol/idle.xml", "idle")
+    let protocols = &[
+        ("./wlroots/protocol/server-decoration.xml", "server_decoration"),
+        (
+            "./wlroots/protocol/wlr-gamma-control-unstable-v1.xml",
+            "gamma_control"
+        ),
+        ("./wlroots/protocol/wlr-screencopy-unstable-v1.xml", "screencopy"),
+        ("./wlroots/protocol/screenshooter.xml", "screenshooter"),
+        ("./wlroots/protocol/idle.xml", "idle")
     ];
 
     for protocol in protocols {
-        wayland_scanner::generate_c_code(protocol.0,
-                                         output_dir.join(format!("{}_server_api.rs", protocol.1)),
-                                         wayland_scanner::Side::Server);
-        wayland_scanner::generate_c_code(protocol.0,
-                                         output_dir.join(format!("{}_client_api.rs", protocol.1)),
-                                         wayland_scanner::Side::Client);
-        wayland_scanner::generate_c_interfaces(protocol.0,
-                                               output_dir.join(format!("{}_interfaces.rs",
-                                                                       protocol.1)));
+        wayland_scanner::generate_c_code(
+            protocol.0,
+            output_dir.join(format!("{}_server_api.rs", protocol.1)),
+            wayland_scanner::Side::Server
+        );
+        wayland_scanner::generate_c_code(
+            protocol.0,
+            output_dir.join(format!("{}_client_api.rs", protocol.1)),
+            wayland_scanner::Side::Client
+        );
+        wayland_scanner::generate_c_interfaces(
+            protocol.0,
+            output_dir.join(format!("{}_interfaces.rs", protocol.1))
+        );
     }
 }
 
@@ -215,6 +226,6 @@ fn link_optional_libs() {
         println!("cargo:rustc-link-lib=dylib=elogind");
     }
     if pkg_config::probe_library("xcb-errors").is_ok() {
-       println!("cargo:rustc-link-lib=dylib=xcb-errors");
+        println!("cargo:rustc-link-lib=dylib=xcb-errors");
     }
 }

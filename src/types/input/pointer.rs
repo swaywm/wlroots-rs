@@ -4,16 +4,19 @@ use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
 use wlroots_sys::{wlr_input_device, wlr_pointer};
 
-use {input::{self, InputState},
-     utils::{self, Handleable, HandleErr, HandleResult}};
-pub use manager::pointer_handler::*;
-pub use events::pointer_events as event;
+pub use crate::events::pointer_events as event;
+pub use crate::manager::pointer_handler::*;
+use crate::{
+    input::{self, InputState},
+    utils::{self, HandleErr, HandleResult, Handleable}
+};
 
 pub type Handle = utils::Handle<NonNull<wlr_input_device>, wlr_pointer, Pointer>;
 
 #[derive(Debug)]
 pub struct Pointer {
-    /// The structure that ensures weak handles to this structure are still alive.
+    /// The structure that ensures weak handles to this structure are still
+    /// alive.
     ///
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
@@ -41,17 +44,23 @@ impl Pointer {
         use wlroots_sys::wlr_input_device_type::*;
         match (*device).type_ {
             WLR_INPUT_DEVICE_POINTER => {
-                let pointer = NonNull::new((*device).__bindgen_anon_1.pointer)
-                    .expect("Pointer pointer was null");
+                let pointer = NonNull::new((*device).__bindgen_anon_1.pointer).expect(
+                    "Pointer pointer was \
+                     null"
+                );
                 let liveliness = Rc::new(Cell::new(false));
                 let handle = Rc::downgrade(&liveliness);
-                let state = Box::new(InputState { handle,
-                                                  device: input::Device::from_ptr(device) });
+                let state = Box::new(InputState {
+                    handle,
+                    device: input::Device::from_ptr(device)
+                });
                 (*pointer.as_ptr()).data = Box::into_raw(state) as *mut _;
-                Some(Pointer { liveliness,
-                               device: input::Device::from_ptr(device),
-                               pointer })
-            }
+                Some(Pointer {
+                    liveliness,
+                    device: input::Device::from_ptr(device),
+                    pointer
+                })
+            },
             _ => None
         }
     }
@@ -77,10 +86,12 @@ impl Drop for Pointer {
             }
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
-                wlr_log!(WLR_DEBUG,
-                         "Still {} weak pointers to Pointer {:p}",
-                         weak_count,
-                         self.pointer);
+                wlr_log!(
+                    WLR_DEBUG,
+                    "Still {} weak pointers to Pointer {:p}",
+                    weak_count,
+                    self.pointer
+                );
             }
         }
     }
@@ -94,9 +105,11 @@ impl Handleable<NonNull<wlr_input_device>, wlr_pointer> for Pointer {
         let handle = data.handle.clone();
         let device = data.device.clone();
         (*pointer.as_ptr()).data = Box::into_raw(data) as *mut _;
-        Some(Pointer { liveliness: handle.upgrade().unwrap(),
-                       device,
-                       pointer })
+        Some(Pointer {
+            liveliness: handle.upgrade().unwrap(),
+            device,
+            pointer
+        })
     }
 
     #[doc(hidden)]
@@ -106,26 +119,26 @@ impl Handleable<NonNull<wlr_input_device>, wlr_pointer> for Pointer {
 
     #[doc(hidden)]
     unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-            .upgrade()
-            .ok_or(HandleErr::AlreadyDropped)?;
+        let liveliness = handle.handle.upgrade().ok_or(HandleErr::AlreadyDropped)?;
         let device = handle.data.ok_or(HandleErr::AlreadyDropped)?;
-        Ok(Pointer { liveliness,
-                     // NOTE Rationale for cloning:
-                     // If we already dropped we don't reach this point.
-                     device: input::Device { device },
-                     pointer: handle.as_non_null()
+        Ok(Pointer {
+            liveliness,
+            // NOTE Rationale for cloning:
+            // If we already dropped we don't reach this point.
+            device: input::Device { device },
+            pointer: handle.as_non_null()
         })
     }
 
     fn weak_reference(&self) -> Handle {
-        Handle { ptr: self.pointer,
-                 handle: Rc::downgrade(&self.liveliness),
-                 // NOTE Rationale for cloning:
-                 // Since we have a strong reference already,
-                 // the input must still be alive.
-                 data: unsafe { Some(self.device.as_non_null()) },
-                 _marker: std::marker::PhantomData
+        Handle {
+            ptr: self.pointer,
+            handle: Rc::downgrade(&self.liveliness),
+            // NOTE Rationale for cloning:
+            // Since we have a strong reference already,
+            // the input must still be alive.
+            data: unsafe { Some(self.device.as_non_null()) },
+            _marker: std::marker::PhantomData
         }
     }
 }

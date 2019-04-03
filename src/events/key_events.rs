@@ -1,9 +1,8 @@
 use std::time::Duration;
 
-use wlroots_sys::{wlr_event_keyboard_key, wlr_key_state, xkb_keysym_t, xkb_state,
-                  xkb_state_key_get_syms};
+use wlroots_sys::{wlr_event_keyboard_key, wlr_key_state, xkb_keysym_t, xkb_state, xkb_state_key_get_syms};
 
-use input::keyboard;
+use crate::input::keyboard;
 
 #[derive(Debug)]
 pub struct Key {
@@ -27,7 +26,7 @@ impl Key {
 
     /// Get how long the key has been pressed down, in milliseconds.
     pub fn time_msec(&self) -> Duration {
-        Duration::from_millis(unsafe { (*self.key).time_msec } as u64)
+        Duration::from_millis(u64::from(unsafe { (*self.key).time_msec }))
     }
 
     /// TODO What is this?
@@ -46,8 +45,9 @@ impl Key {
         unsafe {
             let mut syms = 0 as *const xkb_keysym_t;
             let key_length = xkb_state_key_get_syms(self.xkb_state, self.keycode() + 8, &mut syms);
-            (0..key_length).map(|index| *syms.offset(index as isize))
-                           .collect()
+            (0..key_length)
+                .map(|index| *syms.offset(index as isize))
+                .collect()
         }
     }
 }

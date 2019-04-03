@@ -3,9 +3,11 @@
 //! Warning: This protocol is unstable and can change in the future
 //! Current Protocol: https://github.com/swaywm/wlroots/blob/master/protocol/wlr-screencopy-unstable-v1.xml  
 
-use wayland_sys::server::wl_display as wl_server_display;
-use wlroots_sys::{wl_display, wlr_screencopy_manager_v1, wlr_screencopy_manager_v1_create,
-    wlr_screencopy_manager_v1_destroy};
+use crate::wayland_sys::server::wl_display as wl_server_display;
+use wlroots_sys::{
+    wl_display, wlr_screencopy_manager_v1, wlr_screencopy_manager_v1_create,
+    wlr_screencopy_manager_v1_destroy
+};
 
 #[derive(Debug)]
 /// Manager that offers requests to start capturing from a source
@@ -23,7 +25,6 @@ impl ZManagerV1 {
             None
         }
     }
-
 }
 
 impl Drop for ZManagerV1 {

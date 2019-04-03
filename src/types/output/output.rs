@@ -1,26 +1,35 @@
 //! TODO Documentation
 
-use std::{cell::Cell, ffi::CStr, mem::ManuallyDrop, ptr::NonNull,
-          rc::{Rc, Weak}, time::Duration, panic, ptr};
+use std::{
+    cell::Cell,
+    ffi::CStr,
+    mem::ManuallyDrop,
+    panic, ptr,
+    ptr::NonNull,
+    rc::{Rc, Weak},
+    time::Duration
+};
 
-use libc::{c_float, c_int, clock_t};
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
-use wlroots_sys::{timespec, wl_list, wl_output_subpixel, wl_output_transform, wlr_output,
-                  wlr_output_damage, wlr_output_effective_resolution, wlr_output_enable,
-                  wlr_output_get_gamma_size, wlr_output_make_current, wlr_output_mode,
-                  wlr_output_schedule_frame, wlr_output_set_custom_mode,
-                  wlr_output_set_gamma, wlr_output_set_mode,
-                  wlr_output_render_software_cursors,
-                  wlr_output_set_position, wlr_output_set_scale, wlr_output_set_transform,
-                  wlr_output_swap_buffers, wlr_output_transformed_resolution};
+use crate::libc::{c_float, c_int, clock_t};
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use wlroots_sys::{
+    timespec, wl_list, wl_output_subpixel, wl_output_transform, wlr_output, wlr_output_damage,
+    wlr_output_effective_resolution, wlr_output_enable, wlr_output_get_gamma_size, wlr_output_make_current,
+    wlr_output_mode, wlr_output_render_software_cursors, wlr_output_schedule_frame,
+    wlr_output_set_custom_mode, wlr_output_set_gamma, wlr_output_set_mode, wlr_output_set_position,
+    wlr_output_set_scale, wlr_output_set_transform, wlr_output_swap_buffers,
+    wlr_output_transformed_resolution
+};
 
-use {area::{Origin, Size},
-     utils::{self, HandleErr, HandleResult, Handleable, c_to_rust_string},
-     output::{self, layout},
-     render::PixmanRegion};
-pub use manager::output_handler::*;
-pub use manager::output_manager::{OutputBuilder as Builder, BuilderResult};
-pub(crate) use manager::output_manager::Manager;
+pub use crate::manager::output_handler::*;
+pub(crate) use crate::manager::output_manager::Manager;
+pub use crate::manager::output_manager::{BuilderResult, OutputBuilder as Builder};
+use crate::{
+    area::{Origin, Size},
+    output::{self, layout},
+    render::PixmanRegion,
+    utils::{self, c_to_rust_string, HandleErr, HandleResult, Handleable}
+};
 
 pub type Subpixel = wl_output_subpixel;
 pub type Transform = wl_output_transform;
@@ -34,7 +43,8 @@ pub(crate) struct OutputState {
 
 #[derive(Debug)]
 pub struct Output {
-    /// The structure that ensures weak handles to this structure are still alive.
+    /// The structure that ensures weak handles to this structure are still
+    /// alive.
     ///
     /// They contain weak handles, and will safely not use dead memory when this
     /// is freed by wlroots.
@@ -62,9 +72,11 @@ impl Output {
     /// This exists due to an issue in output_manager.rs that might be fixed
     /// with NLL, so if this is no longer necessary it should be removed asap.
     pub(crate) unsafe fn clone(&self) -> Output {
-        Output { liveliness: self.liveliness.clone(),
-                 damage: ManuallyDrop::new(self.damage.clone()),
-                 output: self.output }
+        Output {
+            liveliness: self.liveliness.clone(),
+            damage: ManuallyDrop::new(self.damage.clone()),
+            output: self.output
+        }
     }
 
     /// Makes a new `Output` from a `wlr_output`.
@@ -73,30 +85,34 @@ impl Output {
     /// This creates a totally new Output (e.g with its own reference count)
     /// so only do this once per `wlr_output`!
     pub(crate) unsafe fn new(output: *mut wlr_output) -> Self {
-        let output = NonNull::new(output)
-            .expect("Output pointer was null");
+        let output = NonNull::new(output).expect("Output pointer was null");
         (*output.as_ptr()).data = ptr::null_mut();
         let liveliness = Rc::new(Cell::new(false));
         let handle = Rc::downgrade(&liveliness);
         let damage = ManuallyDrop::new(output::Damage::new(output.as_ptr()));
         let damage_ptr = NonNull::new(damage.as_ptr()).unwrap();
-        let state = Box::new(OutputState { output: None,
-                                           handle,
-                                           damage: damage_ptr,
-                                           layout_handle: None });
+        let state = Box::new(OutputState {
+            output: None,
+            handle,
+            damage: damage_ptr,
+            layout_handle: None
+        });
         (*output.as_ptr()).data = Box::into_raw(state) as *mut _;
-        Output { liveliness,
-                 damage,
-                 output }
+        Output {
+            liveliness,
+            damage,
+            output
+        }
     }
 
     pub(crate) unsafe fn set_output_layout<T>(&mut self, layout_handle: T)
-        where T: Into<Option<layout::Handle>>
+    where
+        T: Into<Option<layout::Handle>>
     {
         self.remove_from_output_layout();
         let user_data = self.user_data();
         if user_data.is_null() {
-            return
+            return;
         }
         let mut data = Box::from_raw(user_data);
         data.layout_handle = layout_handle.into();
@@ -112,7 +128,7 @@ impl Output {
     pub(crate) unsafe fn clear_output_layout_data(&mut self) {
         let user_data = self.user_data();
         if user_data.is_null() {
-            return
+            return;
         }
         let mut data = Box::from_raw(user_data);
         data.layout_handle = None;
@@ -124,15 +140,13 @@ impl Output {
     pub(crate) unsafe fn remove_from_output_layout(&mut self) {
         let output_data = self.user_data();
         if output_data.is_null() {
-            return
+            return;
         }
         // Remove output from previous output layout.
         if let Some(layout_handle) = (*output_data).layout_handle.take() {
             match layout_handle.run(|layout| layout.remove(self)) {
                 Ok(_) | Err(HandleErr::AlreadyDropped) => self.clear_output_layout_data(),
-                Err(HandleErr::AlreadyBorrowed) => {
-                    panic!("Could not add OutputLayout to Output user data!")
-                }
+                Err(HandleErr::AlreadyBorrowed) => panic!("Could not add OutputLayout to Output user data!")
             }
         }
     }
@@ -167,8 +181,7 @@ impl Output {
                 // TODO Better logging
                 wlr_log!(WLR_DEBUG, "output added {:?}", self);
                 let first_mode_ptr: *mut wlr_output_mode;
-                first_mode_ptr =
-                    container_of!(&mut (*(*modes).prev) as *mut _, wlr_output_mode, link);
+                first_mode_ptr = container_of!(&mut (*(*modes).prev) as *mut _, wlr_output_mode, link);
                 wlr_output_set_mode(self.as_ptr(), first_mode_ptr);
             }
         }
@@ -190,30 +203,39 @@ impl Output {
     /// Gets the name of the output in UTF-8.
     pub fn name(&self) -> String {
         unsafe {
-            CStr::from_ptr((*self.output.as_ptr()).name.as_ptr()).to_string_lossy()
-                                                        .into_owned()
+            CStr::from_ptr((*self.output.as_ptr()).name.as_ptr())
+                .to_string_lossy()
+                .into_owned()
         }
     }
 
     /// Gets the make of the output in UTF-8.
     pub fn make(&self) -> String {
         unsafe {
-            c_to_rust_string((*self.output.as_ptr()).make.as_ptr()).expect("Could not parse make as UTF-8")
+            c_to_rust_string((*self.output.as_ptr()).make.as_ptr()).expect(
+                "Could not parse make \
+                 as UTF-8"
+            )
         }
     }
 
     /// Gets the model of the output in UTF-8.
     pub fn model(&self) -> String {
         unsafe {
-            c_to_rust_string((*self.output.as_ptr()).model.as_ptr()).expect("Could not parse model as UTF-8")
+            c_to_rust_string((*self.output.as_ptr()).model.as_ptr()).expect(
+                "Could not parse \
+                 model as UTF-8"
+            )
         }
     }
 
     /// Gets the serial of the output in UTF-8.
     pub fn serial(&self) -> String {
         unsafe {
-            c_to_rust_string((*self.output.as_ptr()).serial.as_ptr()).expect("Could not parse serial as \
-                                                                     UTF-8")
+            c_to_rust_string((*self.output.as_ptr()).serial.as_ptr()).expect(
+                "Could not parse \
+                 serial as UTF-8"
+            )
         }
     }
 
@@ -237,7 +259,7 @@ impl Output {
         unsafe { (*self.output.as_ptr()).refresh }
     }
 
-    pub fn current_mode<'output>(&'output self) -> Option<output::Mode<'output>> {
+    pub fn current_mode(&self) -> Option<output::Mode> {
         unsafe {
             if (*self.output.as_ptr()).current_mode.is_null() {
                 None
@@ -262,12 +284,14 @@ impl Output {
         unsafe { (*self.output.as_ptr()).transform }
     }
 
-    /// Renders software cursors. This is a utility function that can be called when
-    /// compositors render.
+    /// Renders software cursors. This is a utility function that can be called
+    /// when compositors render.
     ///
-    /// If `Cursor` is used along with an `OutputLayout` then this is not necessary.
+    /// If `Cursor` is used along with an `OutputLayout` then this is not
+    /// necessary.
     pub fn render_software_cursors<'a, U>(&self, damage: U)
-    where U: Into<Option<&'a mut PixmanRegion>>
+    where
+        U: Into<Option<&'a mut PixmanRegion>>
     {
         unsafe {
             let mut damage = damage.into();
@@ -293,44 +317,46 @@ impl Output {
     /// a `GenericRenderer` instead in order to do this.
     ///
     /// Sometimes however you need to do e.g opengl rendering and we haven't
-    /// wrapped that. If that's the case, call this first and then swap the buffers.
+    /// wrapped that. If that's the case, call this first and then swap the
+    /// buffers.
     ///
     /// Returns the drawing buffer age in number of frames in number of frames,
     /// or None if unknown. This is useful for damage tracking.
     pub unsafe fn make_current(&mut self) -> (bool, Option<c_int>) {
         let mut buffer_age = -1;
         let res = wlr_output_make_current(self.output.as_ptr(), &mut buffer_age);
-        let buffer_age = if buffer_age == -1 {
-            None
-        } else {
-            Some(buffer_age)
-        };
+        let buffer_age = if buffer_age == -1 { None } else { Some(buffer_age) };
         (res, buffer_age)
     }
 
-    /// Swaps the buffers and draws whatever is in the back buffer on the screen.
+    /// Swaps the buffers and draws whatever is in the back buffer on the
+    /// screen.
     ///
     /// If the time of the frame is not known, set `when` to None.
     ///
-    /// If the compositor does not support damage tracking, set `damage` to `None`
+    /// If the compositor does not support damage tracking, set `damage` to
+    /// `None`
     ///
     /// # Unsafety
     /// This is done for rendering purposes, but if called multiple times then
     /// you could cause a deadlock.
     ///
-    /// You should try to use a `GenericRenderer`, but sometimes it's necessary to
-    /// do your own manual rendering in a compositor. In that case, call `make_current`,
-    /// do your rendering, and then call this function.
+    /// You should try to use a `GenericRenderer`, but sometimes it's necessary
+    /// to do your own manual rendering in a compositor. In that case, call
+    /// `make_current`, do your rendering, and then call this function.
+    #[allow(clippy::cast_lossless)]
     pub unsafe fn swap_buffers<'a, T, U>(&mut self, when: T, damage: U) -> bool
-        where T: Into<Option<Duration>>,
-              U: Into<Option<&'a mut PixmanRegion>>
+    where
+        T: Into<Option<Duration>>,
+        U: Into<Option<&'a mut PixmanRegion>>
     {
-        let when = when.into().map(|duration| {
-                                       timespec { tv_sec: duration.as_secs() as clock_t,
-                                                  tv_nsec: duration.subsec_nanos() as clock_t }
-                                   });
-        let when_ptr =
-            when.map(|mut duration| &mut duration as *mut _).unwrap_or_else(|| ptr::null_mut());
+        let when = when.into().map(|duration| timespec {
+            tv_sec: duration.as_secs() as i64,
+            tv_nsec: duration.subsec_nanos() as clock_t
+        });
+        let when_ptr = when
+            .map(|mut duration| &mut duration as *mut _)
+            .unwrap_or_else(ptr::null_mut);
         let damage = match damage.into() {
             Some(region) => &mut region.region as *mut _,
             None => ptr::null_mut()
@@ -350,7 +376,12 @@ impl Output {
 
     /// Get the physical dimensions of the output as (width, height).
     pub fn physical_size(&self) -> (i32, i32) {
-        unsafe { ((*self.output.as_ptr()).phys_width, (*self.output.as_ptr()).phys_height) }
+        unsafe {
+            (
+                (*self.output.as_ptr()).phys_width,
+                (*self.output.as_ptr()).phys_height
+            )
+        }
     }
 
     /// Computes the transformed output resolution
@@ -400,8 +431,8 @@ impl Output {
     }
 
     /// Sets the gamma based on the size.
-    pub fn set_gamma(&mut self, size: usize, mut r: u16, mut g: u16, mut b: u16) -> bool {
-        unsafe { wlr_output_set_gamma(self.output.as_ptr(), size, &mut r, &mut g, &mut b) }
+    pub fn set_gamma(&mut self, size: usize, r: u16, g: u16, b: u16) -> bool {
+        unsafe { wlr_output_set_gamma(self.output.as_ptr(), size, &r, &g, &b) }
     }
 
     /// Get the gamma size.
@@ -437,13 +468,15 @@ impl Drop for Output {
             wlr_log!(WLR_DEBUG, "Dropped output {:p}", self.output.as_ptr());
             let weak_count = Rc::weak_count(&self.liveliness);
             if weak_count > 0 {
-                wlr_log!(WLR_DEBUG,
-                         "Still {} weak pointers to Output {:p}",
-                         weak_count,
-                         self.output.as_ptr());
+                wlr_log!(
+                    WLR_DEBUG,
+                    "Still {} weak pointers to Output {:p}",
+                    weak_count,
+                    self.output.as_ptr()
+                );
             }
         } else {
-            return
+            return;
         }
         // TODO Move back up in the some after NLL is a thing.
         unsafe {
@@ -462,10 +495,11 @@ impl Handleable<NonNull<wlr_output_damage>, wlr_output> for Output {
         let damage = data.damage;
         let damage = ManuallyDrop::new(output::Damage::from_ptr(damage.as_ptr()));
         (*output.as_ptr()).data = Box::into_raw(data) as *mut _;
-        Some(Output { liveliness: handle.upgrade().unwrap(),
-                      damage,
-                      output })
-
+        Some(Output {
+            liveliness: handle.upgrade().unwrap(),
+            damage,
+            output
+        })
     }
 
     #[doc(hidden)]
@@ -474,21 +508,26 @@ impl Handleable<NonNull<wlr_output_damage>, wlr_output> for Output {
     }
 
     #[doc(hidden)]
-    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> where Self: Sized {
-        let liveliness = handle.handle
-            .upgrade()
-            .ok_or_else(|| HandleErr::AlreadyDropped)?;
+    unsafe fn from_handle(handle: &Handle) -> HandleResult<Self>
+    where
+        Self: Sized
+    {
+        let liveliness = handle.handle.upgrade().ok_or_else(|| HandleErr::AlreadyDropped)?;
         let damage_ptr = handle.data.ok_or(HandleErr::AlreadyDropped)?;
         let damage = ManuallyDrop::new(output::Damage::from_ptr(damage_ptr.as_ptr()));
-        Ok(Output { liveliness,
-                    damage,
-                    output: handle.as_non_null() })
+        Ok(Output {
+            liveliness,
+            damage,
+            output: handle.as_non_null()
+        })
     }
 
     fn weak_reference(&self) -> Handle {
-        Handle { ptr: self.output,
-                 handle: Rc::downgrade(&self.liveliness),
-                 data: unsafe { Some(NonNull::new(self.damage.as_ptr()).unwrap()) },
-                 _marker: std::marker::PhantomData }
+        Handle {
+            ptr: self.output,
+            handle: Rc::downgrade(&self.liveliness),
+            data: unsafe { Some(NonNull::new(self.damage.as_ptr()).unwrap()) },
+            _marker: std::marker::PhantomData
+        }
     }
 }

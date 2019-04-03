@@ -1,6 +1,6 @@
 [package]
 name = "wlroots-sys"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Timidger <APragmaticPlace@gmail.com>"]
 description = "Bindgen generated low-level wlroots wrapper"
 keywords = ["wayland", "compositor", "bindings"]

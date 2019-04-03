@@ -2,9 +2,9 @@ mod input_device;
 pub mod keyboard;
 pub mod pointer;
 pub mod switch;
-pub mod touch;
-pub mod tablet_tool;
 pub mod tablet_pad;
+pub mod tablet_tool;
+pub mod touch;
 
 pub use self::input_device::*;
 
@@ -17,5 +17,5 @@ pub mod manager {
     //!
     //! Pass those functions to an [`input::Builder`](./struct.Builder.html)
     //! which is then given to a `compositor::Builder`.
-    pub use manager::input_manager::*;
+    pub use crate::manager::input_manager::*;
 }

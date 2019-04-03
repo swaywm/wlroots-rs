@@ -1,19 +1,24 @@
 use std::ptr::NonNull;
 
-use libc;
-use wlroots_sys::{wlr_backend, wlr_headless_backend_create, wlr_headless_add_output,
-                  wlr_headless_add_input_device, wlr_input_device_is_headless,
-                  wlr_output_is_headless, wlr_input_device_type, wl_display};
+use crate::libc;
+use wlroots_sys::{
+    wl_display, wlr_backend, wlr_headless_add_input_device, wlr_headless_add_output,
+    wlr_headless_backend_create, wlr_input_device_is_headless, wlr_input_device_type, wlr_output_is_headless
+};
 
-use {backend::UnsafeRenderSetupFunction,
-     input,
-     output::{self, Output},
-     utils::Handleable};
+use crate::{
+    backend::UnsafeRenderSetupFunction,
+    input,
+    output::{self, Output},
+    utils::Handleable
+};
 
-/// In this backend the only resource the compositor uses is the Wayland file descriptor.
-/// It doesn't try to grab actual keyboard/pointers and it doesn't render anything.
+/// In this backend the only resource the compositor uses is the Wayland file
+/// descriptor. It doesn't try to grab actual keyboard/pointers and it doesn't
+/// render anything.
 ///
-/// This backend is useful for testing as you can easily add "fake" inputs and outputs.
+/// This backend is useful for testing as you can easily add "fake" inputs and
+/// outputs.
 #[derive(Debug, Hash, Eq, PartialEq)]
 pub struct Headless {
     pub(crate) backend: *mut wlr_backend
@@ -23,16 +28,16 @@ impl Headless {
     /// Creates a headless backend.
     ///
     /// A headless backend has no outputs or inputs by default.
-    pub unsafe fn new(display: *mut wl_display,
-                      render_setup_func: Option<UnsafeRenderSetupFunction>)
-                      -> Self {
+    pub unsafe fn new(
+        display: *mut wl_display,
+        render_setup_func: Option<UnsafeRenderSetupFunction>
+    ) -> Self {
         let backend = wlr_headless_backend_create(display, render_setup_func);
         if backend.is_null() {
             panic!("Could not construct Headless backend");
         }
         Headless { backend }
     }
-
 
     /// Create a new headless output backed by an in-memory EGL framebuffer.
     ///
@@ -62,15 +67,11 @@ impl Headless {
     }
 
     pub fn is_headless_input_device(&self, input_device: &input::Device) -> bool {
-        unsafe {
-            wlr_input_device_is_headless(input_device.as_ptr())
-        }
+        unsafe { wlr_input_device_is_headless(input_device.as_ptr()) }
     }
 
     pub fn is_headless_output(&self, output: &Output) -> bool {
-        unsafe {
-            wlr_output_is_headless(output.as_ptr())
-        }
+        unsafe { wlr_output_is_headless(output.as_ptr()) }
     }
 
     pub unsafe fn as_ptr(&self) -> *mut wlr_backend {

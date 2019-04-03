@@ -7,5 +7,9 @@ unstable_static_build:
 examples:
 	cargo build  --examples --features "unstable static"
 
+clippy:
+	cargo clippy --features "unstable static" --examples
+
 build:
 	cargo build
+

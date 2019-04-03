@@ -1,7 +1,6 @@
 //! TODO Documentation
 
-use wlroots_sys::{wlr_event_touch_cancel, wlr_event_touch_down, wlr_event_touch_motion,
-                  wlr_event_touch_up};
+use wlroots_sys::{wlr_event_touch_cancel, wlr_event_touch_down, wlr_event_touch_motion, wlr_event_touch_up};
 
 #[derive(Debug)]
 /// Event that is triggered when a touch down event occurs.

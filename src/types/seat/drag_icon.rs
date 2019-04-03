@@ -1,9 +1,17 @@
-use std::{cell::Cell, rc::{Rc, Weak}, hash::{Hash, Hasher}, panic};
+use std::{
+    cell::Cell,
+    hash::{Hash, Hasher},
+    panic,
+    rc::{Rc, Weak}
+};
 
 use wlroots_sys::wlr_drag_icon;
 
-use {surface, utils::{HandleErr, HandleResult}};
-pub use manager::drag_icon_handler::*;
+pub use crate::manager::drag_icon_handler::*;
+use crate::{
+    surface,
+    utils::{HandleErr, HandleResult}
+};
 
 #[derive(Debug)]
 pub struct DragIcon {
@@ -15,7 +23,9 @@ impl DragIcon {
     #[allow(dead_code)]
     pub(crate) unsafe fn new(drag_icon: *mut wlr_drag_icon) -> Self {
         let liveliness = Rc::new(Cell::new(false));
-        let state = Box::new(DragIconState { handle: Rc::downgrade(&liveliness) });
+        let state = Box::new(DragIconState {
+            handle: Rc::downgrade(&liveliness)
+        });
         (*drag_icon).data = Box::into_raw(state) as *mut _;
         DragIcon {
             liveliness,
@@ -39,7 +49,8 @@ impl DragIcon {
         unsafe { (*self.drag_icon).mapped }
     }
 
-    /// If this is a touch-driven dnd operation, the id of the touch point that started it
+    /// If this is a touch-driven dnd operation, the id of the touch point that
+    /// started it
     pub fn touch_id(&mut self) -> i32 {
         unsafe { (*(*self.drag_icon).drag).touch_id }
     }
@@ -53,11 +64,11 @@ impl DragIcon {
     }
 
     unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-                               .upgrade()
-                               .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(DragIcon { liveliness,
-                      drag_icon: handle.as_ptr() })
+        let liveliness = handle.handle.upgrade().ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(DragIcon {
+            liveliness,
+            drag_icon: handle.as_ptr()
+        })
     }
 }
 
@@ -98,10 +109,7 @@ impl Handle {
 
         let handle = (*data).handle.clone();
 
-        Handle {
-            handle,
-            drag_icon
-        }
+        Handle { handle, drag_icon }
     }
 
     pub(crate) unsafe fn upgrade(&self) -> HandleResult<DragIcon> {
@@ -121,21 +129,24 @@ impl Handle {
     }
 
     pub fn run<F, R>(&self, runner: F) -> HandleResult<R>
-        where F: FnOnce(&mut DragIcon) -> R
+    where
+        F: FnOnce(&mut DragIcon) -> R
     {
         let mut drag_icon = unsafe { self.upgrade()? };
         let res = panic::catch_unwind(panic::AssertUnwindSafe(|| runner(&mut drag_icon)));
-        self.handle.upgrade().map(|check| {
-                                      // Sanity check that it hasn't been tampered with.
-                                      if !check.get() {
-                                          wlr_log!(WLR_ERROR,
-                                                   "After running DragIcon callback, \
-                                                    mutable lock was false for: {:?}",
-                                                   drag_icon);
-                                          panic!("Lock in incorrect state!");
-                                      }
-                                      check.set(false);
-                                  });
+        if let Some(check) = self.handle.upgrade() {
+            // Sanity check that it hasn't been tampered with.
+            if !check.get() {
+                wlr_log!(
+                    WLR_ERROR,
+                    "After running DragIcon callback, mutable lock was \
+                     false for: {:?}",
+                    drag_icon
+                );
+                panic!("Lock in incorrect state!");
+            }
+            check.set(false);
+        };
         match res {
             Ok(res) => Ok(res),
             Err(err) => panic::resume_unwind(err)

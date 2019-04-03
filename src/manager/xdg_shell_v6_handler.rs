@@ -1,101 +1,133 @@
 //! Handler for XDG shell v6 clients.
 
-use libc;
+use crate::libc;
 
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_xdg_surface_v6;
 
-use {compositor,
-     surface,
-     shell::xdg_shell_v6::{self, SurfaceState},
-     utils::Handleable};
+use crate::{
+    compositor,
+    shell::xdg_shell_v6::{self, SurfaceState},
+    surface,
+    utils::Handleable
+};
 
 /// Handles events from the client XDG v6 shells.
 #[allow(unused_variables)]
 pub trait Handler {
     /// Called when the surface recieve a request event.
-    fn on_commit(&mut self,
-                 compositor_handle: compositor::Handle,
-                 surface_handle: surface::Handle,
-                 xdg_shell_v6_handle: xdg_shell_v6::Handle) {}
+    fn on_commit(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle
+    ) {
+    }
 
     /// Called when the wayland shell is destroyed (e.g by the user)
-    fn destroyed(&mut self,
-                 compositor_handle: compositor::Handle,
-                 xdg_shell_v6_handle: xdg_shell_v6::Handle) {}
+    fn destroyed(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle
+    ) {
+    }
 
     /// Called when the ping request timed out.
     ///
     /// This usually indicates something is wrong with the client.
-    fn ping_timeout(&mut self,
-                    compositor_handle: compositor::Handle,
-                    surface_handle: surface::Handle,
-                    xdg_shell_v6_handle: xdg_shell_v6::Handle) {}
+    fn ping_timeout(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle
+    ) {
+    }
 
     /// Called when a new popup appears in the xdg tree.
-    fn new_popup(&mut self,
-                 compositor_handle: compositor::Handle,
-                 surface_handle: surface::Handle,
-                 xdg_shell_v6_handle: xdg_shell_v6::Handle) {}
+    fn new_popup(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle
+    ) {
+    }
 
     /// Called when there is a request to maximize the XDG surface.
-    fn maximize_request(&mut self,
-                        compositor_handle: compositor::Handle,
-                        surface_handle: surface::Handle,
-                        xdg_shell_v6_handle: xdg_shell_v6::Handle) {}
+    fn maximize_request(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle
+    ) {
+    }
 
     /// Called when there is a request to minimize the XDG surface.
-    fn minimize_request(&mut self,
-                        compositor_handle: compositor::Handle,
-                        surface_handle: surface::Handle,
-                        xdg_shell_v6_handle: xdg_shell_v6::Handle) {}
+    fn minimize_request(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle
+    ) {
+    }
 
     /// Called when there is a request to move the shell surface somewhere else.
-    fn move_request(&mut self,
-                    compositor_handle: compositor::Handle,
-                    surface_handle: surface::Handle,
-                    xdg_shell_v6_handle: xdg_shell_v6::Handle,
-                    &xdg_shell_v6::event::Move) {
+    fn move_request(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle,
+        _: &xdg_shell_v6::event::Move
+    ) {
     }
 
     /// Called when there is a request to resize the shell surface.
-    fn resize_request(&mut self,
-                      compositor_handle: compositor::Handle,
-                      surface_handle: surface::Handle,
-                      xdg_shell_v6_handle: xdg_shell_v6::Handle,
-                      &xdg_shell_v6::event::Resize) {
+    fn resize_request(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle,
+        _: &xdg_shell_v6::event::Resize
+    ) {
     }
 
     /// Called when there is a request to make the shell surface fullscreen.
-    fn fullscreen_request(&mut self,
-                          compositor_handle: compositor::Handle,
-                          surface_handle: surface::Handle,
-                          xdg_shell_v6_handle: xdg_shell_v6::Handle,
-                          &xdg_shell_v6::event::SetFullscreen) {
+    fn fullscreen_request(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle,
+        _: &xdg_shell_v6::event::SetFullscreen
+    ) {
     }
 
     /// Called when there is a request to show the window menu.
-    fn show_window_menu_request(&mut self,
-                                compositor_handle: compositor::Handle,
-                                surface_handle: surface::Handle,
-                                xdg_shell_v6_handle: xdg_shell_v6::Handle,
-                                &xdg_shell_v6::event::ShowWindowMenu) {
+    fn show_window_menu_request(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle,
+        _: &xdg_shell_v6::event::ShowWindowMenu
+    ) {
     }
 
-    /// Called when the surface is ready to be mapped. It should be added to the list of views at
-    /// this time.
-    fn map_request(&mut self,
-                   compositor_handle: compositor::Handle,
-                   surface_handle: surface::Handle,
-                   xdg_shell_v6_handle: xdg_shell_v6::Handle) {
+    /// Called when the surface is ready to be mapped. It should be added to the
+    /// list of views at this time.
+    fn map_request(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle
+    ) {
     }
 
-    /// Called when the surface should be unmapped. It should be removed from the list of views at
-    /// this time, but may be remapped at a later time.
-    fn unmap_request(&mut self,
-                   compositor_handle: compositor::Handle,
-                   surface_handle: surface::Handle,
-                   xdg_shell_v6_handle: xdg_shell_v6::Handle) {
+    /// Called when the surface should be unmapped. It should be removed from
+    /// the list of views at this time, but may be remapped at a later time.
+    fn unmap_request(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        surface_handle: surface::Handle,
+        xdg_shell_v6_handle: xdg_shell_v6::Handle
+    ) {
     }
 }
 
@@ -310,42 +342,66 @@ impl XdgShellV6 {
 impl Drop for XdgShellV6 {
     fn drop(&mut self) {
         unsafe {
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.destroy_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.commit_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.ping_timeout_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.new_popup_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.maximize_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.fullscreen_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.minimize_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.move_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.resize_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.show_window_menu_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.map_listener()).link as *mut _ as _);
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.unmap_listener()).link as *mut _ as _);
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.destroy_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.commit_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.ping_timeout_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.new_popup_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.maximize_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.fullscreen_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.minimize_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.move_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.resize_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.show_window_menu_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.map_listener()).link as *mut _ as _
+            );
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.unmap_listener()).link as *mut _ as _
+            );
         }
     }
 }

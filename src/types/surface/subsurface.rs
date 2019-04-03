@@ -2,22 +2,26 @@
 
 use std::{cell::Cell, ptr::NonNull, rc::Rc};
 
-use libc;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::libc;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_subsurface;
 
-use {compositor,
-     surface,
-     utils::{self, HandleErr, HandleResult, Handleable}};
+use crate::{
+    compositor, surface,
+    utils::{self, HandleErr, HandleResult, Handleable}
+};
 
 pub type Handle = utils::Handle<(), wlr_subsurface, Subsurface>;
 
 #[allow(unused_variables)]
 pub trait Handler {
-    fn on_destroy(&mut self,
-                  compositor_handle: compositor::Handle,
-                  subsurface_handle: Handle,
-                  surface_handle: surface::Handle) {}
+    fn on_destroy(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        subsurface_handle: Handle,
+        surface_handle: surface::Handle
+    ) {
+    }
 }
 
 wayland_listener!(pub(crate) InternalSubsurface, (Subsurface, Box<Handler>), [
@@ -54,11 +58,12 @@ pub struct Subsurface {
 
 impl Subsurface {
     pub(crate) unsafe fn new(subsurface: *mut wlr_subsurface) -> Self {
-        let subsurface = NonNull::new(subsurface)
-            .expect("Subsurface pointer was null");
+        let subsurface = NonNull::new(subsurface).expect("Subsurface pointer was null");
         let liveliness = Rc::new(Cell::new(false));
-        Subsurface { subsurface,
-                     liveliness }
+        Subsurface {
+            subsurface,
+            liveliness
+        }
     }
 
     /// Get a handle to the surface for this sub surface.
@@ -72,7 +77,7 @@ impl Subsurface {
     }
 
     /// Get the cached state of the sub surface.
-    pub fn cached_state<'surface>(&'surface self) -> Option<surface::State<'surface>> {
+    pub fn cached_state(&self) -> Option<surface::State> {
         unsafe {
             if (*self.subsurface.as_ptr()).has_cache {
                 None
@@ -101,8 +106,9 @@ impl Handleable<(), wlr_subsurface> for Subsurface {
     unsafe fn from_ptr(subsurface: *mut wlr_subsurface) -> Option<Self> {
         let subsurface = NonNull::new(subsurface)?;
         let data = (*subsurface.as_ptr()).data as *mut InternalSubsurface;
-        Some(Subsurface {liveliness: (*data).data.0.liveliness.clone(),
-                         subsurface
+        Some(Subsurface {
+            liveliness: (*data).data.0.liveliness.clone(),
+            subsurface
         })
     }
 
@@ -113,18 +119,19 @@ impl Handleable<(), wlr_subsurface> for Subsurface {
 
     #[doc(hidden)]
     unsafe fn from_handle(handle: &Handle) -> HandleResult<Self> {
-        let liveliness = handle.handle
-            .upgrade()
-            .ok_or_else(|| HandleErr::AlreadyDropped)?;
-        Ok(Subsurface { liveliness,
-                        subsurface: handle.ptr })
+        let liveliness = handle.handle.upgrade().ok_or_else(|| HandleErr::AlreadyDropped)?;
+        Ok(Subsurface {
+            liveliness,
+            subsurface: handle.ptr
+        })
     }
 
     fn weak_reference(&self) -> Handle {
-        Handle { ptr: self.subsurface,
-                 handle: Rc::downgrade(&self.liveliness),
-                 data: Some(()),
-                 _marker: std::marker::PhantomData
+        Handle {
+            ptr: self.subsurface,
+            handle: Rc::downgrade(&self.liveliness),
+            data: Some(()),
+            _marker: std::marker::PhantomData
         }
     }
 }
@@ -132,9 +139,11 @@ impl Handleable<(), wlr_subsurface> for Subsurface {
 impl Drop for InternalSubsurface {
     fn drop(&mut self) {
         unsafe {
-            ffi_dispatch!(WAYLAND_SERVER_HANDLE,
-                          wl_list_remove,
-                          &mut (*self.on_destroy_listener()).link as *mut _ as _);
+            ffi_dispatch!(
+                WAYLAND_SERVER_HANDLE,
+                wl_list_remove,
+                &mut (*self.on_destroy_listener()).link as *mut _ as _
+            );
         }
     }
 }

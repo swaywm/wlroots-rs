@@ -1,54 +1,40 @@
 //! Handler for outputs
 
-use libc;
-use wayland_sys::server::WAYLAND_SERVER_HANDLE;
+use crate::libc;
+use crate::wayland_sys::server::WAYLAND_SERVER_HANDLE;
 use wlroots_sys::wlr_output;
 
-use {compositor,
-     output::{self, Output, OutputState},
-     utils::{HandleErr, Handleable}};
+use crate::{
+    compositor,
+    output::{self, Output, OutputState},
+    utils::{HandleErr, Handleable}
+};
 
 #[allow(unused_variables)]
 pub trait Handler {
     /// Called every time the output frame is updated.
-    fn on_frame(&mut self,
-                compositor_handle: compositor::Handle,
-                output_handle: output::Handle) {}
+    fn on_frame(&mut self, compositor_handle: compositor::Handle, output_handle: output::Handle) {}
 
     /// Called every time the output mode changes.
-    fn on_mode_change(&mut self,
-                      compositor_handle: compositor::Handle,
-                      output_handle: output::Handle) {}
+    fn on_mode_change(&mut self, compositor_handle: compositor::Handle, output_handle: output::Handle) {}
 
     /// Called every time the output is enabled.
-    fn on_enable(&mut self,
-                 compositor_handle: compositor::Handle,
-                 output_handle: output::Handle) {}
+    fn on_enable(&mut self, compositor_handle: compositor::Handle, output_handle: output::Handle) {}
 
     /// Called every time the output scale changes.
-    fn on_scale_change(&mut self,
-                       compositor_handle: compositor::Handle,
-                       output_handle: output::Handle) {}
+    fn on_scale_change(&mut self, compositor_handle: compositor::Handle, output_handle: output::Handle) {}
 
     /// Called every time the output transforms.
-    fn on_transform(&mut self,
-                    compositor_handle: compositor::Handle,
-                    output_handle: output::Handle) {}
+    fn on_transform(&mut self, compositor_handle: compositor::Handle, output_handle: output::Handle) {}
 
     /// Called every time the buffers are swapped on an output.
-    fn on_buffers_swapped(&mut self,
-                          compositor_handle: compositor::Handle,
-                          output_handle: output::Handle) {}
+    fn on_buffers_swapped(&mut self, compositor_handle: compositor::Handle, output_handle: output::Handle) {}
 
     /// Called every time the buffers need to be swapped on an output.
-    fn needs_swap(&mut self,
-                  compositor_handle: compositor::Handle,
-                  output_handle: output::Handle) {}
+    fn needs_swap(&mut self, compositor_handle: compositor::Handle, output_handle: output::Handle) {}
 
     /// Called when an output is destroyed (e.g. unplugged).
-    fn destroyed(&mut self,
-                 compositor_handle: compositor::Handle,
-                 output_handle: output::Handle) {}
+    fn destroyed(&mut self, compositor_handle: compositor::Handle, output_handle: output::Handle) {}
 }
 
 wayland_listener!(pub(crate) UserOutput, (Output, Box<Handler>), [

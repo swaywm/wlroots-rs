@@ -1,13 +1,14 @@
 use std::marker::PhantomData;
 use std::path::Path;
 
-use libc::{c_int, c_uint, c_char};
-use wlroots_sys::{wl_display, wlr_session, wlr_session_create, wlr_session_destroy,
-                  wlr_session_open_file, wlr_session_close_file, wlr_session_signal_add,
-                  wlr_session_change_vt, wl_listener, wl_signal, udev, udev_monitor, wlr_device,
-                  dev_t};
+use crate::libc::{c_char, c_int, c_uint};
+use wlroots_sys::{
+    dev_t, udev, udev_monitor, wl_display, wl_listener, wl_signal, wlr_device, wlr_session,
+    wlr_session_change_vt, wlr_session_close_file, wlr_session_create, wlr_session_destroy,
+    wlr_session_open_file, wlr_session_signal_add
+};
 
-use utils::safe_as_cstring;
+use crate::utils::safe_as_cstring;
 
 pub struct Device<'session> {
     device: *mut wlr_device,
@@ -19,9 +20,12 @@ pub struct Session<'session> {
     phantom: PhantomData<&'session ()>
 }
 
-impl <'session> Device<'session> {
+impl<'session> Device<'session> {
     unsafe fn from_ptr<'unbound>(device: *mut wlr_device) -> Device<'unbound> {
-        Device { device, phantom: PhantomData }
+        Device {
+            device,
+            phantom: PhantomData
+        }
     }
 
     pub fn fd(&self) -> c_int {
@@ -33,8 +37,8 @@ impl <'session> Device<'session> {
     }
 }
 
-impl <'session> Session<'session> {
-	  /// Signal for when the session becomes active/inactive.
+impl<'session> Session<'session> {
+    /// Signal for when the session becomes active/inactive.
     /// It's called when we swap virtual terminal.
     pub fn session_signal(&self) -> wl_signal {
         unsafe { (*self.session).session_signal }
@@ -64,27 +68,25 @@ impl <'session> Session<'session> {
         unsafe {
             let mut devices = Vec::new();
             wl_list_for_each!((*self.session).devices,
-                              link,
-                              (device: wlr_device) => {
-                                  devices.push(Device::from_ptr(device))
-                              });
+            link,
+            (device: wlr_device) => {
+                devices.push(Device::from_ptr(device))
+            });
             devices
         }
     }
 
     /// Changes the virtual terminal.
     pub fn change_vt(&mut self, vt: c_uint) -> bool {
-        unsafe {
-            wlr_session_change_vt(self.session, vt)
-        }
+        unsafe { wlr_session_change_vt(self.session, vt) }
     }
 
     /// Opens a session, taking control of the current virtual terminal.
     /// This should not be called if another program is already in control
     /// of the terminal (Xorg, another Wayland compositor, etc.).
     ///
-    /// If logind support is not enabled, you must have CAP_SYS_ADMIN or be root.
-    /// It is safe to drop privileges after this is called.
+    /// If logind support is not enabled, you must have CAP_SYS_ADMIN or be
+    /// root. It is safe to drop privileges after this is called.
     ///
     /// Returns `None` on error.
     pub unsafe fn new(display: *mut wl_display) -> Option<Self> {
@@ -132,6 +134,9 @@ impl <'session> Session<'session> {
     }
 
     pub unsafe fn from_ptr(session: *mut wlr_session) -> Self {
-        Session { session, phantom: PhantomData }
+        Session {
+            session,
+            phantom: PhantomData
+        }
     }
 }

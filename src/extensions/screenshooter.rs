@@ -1,8 +1,7 @@
 //! Support for the Orbital Screenshooter Protocol
 
-use wayland_sys::server::wl_display as wl_server_display;
-use wlroots_sys::{wl_display, wlr_screenshooter,wlr_screenshooter_create,
-                  wlr_screenshooter_destroy};
+use crate::wayland_sys::server::wl_display as wl_server_display;
+use wlroots_sys::{wl_display, wlr_screenshooter, wlr_screenshooter_create, wlr_screenshooter_destroy};
 
 #[derive(Debug)]
 pub struct Screenshooter {
@@ -14,7 +13,9 @@ impl Screenshooter {
         let screenshooter_raw = wlr_screenshooter_create(display as *mut wl_display);
 
         if !screenshooter_raw.is_null() {
-            Some(Screenshooter { screenshooter: screenshooter_raw })
+            Some(Screenshooter {
+                screenshooter: screenshooter_raw
+            })
         } else {
             None
         }
