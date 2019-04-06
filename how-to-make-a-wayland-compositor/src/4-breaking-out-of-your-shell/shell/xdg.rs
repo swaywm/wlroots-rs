@@ -52,17 +52,8 @@ impl xdg_shell::Handler for XdgShellHandler {
     fn destroyed(&mut self, compositor_handle: compositor::Handle, shell_handle: xdg_shell::Handle) {
         #[dehandle]
         let compositor = compositor_handle;
-        let CompositorState {
-            shells:
-                Shells {
-                    ref mut mapped_shells,
-                    ref mut views
-                },
-            ..
-        } = compositor.downcast();
-        let shell_handle = shell_handle.into();
-        mapped_shells.retain(|shell| *shell != shell_handle);
-        views.remove(&shell_handle);
+        let state: &mut CompositorState = compositor.downcast();
+        state.remove_shell(shell_handle.into());
     }
 }
 

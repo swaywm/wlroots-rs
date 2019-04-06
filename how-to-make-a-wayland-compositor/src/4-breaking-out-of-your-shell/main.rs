@@ -16,6 +16,7 @@ use std::{
 use wlroots::{
     compositor,
     input::keyboard::Modifiers,
+    seat::Capability,
     utils::log::{init_logging, WLR_DEBUG},
     wlroots_dehandle
 };
@@ -59,6 +60,47 @@ pub struct CompositorState {
     outputs: HashSet<wlroots::output::Handle>,
     shells: Shells,
     inputs: Inputs
+}
+
+impl CompositorState {
+    /// Cleans up all the references to the dropped output.
+    pub fn remove_output(&mut self, output_handle: wlroots::output::Handle) {
+        // NOTE Not necessary to remove the output from the layout,
+        // wlroots-rs takes care of it for you.
+        self.outputs.remove(&output_handle);
+    }
+
+    /// Cleans up all the references to the dropped keyboard.
+    #[wlroots_dehandle]
+    pub fn remove_keyboard(&mut self, keyboard_handle: wlroots::input::keyboard::Handle) {
+        self.inputs.keyboards.remove(&keyboard_handle);
+        if self.inputs.keyboards.len() == 0 {
+            #[dehandle]
+            let seat = self.seat_handle;
+            let mut cap = seat.capabilities();
+            cap.remove(Capability::Keyboard);
+            seat.set_capabilities(cap)
+        }
+    }
+
+    /// Cleans up all the references to the dropped pointer.
+    #[wlroots_dehandle]
+    pub fn remove_pointer(&mut self, pointer_handle: wlroots::input::pointer::Handle) {
+        self.inputs.pointers.remove(&pointer_handle);
+        if self.inputs.pointers.len() == 0 {
+            #[dehandle]
+            let seat = self.seat_handle;
+            let mut cap = seat.capabilities();
+            cap.remove(Capability::Pointer);
+            seat.set_capabilities(cap)
+        }
+    }
+
+    #[wlroots_dehandle]
+    pub fn remove_shell(&mut self, shell: Shell) {
+        self.shells.mapped_shells.retain(|cur_shell| *cur_shell != shell);
+        self.shells.views.remove(&shell);
+    }
 }
 
 fn main() {

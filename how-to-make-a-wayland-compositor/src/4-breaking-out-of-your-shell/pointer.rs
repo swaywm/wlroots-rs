@@ -84,19 +84,8 @@ impl pointer::Handler for PointerHandler {
     fn destroyed(&mut self, compositor_handle: compositor::Handle, pointer_handle: pointer::Handle) {
         #[dehandle]
         let compositor = compositor_handle;
-        let &mut CompositorState {
-            ref seat_handle,
-            inputs: Inputs { ref mut pointers, .. },
-            ..
-        } = compositor.downcast();
-        pointers.remove(&pointer_handle);
-        if pointers.len() == 0 {
-            #[dehandle]
-            let seat = seat_handle;
-            let mut cap = seat.capabilities();
-            cap.remove(Capability::Pointer);
-            seat.set_capabilities(cap)
-        }
+        let state: &mut CompositorState = compositor.downcast();
+        state.remove_pointer(pointer_handle);
     }
 }
 

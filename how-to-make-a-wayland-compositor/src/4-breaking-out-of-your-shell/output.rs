@@ -35,10 +35,8 @@ impl output::Handler for OutputHandler {
     fn destroyed(&mut self, compositor_handle: compositor::Handle, output_handle: output::Handle) {
         #[dehandle]
         let compositor = compositor_handle;
-        let CompositorState { ref mut outputs, .. } = compositor.downcast();
-        // NOTE Not necessary to remove the output from the layout,
-        // wlroots-rs takes care of it for you.
-        outputs.remove(&output_handle);
+        let state: &mut CompositorState = compositor.downcast();
+        state.remove_output(output_handle);
     }
 }
 

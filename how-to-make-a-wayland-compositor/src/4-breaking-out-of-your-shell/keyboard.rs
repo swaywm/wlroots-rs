@@ -103,20 +103,7 @@ impl keyboard::Handler for KeyboardHandler {
     fn destroyed(&mut self, compositor_handle: compositor::Handle, keyboard_handle: keyboard::Handle) {
         #[dehandle]
         let compositor = compositor_handle;
-        let CompositorState {
-            ref seat_handle,
-            inputs: Inputs {
-                ref mut keyboards, ..
-            },
-            ..
-        } = compositor.downcast();
-        keyboards.remove(&keyboard_handle);
-        if keyboards.len() == 0 {
-            #[dehandle]
-            let seat = seat_handle;
-            let mut cap = seat.capabilities();
-            cap.remove(Capability::Keyboard);
-            seat.set_capabilities(cap)
-        }
+        let state: &mut CompositorState = compositor.downcast();
+        state.remove_keyboard(keyboard_handle);
     }
 }
