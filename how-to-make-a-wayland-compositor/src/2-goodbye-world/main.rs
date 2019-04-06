@@ -1,24 +1,26 @@
 extern crate wlroots;
 
-use wlroots::{compositor,
-              input::{self, keyboard},
-              utils::log::{WLR_DEBUG, init_logging},
-              xkbcommon::xkb::keysyms,
-              wlr_key_state::WLR_KEY_PRESSED};
+use wlroots::{
+    compositor,
+    input::{self, keyboard},
+    utils::log::{init_logging, WLR_DEBUG},
+    wlr_key_state::WLR_KEY_PRESSED,
+    xkbcommon::xkb::keysyms
+};
 
 fn main() {
     init_logging(WLR_DEBUG, None);
-    let input_builder = input::manager::Builder::default()
-        .keyboard_added(keyboard_added);
+    let input_builder = input::manager::Builder::default().keyboard_added(keyboard_added);
     compositor::Builder::new()
         .input_manager(input_builder)
         .build_auto(())
         .run()
 }
 
-fn keyboard_added(_compositor_handle: compositor::Handle,
-                  _keyboard_handle: keyboard::Handle)
-                  -> Option<Box<keyboard::Handler>> {
+fn keyboard_added(
+    _compositor_handle: compositor::Handle,
+    _keyboard_handle: keyboard::Handle
+) -> Option<Box<keyboard::Handler>> {
     Some(Box::new(KeyboardHandler::default()))
 }
 
@@ -29,28 +31,34 @@ struct KeyboardHandler {
 }
 
 impl keyboard::Handler for KeyboardHandler {
-    fn on_key(&mut self,
-              compositor_handle: compositor::Handle,
-              _keyboard_handle: keyboard::Handle,
-              key_event: &keyboard::event::Key) {
+    fn on_key(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        _keyboard_handle: keyboard::Handle,
+        key_event: &keyboard::event::Key
+    ) {
         for key in key_event.pressed_keys() {
             match key {
-                keysyms::KEY_Control_L | keysyms::KEY_Control_R =>
-                    self.ctrl_pressed = key_event.key_state() == WLR_KEY_PRESSED,
-                keysyms::KEY_Shift_L | keysyms::KEY_Shift_R =>
-                    self.shift_pressed = key_event.key_state() == WLR_KEY_PRESSED,
+                keysyms::KEY_Control_L | keysyms::KEY_Control_R => {
+                    self.ctrl_pressed = key_event.key_state() == WLR_KEY_PRESSED
+                },
+                keysyms::KEY_Shift_L | keysyms::KEY_Shift_R => {
+                    self.shift_pressed = key_event.key_state() == WLR_KEY_PRESSED
+                },
                 keysyms::KEY_Escape => {
                     if self.shift_pressed && self.ctrl_pressed {
                         wlroots::compositor::terminate()
                     }
                 },
-                keysyms::KEY_XF86Switch_VT_1 ..= keysyms::KEY_XF86Switch_VT_12 => {
-                    compositor_handle.run(|compositor| {
-                        if let Some(mut session) = compositor.backend.get_session() {
-                            session.change_vt(key - keysyms::KEY_XF86Switch_VT_1 + 1);
-                        }
-                    }).unwrap();
-                }
+                keysyms::KEY_XF86Switch_VT_1..=keysyms::KEY_XF86Switch_VT_12 => {
+                    compositor_handle
+                        .run(|compositor| {
+                            if let Some(mut session) = compositor.backend.get_session() {
+                                session.change_vt(key - keysyms::KEY_XF86Switch_VT_1 + 1);
+                            }
+                        })
+                        .unwrap();
+                },
                 _ => { /* Do nothing */ }
             }
         }

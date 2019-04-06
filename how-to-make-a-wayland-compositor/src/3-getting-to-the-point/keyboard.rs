@@ -1,11 +1,11 @@
-use wlroots::{wlroots_dehandle, compositor,
-              input::keyboard,
-              xkbcommon::xkb::keysyms,
-              wlr_key_state::WLR_KEY_PRESSED};
+use wlroots::{
+    compositor, input::keyboard, wlr_key_state::WLR_KEY_PRESSED, wlroots_dehandle, xkbcommon::xkb::keysyms
+};
 
-pub fn keyboard_added(_compositor_handle: compositor::Handle,
-                  _keyboard_handle: keyboard::Handle)
-                  -> Option<Box<keyboard::Handler>> {
+pub fn keyboard_added(
+    _compositor_handle: compositor::Handle,
+    _keyboard_handle: keyboard::Handle
+) -> Option<Box<keyboard::Handler>> {
     Some(Box::new(KeyboardHandler::default()))
 }
 
@@ -17,27 +17,32 @@ struct KeyboardHandler {
 
 impl keyboard::Handler for KeyboardHandler {
     #[wlroots_dehandle]
-    fn on_key(&mut self,
-              compositor_handle: compositor::Handle,
-              _keyboard_handle: keyboard::Handle,
-              key_event: &keyboard::event::Key) {
+    fn on_key(
+        &mut self,
+        compositor_handle: compositor::Handle,
+        _keyboard_handle: keyboard::Handle,
+        key_event: &keyboard::event::Key
+    ) {
         for key in key_event.pressed_keys() {
             match key {
-                keysyms::KEY_Control_L | keysyms::KEY_Control_R =>
-                    self.ctrl_pressed = key_event.key_state() == WLR_KEY_PRESSED,
-                keysyms::KEY_Shift_L | keysyms::KEY_Shift_R =>
-                    self.shift_pressed = key_event.key_state() == WLR_KEY_PRESSED,
+                keysyms::KEY_Control_L | keysyms::KEY_Control_R => {
+                    self.ctrl_pressed = key_event.key_state() == WLR_KEY_PRESSED
+                },
+                keysyms::KEY_Shift_L | keysyms::KEY_Shift_R => {
+                    self.shift_pressed = key_event.key_state() == WLR_KEY_PRESSED
+                },
                 keysyms::KEY_Escape => {
                     if self.shift_pressed && self.ctrl_pressed {
                         wlroots::compositor::terminate()
                     }
                 },
-                keysyms::KEY_XF86Switch_VT_1 ..= keysyms::KEY_XF86Switch_VT_12 => {
-                    #[dehandle] let compositor = compositor_handle;
+                keysyms::KEY_XF86Switch_VT_1..=keysyms::KEY_XF86Switch_VT_12 => {
+                    #[dehandle]
+                    let compositor = compositor_handle;
                     if let Some(mut session) = compositor.backend.get_session() {
                         session.change_vt(key - keysyms::KEY_XF86Switch_VT_1 + 1);
                     }
-                }
+                },
                 _ => { /* Do nothing */ }
             }
         }

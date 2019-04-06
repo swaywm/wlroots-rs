@@ -1,9 +1,10 @@
 # Goodbye World
+
 The compositor from the previous section has a bug\: it can't be exited from if
 it is started in DRM. This is a pretty serious bug, one that will be addressed
 in two ways in this section.
 
-### Gracefully shutting Down
+## Gracefully shutting Down
 
 The first is the most extreme, and easiest to implement, option: adding a shut
 down key sequence. The compositor will be configured so if the user presses
@@ -11,7 +12,7 @@ down key sequence. The compositor will be configured so if the user presses
 will be useful in debugging the compositor as it makes it easy to shut down even
 in DRM.<sup>1</sup>
 
-### TTY switching
+## TTY switching
 
 The second escape access is a feature that is often taken for granted: the
 ability to switch TTYs. The standard `Ctrl+Alt+F#` sequence will be implemented

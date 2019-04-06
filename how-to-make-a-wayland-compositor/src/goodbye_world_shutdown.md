@@ -1,10 +1,11 @@
 # A graceful shutdown
-Before the compositor can begin listening for keyboard input it needs to listen 
+
+Before the compositor can begin listening for keyboard input it needs to listen
 for keyboards.
 
 For each resource type that can be created there is a manager module that
 provides a builder and some function signatures for the compositor writer to
-describe how a resource should be managed. 
+describe how a resource should be managed.
 [Here is the input device resource manager module](http://way-cooler.org/docs/wlroots/input/manager/index.html).
 
 To specify that a keyboard should be managed by the compositor a function needs
@@ -13,7 +14,7 @@ signature](http://way-cooler.org/docs/wlroots/input/manager/type.KeyboardAdded.h
 This function will be later called by wlroots when a keyboard is announced to
 the compositor through libinput.
 
-Once the function is defined with the necessary signature it needs to be 
+Once the function is defined with the necessary signature it needs to be
 [put into the resource builder](http://way-cooler.org/docs/wlroots/input/manager/struct.Builder.html)
 and the resource builder [passed to the
 `compositor::Builder`](http://way-cooler.org/docs/wlroots/compositor/struct.Builder.html#method.input_manager).
@@ -23,7 +24,7 @@ and the resource builder [passed to the
 This is the simplest function that implements the signature:
 
 ```rust
-{{#include 2-goodbye-world/main.rs:19:21}}
+{{#include 2-goodbye-world/main.rs:20:23}}
     None
 }
 ```
@@ -50,16 +51,16 @@ state it holds between callbacks separate from the other resources. It is here
 where the "shift" and "ctrl" pressed state will be held:
 
 ```rust
-{{#include 2-goodbye-world/main.rs:25:29}}
+{{#include 2-goodbye-world/main.rs:27:31}}
 ```
 
 In order to be able to return a `Box`-ed version of this struct in
 the `keyboard_added` function `keyboard::Handler` will need to be implemented:
 
 ```rust
-{{#include 2-goodbye-world/main.rs:19:23}}
+{{#include 2-goodbye-world/main.rs:20:25}}
 
-{{#include 2-goodbye-world/main.rs:31}}
+{{#include 2-goodbye-world/main.rs:33}}
     // All handler methods have a default implementation that does nothing.
     // So because no methods are define here, every event on the keyboard
     // is ignored.
@@ -67,6 +68,7 @@ the `keyboard_added` function `keyboard::Handler` will need to be implemented:
 ```
 
 ## Listening for keyboard modifiers
+
 When a key is pressed [this
 method](http://way-cooler.org/docs/wlroots/input/keyboard/trait.Handler.html#method.on_key)
 receives [the
@@ -76,7 +78,7 @@ The key event has a couple methods but the [most important one is
 It will provide all the keys as seen by xkb that were pressed when the event
 fired.
 
-You can also see if the key was pressed or not [with 
+You can also see if the key was pressed or not [with
 `key_state`](http://way-cooler.org/docs/wlroots/input/keyboard/event/struct.Key.html#method.key_state).
 This is necessary to determine the boolean state in `KeyboardHandler`.
 
@@ -86,8 +88,8 @@ and pattern matched. Here is all that put together to toggle the booleans
 when the appropriate keys are pressed:
 
 ```rust
-{{#include 2-goodbye-world/main.rs:31:41}}
-{{#include 2-goodbye-world/main.rs:55:}}
+{{#include 2-goodbye-world/main.rs:33:47}}
+{{#include 2-goodbye-world/main.rs:62:}}
 ```
 
 The last piece of the puzzle to stopping the compositor is the [`terminate`
@@ -100,8 +102,8 @@ Here is the complete code for a compositor that will close itself when
 `Ctrl+Shift+Escape` is pressed:
 
 ``` rust
-{{#include 2-goodbye-world/main.rs:1:46}}
-{{#include 2-goodbye-world/main.rs:55:}}
+{{#include 2-goodbye-world/main.rs:1:52}}
+{{#include 2-goodbye-world/main.rs:62:}}
 ```
 
 ---

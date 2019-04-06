@@ -1,16 +1,16 @@
 extern crate wlroots;
 
 mod keyboard;
-mod pointer;
 mod output;
+mod pointer;
 
-use wlroots::{compositor,
-              utils::log::{WLR_DEBUG, init_logging},
-              wlroots_dehandle};
+use wlroots::{
+    compositor,
+    utils::log::{init_logging, WLR_DEBUG},
+    wlroots_dehandle
+};
 
-use crate::{pointer::pointer_added,
-            keyboard::keyboard_added,
-            output::output_added};
+use crate::{keyboard::keyboard_added, output::output_added, pointer::pointer_added};
 
 pub struct CompositorState {
     xcursor_manager: wlroots::cursor::xcursor::Manager,
@@ -21,8 +21,7 @@ pub struct CompositorState {
 fn main() {
     init_logging(WLR_DEBUG, None);
     let compositor_state = setup_compositor_state();
-    let output_builder = wlroots::output::manager::Builder::default()
-        .output_added(output_added);
+    let output_builder = wlroots::output::manager::Builder::default().output_added(output_added);
     let input_builder = wlroots::input::manager::Builder::default()
         .pointer_added(pointer_added)
         .keyboard_added(keyboard_added);
@@ -35,18 +34,24 @@ fn main() {
 
 #[wlroots_dehandle]
 pub fn setup_compositor_state() -> CompositorState {
-    use wlroots::{cursor::{Cursor, xcursor},
-                  output::layout::Layout};
-    use crate::{pointer::CursorHandler, output::LayoutHandler};
+    use crate::{output::LayoutHandler, pointer::CursorHandler};
+    use wlroots::{
+        cursor::{xcursor, Cursor},
+        output::layout::Layout
+    };
     let output_layout_handle = Layout::create(Box::new(LayoutHandler));
     let cursor_handle = Cursor::create(Box::new(CursorHandler));
-    let xcursor_manager = xcursor::Manager::create("default".to_string(), 24)
-        .expect("Could not create xcursor manager");
+    let xcursor_manager =
+        xcursor::Manager::create("default".to_string(), 24).expect("Could not create xcursor manager");
     xcursor_manager.load(1.0);
-    #[dehandle] let output_layout = output_layout_handle.clone();
-    #[dehandle] let cursor = cursor_handle.clone();
+    #[dehandle]
+    let output_layout = output_layout_handle.clone();
+    #[dehandle]
+    let cursor = cursor_handle.clone();
     cursor.attach_output_layout(output_layout);
-    CompositorState { xcursor_manager,
-                      cursor_handle,
-                      output_layout_handle }
+    CompositorState {
+        xcursor_manager,
+        cursor_handle,
+        output_layout_handle
+    }
 }

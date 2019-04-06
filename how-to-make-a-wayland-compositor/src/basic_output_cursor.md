@@ -1,4 +1,5 @@
 # A basic cursor
+
 There are two main problems that need to be solved to handle a single cursor on
 the screen:<sup>1</sup>
 
@@ -9,6 +10,7 @@ The first problem can be solved with two numbers and an event listener. The
 second can be solved with [xcursor](ftp://www.x.org/pub/X11R7.7/doc/man/man3/Xcursor.3.xhtml).
 
 ## Keeping track of the mouse
+
 In order to keep track of the mouse a new input device will need to be managed
 by the compositor. For this purpose wlroots provides a
 [Pointer](http://way-cooler.org/docs/wlroots/input/pointer/index.html). It
@@ -84,6 +86,7 @@ impl pointer::Handler for PointerHandler {
 
 
 ## Rendering a mouse with xcursor
+
 Now that the mouse position can be tracked it's time to render it to the screen.
 
 The xcursor library doesn't render anything itself, it just provides images from
@@ -103,21 +106,20 @@ at the start of the program and stored in the `CompositorState`.<sup>3</sup>
 
 Now that the image has been obtained there needs to be something to render it
 onto. Thus far the compositor has not been aware of any outputs, beyond the auto
-detection it does during backend setup. 
+detection it does during backend setup.
 
 ### Outputs
+
 An [Output](http://way-cooler.org/docs/wlroots/output/struct.Output.html)
 represents a rectangular view port on which clients and other content are
 rendered. Generally this means a monitor plugged into the computer, though if
 the Wayland or X11 backends are used then it will instead be a window as a
 client to the host system.
 
-
 Setting up an output is done in the same as setting up an input. There is only
 one crucial difference: when setting up an output there needs to be a [mode set
 for the output using the builder passed into the
 function](http://way-cooler.org/docs/wlroots/output/struct.Builder.html).
-
 
 ```rust
 struct OutputHandler;

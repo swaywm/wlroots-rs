@@ -1,4 +1,5 @@
 # Switching TTYs
+
 Implementing the ability to switch TTYs is not much more difficult [once the
 relevant function is located on the `Session`
 struct](http://way-cooler.org/docs/wlroots/backend/struct.Session.html#method.change_vt).
@@ -68,13 +69,12 @@ the two requirements for upgrading a handle are:
 2. If the resource behind the handle has been destroyed then the handle can
    never be upgraded again.<sup>1</sup>
 
-
 Because these errors should not occur for the compositor handle, it is
 sufficient to simply `unwrap` the result:
 
 ```rust
-{{#include 2-goodbye-world/main.rs:31:37}}
-{{#include 2-goodbye-world/main.rs:47:}}
+{{#include 2-goodbye-world/main.rs:33:41}}
+{{#include 2-goodbye-world/main.rs:53:}}
 ```
 
 ---

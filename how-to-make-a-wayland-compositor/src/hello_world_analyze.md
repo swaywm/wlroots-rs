@@ -1,5 +1,7 @@
 # Analyzing the code
-After explaining what each change gives us, I'll then explain what each line of code does.
+
+After explaining what each change gives us, I'll then explain what each line of
+code does.
 
 At the end of each chapter there will be a list of suggestions and challenges
 which I suggest you at least read over if not try. They exist to encourage you
@@ -9,9 +11,11 @@ to read through the [wlroots-rs
 familiarize yourself.
 
 ## Logging setup
+
 ```rust
-{{#include 1-hello-world/main.rs:6}}
+{{#include 1-hello-world/main.rs:9}}
 ```
+
 This line is not strictly necessary for the compositor to run. wlroots (and
 wlroots-rs) prints a log message each time something interesting happens which
 is useful for debugging. In general, you should always have this line in your
@@ -31,10 +35,12 @@ wlr_log!(WLR_DEBUG, "This is an example {:?}", some_struct)
 The first parameter is the log level you want to log at. Any arguments after
  that are passed to `format!` with the format string being the second argument.
 
+## Running the compositor
 
 ```rust
-{{#include 1-hello-world/main.rs:7}}
+{{#include 1-hello-world/main.rs:10}}
 ```
+
 This is the real meat of the program.
 
 This creates a builder for a `Compositor`. There can only be one `Compositor`
@@ -49,11 +55,11 @@ just pass the unit type `()`.
 Once the `Compositor` is set up `run` can be called. This will put it in
 the main Wayland event loop listening for events and dispatching to the
 callbacks. It will keep running until `wlroots::terminate` is called. Since this
-is never called in this compositor it won't happen until it's killed via a 
+is never called in this compositor it won't happen until it's killed via a
 signal.
 
 ---
-<sup>1</sup> Don't forget to import macros by prepending `#[macro_use]` to 
+<sup>1</sup> Don't forget to import macros by prepending `#[macro_use]` to
 `extern crate wlroots`.
 
 <sup>2</sup> wlroots-rs is not designed to be thread safe with its objects. Most

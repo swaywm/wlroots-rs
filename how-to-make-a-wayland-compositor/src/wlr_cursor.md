@@ -1,4 +1,5 @@
 # Setting up a `Cursor` and an `output::Layout`
+
 A `Cursor` can be [created at any
 time](http://way-cooler.org/docs/wlroots/cursor/struct.Cursor.html#method.create).
 Cursors use handles just like all resources provided in wlroots callbacks, so to
@@ -17,13 +18,11 @@ An `output::Layout` can be [created just like a
 Here is the new compositor setup code that uses `Cursor`, `output::Layout`, and
 `xcursor::Manager`<sup>2</sup>:
 
-
 ```rust
-{{#include 3-getting-to-the-point/main.rs:15:52}}
+{{#include 3-getting-to-the-point/main.rs:15:}}
 ```
 
-
-# Using `output::Layout`
+## Using `output::Layout`
 
 Outputs can be [added to the layout with
 `Layout::add_auto`](http://way-cooler.org/docs/wlroots/output/layout/struct.Layout.html#method.add_auto)
@@ -35,7 +34,8 @@ in the output layout coordinate space.
 {{#include 3-getting-to-the-point/output.rs:13:}}
 ```
 
-# Moving the `Pointer`
+## Moving the `Pointer`
+
 There is no longer any need to keep track of the current pointer location. This
 is tracked by the `Cursor` and can be updated using `move_relative` and `warp`.
 
@@ -45,7 +45,7 @@ correct state can be rendered.
 Finally here is the code that updates the cursor when the pointer moves:
 
 ```rust
-{{#include 3-getting-to-the-point/pointer.rs:12:}}
+{{#include 3-getting-to-the-point/pointer.rs:9:}}
 ```
 
 ---
