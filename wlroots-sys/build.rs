@@ -99,7 +99,6 @@ fn main() {
     }
 
     // generate the bindings
-    println!("cargo:rerun-if-changed={}", "src/gen.rs");
     generated.write_to_file("src/gen.rs").unwrap();
 
     generate_protocols();
