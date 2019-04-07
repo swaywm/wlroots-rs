@@ -23,7 +23,7 @@ use crate::{
     backend::{self, Backend, Session, UnsafeRenderSetupFunction},
     data_device,
     extensions::{
-        gamma_control, gtk_primary_selection, idle, idle_inhibit, screencopy, screenshooter,
+        gamma_control, gtk_primary_selection, idle, idle_inhibit, input_inhibit, screencopy, screenshooter,
         server_decoration
     },
     input, output,
@@ -131,6 +131,8 @@ pub struct Compositor {
     pub idle_manager: Option<idle::Manager>,
     /// Optional idle manager extension.
     pub idle_inhibit_manager: Option<idle_inhibit::ZManagerV1>,
+    /// Optional input inhibit manager extension.
+    pub input_inhibit_manager: Option<input_inhibit::ZManagerV1>,
     /// Optional GTK primary selection manager
     pub gtk_primary_selection_manager: Option<gtk_primary_selection::Manager>,
     /// Optional screencopy manager extension
@@ -167,6 +169,7 @@ pub struct Builder {
     gamma_control_manager: bool,
     idle_manager: bool,
     idle_inhibit_manager: bool,
+    input_inhibit_manager: bool,
     gtk_primary_selection_manager: bool,
     screencopy_manager: bool,
     screenshooter: bool,
@@ -282,6 +285,13 @@ impl Builder {
     /// extension.
     pub fn idle_inhibit_manager(mut self, idle_inhibit_manager: bool) -> Self {
         self.idle_inhibit_manager = idle_inhibit_manager;
+        self
+    }
+
+    /// Decide whether or not to enable the input inhibit manager protocol
+    /// extension.
+    pub fn input_inhibit_manager(mut self, input_inhibit_manager: bool) -> Self {
+        self.input_inhibit_manager = input_inhibit_manager;
         self
     }
 
@@ -493,6 +503,11 @@ impl Builder {
         } else {
             None
         };
+        let input_inhibit_manager = if self.input_inhibit_manager {
+            input_inhibit::ZManagerV1::new(display)
+        } else {
+            None
+        };
         let gtk_primary_selection_manager = if self.gtk_primary_selection_manager {
             gtk_primary_selection::Manager::new(display)
         } else {
@@ -616,6 +631,7 @@ impl Builder {
             gamma_control_manager,
             idle_manager,
             idle_inhibit_manager,
+            input_inhibit_manager,
             gtk_primary_selection_manager,
             screencopy_manager,
             screenshooter,
