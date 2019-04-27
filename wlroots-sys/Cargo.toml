@@ -13,14 +13,14 @@ build = "build.rs"
 [build-dependencies]
 bindgen = "0.30.*"
 meson = { version = "1.0", optional = true }
-wayland-scanner = "0.12.*"
+wayland-scanner = "0.21.*"
 # For building optional dependencies
 pkg-config = "0.3.*"
 
 [dependencies]
 libc = "^0.2.*"
-wayland-sys = {version = "0.12.*" }
-wayland-server = { version = "0.12.*" }
+wayland-sys = {version = "0.21.*" }
+wayland-server = { version = "0.21.*" }
 
 [features]
 default = ["static", "libcap", "systemd", "elogind", "unstable-features"]
