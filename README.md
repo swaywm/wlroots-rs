@@ -2,6 +2,9 @@
 [![Crates.io](https://img.shields.io/crates/v/wlroots.svg)](https://crates.io/crates/wlroots)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/way-cooler/wlroots-rs/)
 
+**This is no longer maintained.** As an alternative consider
+[smithay](https://github.com/Smithay/smithay).
+
 Safe Rust bindings for [wlroots](https://github.com/SirCmpwn/wlroots).
 
 This library is currently tracking the wlroots version for its minor version. Patch versions are wlroots-rs specific.
