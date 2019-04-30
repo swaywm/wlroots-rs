@@ -22,7 +22,7 @@ If you want to compile against wlroots statically, add the `"static"` flag.
 If you want use unstable wlroots features then add the `"unstable"` flag.
 
 # Examples
-See [the examples directory](https://github.com/swaywm/wlroots-rs/tree/master/examples) for basic examples using this library and at [Way Cooler the primary user of this library](https://github.com/way-cooler/way-cooler).
+See [the examples directory](https://github.com/swaywm/wlroots-rs/tree/master/examples) for basic examples.
 
 You can run an example using the following command:
 ```bash
